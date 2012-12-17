@@ -7,12 +7,13 @@ from breeze import views
 # admin.autodiscover()
 
 urlpatterns = patterns('',
-    url('^breeze/$',views.breeze),
-    url(r'^home/$',views.home),
-    url(r'^jobs/$',views.jobs),
-    url(r'^scripts/$',views.scripts),
-    url(r'^result/$',views.result),
-    url(r'^download/$',views.send_zipfile)
+    url('^breeze/$', views.breeze),
+    url(r'^home/$', views.home),
+    url(r'^jobs/$', views.jobs),
+    url(r'^scripts/$', views.scripts),
+    url(r'^result/$', views.result),
+    url(r'^download/$', views.send_zipfile),
+    url(r'^base/$', views.base)
     # Examples:
     # url(r'^$', 'isbio.views.home', name='home'),
     # url(r'^isbio/', include('isbio.foo.urls')),

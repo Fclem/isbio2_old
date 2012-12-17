@@ -6,4 +6,5 @@ fimm_venv
 *.html~
 isbio/.project
 isbio/.pydevproject
+isbio/.settings
 .gitignore~

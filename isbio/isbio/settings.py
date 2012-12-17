@@ -4,19 +4,19 @@ DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    # ('Your Name', 'your_email@example.com'),
+    # ('Dmitrii Bychkov', 'piter.dmitry@gmail.com'),
 )
 
 MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'biodb',                      # Or path to database file if using sqlite3.
-        'USER': 'biouser',                      # Not used with sqlite3.
-        'PASSWORD': 'rna',                  # Not used with sqlite3.
-        'HOST': '/var/run/mysqld/mysqld.sock',                      # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '3306',                      # Set to empty string for default. Not used with sqlite3.
+        'ENGINE': 'django.db.backends.mysql',  # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
+        'NAME': 'biodb',  # Or path to database file if using sqlite3.
+        'USER': 'biouser',  # Not used with sqlite3.
+        'PASSWORD': 'rna',  # Not used with sqlite3.
+        'HOST': '/var/run/mysqld/mysqld.sock',  # Set to empty string for localhost. Not used with sqlite3.
+        'PORT': '3306',  # Set to empty string for default. Not used with sqlite3.
     }
 }
 
@@ -104,7 +104,7 @@ ROOT_URLCONF = 'isbio.urls'
 WSGI_APPLICATION = 'isbio.wsgi.application'
 
 TEMPLATE_DIRS = (
-    "/home/comrade/Projects/fimm/isbio/breeze/templates"
+    '/home/comrade/Projects/fimm/isbio/breeze/templates',
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
@@ -117,6 +117,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'bootstrap_toolkit',
     'breeze'
     # Uncomment the next line to enable the admin:
     # 'django.contrib.admin',

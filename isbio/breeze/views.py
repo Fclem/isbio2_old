@@ -1,32 +1,39 @@
 # -*- coding: utf-8 -*-
 
-from django.core.servers.basehttp import FileWrapper
+from django.template import Template, Context
+from django.template.loader import get_template
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
+
+from django.core.servers.basehttp import FileWrapper
 import os, tempfile, zipfile
+
 from breeze.forms import DataForm
 from rpy2.robjects import r
+
+def base(request):
+    return render_to_response('base.html')
 
 def breeze(request):
     return render_to_response('index.html')
 
 def home(request):
-    return render_to_response('home.html')
+    return render_to_response('home.html', {})
 
 def scripts(request):
-    return render_to_response('scripts.html')
+    return render_to_response('scripts.html', {})
 
 def jobs(request):
-    return render_to_response('jobs.html')
+    return render_to_response('jobs.html', {})
 
 def send_zipfile(request):
-    response = HttpResponse(content_type='String')    
+    response = HttpResponse(content_type='String')
     response['Content-Disposition'] = 'attachment; filename="/home/comrade/Projects/fimm/isbio/breeze/static/dp.png"'
 
 #    temp = tempfile.TemporaryFile()
 #    archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
 #    for index in range(10):
-#        filename = __file__ # Select your files here.                           
+#        filename = __file__ # Select your files here.
 #        archive.write(filename, 'file%d.txt' % index)
 #    archive.close()
 #    wrapper = FileWrapper(temp)
@@ -34,7 +41,7 @@ def send_zipfile(request):
 #    response['Content-Disposition'] = 'attachment; filename=test.zip'
 #    response['Content-Length'] = temp.tell()
 #    temp.seek(0)
-#    return response 
+#    return response
 
     return response
 
@@ -43,17 +50,16 @@ def search_form(request):
 
 def contact(request):
     data_form = DataForm()
-	
     return render_to_response('contact_form.html', {'form': data_form})
 
 def result(request):
     polot_type = request.GET.getlist('plot')
     path = '/home/comrade/Projects/fimm/isbio/breeze/r_scripts/data.r'
-    r.assign('path',path)
-    r.assign('option',polot_type)
+    r.assign('path', path)
+    r.assign('option', polot_type)
     r('source(path)')
     r('test(toString(option))')
-    image_file = open("/home/comrade/Projects/fimm/isbio/breeze/static/rplot.png",'rb').read()
+    image_file = open("/home/comrade/Projects/fimm/isbio/breeze/static/rplot.png", 'rb').read()
 #    return render_to_response('/jobs.html')
-    return HttpResponse(image_file,mimetype='image/png')
+    return HttpResponse(image_file, mimetype='image/png')
 
