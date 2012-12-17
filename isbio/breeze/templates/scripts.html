@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+  
+  <head>
+    <title>Breeze</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+    <link rel="stylesheet" href="https://app.divshot.com/css/divshot-util.css">
+    <link rel="stylesheet" href="https://app.divshot.com/css/bootstrap.css">
+    <link rel="stylesheet" href="https://app.divshot.com/css/bootstrap-responsive.css">
+    <script src="https://app.divshot.com/js/jquery.min.js"></script>
+  </head>
+  
+  <body>
+    <div class="navbar navbar-inverse">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="index.html">BREEZE</a>
+          <div class="navbar-content">
+	    <p class="navbar-text pull-right">
+              Logged in as <a href="#" class="navbar-link">Username</a>
+            </p>
+            <ul class="nav">
+              <li>
+                <a href="/home">Home</a> 
+              </li>
+              <li>
+                <a href="/jobs">Jobs</a> 
+              </li>
+              <li class="active">
+                <a href="/scripts">Scripts</a> 
+              </li>
+              <li>
+                <a href="#">Help</a> 
+              </li>
+              <ul class="nav nav-tabs"></ul>
+              <ul class="nav pull-right"></ul>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span3">
+          <ul class="nav  nav-pills nav-stacked">
+            <li class="active">
+              <a href="#">General</a> 
+            </li>
+            <li>
+              <a href="#">Visualization</a> 
+            </li>
+            <li>
+              <a href="#">Screening</a> 
+            </li>
+            <li>
+              <a href="#">Sequencing</a> 
+            </li>
+          </ul>
+        </div>
+        <div class="span9">
+          <ul class="breadcrumb pull-right">
+            <li>
+              <a href="#">A-Z</a>
+              <span class="divider">/</span>
+            </li>
+            <li class="active">Z-A</li>
+          </ul>
+          <div class="container-fluid">
+	<!-- TABLES -->
+	<table class="table table-striped">
+		<head>
+			<tr>
+				<th>Name</th>
+				<th>Inline description</th>
+				<th></th>
+			</tr>
+		</head>
+		<tbody>
+			<tr>
+				<td>Auto-Correlation Plot</td>
+				<td><a href="#DescriptionModal" data-toggle="modal">Simple auto-correlation function estimation</a></td>
+				<td><a class="btn btn-inverse" data-toggle="modal" href="#FormModal">Apply</a></td>			
+			</tr>
+			<tr>
+				<td>Some plot</td>
+				<td><a href="#DescriptionModal" data-toggle="modal">Short description again</a></td>
+				<td><a class="btn btn-inverse" data-toggle="modal" href="#FormModal">Apply</a></td>			
+			</tr>
+			<tr>
+				<td>...</td>
+				<td>...</td>
+				<td>...</td>
+			</tr>
+			<tr>
+				<td>...</td>
+				<td>...</td>
+				<td>...</td>
+			</tr>
+		</tbody>
+	</table>
+	  </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://app.divshot.com/js/bootstrap.min.js"></script>
+	<div id="DescriptionModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="myModalLabel">Auto Correlation Plot</h3>
+		</div>
+	<div class="modal-body">
+		<img src="/static/dp.png" width="150" height="150">
+		<p>Detailed description of the algotithm follows down here...</p>
+	</div>
+	<div class="modal-footer">
+		<button class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</button>
+	</div>
+	</div>
+	
+	<div id="FormModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="myModalLabel">Auto Correlation Plot</h3>
+		</div>
+	<div class="modal-body">
+		<p>The form down here...</p>
+	</div>
+	<div class="modal-footer">
+		<button class="btn btn-inverse">Schedule</button>
+		<a class="btn btn-inverse" href="/result">Run</a>
+		<button class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</button>
+	</div>
+	</div>
+						
+  </body>
+
+</html>

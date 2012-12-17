@@ -1,3 +1,9 @@
 fimm_venv
 *.pyc
+*.py~
 *.log
+*.r~
+*.html~
+isbio/.project
+isbio/.pydevproject
+.gitignore~
