@@ -222,18 +222,20 @@
               <li><a href="/home">Home</a></li>
               <li><a href="http://www.fimm.fi/en/fimm/">About</a></li>
               <li><a href="http://www.fimm.fi/en/fimm/contacts/">Contact</a></li>
-	      <li class="dropdown" id="menu1">
-              <a class="dropdown-toggle" data-toggle="dropdown" href="#menu1">Login<b class="caret"></b></a>
-              <div class="dropdown-menu">
-              	 <form style="margin: 0px" accept-charset="UTF-8" action="/sessions" method="post">
-                 <fieldset class='textbox' style="padding:10px">
-                     <input style="margin-top: 8px" type="text" placeholder="Username" />
-                     <input style="margin-top: 8px" type="password" placeholder="Passsword" />
-                     <input class="btn-primary" name="commit" type="submit" value="Login" />
-                  </fieldset>
-                 </form>
-               </div>
-            </li>
+	          <li class="dropdown" id="menu1">
+                
+                  <a class="dropdown-toggle" role="button" data-toggle="dropdown" href="#menu1">Login<b class="caret"></b></a>
+                  <div class="dropdown-menu">
+               	    <form style="margin: 0px" accept-charset="UTF-8" action="/sessions" method="post">
+                      <fieldset class='textbox' style="padding:10px">
+                        <input style="margin-top: 8px" type="text" placeholder="Username" />
+                        <input style="margin-top: 8px" type="password" placeholder="Passsword" />
+                        <input class="btn-primary" name="commit" type="submit" value="Login" />
+                      </fieldset>
+                    </form>
+                  </div>
+               
+              </li>
             </ul>
           </div><!--/.nav-collapse -->
         </div>
@@ -296,21 +298,14 @@
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     
-    <script src="static/js/bootstrap.min.js"></script>
-    <script src="static/js/bootstrap.js"></script>
-    <script src="static/js/jquery.js"></script>
     
-    <script>
-      !function ($) {
-        $(function(){
-          $('#myCarousel').carousel()
-          $('#dropdown-toggle').dropdown();
- 	  $('#dropdown-menu').find('form').click(function (e) {
-        e.stopPropagation();
-      });
-
-        })
-      }(window.jQuery)
+    <script type="text/javascript"  src="/static/js/bootstrap.js"></script>
+    <script type="text/javascript"  src="/static/js/bootstrap.mini.js"></script>
+        
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('.dropdown-toggle').dropdown();
+        });
     </script>
       
 

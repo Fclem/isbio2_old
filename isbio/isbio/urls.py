@@ -8,12 +8,14 @@ from breeze import views
 
 urlpatterns = patterns('',
     url('^breeze/$', views.breeze),
+    url('^login/$', views.login),
     url(r'^home/$', views.home),
     url(r'^jobs/$', views.jobs),
     url(r'^scripts/$', views.scripts),
     url(r'^result/$', views.result),
     url(r'^download/$', views.send_zipfile),
-    url(r'^base/$', views.base)
+    url(r'^base/$', views.base),
+    url(r'^form/$', views.form)
     # Examples:
     # url(r'^$', 'isbio.views.home', name='home'),
     # url(r'^isbio/', include('isbio.foo.urls')),

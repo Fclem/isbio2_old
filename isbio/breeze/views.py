@@ -4,15 +4,21 @@ from django.template import Template, Context
 from django.template.loader import get_template
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
+from breeze.models import Rscript
 
 from django.core.servers.basehttp import FileWrapper
 import os, tempfile, zipfile
+
+from xml.dom import minidom
 
 from breeze.forms import DataForm
 from rpy2.robjects import r
 
 def base(request):
     return render_to_response('base.html')
+
+def login(request):
+    return render_to_response('login.html')
 
 def breeze(request):
     return render_to_response('index.html')
@@ -21,10 +27,28 @@ def home(request):
     return render_to_response('home.html', {})
 
 def scripts(request):
-    return render_to_response('scripts.html', {})
+    all_scripts = Rscript.objects.order_by("name")
+    return render_to_response('scripts.html', {'script_list': all_scripts})
 
 def jobs(request):
     return render_to_response('jobs.html', {})
+
+def form(request):
+    dom = minidom.parse('/home/comrade/Projects/fimm/isbio/breeze/templates/xml/fullExample.xml')
+    script_name = dom.getElementsByTagName("rScript")[0].getAttribute("name")
+    node = dom.getElementsByTagName("inline")[0]
+    script_inline = getText(node.childNodes)
+
+    return render_to_response('forms/base_form.html', {'name': script_name, 'inline': script_inline})
+
+# Of course it is temporary here...
+def getText(nodelist):
+    rc = []
+    for node in nodelist:
+        if node.nodeType == node.TEXT_NODE:
+            rc.append(node.data)
+    return ''.join(rc)
+
 
 def send_zipfile(request):
     response = HttpResponse(content_type='String')

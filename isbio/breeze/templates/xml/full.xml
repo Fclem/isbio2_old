@@ -1,0 +1,51 @@
+<?xml encoding="UTF-8"?>
+<rScript id="" name="">
+	
+	<inline> </inline>
+	<description show=""> </description>
+	<logo src="" />
+	<author name="" email="" />
+	<uploadingDate date="" />
+	<status val="" />
+	
+	<inputArray>
+		
+		<inputItem type="" rvarname="" default=""  val="" >
+			<comment></comment>
+			<altArray>
+				<altItem></altItem>
+				<altItem></altItem>
+			</altArray>
+			<ncols val="" />
+			<nrows val="" />
+		</inputItem>
+		
+		<subSection title="" default="">
+			<inputItem type="" rvarname="" default=""  val="" >
+				<comment></comment>
+				<altArray>
+					<altItem></altItem>
+					<altItem></altItem>
+				</altArray>
+				<ncols val="" />
+				<nrows val="" />
+			</inputItem>
+		</subSection>
+				
+	</inputArray>
+	
+	<outputArray>
+		
+	</outputArray>
+	<!-- inputItem types: -->
+	<!-- Section Header - heading -->
+	<!-- Nuneric - num -->
+	<!-- Text Box - text -->
+	<!-- Text Area - textar -->
+	<!-- Check Box - check -->
+	<!-- Drop Down - drop -->
+	<!-- Multiple Select - mult -->
+	<!-- Radio Button - radio -->
+	<!-- File Upload - file -->
+	<!-- Radio Button - radio -->
+</rScript>

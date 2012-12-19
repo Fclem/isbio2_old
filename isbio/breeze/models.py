@@ -8,3 +8,13 @@ class Data(models.Model):
 
 
 
+class Rscript(models.Model):
+    name = models.CharField(max_length=55)
+    def __unicode__(self):
+        return self.name
+
+class User(models.Model):
+    pass
+
+class Job(models.Model):
+    pass
