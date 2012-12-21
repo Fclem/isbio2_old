@@ -15,7 +15,9 @@ urlpatterns = patterns('',
     url(r'^result/$', views.result),
     url(r'^download/$', views.send_zipfile),
     url(r'^base/$', views.base),
-    url(r'^form/$', views.form)
+    url(r'^form/$', views.demo_form),
+    url(r'^read-form/$', views.read_form)
+    # Examples:
     # Examples:
     # url(r'^$', 'isbio.views.home', name='home'),
     # url(r'^isbio/', include('isbio.foo.urls')),

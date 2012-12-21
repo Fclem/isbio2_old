@@ -1,4 +1,5 @@
 from xml.dom import minidom
+import urllib2
 
 dom = minidom.parse('/home/comrade/Projects/fimm/isbio/breeze/templates/xml/fullExample.xml')
 
@@ -10,6 +11,23 @@ def getText(nodelist):
     return ''.join(rc)
 
 
-node = dom.getElementsByTagName("inline")[0]
+x = dom.childNodes[0].getElementsByTagName("inputItem")[3]
 
-print getText(node.childNodes)
+opt = tuple()
+
+
+
+
+
+alt = x.childNodes
+for i in alt:
+    k = i.childNodes
+    for j in k:
+        if len(getText(j.childNodes)) == 0 :
+            pass
+        else:
+            print getText(j.childNodes).encode('ascii', 'ignore')
+f = "some str"
+print f
+# node = dom.getElementsByTagName("inline")[0]
+#    script_inline = getText(node.childNodes)

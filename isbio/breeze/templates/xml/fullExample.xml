@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rScript id="1" name="test">	
-	<inline>Short Inline description</inline>
+<rScript id="1" name="Magic Plot">	
+	<inline>Short Inline description of Magic Plot</inline>
 	<description show="">Very long and breathtaking explanation of what is happening when run this magic script</description>
 	<logo src="/path/name.png" />
 	<author name="Author" email="author@mail.com" />

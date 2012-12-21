@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Form Test{% endblock %} 
+{% load bootstrap_toolkit %}
+
+{% block title %}Generated Form{% endblock %} 
 
 {% block content %}
-<form>
-  <fieldset>
-    <legend>{{ name }}</legend>
-    <label>{{ inline }}</label>
-    <input type="text" placeholder="Type something…">
-    <span class="help-block">Example comment here.</span>
-    <label class="checkbox">  <input type="checkbox"> Check me out   </label>
-    <button type="submit" class="btn">Submit</button>
-  </fieldset>
-</form>
+    <h2>{{ name }}</h2>
+    <h3>{{ inline }}</h3>
+    
+    <p>&nbsp;</p>
+        
+    <form class="form-horizontal" action="" method="post">
+        {% csrf_token %}
+        {{ form|as_bootstrap:layout }}
+        
+        <p class="form-actions">
+            <button class="btn btn-inverse">Schedule</button>
+			<button class="btn btn-inverse">Run</button>
+		    <button class="btn btn-inverse" aria-hidden="true">Close</button>
+        </p>
+
+    </form>
 {% endblock %}
