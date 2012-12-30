@@ -1,6 +1,20 @@
-from xml.dom import minidom
-import urllib2
+# from xml.dom import minidom
+# import urllib2
+import xml.etree.ElementTree as xml
 
+tree = xml.parse('/home/comrade/Projects/fimm/isbio/breeze/templates/xml/fullExample.xml')
+root = tree.getroot()
+
+print tree.getroot().attrib['name']
+
+
+input_array = tree.getroot().find('inputArray')
+
+for input_item in input_array:
+    if (input_item.tag == "inputItem") and (input_item.attrib["type"] == "textar"):
+        print input_item.find('nrows').attrib['val']
+
+"""
 dom = minidom.parse('/home/comrade/Projects/fimm/isbio/breeze/templates/xml/fullExample.xml')
 
 def getText(nodelist):
@@ -28,6 +42,8 @@ for i in alt:
         else:
             print getText(j.childNodes).encode('ascii', 'ignore')
 f = "some str"
-print f
+print f """
+
+
 # node = dom.getElementsByTagName("inline")[0]
 #    script_inline = getText(node.childNodes)

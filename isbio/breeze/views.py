@@ -7,8 +7,8 @@ from django.shortcuts import render_to_response
 from breeze.models import Rscript
 from bootstrap_toolkit.widgets import BootstrapUneditableInput
 
-from xml.dom import minidom
-from forms import TestForm, NewForm
+import xml.etree.ElementTree as xml
+from forms import TestForm, generate_form, CreateScript
 from django import forms
 
 from rpy2.robjects import r
@@ -48,93 +48,23 @@ def demo_form(request):
     }))
 
 def read_form(request):
-    dom = minidom.parse('/home/comrade/Projects/fimm/isbio/breeze/templates/xml/fullExample.xml')
-    script_name = dom.getElementsByTagName("rScript")[0].getAttribute("name")
-    node = dom.getElementsByTagName("inline")[0]
-    script_inline = getText(node.childNodes)
-    form = generateForm(dom)
-    return render_to_response('forms/base_form.html', RequestContext(request, {
+    tree = xml.parse('/home/comrade/Projects/fimm/isbio/breeze/templates/xml/fullExample.xml')
+    script_name = tree.getroot().attrib['name']
+    script_inline = tree.getroot().find('inline').text
+    form = generate_form(tree)
+    return render_to_response('forms/user_modal.html', RequestContext(request, {
         'form': form,
         'name': script_name,
         'inline': script_inline,
         'layout': "horizontal",
     }))
 
-# Of course it is temporary here...
-def generateForm(xml):
-    custom_form = NewForm()
-    kwargs = dict()
-    inputItems = xml.childNodes[0].getElementsByTagName("inputItem")
-
-    for item in inputItems:
-        if  item.getAttribute("type") == "num":
-            kwargs[item.getAttribute("comment")] = forms.CharField(max_length=100,
-                widget=forms.TextInput(attrs={
-                    'type': 'number',
-                    # 'placeholder': 'Should be text...',
-                    'min': "1",
-                    'max': "5",
-                    'value': item.getAttribute("default"),
-            }))
-            custom_form.setFields(kwargs)
-        elif item.getAttribute("type") == "text":
-            kwargs[item.getAttribute("comment")] = forms.CharField(max_length=100,
-                widget=forms.TextInput(attrs={
-                    'type': 'text',
-                     'placeholder': 'We can put some text like that...',
-            }))
-        elif item.getAttribute("type") == "textar":
-            pass
-        elif item.getAttribute("type") == "check":
-            pass
-        elif item.getAttribute("type") == "drop":
-            drop_options = tuple()
-            alt = item.childNodes
-            for j in alt:
-                opt = j.childNodes
-                for k in opt:
-                    if len(getText(j.childNodes)) == 0 :
-                        pass
-                    else:
-                        drop_options = drop_options + ((getText(j.childNodes), getText(j.childNodes).upper()),)
-
-            kwargs[item.getAttribute("comment")] = forms.ChoiceField(
-                choices=drop_options
-            )
-        elif item.getAttribute("type") == "mult":
-            pass
-        elif item.getAttribute("type") == "radio":
-            pass
-        elif item.getAttribute("type") == "file":
-            pass
-        elif item.getAttribute("type") == "mult":
-            pass
-        elif item.getAttribute("type") == "heading":
-            pass
-        else:
-            pass
-
-    custom_form.setFields(kwargs)
-    return custom_form
-
-def getText(nodelist):
-    rc = []
-    for node in nodelist:
-        if node.nodeType == node.TEXT_NODE:
-            rc.append(node.data)
-    return ''.join(rc)
-
-
-def form(request):
-    dom = minidom.parse('/home/comrade/Projects/fimm/isbio/breeze/templates/xml/fullExample.xml')
-    script_name = dom.getElementsByTagName("rScript")[0].getAttribute("name")
-    node = dom.getElementsByTagName("inline")[0]
-    script_inline = getText(node.childNodes)
-
-    return render_to_response('forms/base_form.html', {'name': script_name, 'inline': script_inline})
-
-
-
+def create(request):
+    form = CreateScript()
+    return render_to_response('forms/mbi_modal.html', RequestContext(request, {
+        'form': form,
+        'layout': 'horizontal',
+    }))
 
 def send_zipfile(request):
     response = HttpResponse(content_type='String')

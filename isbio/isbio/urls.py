@@ -7,8 +7,8 @@ from breeze import views
 # admin.autodiscover()
 
 urlpatterns = patterns('',
-    url('^breeze/$', views.breeze),
-    url('^login/$', views.login),
+    url(r'^breeze/$', views.breeze),
+    url(r'^login/$', views.login),
     url(r'^home/$', views.home),
     url(r'^jobs/$', views.jobs),
     url(r'^scripts/$', views.scripts),
@@ -16,7 +16,8 @@ urlpatterns = patterns('',
     url(r'^download/$', views.send_zipfile),
     url(r'^base/$', views.base),
     url(r'^form/$', views.demo_form),
-    url(r'^read-form/$', views.read_form)
+    url(r'^read-form/$', views.read_form),
+    url(r'^new/$', views.create)
     # Examples:
     # Examples:
     # url(r'^$', 'isbio.views.home', name='home'),

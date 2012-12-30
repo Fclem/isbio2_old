@@ -10,11 +10,21 @@
 
     <!-- Le styles -->
     <link href="/static/css/bootstrap.css" rel="stylesheet">
-    <link href="/static/css/bootstrap-responsive.css" rel="stylesheet"> 
+    <link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
+    <script src="/static/js/bootstrap.min.js"></script>
+    <script src="/static/js/bootstrap.js"></script>
+    <script src="/static/js/jquery.js"></script>
+    
+    {% bootstrap_javascript_tag "modal" %}
+    {% bootstrap_javascript_tag "dropdown" %}
+    {% bootstrap_javascript_tag "carousel" %}
+    {% bootstrap_javascript_tag "slide" %}
+    {% bootstrap_javascript_tag "carousel-iner" %}
+    {% bootstrap_javascript_tag "carousel-control" %}
+    
     {% bootstrap_stylesheet_tag %}
     <style>
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
-    {% bootstrap_javascript_tag "dropdown" %}
+    
     /* GLOBAL STYLES
     -------------------------------------------------- */
     /* Padding below the footer and lighter body text */
@@ -225,19 +235,8 @@
               <li><a href="/home">Home</a></li>
               <li><a href="http://www.fimm.fi/en/fimm/">About</a></li>
               <li><a href="http://www.fimm.fi/en/fimm/contacts/">Contact</a></li>
-	          
+	
 	          <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">Forms<b class="caret"></b></a>
-                    <ul class="dropdown-menu">
-                        <li><a class="nav" href="">Vertical</a></li>
-                        <li><a href="">Horizontal</a></li>
-                        <li><a href="">Inline</a></li>
-                        <li><a href="">Search</a></li>
-                        <li><a href="">Using template</a></li>
-                    </ul>
-              </li>
-	          
-	          <!-- <li class="dropdown">
                 
                   <a class="dropdown-toggle" role="button" data-toggle="dropdown" href="#">Login<b class="caret"></b></a>
                   <div class="dropdown-menu">
@@ -250,7 +249,7 @@
                     </form>
                   </div>
                
-              </li> -->
+              </li> 
             </ul>
           </div><!--/.nav-collapse -->
         </div>
@@ -275,7 +274,7 @@
           </div>
         </div>
         <div class="item active">
-          <img src="static/img/fimm1.jpg" alt="">
+          <img src="/static/img/fimm1.jpg" alt="">
           <div class="container">
             <div class="carousel-caption">
               <h1>About FIMM</h1>
@@ -285,7 +284,7 @@
           </div>
         </div>
         <div class="item">
-          <img src="static/img/fimm3.jpg" alt="">
+          <img src="/static/img/fimm3.jpg" alt="">
           <div class="container">
             <div class="carousel-caption">
               <h1>BREEZE</h1>
@@ -299,29 +298,27 @@
       <a class="right carousel-control" href="#myCarousel" data-slide="next">›</a>
     </div><!-- /.carousel -->
 
+    <hr>
 
-      <!-- FOOTER -->
-      <footer>
-        <p>© 2012 FIMM ·
-      </footer>
-
-    </div><!-- /.container -->
-
-
-
-    <!-- Le javascript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
+    <footer>
+      <div class="container">
+        <center><p>&middot; &copy; FIMM 2012 &middot;</p></center>
+      </div>
+    </footer>
     
-    
-    <script type="text/javascript"  src="/static/js/bootstrap.js"></script>
-    <script type="text/javascript"  src="/static/js/bootstrap.mini.js"></script>
-        
-    <script type="text/javascript">
-        $(document).ready(function () {
-            $('.dropdown-toggle').dropdown();
-        });
+  </div><!-- /.container -->
+
+<script>
+      !function ($) {
+        $(function(){
+          $('#myCarousel').carousel()
+          $('#dropdown-toggle').dropdown();
+      $('#dropdown-menu').find('form').click(function (e) {
+        e.stopPropagation();
+      });
+
+        })
+      }(window.jQuery)
     </script>
-      
-
-</body></html>
+</body>
+</html>

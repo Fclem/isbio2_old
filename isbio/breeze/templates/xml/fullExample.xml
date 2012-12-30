@@ -22,9 +22,9 @@
 		
 		<inputItem type="mult" rvarname="var_mult" default="First Option"  val="" comment="Mult Select: default-first ">
 			<altArray>
-				<altItem>First Option</altItem>
-				<altItem>Second Option</altItem>
-				<altItem>Last Option</altItem>
+				<altItem>First Option!</altItem>
+				<altItem>Second Option!</altItem>
+				<altItem>Last Option!</altItem>
 			</altArray>
 		</inputItem>
 		
@@ -41,9 +41,9 @@
 			<nrows val="1" />
 		</inputItem>
 		
-		<inputItem type="textar" rvarname="var_textar" default=""  val="" comment="Text Area: default-none ">
-			<ncols val="35" />
-			<nrows val="5" />
+		<inputItem type="textar" rvarname="var_textar" default=""  val="" comment="Text Area ">
+			<ncols val="7" />
+			<nrows val="3" />
 		</inputItem>
 		
 		<inputItem type="file" rvarname="var_file" default=""  val="" comment="File Upload: " />
@@ -59,4 +59,7 @@
 		</subSection>
 				
 	</inputArray>	
+	<outputArray>
+		
+	</outputArray>
 </rScript>

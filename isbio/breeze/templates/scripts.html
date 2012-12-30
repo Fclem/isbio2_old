@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% load bootstrap_toolkit %}
+
 {% block title %}Scripts{% endblock %} 
 
 {% block content %}
@@ -27,7 +29,11 @@
                 <th>Logo</th>
                 <th>Name</th>
                 <th>Inline description</th>
-                <th></th>
+                <th>
+                  <a data-toggle="modal" data-target="#Apply" class="btn btn-mini btn-inverse script" data-form="/new/" href="#">
+                    <i class="icon-plus"></i> Create New Script
+                  </a>
+                </th>
             </tr>
         </head>
         <tbody>
@@ -36,7 +42,7 @@
                 <td><img src="/static/dp.png" width="75" height="75"></td>
                 <td>{{ scr }}</td>
                 <td><a href="#DescriptionModal" data-toggle="modal">Simple auto-correlation function estimation</a></td>
-                <td><a class="btn btn-inverse" data-toggle="modal" href="#FormModal">Apply</a></td>         
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse script" data-target="#Apply" data-form="/read-form/">Apply</a></td>         
             </tr>
             {% endfor %}
         </tbody>
@@ -44,4 +50,18 @@
     </div>
   </div>
 </div>
+
+<div id="Apply" class="modal hide fade" tabindex="-1" role="dialog"  aria-hidden="true"></div>
+
+<script>
+    $(".script").click(function(ev) { 
+        ev.preventDefault(); // prevent navigation
+        var url = $(this).data("form"); // get the new url
+        $("#Apply").load(url, function() { // load the url into the modal
+            $(this).modal('show'); 
+        });
+        return false; // prevent the click propagation
+    });
+</script>
+
 {% endblock %}
