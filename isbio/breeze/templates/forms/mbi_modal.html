@@ -7,15 +7,17 @@
   </div>
   <div class="modal-body">
     
-    <form class="form-horizontal" action="" method="post">
+    <form class="form-horizontal" action="/submit/" method="post" enctype="multipart/form-data" >
         {% csrf_token %}
+        {{ form.id }}
         {{ form|as_bootstrap:layout }}
+        
+        <input class="btn btn-inverse" type="submit" value="Submit" />
+        <button class="btn btn-inverse" aria-hidden="true">Close</button>
     </form>
             
   </div>
   <div class="modal-footer">
-    <button class="btn btn-inverse">Back</button>
-    <button class="btn btn-inverse">Continue</button>
-    <button class="btn btn-inverse" aria-hidden="true">Close</button>
+    
   </div>
     

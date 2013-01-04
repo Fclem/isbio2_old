@@ -30,7 +30,7 @@
                 <th>Name</th>
                 <th>Inline description</th>
                 <th>
-                  <a data-toggle="modal" data-target="#Apply" class="btn btn-mini btn-inverse script" data-form="/new/" href="#">
+                  <a href="/new" class="btn btn-mini btn-inverse">
                     <i class="icon-plus"></i> Create New Script
                   </a>
                 </th>
@@ -39,10 +39,10 @@
         <tbody>
             {% for scr in script_list %}
             <tr>
-                <td><img src="/static/dp.png" width="75" height="75"></td>
-                <td>{{ scr }}</td>
-                <td><a href="#DescriptionModal" data-toggle="modal">Simple auto-correlation function estimation</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse script" data-target="#Apply" data-form="/read-form/">Apply</a></td>         
+                <td><img src={{ scr.logo }} width="75" height="75"></td>
+                <td>{{ scr.name }}</td>
+                <td><a href="#" data-toggle="modal" class=" script" data-target="#Apply" data-form="/read-descr/" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse script" data-target="#Apply" data-form="/read-form/" data-param={{ scr.id }}>Apply</a></td>         
             </tr>
             {% endfor %}
         </tbody>
@@ -51,13 +51,15 @@
   </div>
 </div>
 
-<div id="Apply" class="modal hide fade" tabindex="-1" role="dialog"  aria-hidden="true"></div>
+<div id="Apply" class="modal hide fade" role="dialog"  aria-hidden="true"></div>
+
 
 <script>
     $(".script").click(function(ev) { 
         ev.preventDefault(); // prevent navigation
         var url = $(this).data("form"); // get the new url
-        $("#Apply").load(url, function() { // load the url into the modal
+        var par = $(this).data("param"); // get the new url
+        $("#Apply").load(url+par, function() { // load the url into the modal
             $(this).modal('show'); 
         });
         return false; // prevent the click propagation

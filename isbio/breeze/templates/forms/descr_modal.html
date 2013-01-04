@@ -1,0 +1,19 @@
+{% load bootstrap_toolkit %}
+<!-- Description Modal -->
+
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">{{ scr.name }}</h3>
+  </div>
+  <div class="modal-body">
+    <blockquote>
+      <p>Categoty: {{ scr.category }}</p>
+      <p>{{ scr.inln }}</p>
+    </blockquote>   
+    <p>&nbsp;</p>
+    {{ scr.details }}   
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-inverse">Understood</button>
+  </div>
+    

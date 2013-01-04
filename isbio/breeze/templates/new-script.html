@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+
+{% block title %}Scripts - Create New Script{% endblock %} 
+
+{% block extra_head %}
+    <link href="/static/third-party/jQuery-UI-FileInput/css/enhanced.css" rel="Stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row-fluid">    
+  <div class="span3 well">
+    <p>Info...</p>
+  </div>
+    
+  <div class="span9">
+         
+    <div class="tabbable">
+      <!-- Tabs' Header -->  
+      <ul class="nav nav-pills" id="customTabs">
+        <li class="active"><a href="#general" data-toggle="tab">General Info</a></li>
+        <li><a href="#params" data-toggle="tab">Customize Parameters</a></li>
+        <li><a href="#source" data-toggle="tab">Source Code</a></li>
+        <li><a href="#summary" data-toggle="tab">Summary</a></li>
+      </ul>
+      <!-- Tabs' Content -->  
+      <div class="well">
+      <div class="tab-content">
+        <div class="tab-pane active" id="general">
+          <form class="form-horizontal" action="/submit/" method="post" enctype="multipart/form-data" >
+            {% csrf_token %}
+            {{ general_form.id }}
+            {{ general_form|as_bootstrap:layout }}
+        
+            <div align="right"><input class="btn btn-info" type="submit" value="next &rsaquo;&rsaquo;" /></div>
+          </form>
+        </div>
+        <div class="tab-pane" id="params">
+          <form class="form-horizontal" action="/submit/" method="post" enctype="multipart/form-data" >
+            {% csrf_token %}
+            {{ params_form.id }}
+            {{ params_form|as_bootstrap:layout }}
+        
+            <div align="right">
+                <input class="btn btn-info" type="submit" value="previous &lsaquo;&lsaquo;" />
+                <input class="btn btn-info" type="submit" value="next &rsaquo;&rsaquo;" />
+            </div>
+            
+          </form>
+        </div>
+        <div class="tab-pane" id="source">
+          <form class="form-horizontal" action="/submit/" method="post" enctype="multipart/form-data" >
+            {% csrf_token %}
+            {{ source_form.id }}
+            {{ source_form|as_bootstrap:layout }}
+
+            <div align="right">
+                <input class="btn btn-info" type="submit" value="previous &lsaquo;&lsaquo;" />
+                <input class="btn btn-info" type="submit" value="next &rsaquo;&rsaquo;" />
+            </div>
+                           
+          </form>
+        </div>
+        <div class="tab-pane" id="summary">
+                   
+          <div align="left">
+            <button class="btn btn-inverse" aria-hidden="true">Submit</button>
+            <button class="btn btn-inverse" aria-hidden="true">Discard</button>
+          </div>
+        
+        </div>        
+      </div>
+      </div>
+      <!-- END of Tabs' Content -->
+    </div>
+      
+  </div>
+  
+</div>
+
+<script>
+  $(function () {
+    $('#customTabs a[href="#{{ curr_tab }}"]').tab('show');
+  })
+</script>
+
+{% endblock %}

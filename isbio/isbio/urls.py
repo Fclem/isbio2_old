@@ -7,17 +7,19 @@ from breeze import views
 # admin.autodiscover()
 
 urlpatterns = patterns('',
+    url(r'^base/$', views.base),
     url(r'^breeze/$', views.breeze),
     url(r'^login/$', views.login),
     url(r'^home/$', views.home),
     url(r'^jobs/$', views.jobs),
     url(r'^scripts/$', views.scripts),
-    url(r'^result/$', views.result),
     url(r'^download/$', views.send_zipfile),
-    url(r'^base/$', views.base),
-    url(r'^form/$', views.demo_form),
-    url(r'^read-form/$', views.read_form),
-    url(r'^new/$', views.create)
+    url(r'^read-form/(?P<sid>\d+)$', views.read_form),
+    url(r'^read-descr/(?P<sid>\d+)$', views.read_descr),
+    url(r'^new/$', views.create),
+    url(r'^submit/$', views.create),
+    url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
+                 {'document_root': settings.MEDIA_ROOT}),
     # Examples:
     # Examples:
     # url(r'^$', 'isbio.views.home', name='home'),

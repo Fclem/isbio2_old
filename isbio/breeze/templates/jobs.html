@@ -1,111 +1,81 @@
-<!doctype html>
-<html>
-  
-  <head>
-    <title>Breeze</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
-    <link rel="stylesheet" href="https://app.divshot.com/css/divshot-util.css">
-    <link rel="stylesheet" href="https://app.divshot.com/css/bootstrap.css">
-    <link rel="stylesheet" href="https://app.divshot.com/css/bootstrap-responsive.css">
-    <script src="https://app.divshot.com/js/jquery.min.js"></script>
-  </head>
-  
-  <body>
-    <div class="navbar navbar-inverse">
-      <div class="navbar-inner">
-        <div class="container">
-          <a class="brand" href="index.html">BREEZE</a>
-          <div class="navbar-content">
-	    <p class="navbar-text pull-right">
-              Logged in as <a href="#" class="navbar-link">Username</a>
-            </p>
-            <ul class="nav">
-              <li>
-		<a href="/home">Home</a> 
-              </li>
-              <li class="active">
-                <a href="/jobs">Jobs</a> 
-              </li>
-              <li>
-                <a href="/scripts">Scripts</a> 
-              </li>
-              <li>
-                <a href="#">Help</a> 
-              </li>
-              <ul class="nav nav-tabs"></ul>
-              <ul class="nav pull-right"></ul>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="container-fluid">
-      <div class="row-fluid">
-        <div class="span3">
-		    <table class="table table-bordered table-condensed">
-			<tbody>
-			    <tr class="info"><td>Some Job Name</td></tr>
-			    <tr class="info"><td><div class="progress progress-striped active"><div class="bar" style="width: 20%"></div></div></td></tr>
-			    <tr class="info"><td>Another Job Name</td></tr>
-			    <tr class="info"><td><div class="progress progress-striped active"><div class="bar" style="width: 75%"></div></div></td></tr>
-			    <tr class="error"><td>Failed Job</td></tr>
-			    <tr class="error"><td><div class="progress progress-danger"><div class="bar" style="width: 50%"></div></div></td></tr>
-			    <tr class="success"><td>Accomplished Job</td></tr>
-			    <tr class="success"><td><div class="progress"><div class="bar" style="width: 100%"></div></div></td></tr>
-			</tbody>
-		    </table>
-        </div>
-        <div class="span9">
-	<div class="tabbable">
-            <ul class="nav nav-tabs">
-		    <li class="active"><a href="#scheduled" data-toggle="tab">Scheduled</a></li>
-		    <li><a href="#history" data-toggle="tab">History</a></li>
-		    <li><a href="#current" data-toggle="tab">In Progress</a></li>
-	    </ul>
-	    <div class="tab-content">
-	    <div class="tab-pane active" id="scheduled">
-		<table class="table table-condensed">
-			<tbody>
-			    <tr>
-    				<td>Job name</td>
-				    <td><button class="btn btn-inverse">Submit</button></td>
-			    </tr>
-			    <tr>
-				    <td>Another Job name</td>
-				    <td><button class="btn btn-inverse">Submit</button></td>
-			    </tr>
-			    <tr><td></td><td><td></tr>
-			</tbody>
-		</table>
-	    </div>
-            <div class="tab-pane" id="history">
-		<table class="table table-condensed">
-			<tbody>
-			    <tr>
-				    <td>Job name</td>
-				    <td><span class="label label-success">Completed</span></td>
-				    <td><a class="btn btn-inverse" href="/download">Download Results</a></td>
-				    <td>Date</td>
-			    </tr>
-			    <tr>
-				    <td>Another Job name</td>
-				    <td><span class="label label-important">Failed</span></td>
-				    <td><a class="btn btn-inverse" href="/download">Download Results</a></td>
-				    <td>Date</td>
-			    </tr>
-			    <tr><td></td><td><td></tr>
-			</tbody>
-		</table>
-	    </div>
-	    <div class="tab-pane" id="current">current...
-	    </div>
-	    </div>
-	</div>
-        </div>
-      </div>
-    </div>
-    <script src="https://app.divshot.com/js/bootstrap.min.js"></script>
-  </body>
+{% extends "base.html" %}
 
-</html>
+{% load bootstrap_toolkit %}
+
+{% block title %}Jobs{% endblock %} 
+
+{% block content %}
+<div class="row-fluid">    
+  <div class="span3">
+    <table class="table table-bordered table-condensed">
+      <tbody>
+        <tr class="info"><td>Some Job Name</td></tr>
+        <tr class="info"><td><div class="progress progress-striped active"><div class="bar" style="width: 20%"></div></div></td></tr>
+        <tr class="info"><td>Another Job Name</td></tr>
+        <tr class="info"><td><div class="progress progress-striped active"><div class="bar" style="width: 75%"></div></div></td></tr>
+        <tr class="error"><td>Failed Job</td></tr>
+        <tr class="error"><td><div class="progress progress-danger"><div class="bar" style="width: 50%"></div></div></td></tr>
+        <tr class="success"><td>Accomplished Job</td></tr>
+        <tr class="success"><td><div class="progress"><div class="bar" style="width: 100%"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div class="span9">
+
+    <div class="tabbable">
+      <!-- Tabs' Header --> 
+      <ul class="nav nav-tabs" id="jobTabs">
+        <li class="active" ><a href="#scheduled" data-toggle="tab">Scheduled</a></li>
+        <li ><a href="#history" data-toggle="tab">History</a></li>
+        <li ><a href="#current" data-toggle="tab">In Progress</a></li>
+      </ul>
+      <!-- Tabs' Content --> 
+      <div class="tab-content">
+        <div class="tab-pane active" id="scheduled">
+          <table class="table table-condensed">
+            <tbody>
+              <tr>
+                <td>Job name</td>
+                <td><button class="btn btn-inverse">Submit</button></td>
+              </tr>
+              <tr>
+                <td>Another Job name</td>
+                <td><button class="btn btn-inverse">Submit</button></td>
+              </tr>
+              <tr><td></td><td><td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-pane" id="history">
+          <table class="table table-condensed">
+            <tbody>
+              <tr>
+                <td>Job name</td>
+                <td><span class="label label-success">Completed</span></td>
+                <td><a class="btn btn-inverse" href="/download">Download Results</a></td>
+                <td>Date</td>
+              </tr>
+              <tr>
+                <td>Another Job name</td>
+                <td><span class="label label-important">Failed</span></td>
+                <td><a class="btn btn-inverse" href="/download">Download Results</a></td>
+                <td>Date</td>
+              </tr>
+              <tr><td></td><td><td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tab-pane" id="current">current...</div>
+      </div>
+      <!-- END of Tabs' Content -->
+    </div>  
+
+  </div>
+</div>
+
+<script>
+  
+</script>
+
+{% endblock %}

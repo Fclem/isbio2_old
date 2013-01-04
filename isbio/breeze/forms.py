@@ -1,4 +1,6 @@
 from django import forms
+import xml.etree.ElementTree as xml
+from breeze.models import CATEGORY_OPT
 from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapUneditableInput
 
 class NewForm(forms.Form):
@@ -8,88 +10,47 @@ class NewForm(forms.Form):
         for k in keys:
             self.fields[k] = kwds[k]
 
-class CreateScript(forms.Form):
+class ScriptGeneral(forms.Form):
     name = forms.CharField(
         max_length=15,
         help_text=u'Provide a short name for new script',
     )
     inln = forms.CharField(
-        max_length=55,
-        help_text=u'Inlihe Description',
+        max_length=75,
+        help_text=u'Inline Description',
     )
+    category = forms.ChoiceField(
+        choices=CATEGORY_OPT,
+        help_text=u'Pick a category from the list',
+    )
+    logo = forms.FileField()
     details = forms.CharField(
         widget=forms.Textarea(attrs={'cols': 15, 'rows': 7}),
         help_text=u'More datailed description',
     )
 
-class TestForm(forms.Form):
-    title = forms.CharField(
-        max_length=100,
-        help_text=u'This is the standard text input',
-    )
-    disabled = forms.CharField(
-        max_length=100,
-        help_text=u'I am disabled',
-        widget=forms.TextInput(attrs={
-            'disabled': 'disabled',
-            'placeholder': 'I am disabled',
-        })
-    )
-    uneditable = forms.CharField(
-        max_length=100,
-        help_text=u'I am uneditable and you cannot enable me with JS',
-        initial=u'Uneditable',
-        widget=BootstrapUneditableInput()
-    )
-    content = forms.ChoiceField(
-        choices=(
-            ("text", "Plain text"),
-            ("html", "HTML"),
-        ),
-        help_text=u'Pick your choice',
-    )
-    email = forms.EmailField()
-    like = forms.BooleanField(required=False)
-    fruits = forms.MultipleChoiceField(
-        widget=forms.CheckboxSelectMultiple,
-        choices=(
-            ("apple", "Apple"),
-            ("pear", "Pear"),
-        ),
-        help_text=u'As you can see, multiple checkboxes work too',
-    )
-    veggies = forms.MultipleChoiceField(
-        widget=forms.CheckboxSelectMultiple(attrs={
-            'inline': True,
-        }),
-        choices=(
-            ("broccoli", "Broccoli"),
-            ("carrots", "Carrots"),
-            ("turnips", "Turnips"),
-        ),
-        help_text=u'And can be inline',
-    )
-    color = forms.ChoiceField(
-        widget=forms.RadioSelect(attrs={'data-demo-attr': 'bazinga' }),
-        choices=(
-            ("#f00", "red"),
-            ("#0f0", "green"),
-            ("#00f", "blue"),
-        ),
-        help_text=u'And we have <i>radiosets</i>',
-    )
-    prepended = forms.CharField(
-        max_length=100,
-        help_text=u'I am prepended by a P',
-        widget=BootstrapTextInput(prepend='P'),
+class ScriptDetails(forms.Form):
+    mark = forms.BooleanField(required=False)
+
+class ScriptSource(forms.Form):
+    code = forms.FileField()
+    source = forms.CharField(
+        widget=forms.Textarea(attrs={'cols': 35, 'rows': 11}),
+        help_text=u'Source code here',
     )
 
-    def clean(self):
-        cleaned_data = super(TestForm, self).clean()
-        raise forms.ValidationError("This error was added to show the non field errors styling.")
-        return cleaned_data
+def xml_from_form(form):
+    root = xml.Element('rScript')
+    root.attrib['name'] = form.cleaned_data['name']
+    child = xml.Element('inline')
+    root.append(child)
+    newxml = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml", 'w')
+    xml.ElementTree(root).write(newxml)
+    newxml.close()
+    return newxml
 
-def generate_form(xml):
+
+def form_from_xml(xml):
     custom_form = NewForm()
     kwargs = dict()
 
