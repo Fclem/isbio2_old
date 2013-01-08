@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rScript id="1" name="Magic Plot">	
+	<inline>Short Inline description of Magic Plot</inline>
+	<description show="">Very long and breathtaking explanation of what is happening when run this magic script</description>
+	<logo src="/path/name.png" />
+	<author name="Author" email="author@mail.com" />
+	<uploadingDate date="01/01/2012" />
+	<status val="none" />	
+	<inputArray>
+		
+		<inputItem type="heading" rvarname="" default=""  val="" comment="Section Heading - simple string"/>
+		<inputItem type="num" rvarname="var_num" default="0"  val="" comment="Numeric: default-0" />
+		<inputItem type="check" rvarname="var_check" default="1"  val="" comment="Check Box: default-tick" />
+		
+		<inputItem type="drop" rvarname="var_drop" default="First Option"  val="" comment="Drop Down: default-first ">
+			<altArray>
+				<altItem>First Option</altItem>
+				<altItem>Second Option</altItem>
+				<altItem>Last Option</altItem>
+			</altArray>
+		</inputItem>
+		
+		<inputItem type="mult" rvarname="var_mult" default="First Option"  val="" comment="Mult Select: default-first ">
+			<altArray>
+				<altItem>First Option!</altItem>
+				<altItem>Second Option!</altItem>
+				<altItem>Last Option!</altItem>
+			</altArray>
+		</inputItem>
+		
+		<inputItem type="radio" rvarname="var_radio" default=""  val="" comment="Radio Button: default-none ">
+			<altArray>
+				<altItem>Radio 1</altItem>
+				<altItem>Radio 2</altItem>
+				<altItem>Radio 3</altItem>/altItem>
+			</altArray>
+		</inputItem>
+		
+		<inputItem type="text" rvarname="var_text" default=""  val="" comment="Text Box: default-none ">
+			<ncols val="35" />
+			<nrows val="1" />
+		</inputItem>
+		
+		<inputItem type="textar" rvarname="var_textar" default=""  val="" comment="Text Area ">
+			<ncols val="7" />
+			<nrows val="3" />
+		</inputItem>
+		
+		<inputItem type="file" rvarname="var_file" default=""  val="" comment="File Upload: " />
+				
+		<subSection title="" default="">
+			<inputItem type="drop" rvarname="var_drop" default="First Option"  val="" comment="Drop Down: default-first ">
+				<altArray>
+					<altItem>First Option</altItem>
+					<altItem>Second Option</altItem>
+					<altItem>Last Option</altItem>
+				</altArray>
+			</inputItem>	
+		</subSection>
+				
+	</inputArray>	
+	<outputArray>
+		
+	</outputArray>
+</rScript>

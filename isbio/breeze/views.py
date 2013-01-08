@@ -9,7 +9,8 @@ from rpy2.robjects import r
 import xml.etree.ElementTree as xml
 
 import forms as breezeForms
-from breeze.models import Rscripts
+from breeze.models import Rscripts, newrscript
+
 
 def breeze(request):
     return render_to_response('index.html')
@@ -30,55 +31,117 @@ def scripts(request):
 def jobs(request):
     return render_to_response('jobs.html', {})
 
-def read_descr(request, sid):
+def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     tree = xml.parse(script.docxml)
-    print tree.getroot().find('inline').text
+
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
 
-def read_form(request, sid):
+def read_form(request, sid=None):
     script = Rscripts.objects.get(id=sid)
-    tree = xml.parse(script.docxml)
+    tree = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(script.docxml))
     script_name = tree.getroot().attrib['name']
-    script_inline = tree.getroot().find('inline').text
+    script_inline = script.inln
     form = breezeForms.form_from_xml(tree)
     return render_to_response('forms/user_modal.html', RequestContext(request, {
-        'form': form,
+        'id': sid,
         'name': script_name,
         'inline': script_inline,
+        'form': form,
         'layout': "horizontal",
     }))
 
+def run_script(request, sid):
+    script = Rscripts.objects.get(id=sid)
+    parameter = "TRUE"
+    path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(script.code)
+    r.assign('path', path)
+    r.assign('arg1', parameter)
+    r('source(toString(path))')
+    r('testfunc(toString(arg1))')
+
+    return HttpResponseRedirect('/jobs/')
+
 def create(request):
-    if request.method == 'POST':
-        formG = breezeForms.ScriptGeneral(request.POST, request.FILES)
-        formD = breezeForms.ScriptGeneral(request.POST, request.FILES)
-        formS = breezeForms.ScriptGeneral(request.POST, request.FILES)
-        if formG.is_valid() and formD.is_valid() and formS.is_valid():
-            breezeForms.xml_from_form(formG)
-            newscript = Rscripts(
-                name=formG.cleaned_data['name'],  # code=request.FILES['code'],
-                logo=request.FILES['logo'], inln=formG.cleaned_data['inln'],
-                details=formG.cleaned_data['details']  # , category=formG.cleaned_data['category']
-            )
-            newscript.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
-            newscript.docxml.close()
-            newscript.save()
-            # improve the manipulation with XML - tmp folder not a good idea!
-            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml")
-            return HttpResponseRedirect('/scripts/')
+    global newrscript
+    if  breezeForms.formG.is_valid():
+        breezeForms.xml_from_form(breezeForms.formG, breezeForms.formD)
+        newrscript.name = breezeForms.formG.cleaned_data['name']
+        newrscript.inln = breezeForms.formG.cleaned_data['inln']
+        newrscript.details = breezeForms.formG.cleaned_data['details']
+        newrscript.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
+        newrscript.docxml.close()
+        newrscript.save()
+        # improve the manipulation with XML - tmp folder not a good idea!
+        os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml")
+
+        breezeForms.formG = breezeForms.ScriptGeneral()
+        breezeForms.formD = breezeForms.ScriptDetails()
+        breezeForms.formS = breezeForms.ScriptSources()
+        newrscript = Rscripts()
+        return HttpResponseRedirect('/scripts/')
     else:
-        formG = breezeForms.ScriptGeneral()
-        formD = breezeForms.ScriptDetails()
-        formS = breezeForms.ScriptSource()
+
+        for form in breezeForms.formD:
+            print form.as_table()
+        print "-------------"
+        print breezeForms.formS
+
+        return render_to_response('new-script.html', RequestContext(request, {
+        'general_form': breezeForms.formG,
+        'params_form': breezeForms.formD,
+        'source_form': breezeForms.formS,
+        'layout': 'horizontal',
+        'curr_tab': 'general',
+        }))
+
+def validate_general(request):
+    global newrscript
+    if request.method == 'POST':
+        breezeForms.formG = breezeForms.ScriptGeneral(request.POST)
+        breezeForms.formG.is_valid()
+    else:
+        pass
     return render_to_response('new-script.html', RequestContext(request, {
-        'general_form': formG,
-        'params_form': formD,
-        'source_form': formS,
+        'general_form': breezeForms.formG,
+        'params_form': breezeForms.formD,
+        'source_form': breezeForms.formS,
         'layout': 'horizontal',
         'curr_tab': 'params',
     }))
 
+def validate_details(request):
+    global newrscript
+    if request.method == 'POST':
+        breezeForms.formD = breezeForms.ScriptDetails(request.POST)
+        mv = breezeForms.formD['hidden'].value()
+        # breezeForms.formD.is_valid()
+    else:
+        pass
+    return render_to_response('new-script.html', RequestContext(request, {
+        'general_form': breezeForms.formG,
+        'params_form': breezeForms.formD,
+        'source_form': breezeForms.formS,
+        'layout': 'horizontal',
+        'curr_tab': mv,
+    }))
+
+def validate_sources(request):
+    global newrscript
+    if request.method == 'POST':
+        breezeForms.formS = breezeForms.ScriptSources(request.POST, request.FILES)
+        mv = breezeForms.formS['hidden'].value()
+        if breezeForms.formS.is_valid():
+            newrscript.code = request.FILES['code']
+    else:
+        pass
+    return render_to_response('new-script.html', RequestContext(request, {
+        'general_form': breezeForms.formG,
+        'params_form': breezeForms.formD,
+        'source_form': breezeForms.formS,
+        'layout': 'horizontal',
+        'curr_tab': mv,
+    }))
 
 def send_zipfile(request):
     response = HttpResponse(content_type='String')
@@ -98,7 +161,6 @@ def send_zipfile(request):
 #    return response
 
     return response
-
 
 def result(request):
     polot_type = request.GET.getlist('plot')

@@ -30,10 +30,13 @@
                 <th>Name</th>
                 <th>Inline description</th>
                 <th>
-                  <a href="/new" class="btn btn-mini btn-inverse">
-                    <i class="icon-plus"></i> Create New Script
+                  <a href="/new" class="btn btn-mini btn-info">
+                    <i class="icon-plus"></i> Add Script
                   </a>
                 </th>
+                <th></th>
+                <th></th>
+                <th></th>
             </tr>
         </head>
         <tbody>
@@ -41,8 +44,11 @@
             <tr>
                 <td><img src={{ scr.logo }} width="75" height="75"></td>
                 <td>{{ scr.name }}</td>
-                <td><a href="#" data-toggle="modal" class=" script" data-target="#Apply" data-form="/read-descr/" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse script" data-target="#Apply" data-form="/read-form/" data-param={{ scr.id }}>Apply</a></td>         
+                <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-form="/read-descr/" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-form="/read-form/" data-param={{ scr.id }}>Apply</a></td>         
+                <td><a href="#" class="btn btn-info" ><i class="icon-remove"></i></a></td>
+                <td><a href="#" class="btn btn-info" ><i class="icon-edit"></i></a></td>
+                <td><a href="#" class="btn btn-info" ><i class="icon-download"></i></a></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -51,16 +57,23 @@
   </div>
 </div>
 
-<div id="Apply" class="modal hide fade" role="dialog"  aria-hidden="true"></div>
-
+<div id="Apply" class="modal fade" role="dialog"  aria-hidden="true"></div>
+<div id="Describe" class="modal fade" role="dialog"  aria-hidden="true"></div>
 
 <script>
-    $(".script").click(function(ev) { 
+    $(".apply").click(function(ev) { 
         ev.preventDefault(); // prevent navigation
-        var url = $(this).data("form"); // get the new url
         var par = $(this).data("param"); // get the new url
-        $("#Apply").load(url+par, function() { // load the url into the modal
-            $(this).modal('show'); 
+        $("#Apply").load("/read-form/"+par, function() { // load the url into the modal
+            $(this).modal('toggle'); 
+        });
+        return false; // prevent the click propagation
+    });
+    $(".describe").click(function(ev) { 
+        ev.preventDefault(); // prevent navigation
+        var par = $(this).data("param"); // get the new url
+        $("#Describe").load("/read-descr/"+par, function() { // load the url into the modal
+            $(this).modal('toggle'); 
         });
         return false; // prevent the click propagation
     });

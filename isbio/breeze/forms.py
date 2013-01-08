@@ -1,4 +1,5 @@
 from django import forms
+from django.forms.formsets import formset_factory, BaseFormSet
 import xml.etree.ElementTree as xml
 from breeze.models import CATEGORY_OPT
 from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapUneditableInput
@@ -23,27 +24,62 @@ class ScriptGeneral(forms.Form):
         choices=CATEGORY_OPT,
         help_text=u'Pick a category from the list',
     )
-    logo = forms.FileField()
+    # logo = forms.FileField()
     details = forms.CharField(
         widget=forms.Textarea(attrs={'cols': 15, 'rows': 7}),
         help_text=u'More datailed description',
     )
 
 class ScriptDetails(forms.Form):
-    mark = forms.BooleanField(required=False)
+    TYPE_OPT = (
+        (u'NUM', u'Numeric'),
+        (u'CHB', u'Check Box'),
+        (u'DRP', u'Drop Down'),
+        (u'RAD', u'Radio'),
+        (u'TEX', u'Text'),
+        (u'TAR', u'Text Area'),
+        (u'FIL', u'File Upload'),
+        (u'HED', u'Heading'),
+    )
+    var = forms.CharField(max_length=55)
+    type = forms.ChoiceField(choices=TYPE_OPT)
 
-class ScriptSource(forms.Form):
+
+class ScriptSources(forms.Form):
     code = forms.FileField()
     source = forms.CharField(
         widget=forms.Textarea(attrs={'cols': 35, 'rows': 11}),
         help_text=u'Source code here',
+        required=False
     )
+    hidden = forms.CharField(widget=forms.HiddenInput())
 
-def xml_from_form(form):
+class BaseScriptDetails(BaseFormSet):
+    def __init__(self, *args, **kwargs):
+            super(BaseScriptDetails, self).__init__(*args, **kwargs)
+            for form in self.forms:
+                form.empty_permitted = False
+    def add_fields(self, form, index):
+        super(BaseScriptDetails, self).add_fields(form, index)
+        form.fields["hidden"] = forms.CharField()  # forms.CharField(widget=forms.HiddenInput())
+
+def xml_from_form(form_g, form_d):
     root = xml.Element('rScript')
-    root.attrib['name'] = form.cleaned_data['name']
+    root.attrib['name'] = form_g.cleaned_data['name']
     child = xml.Element('inline')
     root.append(child)
+    input_array = xml.Element('inputArray')
+    input_item = xml.Element('inputItem')
+    input_item.attrib['type'] = "check"
+    input_item.attrib['comment'] = "komentarii"
+    input_item.attrib['rvarname'] = "arg1"
+    if form_d.cleaned_data['mark']:
+        input_item.attrib['default'] = "TRUE"
+    else:
+        input_item.attrib['default'] = "FALSE"
+    input_array.append(input_item)
+    root.append(input_array)
+
     newxml = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml", 'w')
     xml.ElementTree(root).write(newxml)
     newxml.close()
@@ -112,7 +148,7 @@ def buid_item(item, args):
                                                     ),
                 choices=(mult_options)
                                                                   )
-    elif item.attrib["type"] == "radio":  # redio buttons
+    elif item.attrib["type"] == "radio":  # radio buttons
         radio_options = tuple()
 
         for alt in item.find('altArray').findall('altItem'):
@@ -129,4 +165,11 @@ def buid_item(item, args):
         pass
     else:
         pass
+
+
+ParameterFormSet = formset_factory(ScriptDetails, formset=BaseScriptDetails, extra=2, max_num=15)
+formG = ScriptGeneral()
+formD = ParameterFormSet()
+formS = ScriptSources()
+
 

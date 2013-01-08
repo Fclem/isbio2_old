@@ -28,7 +28,7 @@
       <div class="well">
       <div class="tab-content">
         <div class="tab-pane active" id="general">
-          <form class="form-horizontal" action="/submit/" method="post" enctype="multipart/form-data" >
+          <form class="form-horizontal" action="/sub-gen/" method="post" enctype="multipart/form-data" >
             {% csrf_token %}
             {{ general_form.id }}
             {{ general_form|as_bootstrap:layout }}
@@ -37,36 +37,46 @@
           </form>
         </div>
         <div class="tab-pane" id="params">
-          <form class="form-horizontal" action="/submit/" method="post" enctype="multipart/form-data" >
+          <form name="parForm" class="form-inline" action="/sub-par/" method="post" enctype="multipart/form-data" >
             {% csrf_token %}
-            {{ params_form.id }}
-            {{ params_form|as_bootstrap:layout }}
-        
+            {{ params_form.management_form }}
+            {% for form in params_form.forms %}
+            <div class="item">
+              {{ form.id }}
+              {{ form }}
+              <a class="delete" href="#">Delete</a>
+              <br />          
+            </div>    
+            {% endfor %}
+                        
+            <p><a id="add" href="#">Add another item</a></p>
+            
             <div align="right">
-                <input class="btn btn-info" type="submit" value="previous &lsaquo;&lsaquo;" />
-                <input class="btn btn-info" type="submit" value="next &rsaquo;&rsaquo;" />
+                <input class="btn btn-info" onclick="document.parForm.hidden.value = 'general';" type="submit" value="&lsaquo;&lsaquo; previous" />
+                <input class="btn btn-info" onclick="document.parForm.hidden.value = 'source';" type="submit" value="next &rsaquo;&rsaquo;" />
             </div>
             
           </form>
         </div>
         <div class="tab-pane" id="source">
-          <form class="form-horizontal" action="/submit/" method="post" enctype="multipart/form-data" >
+          <form name="srcForm" class="form-horizontal" action="/sub-src/" method="post" enctype="multipart/form-data" >
             {% csrf_token %}
             {{ source_form.id }}
-            {{ source_form|as_bootstrap:layout }}
+            {{ source_form }}
 
             <div align="right">
-                <input class="btn btn-info" type="submit" value="previous &lsaquo;&lsaquo;" />
-                <input class="btn btn-info" type="submit" value="next &rsaquo;&rsaquo;" />
+                <input class="btn btn-info" onclick="document.srcForm.hidden.value = 'params';" type="submit" value="&lsaquo;&lsaquo; previous" />
+                <input class="btn btn-info" onclick="document.srcForm.hidden.value = 'summary';" type="submit" value="next &rsaquo;&rsaquo;" />
             </div>
                            
           </form>
         </div>
         <div class="tab-pane" id="summary">
-                   
+                       
+          
           <div align="left">
-            <button class="btn btn-inverse" aria-hidden="true">Submit</button>
-            <button class="btn btn-inverse" aria-hidden="true">Discard</button>
+            <a class="btn btn-inverse" href="/submit">Submit</a>
+            <a class="btn btn-inverse" href="/scripts">Discard</a>
           </div>
         
         </div>        
@@ -84,5 +94,97 @@
     $('#customTabs a[href="#{{ curr_tab }}"]').tab('show');
   })
 </script>
+
+<script type="text/javascript">
+$(document).ready(function() {
+  // Code adapted from http://djangosnippets.org/snippets/1389/
+
+  function updateElementIndex(el, prefix, ndx) {
+    var id_regex = new RegExp('(' + prefix + '-\\d+-)');
+    var replacement = prefix + '-' + ndx + '-';
+    if ($(el).attr("for")) $(el).attr("for", $(el).attr("for").replace(id_regex,
+ replacement));
+    if (el.id) el.id = el.id.replace(id_regex, replacement);
+    if (el.name) el.name = el.name.replace(id_regex, replacement);
+  }
+
+  function deleteForm(btn, prefix) {
+    var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+
+    if (formCount > 1) {
+      // Delete the item/form
+      $(btn).parents('.item').remove();
+
+      var forms = $('.item'); // Get all the forms
+
+      // Update the total number of forms (1 less than before)
+      $('#id_' + prefix + '-TOTAL_FORMS').val(forms.length);
+
+      var i = 0;
+      // Go through the forms and set their indices, names and IDs
+      for (formCount = forms.length; i < formCount; i++) {
+        $(forms.get(i)).children().children().each(function() {
+          updateElementIndex(this, prefix, i);
+        });
+      }
+
+    } // End if
+    else {
+        alert("You have to enter at least one todo item!");
+    }
+    return false;
+  }
+
+
+  function addForm(btn, prefix) {
+    var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+
+    // You can only submit a maximum of 15 todo items 
+    if (formCount < 15) {
+      // Clone a form (without event handlers) from the first form
+      var row = $(".item:first").clone(false).get(0);
+      // Insert it after the last form
+      $(row).removeAttr('id').hide().insertAfter(".item:last").slideDown(350);
+      
+      // Remove the bits we don't want in the new row/form
+      // e.g. error messages
+      $(".errorlist", row).remove();
+      $(row).children().removeClass('error');
+      
+      // Relabel/rename all the relevant bits
+      $(row).children().children().each(function() {
+        updateElementIndex(this, prefix, formCount);
+        if ( $(this).attr('type') == 'text' )
+          $(this).val('');
+      });
+      
+      // Add an event handler for the delete item/form link 
+      $(row).find('.delete').click(function() {
+        return deleteForm(this, prefix);
+      });
+
+      // Update the total form count
+      $('#id_' + prefix + '-TOTAL_FORMS').val(formCount + 1); 
+
+    } // End if
+    else {
+      alert("Sorry, you can only enter a maximum of 15 items.");
+    }
+    return false;
+  }
+
+  // Register the click event handlers
+  $("#add").click(function() {
+    return addForm(this, 'form');
+  });
+  
+  $(".delete").click(function() {
+    return deleteForm(this, 'form');
+  });
+
+
+});
+</script>
+
 
 {% endblock %}
