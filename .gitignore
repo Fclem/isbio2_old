@@ -7,4 +7,6 @@ fimm_venv
 isbio/.project
 isbio/.pydevproject
 isbio/.settings
+isbio/breeze/r_scripts
+isbio/breeze/tmp
 .gitignore~

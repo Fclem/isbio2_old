@@ -81,12 +81,6 @@ def create(request):
         newrscript = Rscripts()
         return HttpResponseRedirect('/scripts/')
     else:
-
-        for form in breezeForms.formD:
-            print form.as_table()
-        print "-------------"
-        print breezeForms.formS
-
         return render_to_response('new-script.html', RequestContext(request, {
         'general_form': breezeForms.formG,
         'params_form': breezeForms.formD,
