@@ -52,16 +52,19 @@ class ScriptSources(forms.Form):
         help_text=u'Source code here',
         required=False
     )
-    hidden = forms.CharField(widget=forms.HiddenInput())
+
+class HiddenForm(forms.Form):
+    next = forms.CharField(widget=forms.HiddenInput())
+    curr = forms.CharField(widget=forms.HiddenInput())
 
 class BaseScriptDetails(BaseFormSet):
     def __init__(self, *args, **kwargs):
             super(BaseScriptDetails, self).__init__(*args, **kwargs)
             for form in self.forms:
                 form.empty_permitted = False
-    def add_fields(self, form, index):
-        super(BaseScriptDetails, self).add_fields(form, index)
-        form.fields["hidden"] = forms.CharField()  # forms.CharField(widget=forms.HiddenInput())
+#    def add_fields(self, form, index):
+#        super(BaseScriptDetails, self).add_fields(form, index)
+#        form.fields["hidden"] = forms.CharField()  # forms.CharField(widget=forms.HiddenInput())
 
 def xml_from_form(form_g, form_d):
     root = xml.Element('rScript')
@@ -171,5 +174,5 @@ ParameterFormSet = formset_factory(ScriptDetails, formset=BaseScriptDetails, ext
 formG = ScriptGeneral()
 formD = ParameterFormSet()
 formS = ScriptSources()
-
+# hidden_form = HiddenForm()
 

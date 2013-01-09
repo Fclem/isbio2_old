@@ -33,8 +33,6 @@ def jobs(request):
 
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
-    tree = xml.parse(script.docxml)
-
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
 
 def read_form(request, sid=None):
@@ -63,6 +61,37 @@ def run_script(request, sid):
     return HttpResponseRedirect('/jobs/')
 
 def create(request):
+    ParametersTable = breezeForms.formset_factory(
+                                        breezeForms.ScriptDetails,
+                                        formset=breezeForms.BaseScriptDetails, extra=2, max_num=15
+    )
+    if request.method == 'POST':
+        hidden_form = breezeForms.HiddenForm(request.POST)
+        if hidden_form['curr'].value() == 'general':
+            print "hey GENERAL"
+        elif hidden_form['curr'].value() == 'params':
+            print "hey PARAMS"
+        elif hidden_form['curr'].value() == 'source':
+            print "hey SOURCE"
+        elif hidden_form['curr'].value() == 'summary':
+            pass
+
+    else:
+        hidden_form = breezeForms.HiddenForm()
+        form_general = breezeForms.ScriptGeneral()
+        form_details = ParametersTable()
+        form_sources = breezeForms.ScriptSources()
+
+    return render_to_response('new-script.html', RequestContext(request, {
+        'hidden_form': hidden_form,
+        'general_form': form_general,
+        'params_form': form_details,
+        'source_form': form_sources,
+        'layout': 'inline',
+        'curr_tab': 'general',
+        }))
+
+def c_reate(request):
     global newrscript
     if  breezeForms.formG.is_valid():
         breezeForms.xml_from_form(breezeForms.formG, breezeForms.formD)
@@ -85,7 +114,8 @@ def create(request):
         'general_form': breezeForms.formG,
         'params_form': breezeForms.formD,
         'source_form': breezeForms.formS,
-        'layout': 'horizontal',
+        'hidden_form': breezeForms.hidden_form,
+        'layout': 'inline',
         'curr_tab': 'general',
         }))
 
@@ -93,6 +123,8 @@ def validate_general(request):
     global newrscript
     if request.method == 'POST':
         breezeForms.formG = breezeForms.ScriptGeneral(request.POST)
+        breezeForms.hidden_form = breezeForms.HiddenForm(request.POST)
+        print breezeForms.hidden_form['curr'].value()
         breezeForms.formG.is_valid()
     else:
         pass
@@ -100,7 +132,8 @@ def validate_general(request):
         'general_form': breezeForms.formG,
         'params_form': breezeForms.formD,
         'source_form': breezeForms.formS,
-        'layout': 'horizontal',
+        'hidden_form': breezeForms.hidden_form,
+        'layout': 'inline',
         'curr_tab': 'params',
     }))
 
@@ -108,15 +141,19 @@ def validate_details(request):
     global newrscript
     if request.method == 'POST':
         breezeForms.formD = breezeForms.ScriptDetails(request.POST)
-        mv = breezeForms.formD['hidden'].value()
-        # breezeForms.formD.is_valid()
+        breezeForms.hidden_form = breezeForms.HiddenForm(request.POST)
+        mv = breezeForms.hidden_form['next'].value()
+        print breezeForms.hidden_form['curr'].value()
+        breezeForms.hidden_form.is_valid()
+        breezeForms.formD.is_valid()
     else:
         pass
     return render_to_response('new-script.html', RequestContext(request, {
         'general_form': breezeForms.formG,
         'params_form': breezeForms.formD,
         'source_form': breezeForms.formS,
-        'layout': 'horizontal',
+        'hidden_form': breezeForms.hidden_form,
+        'layout': 'inline',
         'curr_tab': mv,
     }))
 
@@ -124,7 +161,10 @@ def validate_sources(request):
     global newrscript
     if request.method == 'POST':
         breezeForms.formS = breezeForms.ScriptSources(request.POST, request.FILES)
-        mv = breezeForms.formS['hidden'].value()
+        breezeForms.hidden_form = breezeForms.HiddenForm(request.POST)
+        mv = breezeForms.hidden_form['next'].value()
+        print breezeForms.hidden_form['curr'].value()
+        breezeForms.hidden_form.is_valid()
         if breezeForms.formS.is_valid():
             newrscript.code = request.FILES['code']
     else:
@@ -133,6 +173,7 @@ def validate_sources(request):
         'general_form': breezeForms.formG,
         'params_form': breezeForms.formD,
         'source_form': breezeForms.formS,
+        'hidden_form': breezeForms.hidden_form,
         'layout': 'horizontal',
         'curr_tab': mv,
     }))
