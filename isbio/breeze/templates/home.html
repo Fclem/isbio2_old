@@ -11,16 +11,34 @@
 {% block content %}
 <div class="row-fluid">    
   <div class="span3">
-    
+    <div name="datepicker" id="datepicker"></div>
   </div>
   
   <div class="span9">
-
+    
+    <!-- File Input-->
+  <form style="margin-top: 1em;"> 
+    <input type="file" name="file" id="file">
+  </form>
+    <!-- end file input -->
+            
   </div>
 </div>
 
-<script>
+<script type="text/javascript">
+ $(function () {
 
+    // Datepicker
+    $('#datepicker').datepicker({
+        inline: true,
+        autoSize: true
+    });
+    
+    
+    // File input (using http://filamentgroup.com/lab/jquery_custom_file_input_book_designing_with_progressive_enhancement/)
+    $('#file').customFileInput({ });
+    
+    });
 </script>
 
 {% endblock %}

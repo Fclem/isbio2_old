@@ -1,9 +1,9 @@
 /*custom upload elements*/
 .customfile-input { position: absolute; left: -999em; background: transparent; border: 0; opacity: 0; -moz-opacity: 0; filter:progid:DXImageTransform.Microsoft.Alpha(opacity=0);}
 
-.customfile { cursor: pointer; width: auto; display: inline-block; position: relative; }
-.customfile.input-append .customfile-feedback { border-radius: 5px 0 0 5px;  }
-.customfile.input-prepend .customfile-feedback { border-radius: 0 5px 5px 0; }
+.customfile { cursor: pointer; width: auto; display: inline-block; position: auto; }
+.customfile.input-append .customfile-feedback { border-radius: 3px 0 0 3px;  }
+.customfile.input-prepend .customfile-feedback { border-radius: 0 3px 3px 0; }
 .customfile.input-prepend .add-on, .customfile.input-append .add-on{
   color:#333;
   cursor: pointer;

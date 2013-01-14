@@ -24,13 +24,21 @@ class ScriptGeneral(forms.Form):
         choices=CATEGORY_OPT,
         help_text=u'Pick a category from the list',
     )
-    # logo = forms.FileField()
+    # logo = forms.FileField(required=False)
     details = forms.CharField(
         widget=forms.Textarea(attrs={'cols': 15, 'rows': 7}),
         help_text=u'More datailed description',
     )
 
 class ScriptDetails(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super(ScriptDetails, self).__init__(*args, **kwargs)
+        self.fields['var'].label = ""
+        self.fields['type'].label = ""
+        self.fields['comment'].label = ""
+        self.fields['default'].label = ""
+        self.fields['options'].label = ""
+
     TYPE_OPT = (
         (u'NUM', u'Numeric'),
         (u'CHB', u'Check Box'),
@@ -41,9 +49,22 @@ class ScriptDetails(forms.Form):
         (u'FIL', u'File Upload'),
         (u'HED', u'Heading'),
     )
-    var = forms.CharField(max_length=55)
-    type = forms.ChoiceField(choices=TYPE_OPT)
 
+    var = forms.CharField(max_length=35,
+        widget=forms.TextInput(attrs={'class': 'input-mini'})
+        )
+    type = forms.ChoiceField(widget=forms.Select(attrs={'class': 'span1'}), choices=TYPE_OPT)
+    comment = forms.CharField(max_length=55,
+        widget=forms.TextInput(attrs={'class': 'input-medium'})
+        )
+    default = forms.CharField(max_length=35,
+        widget=forms.TextInput(attrs={'class': 'input-mini'}),
+        required=False
+        )
+    options = forms.CharField(max_length=55,
+        widget=forms.TextInput(attrs={'class': 'input-xlarge'}),
+        required=False
+        )
 
 class ScriptSources(forms.Form):
     code = forms.FileField()
@@ -52,6 +73,25 @@ class ScriptSources(forms.Form):
         help_text=u'Source code here',
         required=False
     )
+
+class AddBasic(forms.Form):
+    def drop_titles(self, *args, **kwargs):
+        self.fields['inline_var'].label = ""
+        self.fields['comment'].label = ""
+
+    inline_var = forms.CharField(max_length=35,
+        widget=forms.TextInput(attrs={'class': 'input-mini'})
+        )
+    comment = forms.CharField(max_length=55,
+        widget=forms.TextInput(attrs={'class': 'input-medium'})
+        )
+
+class AddOptions(forms.Form):
+    def drop_titles(self, *args, **kwargs):
+        self.fields['options'].label = ""
+
+    options = forms.CharField(max_length=55,
+        widget=forms.TextInput(attrs={'class': 'input-xlarge'}))
 
 class HiddenForm(forms.Form):
     next = forms.CharField(widget=forms.HiddenInput())
@@ -66,21 +106,37 @@ class BaseScriptDetails(BaseFormSet):
 #        super(BaseScriptDetails, self).add_fields(form, index)
 #        form.fields["hidden"] = forms.CharField()  # forms.CharField(widget=forms.HiddenInput())
 
-def xml_from_form(form_g, form_d):
+def xml_from_form(form_g, form_d, form_s):
     root = xml.Element('rScript')
     root.attrib['name'] = form_g.cleaned_data['name']
-    child = xml.Element('inline')
-    root.append(child)
+    inline = xml.Element('inline')
+    inline.text = form_g.cleaned_data['inln']
+    root.append(inline)
+    details = xml.Element('details')
+    details.text = form_g.cleaned_data['details']
+    root.append(details)
+    status = xml.Element('status')
+    status.attrib['val'] = 'none'
+    root.append(status)
     input_array = xml.Element('inputArray')
-    input_item = xml.Element('inputItem')
-    input_item.attrib['type'] = "check"
-    input_item.attrib['comment'] = "komentarii"
-    input_item.attrib['rvarname'] = "arg1"
-    if form_d.cleaned_data['mark']:
-        input_item.attrib['default'] = "TRUE"
-    else:
-        input_item.attrib['default'] = "FALSE"
-    input_array.append(input_item)
+
+    for form in form_d:
+        ipt = xml.Element('inputItem')
+        ipt.attrib['type'] = form.cleaned_data['type']
+        ipt.attrib['rvarname'] = form.cleaned_data['var']
+        ipt.attrib['type'] = form.cleaned_data['type']
+        ipt.attrib['default'] = form.cleaned_data['default']
+        ipt.attrib['comment'] = form.cleaned_data['comment']
+        ipt.attrib['var'] = ""
+        if form.cleaned_data['type'] == 'DRP' or form.cleaned_data['type'] == 'RAD':
+            altar = xml.Element('altArray')
+            for opt in str(form.cleaned_data['options']).split():
+                altit = xml.Element('altItem')
+                altit.text = opt
+                altar.append(altit)
+            ipt.append(altar)
+        input_array.append(ipt)
+
     root.append(input_array)
 
     newxml = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml", 'w')
@@ -110,15 +166,15 @@ def form_from_xml(xml):
     return custom_form
 
 def buid_item(item, args):
-    if  item.attrib["type"] == "num":  # numeric input
+    if  item.attrib["type"] == "NUM":  # numeric input
         args[item.attrib["comment"]] = forms.FloatField()
 
-    elif item.attrib["type"] == "text":  # text box
+    elif item.attrib["type"] == "TEX":  # text box
         args[item.attrib["comment"]] = forms.CharField(
                 max_length=100,
                 widget=forms.TextInput(attrs={'type': 'text', })
                                                        )
-    elif item.attrib["type"] == "textar":  # text area
+    elif item.attrib["type"] == "TAR":  # text area
         args[item.attrib["comment"]] = forms.CharField(
                 widget=forms.Textarea(
                     attrs={
@@ -128,10 +184,10 @@ def buid_item(item, args):
                                       )
                                                        )
 
-    elif item.attrib["type"] == "check":  # check box
+    elif item.attrib["type"] == "CHB":  # check box
         args[item.attrib["comment"]] = forms.BooleanField(required=False)
 
-    elif item.attrib["type"] == "drop":  # drop down list
+    elif item.attrib["type"] == "DRP":  # drop down list
         drop_options = tuple()
 
         for alt in item.find('altArray').findall('altItem'):
@@ -139,19 +195,7 @@ def buid_item(item, args):
 
         args[item.attrib["comment"]] = forms.ChoiceField(choices=drop_options)
 
-    elif item.attrib["type"] == "mult":  # multiple selection list
-        mult_options = tuple()
-
-        for alt in item.find('altArray').findall('altItem'):
-            mult_options = mult_options + ((alt.text, alt.text),)
-
-        args[item.attrib["comment"]] = forms.MultipleChoiceField(
-                widget=forms.CheckboxSelectMultiple(
-                    attrs={'inline': True, }
-                                                    ),
-                choices=(mult_options)
-                                                                  )
-    elif item.attrib["type"] == "radio":  # radio buttons
+    elif item.attrib["type"] == "RAD":  # radio buttons
         radio_options = tuple()
 
         for alt in item.find('altArray').findall('altItem'):
@@ -161,18 +205,18 @@ def buid_item(item, args):
                 widget=forms.RadioSelect(attrs={'value': item.attrib["default"]}),
                 choices=radio_options, help_text=u'',
                                                            )
-    elif item.attrib["type"] == "file":  # file upload field
+    elif item.attrib["type"] == "FIL":  # file upload field
         args[item.attrib["comment"]] = forms.FileField()
 
-    elif item.attrib["type"] == "heading":  # section header
+    elif item.attrib["type"] == "HED":  # section header
         pass
     else:
         pass
 
-
-ParameterFormSet = formset_factory(ScriptDetails, formset=BaseScriptDetails, extra=2, max_num=15)
-formG = ScriptGeneral()
-formD = ParameterFormSet()
-formS = ScriptSources()
+#
+# ParameterFormSet = formset_factory(ScriptDetails, formset=BaseScriptDetails, extra=2, max_num=15)
+# formG = ScriptGeneral()
+# formD = ParameterFormSet()
+# formS = ScriptSources()
 # hidden_form = HiddenForm()
 

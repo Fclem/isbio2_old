@@ -5,39 +5,59 @@
 {% block title %}Scripts - Create New Script{% endblock %} 
 
 {% block extra_head %}
-    <link href="/static/third-party/jQuery-UI-FileInput/css/enhanced.css" rel="Stylesheet">
-{% endblock %}
 
+{% endblock %}
 {% block content %}
-<div class="row-fluid">    
+<div class="row">    
   <div class="span3 well">
-    <p>Info...</p>
+    <div class="alert alert-{{ status }}">
+      <h5>General Info</h5>
+    </div>
+    <div class="alert alert-{{ status }}">
+      <h5>Customize Parameters</h5>
+    </div>
+    <div class="alert alert-{{ status }}">
+      <h5>Source Code</h5>
+    </div>
   </div>
     
   <div class="span9">
          
     <div class="tabbable">
-      <!-- Tabs' Header -->  
-      <ul class="nav nav-pills" id="customTabs">
-        <li class="active"><a href="#general" data-toggle="tab">General Info <i class="icon-chevron-right"></i><i class="icon-chevron-right"></i> </a></li>
-        <li><a href="#params" data-toggle="tab">Customize Parameters <i class="icon-chevron-right"></i><i class="icon-chevron-right"></i></a></li>
-        <li><a href="#source" data-toggle="tab">Source Code <i class="icon-chevron-right"></i><i class="icon-chevron-right"></i></a></li>
-        <li><a href="#summary" data-toggle="tab">Summary</a></li>
+      <!-- Tabs' Header -->
+      <ul class="nav nav-pills well" id="customTabs" >
+        <li class="active"><a href="#general" data-toggle="tab" style="color:black"><strong>1. GENERAL INFO</strong></a></li>
+        <li><a href="#params" data-toggle="tab" style="color:black"><strong>2. CUSTOMIZE INPUT</strong></a></li>
+        <li><a href="#source" data-toggle="tab" style="color:black"><strong>3. SOURCE CODE</strong></a></li>
+        <li><a href="#summary" data-toggle="tab" style="color:black"><strong>SUMMARY</strong></a></li>
       </ul>
       <!-- Tabs' Content -->  
-      <div class="well">
+      
       <div class="tab-content">
-        <div class="tab-pane active" id="general">
+        <div class="tab-pane active well" id="general">
           <form name="gengeneralForm" class="form-horizontal" action="/new/" method="post" enctype="multipart/form-data" >
             {% csrf_token %}
             {{ hidden_form }}
             {{ general_form.id }}
             {{ general_form|as_bootstrap }}
-        
-            <div align="right"><input class="btn btn-info" onclick="document.gengeneralForm.curr.value = 'general'; document.gengeneralForm.next.value = 'params';"type="submit" value="next &rsaquo;&rsaquo;" /></div>
+                    
+            <div align="right">
+              <input class="btn btn-info" onclick="document.gengeneralForm.curr.value = 'general'; document.gengeneralForm.next.value = 'params';"type="submit" value="next &rsaquo;&rsaquo;" />
+            </div>
           </form>
         </div>
-        <div class="tab-pane" id="params">
+        <div class="tab-pane well" style="height:555px" id="params">
+          <table class="table table-striped">
+            <head>
+              <tr>
+                <th width="10%">Inline</th>
+                <th width="10%">Type</th>      
+                <th width="15%">Comment</th>
+                <th width="15%">Default</th>
+                <th width="50%">Extra Option</th>
+              </tr>
+            </head>
+          </table>
           <form name="paramsForm" class="form-inline" action="/new/" method="post" enctype="multipart/form-data" >
             {% csrf_token %}
             {{ hidden_form }}
@@ -46,13 +66,39 @@
             <div class="item">
               {{ form.id }}
               {{ form|as_bootstrap:layout }}
-              <a class="delete" href="#">Delete</a>
+              <a class="delete btn btn-info btn-mini" href="#"><i class="icon-remove"></i></a>
               <br />          
             </div>    
             {% endfor %}
-                                 
-            <p><a id="add" href="#">Add another item</a></p>
+            <!--                     
+            <p><input id="add" class="btn btn-info btn-mini" onclick="document.paramsForm.curr.value = 'params'; document.paramsForm.next.value = 'params';" type="submit" value="Add" /></p>
+            -->
+            <p><input id="add" class="btn btn-info btn-mini" onclick="document.paramsForm.curr.value = 'params'; document.paramsForm.next.value = 'params';" type="submit" value="Add" /></p>
             
+            <div class="btn-group">
+              <a class="btn btn-info btn-mini dropdown-toggle" data-toggle="dropdown" href="#">
+                Add Item
+                <span class="caret"></span>
+              </a>
+            <ul class="dropdown-menu" role="menu">
+              <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="NUM">Numeric</a></li>
+              <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="TEX">Text</a></li>
+              <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="TAR">Text Area</a></li>
+              <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="CHB">Check Box</a></li>
+              <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="FIL">File Upload</a></li>
+              <li class="divider"></li>
+              <li class="dropdown-submenu">
+                <a tabindex="-1" href="#">Select</a>
+                <ul class="dropdown-menu">
+                  <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="DRP">Drop Down</a></li>
+                  <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="RAD">Radio Buttons</a></li>                  
+                </ul>
+              </li>
+              <li class="divider"></li>
+              <li><a tabindex="-1" href="#" data-toggle="modal" class=" factory" data-target="#Field" data-type="HED">Section Header</a></li>
+            </ul>
+            </div>
+      
             <div align="right">
                 <input class="btn btn-info" onclick="document.paramsForm.next.value = 'general'; document.paramsForm.curr.value = 'params';" type="submit" value="&lsaquo;&lsaquo; previous" />
                 <input class="btn btn-info" onclick="document.paramsForm.next.value = 'source'; document.paramsForm.curr.value = 'params';" type="submit" value="next &rsaquo;&rsaquo;" />
@@ -60,7 +106,7 @@
             
           </form>
         </div>
-        <div class="tab-pane" id="source">
+        <div class="tab-pane well" id="source">
           <form name="sourceForm" class="form-horizontal" action="/new/" method="post" enctype="multipart/form-data" >
             {% csrf_token %}
             {{ hidden_form }}
@@ -75,7 +121,19 @@
           </form>
         </div>
         <div class="tab-pane" id="summary">
-                       
+          
+          <dl>
+          {% for field in general_form.visible_fields %}
+            <dt><strong>{{ field.label }}:</strong></dt>
+            <dd>{{ field.value }} <br></dd>
+          {% endfor %}
+          <dt><strong>Customized Input/Output:</strong></dt>
+          {% for form in params_form %}
+            {% for field in form.visible_fields %}
+            <dd>{{ field.label }} {{ field.value }} <br></dd>
+            {% endfor %}
+          {% endfor %}     
+          </dl>             
           
           <div align="left">
             <a class="btn btn-inverse" href="/submit">Submit</a>
@@ -90,15 +148,77 @@
       
   </div>
   
-</div>
+  <!-- MODALS -->
+  <div id="itemFormModal" class="modal fade" role="dialog"  aria-hidden="true" />
 
 <script>
+    $(document).ready(function() {
+        modalConnect();
+    });
   $(function () {
     $('#customTabs a[href="#{{ curr_tab }}"]').tab('show');
-  })
+    $('#id_code').customFileInput({ });
+    $('#id_logo').customFileInput({ });
+  });
 </script>
 
 <script type="text/javascript">
+function submitItemModalFormBind(url){
+         //bind the form. prevent default behavior and submit form via ajax instead
+         $('#ajax_form_modal_result').submit(function(ev){
+             $.ajax({
+                type: "POST",
+                url: url,
+                data: $(this).serialize(),
+                success:function(response, textStatus, jqXHR){
+                     var form = $("#ajax_form_modal_result_div", response);
+                     //form is returned if it is not valid. update modal with returned form
+                     //change this "if" to check for a specific return code which should be set in the view
+                     if (form.html()) {
+                        //update modal div
+                         $('#ajax_form_modal_result_div').html(form);
+                         $("#itemFormModal").modal('show');
+                      }
+                      //form is not returned if form submission succeeded
+                      else{
+                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
+                        // document.open();
+                        // document.write(response);
+                        // document.close();
+                        $("#itemFormModal").modal('hide');
+                        }
+                },
+                error: function (request, status, error) {
+                            //implement proper error handling
+                            console.log("failure");
+                            console.log(request.responseText);
+                        }
+                    });
+                    return false;
+                });
+              }
+function modalConnect()
+        {
+            //unbind the click event. If not done we will end up with multiple click event bindings, since binding is done after each ajax call.
+            $(".factory").unbind('click');
+            //bind the click event
+            $(".factory").click(function(ev) {
+                ev.preventDefault(); // prevent navigation
+                var par = $(this).data("type");
+                $.get("/new/append/"+par, function(results){
+                  //update the dom with the received form
+                  $('#itemFormModal').html(results);
+                  $("#itemFormModal").modal('show');
+                  $(document).ready(function () {
+                     //bind the form to an ajax call. ajax call will be set to the received update url
+                     submitItemModalFormBind("/new/append/"+par);
+                  });
+
+                }, "html");
+                return false; // prevent the click propagation
+            })
+        }
+        
 $(document).ready(function() {
   // Code adapted from http://djangosnippets.org/snippets/1389/
 
@@ -177,9 +297,9 @@ $(document).ready(function() {
   }
 
   // Register the click event handlers
-  $("#add").click(function() {
-    return addForm(this, 'form');
-  });
+  // $("#add").click(function() {
+    // return addForm(this, 'form');
+  // });
   
   $(".delete").click(function() {
     return deleteForm(this, 'form');

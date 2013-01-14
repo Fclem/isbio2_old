@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+import os, copy
 from django.core.files import File
 from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
@@ -9,8 +9,30 @@ from rpy2.robjects import r
 import xml.etree.ElementTree as xml
 
 import forms as breezeForms
-from breeze.models import Rscripts, newrscript
+from breeze.models import Rscripts
 
+class RequestStorage():
+    pass
+storage = RequestStorage()
+
+def get_logic(request, which):
+    msg = 'MESSAGE'
+    form = breezeForms.AddBasic(request.POST or None)
+    if form.is_valid():
+        # add new param to par table...
+        return render_to_response('new-script.html', RequestContext(request, {
+        'hidden_form': storage.hidden_form,
+        'general_form': storage.form_general,
+        'params_form': storage.form_details,
+        'source_form': storage.form_sources,
+        'layout': 'inline',
+        'curr_tab': 'params',
+        'status': 'info',
+        }))
+    return render_to_response('forms/new_param_modal.html', RequestContext(request, {
+        'basic': form,
+        'msg': msg,
+    }))
 
 def breeze(request):
     return render_to_response('index.html')
@@ -60,123 +82,107 @@ def run_script(request, sid):
 
     return HttpResponseRedirect('/jobs/')
 
+def append_param(request, which):
+    basic_form = breezeForms.AddBasic(request.POST or None)
+    extra_form = None
+    if which == 'NUM':
+        msg = 'NUMERIC'
+    elif which == 'CHB':
+        msg = 'CHECK BOX'
+    elif which == 'DRP':
+        msg = 'DROP DOWN'
+        extra_form = breezeForms.AddOptions(request.POST or None)
+    elif which == 'RAD':
+        msg = 'RADIO BUTTONS'
+        extra_form = breezeForms.AddOptions(request.POST or None)
+    elif which == 'TEX':
+        msg = 'TEXT INPUT'
+    elif which == 'TAR':
+        msg = 'TEXT AREA'
+    elif which == 'FIL':
+        msg = 'FILE INPUT'
+    elif which == 'HED':
+        msg = 'SECTION NAME'
+    else:
+        pass
+
+    if basic_form.is_valid():
+        # do smth with ParamForm to add a new field
+        return render_to_response('new-script.html', RequestContext(request, {
+            'hidden_form': storage.hidden_form,
+            'general_form': storage.form_general,
+            'params_form': storage.form_details,
+            'source_form': storage.form_sources,
+            'layout': 'inline',
+            'curr_tab': 'params',
+            'status': 'info',
+            }))
+    return render_to_response('forms/new_param_modal.html', RequestContext(request, {
+        'msg': msg, 'basic': basic_form, 'extra': extra_form, "type": which,
+    }))
+
 def create(request):
+    tab = 'general'
     ParametersTable = breezeForms.formset_factory(
                                         breezeForms.ScriptDetails,
-                                        formset=breezeForms.BaseScriptDetails, extra=2, max_num=15
+                                        formset=breezeForms.BaseScriptDetails, extra=1, max_num=15
     )
     if request.method == 'POST':
-        hidden_form = breezeForms.HiddenForm(request.POST)
-        if hidden_form['curr'].value() == 'general':
-            print "hey GENERAL"
-        elif hidden_form['curr'].value() == 'params':
-            print "hey PARAMS"
-        elif hidden_form['curr'].value() == 'source':
-            print "hey SOURCE"
-        elif hidden_form['curr'].value() == 'summary':
+        storage.hidden_form = breezeForms.HiddenForm(request.POST)
+        tab = storage.hidden_form['next'].value()
+        if storage.hidden_form['curr'].value() == 'general':
+            storage.form_general = breezeForms.ScriptGeneral(request.POST, request.FILES)
+            storage.form_general.is_valid()
+#                storage.new_script.logo = request.FILES['logo']
+        elif storage.hidden_form['curr'].value() == 'params':
+            if storage.hidden_form['curr'].value() == storage.hidden_form['next'].value():
+                cp = request.POST.copy()
+                cp['form-TOTAL_FORMS'] = int(cp['form-TOTAL_FORMS']) + 1
+                storage.form_details = ParametersTable(cp)
+                storage.form_details.is_valid()
+            else:
+                storage.form_details = ParametersTable(request.POST)
+                storage.form_details.is_valid()
+        elif storage.hidden_form['curr'].value() == 'source':
+            storage.form_sources = breezeForms.ScriptSources(request.POST, request.FILES)
+            if storage.form_sources.is_valid():
+                storage.new_script.code = request.FILES['code']
+        elif storage.hidden_form['curr'].value() == 'summary':
             pass
-
     else:
-        hidden_form = breezeForms.HiddenForm()
-        form_general = breezeForms.ScriptGeneral()
-        form_details = ParametersTable()
-        form_sources = breezeForms.ScriptSources()
-
+        storage.hidden_form = breezeForms.HiddenForm()
+        storage.form_general = breezeForms.ScriptGeneral()
+        storage.form_details = ParametersTable()
+        storage.form_sources = breezeForms.ScriptSources()
+        storage.new_script = Rscripts()
     return render_to_response('new-script.html', RequestContext(request, {
-        'hidden_form': hidden_form,
-        'general_form': form_general,
-        'params_form': form_details,
-        'source_form': form_sources,
+        'hidden_form': storage.hidden_form,
+        'general_form': storage.form_general,
+        'params_form': storage.form_details,
+        'source_form': storage.form_sources,
         'layout': 'inline',
-        'curr_tab': 'general',
+        'curr_tab': tab,
+        'status': 'info',
         }))
 
-def c_reate(request):
-    global newrscript
-    if  breezeForms.formG.is_valid():
-        breezeForms.xml_from_form(breezeForms.formG, breezeForms.formD)
-        newrscript.name = breezeForms.formG.cleaned_data['name']
-        newrscript.inln = breezeForms.formG.cleaned_data['inln']
-        newrscript.details = breezeForms.formG.cleaned_data['details']
-        newrscript.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
-        newrscript.docxml.close()
-        newrscript.save()
+def save(request):
+    if  storage.form_general.is_valid() and storage.form_details.is_valid() and storage.form_sources.is_valid():
+        # .xml_from_form() - creates doc in tmp for now
+        breezeForms.xml_from_form(storage.form_general, storage.form_details, storage.form_sources)
+        storage.new_script.name = storage.form_general.cleaned_data['name']
+        storage.new_script.inln = storage.form_general.cleaned_data['inln']
+        storage.new_script.details = storage.form_general.cleaned_data['details']
+        storage.new_script.category = storage.form_general.cleaned_data['category']
+        storage.new_script.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
+        storage.new_script.docxml.close()
+        storage.new_script.save()
         # improve the manipulation with XML - tmp folder not a good idea!
         os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml")
 
-        breezeForms.formG = breezeForms.ScriptGeneral()
-        breezeForms.formD = breezeForms.ScriptDetails()
-        breezeForms.formS = breezeForms.ScriptSources()
-        newrscript = Rscripts()
         return HttpResponseRedirect('/scripts/')
     else:
-        return render_to_response('new-script.html', RequestContext(request, {
-        'general_form': breezeForms.formG,
-        'params_form': breezeForms.formD,
-        'source_form': breezeForms.formS,
-        'hidden_form': breezeForms.hidden_form,
-        'layout': 'inline',
-        'curr_tab': 'general',
-        }))
-
-def validate_general(request):
-    global newrscript
-    if request.method == 'POST':
-        breezeForms.formG = breezeForms.ScriptGeneral(request.POST)
-        breezeForms.hidden_form = breezeForms.HiddenForm(request.POST)
-        print breezeForms.hidden_form['curr'].value()
-        breezeForms.formG.is_valid()
-    else:
+        # need an error handler here!
         pass
-    return render_to_response('new-script.html', RequestContext(request, {
-        'general_form': breezeForms.formG,
-        'params_form': breezeForms.formD,
-        'source_form': breezeForms.formS,
-        'hidden_form': breezeForms.hidden_form,
-        'layout': 'inline',
-        'curr_tab': 'params',
-    }))
-
-def validate_details(request):
-    global newrscript
-    if request.method == 'POST':
-        breezeForms.formD = breezeForms.ScriptDetails(request.POST)
-        breezeForms.hidden_form = breezeForms.HiddenForm(request.POST)
-        mv = breezeForms.hidden_form['next'].value()
-        print breezeForms.hidden_form['curr'].value()
-        breezeForms.hidden_form.is_valid()
-        breezeForms.formD.is_valid()
-    else:
-        pass
-    return render_to_response('new-script.html', RequestContext(request, {
-        'general_form': breezeForms.formG,
-        'params_form': breezeForms.formD,
-        'source_form': breezeForms.formS,
-        'hidden_form': breezeForms.hidden_form,
-        'layout': 'inline',
-        'curr_tab': mv,
-    }))
-
-def validate_sources(request):
-    global newrscript
-    if request.method == 'POST':
-        breezeForms.formS = breezeForms.ScriptSources(request.POST, request.FILES)
-        breezeForms.hidden_form = breezeForms.HiddenForm(request.POST)
-        mv = breezeForms.hidden_form['next'].value()
-        print breezeForms.hidden_form['curr'].value()
-        breezeForms.hidden_form.is_valid()
-        if breezeForms.formS.is_valid():
-            newrscript.code = request.FILES['code']
-    else:
-        pass
-    return render_to_response('new-script.html', RequestContext(request, {
-        'general_form': breezeForms.formG,
-        'params_form': breezeForms.formD,
-        'source_form': breezeForms.formS,
-        'hidden_form': breezeForms.hidden_form,
-        'layout': 'horizontal',
-        'curr_tab': mv,
-    }))
 
 def send_zipfile(request):
     response = HttpResponse(content_type='String')

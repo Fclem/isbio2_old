@@ -1,0 +1,27 @@
+{% load bootstrap_toolkit %}
+<!-- New Field Modal -->
+
+  <form id="ajax_form_modal_result" class="form-horizontal field_form" action="/new/append/{{ type }}" method="post">  
+    <div id="ajax_form_modal_result_div">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="myModalLabel">Create New Field</h3>
+      </div>
+        <div id="myModal" class="modal-body">
+        <blockquote>
+        <p>Appending {{ msg }} control</p>
+        </blockquote>   
+        <p>&nbsp;</p>
+      
+        {% csrf_token %}
+        {{ basic|as_bootstrap }}
+        {{ extra|as_bootstrap }}
+               
+      </div>
+      <div class="modal-footer">
+        <input class="btn btn-inverse factory" type="submit" value="Append"/>
+        <a class="btn btn-inverse" data-dismiss="modal">Discard</a>
+      </div>
+    </div>  
+  </form>
+  

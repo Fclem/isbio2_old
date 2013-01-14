@@ -20,8 +20,8 @@ class Rscripts(models.Model):
         slug = slugify(self.name)
         return 'r_scripts/%s/%s.%s' % (slug, slug, extension)
 
-    code = models.FileField(upload_to=file_name)
     docxml = models.FileField(upload_to=file_name)
+    code = models.FileField(upload_to=file_name)
     logo = models.FileField(upload_to=file_name)
 
     def __unicode__(self):
@@ -31,4 +31,3 @@ class Rscripts(models.Model):
 class Jobs(models.Model):
     pass
 
-newrscript = Rscripts()

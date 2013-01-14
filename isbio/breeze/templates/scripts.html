@@ -42,7 +42,7 @@
         <tbody>
             {% for scr in script_list %}
             <tr>
-                <td><img src={{ scr.logo }} width="75" height="75"></td>
+                <td><!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
                 <td>{{ scr.name }}</td>
                 <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-form="/read-descr/" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-form="/read-form/" data-param={{ scr.id }}>Apply</a></td>         
@@ -63,16 +63,16 @@
 <script>
     $(".apply").click(function(ev) { 
         ev.preventDefault(); // prevent navigation
-        var par = $(this).data("param"); // get the new url
-        $("#Apply").load("/read-form/"+par, function() { // load the url into the modal
+        var par = $(this).data("param"); 
+        $("#Apply").load("/read-form/"+par, function() { 
             $(this).modal('toggle'); 
         });
         return false; // prevent the click propagation
     });
     $(".describe").click(function(ev) { 
         ev.preventDefault(); // prevent navigation
-        var par = $(this).data("param"); // get the new url
-        $("#Describe").load("/read-descr/"+par, function() { // load the url into the modal
+        var par = $(this).data("param"); 
+        $("#Describe").load("/read-descr/"+par, function() { 
             $(this).modal('toggle'); 
         });
         return false; // prevent the click propagation
