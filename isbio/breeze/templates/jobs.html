@@ -35,15 +35,15 @@
         <div class="tab-pane active" id="scheduled">
           <table class="table table-condensed">
             <tbody>
+              {% for job in scheduled %}
               <tr>
-                <td>Job name</td>
-                <td><button class="btn btn-inverse">Submit</button></td>
+                <td>{{ job.id }}</td>
+                <td>{{ job.jname }}</td>
+                <td><a href="/scripts/run/{{ job.id }}" class="btn btn-inverse">Submit</a></td>
+                <td><a href="#" class="btn btn-info" ><i class="icon-edit"></i></a></td>
+                <td><a href="#" class="btn btn-info" ><i class="icon-remove"></i></a></td>
               </tr>
-              <tr>
-                <td>Another Job name</td>
-                <td><button class="btn btn-inverse">Submit</button></td>
-              </tr>
-              <tr><td></td><td><td></tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
@@ -53,13 +53,13 @@
               <tr>
                 <td>Job name</td>
                 <td><span class="label label-success">Completed</span></td>
-                <td><a class="btn btn-inverse" href="/download">Download Results</a></td>
+                <td><a class="btn btn-inverse" href="/download"><i class="icon-download-alt"></i> Download Results</a></td>
                 <td>Date</td>
               </tr>
               <tr>
                 <td>Another Job name</td>
                 <td><span class="label label-important">Failed</span></td>
-                <td><a class="btn btn-inverse" href="/download">Download Results</a></td>
+                <td><a class="btn btn-inverse" href="/download"><i class="icon-download-alt"></i> Download Results</a></td>
                 <td>Date</td>
               </tr>
               <tr><td></td><td><td></tr>

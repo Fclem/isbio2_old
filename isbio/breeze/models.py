@@ -1,6 +1,7 @@
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.core.files import File
+from django.db.models.fields.related import ForeignKey
 
 CATEGORY_OPT = (
         (u'GEN', u'General'),
@@ -29,5 +30,17 @@ class Rscripts(models.Model):
 
 
 class Jobs(models.Model):
-    pass
+    jname = models.CharField(max_length=55)  # , unique=True)
+    script = ForeignKey(Rscripts)
+    # status may be changed to NUMVER later
+    status = models.CharField(max_length=15)
 
+    def file_name(self, filename):
+        fname, dot, extension = filename.rpartition('.')
+        slug = slugify(self.jname)
+        return 'jobs/%s/%s.%s' % (slug, slug, extension)
+
+    docxml = models.FileField(upload_to=file_name)
+
+    def __unicode__(self):
+        return self.jname

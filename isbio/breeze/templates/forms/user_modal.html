@@ -1,23 +1,27 @@
 {% load bootstrap_toolkit %}
 <!-- Apply Modal -->
 
-  <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">{{ name }}</h3>
-  </div>
-  <div class="modal-body">
-    <blockquote>
-      <p>{{ inline }}</p>
-    </blockquote>   
-    <p>&nbsp;</p>
-    <form class="form-horizontal" action="" method="post">
+  <form id="form_modal_apply" class="form-horizontal" action="/scripts/read-form/{{ id }}" method="post" enctype="multipart/form-data">
+    <div id="form_modal_apply_div">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="myModalLabel">{{ name }}</h3>
+      </div>
+      <div class="modal-body">
+        <blockquote>
+          <p>{{ inline }}</p>
+        </blockquote>   
+        <p>&nbsp;</p>
+    
         {% csrf_token %}
         {{ form|as_bootstrap:layout }}
-    </form>        
-  </div>
-  <div class="modal-footer">
-    <a class="btn btn-inverse">Schedule</a>
-    <a href="run/{{ id }}" class="btn btn-inverse">Run</a>
-    <a class="btn btn-inverse close" aria-hidden="true">Close</a>
-  </div>
-    
+            
+      </div>
+      <div class="modal-footer">
+        <input class="btn btn-inverse" type="submit" value="Schedule" />
+        <input class="btn btn-inverse" type="submit" value="Run" />
+        <a class="btn btn-inverse" data-dismiss="modal">Close</a>
+      </div>
+    </div>
+  </form>  
+  

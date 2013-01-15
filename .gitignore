@@ -8,5 +8,6 @@ isbio/.project
 isbio/.pydevproject
 isbio/.settings
 isbio/breeze/r_scripts
+isbio/breeze/jobs
 isbio/breeze/tmp
 .gitignore~

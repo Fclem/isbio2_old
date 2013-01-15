@@ -4,7 +4,7 @@ import xml.etree.ElementTree as xml
 from breeze.models import CATEGORY_OPT
 from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapUneditableInput
 
-class NewForm(forms.Form):
+class CustomForm(forms.Form):
     def setFields(self, kwds):
         keys = kwds.keys()
         keys.sort()
@@ -13,11 +13,11 @@ class NewForm(forms.Form):
 
 class ScriptGeneral(forms.Form):
     name = forms.CharField(
-        max_length=15,
+        max_length=35,
         help_text=u'Provide a short name for new script',
     )
     inln = forms.CharField(
-        max_length=75,
+        max_length=95,
         help_text=u'Inline Description',
     )
     category = forms.ChoiceField(
@@ -75,6 +75,17 @@ class ScriptSources(forms.Form):
     )
 
 class AddBasic(forms.Form):
+    TYPE_OPT = (
+        (u'NUM', u'Numeric'),
+        (u'CHB', u'Check Box'),
+        (u'DRP', u'Drop Down'),
+        (u'RAD', u'Radio'),
+        (u'TEX', u'Text'),
+        (u'TAR', u'Text Area'),
+        (u'FIL', u'File Upload'),
+        (u'HED', u'Heading'),
+    )
+
     def drop_titles(self, *args, **kwargs):
         self.fields['inline_var'].label = ""
         self.fields['comment'].label = ""
@@ -82,8 +93,13 @@ class AddBasic(forms.Form):
     inline_var = forms.CharField(max_length=35,
         widget=forms.TextInput(attrs={'class': 'input-mini'})
         )
+    type = forms.CharField(widget=forms.HiddenInput(), required=False)
     comment = forms.CharField(max_length=55,
-        widget=forms.TextInput(attrs={'class': 'input-medium'})
+        widget=forms.TextInput(attrs={'class': 'input-xlarge'})
+        )
+    default = forms.CharField(max_length=35,
+        widget=forms.TextInput(attrs={'class': 'input-mini'}),
+        required=False
         )
 
 class AddOptions(forms.Form):
@@ -106,6 +122,14 @@ class BaseScriptDetails(BaseFormSet):
 #        super(BaseScriptDetails, self).add_fields(form, index)
 #        form.fields["hidden"] = forms.CharField()  # forms.CharField(widget=forms.HiddenInput())
 
+def get_job_xml(tree, data):
+
+    for item in tree.getroot().iter('inputItem'):
+        item.set('val', str(data.cleaned_data[item.attrib["comment"]]))
+
+    tree.write('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')
+    return 1
+
 def xml_from_form(form_g, form_d, form_s):
     root = xml.Element('rScript')
     root.attrib['name'] = form_g.cleaned_data['name']
@@ -120,15 +144,17 @@ def xml_from_form(form_g, form_d, form_s):
     root.append(status)
     input_array = xml.Element('inputArray')
 
-    for form in form_d:
+    for key in form_d:
+        form = form_d[key][0]
         ipt = xml.Element('inputItem')
         ipt.attrib['type'] = form.cleaned_data['type']
-        ipt.attrib['rvarname'] = form.cleaned_data['var']
-        ipt.attrib['type'] = form.cleaned_data['type']
+        ipt.attrib['rvarname'] = form.cleaned_data['inline_var']
         ipt.attrib['default'] = form.cleaned_data['default']
         ipt.attrib['comment'] = form.cleaned_data['comment']
-        ipt.attrib['var'] = ""
+        # ipt.attrib['val'] = ""
+
         if form.cleaned_data['type'] == 'DRP' or form.cleaned_data['type'] == 'RAD':
+            form = form_d[key][1]
             altar = xml.Element('altArray')
             for opt in str(form.cleaned_data['options']).split():
                 altit = xml.Element('altItem')
@@ -144,9 +170,72 @@ def xml_from_form(form_g, form_d, form_s):
     newxml.close()
     return newxml
 
+def form_from_xml_test(xml, req=None):
+    input_array = xml.getroot().find('inputArray')
+
+    if req:
+        custom_form = CustomForm(req.POST, req.FILES)
+    else: custom_form = CustomForm()
+
+    if input_array != None:
+        for input_item in input_array:
+            if input_item.tag == "inputItem":
+                if  input_item.attrib["type"] == "NUM":  # numeric input
+                    custom_form.fields[input_item.attrib["comment"]] = forms.FloatField()
+
+                elif input_item.attrib["type"] == "TEX":  # text box
+                    custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
+                            max_length=100,
+                            widget=forms.TextInput(attrs={'type': 'text', })
+                                                                   )
+                elif input_item.attrib["type"] == "TAR":  # text area
+                    custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
+                            widget=forms.Textarea(
+                                attrs={
+                                    'cols': input_item.find('ncols').attrib['val'],
+                                    'rows': input_item.find('nrows').attrib['val']
+                                }
+                                                  )
+                                                                   )
+
+                elif input_item.attrib["type"] == "CHB":  # check box
+                    custom_form.fields[input_item.attrib["comment"]] = forms.BooleanField(required=False)
+
+                elif input_item.attrib["type"] == "DRP":  # drop down list
+                    drop_options = tuple()
+
+                    for alt in input_item.find('altArray').findall('altItem'):
+                        drop_options = drop_options + ((alt.text, alt.text),)
+
+                    custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(choices=drop_options)
+
+                elif input_item.attrib["type"] == "RAD":  # radio buttons
+                    radio_options = tuple()
+
+                    for alt in input_item.find('altArray').findall('altItem'):
+                        radio_options = radio_options + ((alt.text, alt.text),)
+
+                    custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(
+                            widget=forms.RadioSelect(attrs={'value': input_item.attrib["default"]}),
+                            choices=radio_options, help_text=u'',
+                                                                       )
+                elif input_item.attrib["type"] == "FIL":  # file upload field
+                    custom_form.fields[input_item.attrib["comment"]] = forms.FileField()
+
+                elif input_item.attrib["type"] == "HED":  # section header
+                    pass
+                else:
+                    pass
+            elif input_item.tag == "subSection":
+                print "section"
+            else:
+                pass
+
+    return custom_form
+
 
 def form_from_xml(xml):
-    custom_form = NewForm()
+    custom_form = CustomForm()
     kwargs = dict()
 
     input_array = xml.getroot().find('inputArray')

@@ -47,33 +47,25 @@
           </form>
         </div>
         <div class="tab-pane well" style="height:555px" id="params">
-          <table class="table table-striped">
-            <head>
-              <tr>
-                <th width="10%">Inline</th>
-                <th width="10%">Type</th>      
-                <th width="15%">Comment</th>
-                <th width="15%">Default</th>
-                <th width="50%">Extra Option</th>
-              </tr>
-            </head>
-          </table>
           <form name="paramsForm" class="form-inline" action="/new/" method="post" enctype="multipart/form-data" >
             {% csrf_token %}
             {{ hidden_form }}
-            {{ params_form.management_form }}
-            {% for form in params_form.forms %}
-            <div class="item">
-              {{ form.id }}
-              {{ form|as_bootstrap:layout }}
-              <a class="delete btn btn-info btn-mini" href="#"><i class="icon-remove"></i></a>
-              <br />          
-            </div>    
-            {% endfor %}
+            
+            <table class="table">             
+              <tbody>
+                {% for pitem in params_form %}
+                <tr>
+                  <td> {{ pitem.var }} </td>  
+                  <td><span class="badge badge-inverse">{{ pitem.type }}</span> </td>
+                  <td><a href="/new/delete/{{ pitem.var }}" class="delete btn btn-info btn-mini" href="#"><i class="icon-remove"></i></a></td>
+                </tr>
+                {% endfor %}    
+              </tbody>  
+            </table>
+            
             <!--                     
             <p><input id="add" class="btn btn-info btn-mini" onclick="document.paramsForm.curr.value = 'params'; document.paramsForm.next.value = 'params';" type="submit" value="Add" /></p>
             -->
-            <p><input id="add" class="btn btn-info btn-mini" onclick="document.paramsForm.curr.value = 'params'; document.paramsForm.next.value = 'params';" type="submit" value="Add" /></p>
             
             <div class="btn-group">
               <a class="btn btn-info btn-mini dropdown-toggle" data-toggle="dropdown" href="#">
@@ -129,9 +121,7 @@
           {% endfor %}
           <dt><strong>Customized Input/Output:</strong></dt>
           {% for form in params_form %}
-            {% for field in form.visible_fields %}
-            <dd>{{ field.label }} {{ field.value }} <br></dd>
-            {% endfor %}
+            <dd>{{ form.var }} {{ form.type }} <br></dd>
           {% endfor %}     
           </dl>             
           
@@ -180,11 +170,11 @@ function submitItemModalFormBind(url){
                          $("#itemFormModal").modal('show');
                       }
                       //form is not returned if form submission succeeded
-                      else{
+                      else{                          
                         //update the entire document with the response received since we received a entire success page and we want to reload the entire page
-                        // document.open();
-                        // document.write(response);
-                        // document.close();
+                        document.open();
+                        document.write(response);
+                        document.close();
                         $("#itemFormModal").modal('hide');
                         }
                 },
@@ -218,96 +208,6 @@ function modalConnect()
                 return false; // prevent the click propagation
             })
         }
-        
-$(document).ready(function() {
-  // Code adapted from http://djangosnippets.org/snippets/1389/
-
-  function updateElementIndex(el, prefix, ndx) {
-    var id_regex = new RegExp('(' + prefix + '-\\d+-)');
-    var replacement = prefix + '-' + ndx + '-';
-    if ($(el).attr("for")) $(el).attr("for", $(el).attr("for").replace(id_regex,
- replacement));
-    if (el.id) el.id = el.id.replace(id_regex, replacement);
-    if (el.name) el.name = el.name.replace(id_regex, replacement);
-  }
-
-  function deleteForm(btn, prefix) {
-    var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
-
-    if (formCount > 1) {
-      // Delete the item/form
-      $(btn).parents('.item').remove();
-
-      var forms = $('.item'); // Get all the forms
-
-      // Update the total number of forms (1 less than before)
-      $('#id_' + prefix + '-TOTAL_FORMS').val(forms.length);
-
-      var i = 0;
-      // Go through the forms and set their indices, names and IDs
-      for (formCount = forms.length; i < formCount; i++) {
-        $(forms.get(i)).children().children().each(function() {
-          updateElementIndex(this, prefix, i);
-        });
-      }
-
-    } // End if
-    else {
-        alert("You have to enter at least one todo item!");
-    }
-    return false;
-  }
-
-
-  function addForm(btn, prefix) {
-    var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
-
-    // You can only submit a maximum of 15 todo items 
-    if (formCount < 15) {
-      // Clone a form (without event handlers) from the first form
-      var row = $(".item:first").clone(false).get(0);
-      // Insert it after the last form
-      $(row).removeAttr('id').hide().insertAfter(".item:last").slideDown(350);
-      
-      // Remove the bits we don't want in the new row/form
-      // e.g. error messages
-      $(".errorlist", row).remove();
-      $(row).children().removeClass('error');
-      
-      // Relabel/rename all the relevant bits
-      $(row).children().children().each(function() {
-        updateElementIndex(this, prefix, formCount);
-        if ( $(this).attr('type') == 'text' )
-          $(this).val('');
-      });
-      
-      // Add an event handler for the delete item/form link 
-      $(row).find('.delete').click(function() {
-        return deleteForm(this, prefix);
-      });
-
-      // Update the total form count
-      $('#id_' + prefix + '-TOTAL_FORMS').val(formCount + 1); 
-
-    } // End if
-    else {
-      alert("Sorry, you can only enter a maximum of 15 items.");
-    }
-    return false;
-  }
-
-  // Register the click event handlers
-  // $("#add").click(function() {
-    // return addForm(this, 'form');
-  // });
-  
-  $(".delete").click(function() {
-    return deleteForm(this, 'form');
-  });
-
-
-});
 </script>
-
 
 {% endblock %}

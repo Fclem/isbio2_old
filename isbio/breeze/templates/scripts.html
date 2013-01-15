@@ -44,8 +44,8 @@
             <tr>
                 <td><!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
                 <td>{{ scr.name }}</td>
-                <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-form="/read-descr/" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-form="/read-form/" data-param={{ scr.id }}>Apply</a></td>         
+                <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>         
                 <td><a href="#" class="btn btn-info" ><i class="icon-remove"></i></a></td>
                 <td><a href="#" class="btn btn-info" ><i class="icon-edit"></i></a></td>
                 <td><a href="#" class="btn btn-info" ><i class="icon-download"></i></a></td>
@@ -61,22 +61,76 @@
 <div id="Describe" class="modal fade" role="dialog"  aria-hidden="true"></div>
 
 <script>
-    $(".apply").click(function(ev) { 
-        ev.preventDefault(); // prevent navigation
-        var par = $(this).data("param"); 
-        $("#Apply").load("/read-form/"+par, function() { 
-            $(this).modal('toggle'); 
-        });
-        return false; // prevent the click propagation
+    $(document).ready(function() {
+        modalConnect();
     });
     $(".describe").click(function(ev) { 
         ev.preventDefault(); // prevent navigation
         var par = $(this).data("param"); 
-        $("#Describe").load("/read-descr/"+par, function() { 
-            $(this).modal('toggle'); 
+        $("#Describe").load("/scripts/read-descr/"+par, function() { 
+            $(this).modal('show'); 
         });
         return false; // prevent the click propagation
     });
 </script>
+<script type="text/javascript">
+function submitItemModalFormBind(url){
+         //bind the form. prevent default behavior and submit form via ajax instead
+         $('#form_modal_apply').submit(function(ev){
+             $.ajax({
+                type: "POST",
+                url: url,
+                data: $(this).serialize(),
+                success:function(response, textStatus, jqXHR){
+                     var form = $("#form_modal_apply_div", response);
+                     //form is returned if it is not valid. update modal with returned form
+                     //change this "if" to check for a specific return code which should be set in the view
+                     if (form.html()) {
+                        //update modal div
+                        
+                         $('#form_modal_apply_div').html(form);
+                         $("input:file").customFileInput({ });
+                         $("#Apply").modal('show');
+                      }
+                      //form is not returned if form submission succeeded
+                      else{                          
+                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
+                        document.open();
+                        document.write(response);
+                        document.close();
+                        $("#Apply").modal('hide');
+                        }
+                },
+                error: function (request, status, error) {
+                            //implement proper error handling
+                            console.log("failure");
+                            console.log(request.responseText);
+                        }
+                    });
+                    return false;
+                });
+              }
+function modalConnect()
+        {
+            //unbind the click event. If not done we will end up with multiple click event bindings, since binding is done after each ajax call.
+            $(".apply").unbind('click');
+            //bind the click event
+            $(".apply").click(function(ev) {
+                ev.preventDefault(); // prevent navigation
+                var par = $(this).data("param");
+                $.get("/scripts/read-form/"+par, function(results){
+                  //update the dom with the received form
+                  $('#Apply').html(results);
+                  $("input:file").customFileInput({ });
+                  $("#Apply").modal('show');
+                  $(document).ready(function () {
+                     //bind the form to an ajax call. ajax call will be set to the received update url
+                     submitItemModalFormBind("/scripts/read-form/"+par);
+                  });
 
+                }, "html");
+                return false; // prevent the click propagation
+            })
+        }
+</script>
 {% endblock %}
