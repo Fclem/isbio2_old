@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, copy
+import shutil
 from django.core.files import File
 from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
@@ -11,6 +12,7 @@ import shell as rshell
 
 import forms as breezeForms
 from breeze.models import Rscripts, Jobs
+from django.forms.formsets import INITIAL_FORM_COUNT
 
 class RequestStorage():
     form_details = dict()
@@ -42,11 +44,11 @@ def login(request):
     return render_to_response('login.html')
 
 def home(request):
-    return render_to_response('home.html', {})
+    return render_to_response('home.html', {'home_status': 'active'})
 
 def scripts(request):
     all_scripts = Rscripts.objects.order_by("name")
-    return render_to_response('scripts.html', {'script_list': all_scripts})
+    return render_to_response('scripts.html', {'script_list': all_scripts, 'scripts_status': 'active'})
 
 def jobs(request):
     sched_jobs = Jobs.objects.filter(status__exact="scheduled")
@@ -54,13 +56,64 @@ def jobs(request):
     return render_to_response('jobs.html', {
         'scheduled': sched_jobs,
         'history': histr_jobs,
+        'jobs_status': 'active',
     })
+
+def delete_job(request, jid):
+    job = Jobs.objects.get(id=jid)
+    rshell.del_job(job)
+    return HttpResponseRedirect('/jobs/')
+
+def delete_script(request, sid):
+    script = Rscripts.objects.get(id=sid)
+    rshell.del_script(script)
+    return HttpResponseRedirect('/scripts/')
 
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
 
-def read_form(request, sid=None):
+def edit_job(request, jid=None):
+    job = Jobs.objects.get(id=jid)
+    tree = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.docxml))
+
+    if request.method == 'POST':
+        head_form = breezeForms.BasicJobForm(request.POST)
+        custom_form = breezeForms.form_from_xml(xml=tree, req=request)
+        if head_form.is_valid() and custom_form.is_valid():
+            loc = rshell.get_job_folder(job.jname)
+            shutil.rmtree(loc)
+
+            breezeForms.get_job_xml(tree, custom_form, str(job.script.code), str(job.script.header))
+            job.jname = head_form.cleaned_data['job_name']
+            job.jdetails = head_form.cleaned_data['job_details']
+
+            job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r')))
+            job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')))
+            job.rexecut.close()
+            job.docxml.close()
+
+            rshell.submit_job(job)
+
+            # improve the manipulation with XML - tmp folder not a good idea!
+            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml")
+            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
+        return HttpResponseRedirect('/jobs/')
+    else:
+        head_form = breezeForms.BasicJobForm(initial={'job_name': str(job.jname), 'job_details': str(job.jdetails)})
+        custom_form = breezeForms.form_from_xml(xml=tree)
+
+    return render_to_response('forms/user_modal.html', RequestContext(request, {
+        'url': "/scripts/apply-script/" + str(jid),
+        'name': str(job.script.name),
+        'inline': str(job.script.inln),
+        'headform': head_form,
+        'custform': custom_form,
+        'layout': "horizontal",
+        'mode': 'edit',
+    }))
+
+def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     new_job = Jobs()
     tree = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(script.docxml))
@@ -68,48 +121,46 @@ def read_form(request, sid=None):
     script_inline = script.inln
 
     if request.method == 'POST':
-        form = breezeForms.form_from_xml_test(xml=tree, req=request)
-        if form.is_valid():
-            breezeForms.get_job_xml(tree, form)
-            new_job.jname = str(script_name) + "-job"
+        print request.FILES
+        head_form = breezeForms.BasicJobForm(request.POST)
+        custom_form = breezeForms.form_from_xml(xml=tree, req=request)
+        if head_form.is_valid() and custom_form.is_valid():
+            breezeForms.get_job_xml(tree, custom_form, str(script.code), str(script.header))
+            new_job.jname = head_form.cleaned_data['job_name']
+            new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
             new_job.status = "scheduled"
+
+            new_job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r')))
             new_job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')))
+            new_job.rexecut.close()
             new_job.docxml.close()
-            new_job.save()
+
+            rshell.submit_job(new_job)
+
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml")
-            # rshell.submit_job(new_job)
+            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
             return HttpResponseRedirect('/jobs/')
     else:
-        form = breezeForms.form_from_xml_test(xml=tree)
+        head_form = breezeForms.BasicJobForm()
+        custom_form = breezeForms.form_from_xml(xml=tree)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
-        'id': sid,
+        # 'id': sid,
+        'url': "/scripts/apply-script/" + str(sid),
         'name': script_name,
         'inline': script_inline,
-        'form': form,
+        'headform': head_form,
+        'custform': custom_form,
         'layout': "horizontal",
+        'mode': 'create',
     }))
 
 def run_script(request, jid):
     job = Jobs.objects.get(id=jid)
     script = str(job.script.code)
-
-    path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(script)
-    r.assign('path', path)
-    r('source(toString(path))')
-
-    tree = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.docxml))
-    for item in tree.getroot().iter('inputItem'):
-        if item.attrib['type'] == "CHB":
-            r.assign(str(item.attrib['rvarname']), str(item.attrib['val']).capitalize())
-        else:
-            r.assign(str(item.attrib['rvarname']), str(item.attrib['val']))
-        print str(item.attrib['rvarname']), str(item.attrib['val'])
-
-    r('testfunc(arg1)')
-
+    rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
 def delete_param(request, which):
@@ -171,7 +222,7 @@ def append_param(request, which):
         'msg': msg, 'basic': basic_form, 'extra': extra_form, "type": which,
     }))
 
-def create(request):
+def create_script(request):
     tab = 'general'
     if request.method == 'POST':
         storage.hidden_form = breezeForms.HiddenForm(request.POST)
@@ -205,6 +256,7 @@ def create(request):
         'layout': 'inline',
         'curr_tab': tab,
         'status': 'info',
+        'scripts_status': 'active',
         }))
 
 def save(request):
@@ -212,20 +264,37 @@ def save(request):
     if  storage.form_general.is_valid() and storage.form_sources.is_valid():
         # .xml_from_form() - creates doc in tmp for now
         breezeForms.xml_from_form(storage.form_general, storage.form_details, storage.form_sources)
+        breezeForms.build_header(storage.form_sources.cleaned_data['header'])
         storage.new_script.name = storage.form_general.cleaned_data['name']
         storage.new_script.inln = storage.form_general.cleaned_data['inln']
         storage.new_script.details = storage.form_general.cleaned_data['details']
         storage.new_script.category = storage.form_general.cleaned_data['category']
+
         storage.new_script.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
+        storage.new_script.header.save('name.txt', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt')))
         storage.new_script.docxml.close()
+        storage.new_script.header.close()
+
         storage.new_script.save()
         # improve the manipulation with XML - tmp folder not a good idea!
         os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml")
+        os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt")
 
         return HttpResponseRedirect('/scripts/')
     else:
         # need an error handler here!
         pass
+
+def show_rcode(request, jid):
+    job = Jobs.objects.get(id=jid)
+    name = str(job.jname)
+    f = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut))
+    filecontents = f.readlines()
+    code = ''
+    for line in filecontents:
+        code = code + line + '\r\n'
+    # code = str(open("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut), "r").read())
+    return render_to_response('forms/code_modal.html', RequestContext(request, { 'job': name, 'scr': code }))
 
 def send_zipfile(request):
     response = HttpResponse(content_type='String')

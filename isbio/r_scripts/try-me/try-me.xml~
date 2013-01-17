@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<rScript name="Try me">
-  <inline />
-  <inputArray>
-    <inputItem default="TRUE" rvarname="arg1" type="check" />
-  </inputArray>
-</rScript>

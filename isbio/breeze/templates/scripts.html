@@ -8,6 +8,8 @@
 <div class="row-fluid">    
   <div class="span3">
     <ul class="nav  nav-pills nav-stacked">
+      <li class="nav-header"><strong>CATEGORIES:</strong></li>
+       <li class="divider"></li>
       <li class="{{ categ_status }}"> <a href="#">General</a> </li>
       <li class="{{ categ_status }}"> <a href="#">Visualization</a> </li>
       <li class="{{ categ_status }}"> <a href="#">Screening</a> </li>
@@ -45,10 +47,10 @@
                 <td><!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
                 <td>{{ scr.name }}</td>
                 <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>         
-                <td><a href="#" class="btn btn-info" ><i class="icon-remove"></i></a></td>
-                <td><a href="#" class="btn btn-info" ><i class="icon-edit"></i></a></td>
-                <td><a href="#" class="btn btn-info" ><i class="icon-download"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
+                <td><a href="#" class="btn btn-info" ><i class="icon-edit"></i></a></td>         
+                <td><a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a></td>
+                <td></td>
             </tr>
             {% endfor %}
         </tbody>
@@ -75,11 +77,11 @@
 </script>
 <script type="text/javascript">
 function submitItemModalFormBind(url){
-         //bind the form. prevent default behavior and submit form via ajax instead
          $('#form_modal_apply').submit(function(ev){
              $.ajax({
                 type: "POST",
                 url: url,
+                enctype: 'multipart/form-data',
                 data: $(this).serialize(),
                 success:function(response, textStatus, jqXHR){
                      var form = $("#form_modal_apply_div", response);
@@ -118,14 +120,14 @@ function modalConnect()
             $(".apply").click(function(ev) {
                 ev.preventDefault(); // prevent navigation
                 var par = $(this).data("param");
-                $.get("/scripts/read-form/"+par, function(results){
+                $.get("/scripts/apply-script/"+par, function(results){
                   //update the dom with the received form
                   $('#Apply').html(results);
                   $("input:file").customFileInput({ });
                   $("#Apply").modal('show');
                   $(document).ready(function () {
                      //bind the form to an ajax call. ajax call will be set to the received update url
-                     submitItemModalFormBind("/scripts/read-form/"+par);
+                     submitItemModalFormBind("/scripts/apply-script/"+par);
                   });
 
                 }, "html");

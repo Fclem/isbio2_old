@@ -23,6 +23,7 @@ class Rscripts(models.Model):
 
     docxml = models.FileField(upload_to=file_name)
     code = models.FileField(upload_to=file_name)
+    header = models.FileField(upload_to=file_name)
     logo = models.FileField(upload_to=file_name)
 
     def __unicode__(self):
@@ -31,6 +32,7 @@ class Rscripts(models.Model):
 
 class Jobs(models.Model):
     jname = models.CharField(max_length=55)  # , unique=True)
+    jdetails = models.CharField(max_length=350, blank=True)
     script = ForeignKey(Rscripts)
     # status may be changed to NUMVER later
     status = models.CharField(max_length=15)
@@ -41,6 +43,7 @@ class Jobs(models.Model):
         return 'jobs/%s/%s.%s' % (slug, slug, extension)
 
     docxml = models.FileField(upload_to=file_name)
+    rexecut = models.FileField(upload_to=file_name)
 
     def __unicode__(self):
         return self.jname

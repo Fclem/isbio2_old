@@ -33,40 +33,95 @@
       <!-- Tabs' Content --> 
       <div class="tab-content">
         <div class="tab-pane active" id="scheduled">
-          <table class="table table-condensed">
+          <table class="table table-striped">
+            <head>
+              <tr>
+                <th>Born</th>
+                <th>Job Name</th>
+                <th></th>
+                <th></th>
+                <th>Actions:</th>
+                <th></th>
+                <th></th>
+                <th></th>
+              </tr>
+            </head>
             <tbody>
               {% for job in scheduled %}
               <tr>
-                <td>{{ job.id }}</td>
+                <td>01/Jan/2013</td>
                 <td>{{ job.jname }}</td>
-                <td><a href="/scripts/run/{{ job.id }}" class="btn btn-inverse">Submit</a></td>
-                <td><a href="#" class="btn btn-info" ><i class="icon-edit"></i></a></td>
-                <td><a href="#" class="btn btn-info" ><i class="icon-remove"></i></a></td>
+                <td></td>
+                <td></td>
+                <td><a href="/jobs/run/{{ job.id }}" class="btn btn-inverse">Submit</a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-info rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-file"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-info apply" data-target="#Apply"  data-param={{ job.id }}><i class="icon-edit"></i></a></td>
+                <td><a href="/jobs/delete/{{ job.id }}" class="btn btn-info" ><i class="icon-remove"></i></a></td>
               </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
         <div class="tab-pane" id="history">
-          <table class="table table-condensed">
+          <table class="table table-striped">
+            <head>
+              <tr>
+                <th>Finished</th>
+                <th>Job Name</th>
+                <th></th>
+                <th>Status</th>
+                <th>Actions:</th>
+                <th></th>
+                <th></th>
+                <th></th>
+              </tr>
+            </head>
             <tbody>
+              {% for job in history %}
               <tr>
-                <td>Job name</td>
-                <td><span class="label label-success">Completed</span></td>
+                <td>01/Jan/2013</td>
+                <td>{{ job.jname }}</td>
+                <td></td>
+                <td><span class="label label-success">{{ job.status }}</span></td>
                 <td><a class="btn btn-inverse" href="/download"><i class="icon-download-alt"></i> Download Results</a></td>
-                <td>Date</td>
+                <td><a href="#" data-toggle="modal" class="btn btn-info rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-file"></i></a></td>
+                <td><a href="#" class="btn btn-info" ><i class="icon-repeat"></i></a></td>
+                <td><a href="/jobs/delete/{{ job.id }}" class="btn btn-info" ><i class="icon-remove"></i></a></td>
               </tr>
-              <tr>
-                <td>Another Job name</td>
-                <td><span class="label label-important">Failed</span></td>
-                <td><a class="btn btn-inverse" href="/download"><i class="icon-download-alt"></i> Download Results</a></td>
-                <td>Date</td>
-              </tr>
-              <tr><td></td><td><td></tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
-        <div class="tab-pane" id="current">current...</div>
+        <div class="tab-pane" id="current">
+          <table class="table table-striped">
+            <head>
+              <tr>
+                <th>Triggered</th>
+                <th>Job Name</th>
+                <th>Progress</th>
+                <th></th>
+                <th></th>
+                <th>Actions:</th>
+                <th></th>
+                <th></th>
+                <th></th>
+              </tr>
+            </head>
+            <tbody>
+              
+              <tr>
+                <td>01/Jan/2013</td>
+                <td> Some Name </td>
+                <td> 11% </td>
+                <td></td>
+                <td></td>
+                <td><a href="#" class="btn btn-danger">Abort</a></td>
+                <td></td><td></td><td></td>
+              </tr>
+              
+            </tbody>
+          </table>
+        </div>
       </div>
       <!-- END of Tabs' Content -->
     </div>  
@@ -74,8 +129,82 @@
   </div>
 </div>
 
+<!-- Modals -->
+<div id="script" class="modal fade" role="dialog"  aria-hidden="true"></div>
+<div id="Apply" class="modal fade" role="dialog"  aria-hidden="true"></div>
+
 <script>
+    $(document).ready(function() {
+        modalConnect();
+    });
+    $(".rtext").click(function(ev) { 
+        ev.preventDefault(); // prevent navigation
+        var par = $(this).data("param"); 
+        $("#script").load("/jobs/show-code/"+par, function() { 
+            $(this).modal('show'); 
+        });
+        return false; // prevent the click propagation
+    });
   
+</script>
+<script type="text/javascript">
+function submitItemModalFormBind(url){
+         $('#form_modal_apply').submit(function(ev){
+             $.ajax({
+                type: "POST",
+                url: url,
+                enctype: 'multipart/form-data',
+                data: $(this).serialize(),
+                success:function(response, textStatus, jqXHR){
+                     var form = $("#form_modal_apply_div", response);
+                     //form is returned if it is not valid. update modal with returned form
+                     //change this "if" to check for a specific return code which should be set in the view
+                     if (form.html()) {
+                        //update modal div
+                        
+                         $('#form_modal_apply_div').html(form);
+                         $("input:file").customFileInput({ });
+                         $("#Apply").modal('show');
+                      }
+                      //form is not returned if form submission succeeded
+                      else{                          
+                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
+                        document.open();
+                        document.write(response);
+                        document.close();
+                        $("#Apply").modal('hide');
+                        }
+                },
+                error: function (request, status, error) {
+                            //implement proper error handling
+                            console.log("failure");
+                            console.log(request.responseText);
+                        }
+                    });
+                    return false;
+                });
+              }
+function modalConnect()
+        {
+            $(".apply").unbind('click');
+            //bind the click event
+            $(".apply").click(function(ev) {
+                ev.preventDefault(); // prevent navigation
+                var par = $(this).data("param");
+                $.get("/jobs/edit/"+par, function(results){
+                  //update the dom with the received form
+                  $('#Apply').html(results);
+                  $("input:file").customFileInput({ });
+                  $("#Apply").modal('show');
+                  $(document).ready(function () {
+                     //bind the form to an ajax call. ajax call will be set to the received update url
+                     submitItemModalFormBind("/jobs/edit/"+par);
+                  });
+
+                }, "html");
+                return false; // prevent the click propagation
+            })
+        }
 </script>
 
 {% endblock %}
