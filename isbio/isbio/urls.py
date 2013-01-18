@@ -24,7 +24,7 @@ urlpatterns = patterns('',
     url(r'^new/delete/(?P<which>.+)$', views.delete_param),
     url(r'^new/$', views.create_script),
     url(r'^submit/$', views.save),
-    url(r'^download/$', views.send_zipfile),
+    url(r'^jobs/download/(?P<jid>\d+)$', views.send_zipfile),
     url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
                  {'document_root': settings.MEDIA_ROOT}),
     # Examples:

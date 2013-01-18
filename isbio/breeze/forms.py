@@ -43,7 +43,7 @@ class ScriptGeneral(forms.Form):
 class ScriptSources(forms.Form):
     code = forms.FileField()
     header = forms.CharField(
-        widget=forms.Textarea(attrs={'cols': 55, 'rows': 15, 'placeholder': '### header ###', }),
+        widget=forms.Textarea(attrs={'cols': 55, 'rows': 15, }),
         help_text='Header',
     )
 

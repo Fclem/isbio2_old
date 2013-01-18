@@ -4,17 +4,17 @@ from django.core.files import File
 from django.db.models.fields.related import ForeignKey
 
 CATEGORY_OPT = (
-        (u'GEN', u'General'),
-        (u'VIS', u'Visualization'),
-        (u'RNA', u'Screening'),
-        (u'SEQ', u'Sequencing'),
+        (u'general', u'General'),
+        (u'visualization', u'Visualization'),
+        (u'screening', u'Screening'),
+        (u'sequencing', u'Sequencing'),
     )
 
 class Rscripts(models.Model):
     name = models.CharField(max_length=15, unique=True)
     inln = models.CharField(max_length=75)
     details = models.CharField(max_length=350)
-    categoty = models.CharField(max_length=3, choices=CATEGORY_OPT)
+    categoty = models.CharField(max_length=20)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
@@ -28,6 +28,9 @@ class Rscripts(models.Model):
 
     def __unicode__(self):
         return self.name
+
+    class Meta:
+        ordering = ["name"]
 
 
 class Jobs(models.Model):

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-import os, copy
+import os, copy, tempfile, zipfile
 import shutil
 from django.core.files import File
+from django.core.servers.basehttp import FileWrapper
 from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
@@ -47,7 +48,7 @@ def home(request):
     return render_to_response('home.html', {'home_status': 'active'})
 
 def scripts(request):
-    all_scripts = Rscripts.objects.order_by("name")
+    all_scripts = Rscripts.objects.all()
     return render_to_response('scripts.html', {'script_list': all_scripts, 'scripts_status': 'active'})
 
 def jobs(request):
@@ -296,33 +297,21 @@ def show_rcode(request, jid):
     # code = str(open("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut), "r").read())
     return render_to_response('forms/code_modal.html', RequestContext(request, { 'job': name, 'scr': code }))
 
-def send_zipfile(request):
-    response = HttpResponse(content_type='String')
-    response['Content-Disposition'] = 'attachment; filename="/home/comrade/Projects/fimm/isbio/breeze/static/dp.png"'
+def send_zipfile(request, jid):
+    job = Jobs.objects.get(id=jid)
+    loc = rshell.get_job_folder(str(job.jname))
+    files_list = os.listdir(loc)
+    zipname = 'attachment; filename=' + str(job.jname) + '.zip'
 
-#    temp = tempfile.TemporaryFile()
-#    archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
-#    for index in range(10):
-#        filename = __file__ # Select your files here.
-#        archive.write(filename, 'file%d.txt' % index)
-#    archive.close()
-#    wrapper = FileWrapper(temp)
-#    response = HttpResponse(wrapper, content_type='application/zip')
-#    response['Content-Disposition'] = 'attachment; filename=test.zip'
-#    response['Content-Length'] = temp.tell()
-#    temp.seek(0)
-#    return response
+    temp = tempfile.TemporaryFile()
+    archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
+    for item in files_list:
+        archive.write(loc + item, str(item))
 
+    archive.close()
+    wrapper = FileWrapper(temp)
+    response = HttpResponse(wrapper, content_type='application/zip')
+    response['Content-Disposition'] = zipname  # 'attachment; filename=test.zip'
+    response['Content-Length'] = temp.tell()
+    temp.seek(0)
     return response
-
-def result(request):
-    polot_type = request.GET.getlist('plot')
-    path = '/home/comrade/Projects/fimm/isbio/breeze/r_scripts/data.r'
-    r.assign('path', path)
-    r.assign('option', polot_type)
-    r('source(path)')
-    r('test(toString(option))')
-    image_file = open("/home/comrade/Projects/fimm/isbio/breeze/static/rplot.png", 'rb').read()
-#    return render_to_response('/jobs.html')
-    return HttpResponse(image_file, mimetype='image/png')
-
