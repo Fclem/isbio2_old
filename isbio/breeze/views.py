@@ -269,7 +269,7 @@ def save(request):
         storage.new_script.name = storage.form_general.cleaned_data['name']
         storage.new_script.inln = storage.form_general.cleaned_data['inln']
         storage.new_script.details = storage.form_general.cleaned_data['details']
-        storage.new_script.category = storage.form_general.cleaned_data['category']
+        # storage.new_script.category = storage.form_general.cleaned_data['category']
 
         storage.new_script.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
         storage.new_script.header.save('name.txt', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt')))

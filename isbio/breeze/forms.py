@@ -1,4 +1,5 @@
 from django import forms
+import re
 from django.forms.formsets import formset_factory, BaseFormSet
 import xml.etree.ElementTree as xml
 from breeze.models import CATEGORY_OPT
@@ -98,6 +99,14 @@ def get_job_xml(tree, data, code, header):
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(data.cleaned_data[item.attrib['comment']]).upper() + '\n'
         elif item.attrib['type'] == 'NUM':
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(data.cleaned_data[item.attrib['comment']]) + '\n'
+        elif item.attrib['type'] == 'TAR':
+            lst = re.split(', |,|\n|\r| ', str(data.cleaned_data[item.attrib['comment']]))
+            seq = 'c('
+            for itm in lst:
+                if itm != "":
+                    seq = seq + '\"%s\",' % itm
+            seq = seq[:-1] + ')'
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
         else:  # for text, text_are, drop_down, radio and file
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
 
@@ -178,8 +187,10 @@ def form_from_xml(xml, req=None, init=False):
     else:
         custom_form = CustomForm()
 
+
     if input_array != None:
         for input_item in input_array:
+            print "1"
             if input_item.tag == "inputItem":
                 if  input_item.attrib["type"] == "NUM":  # numeric input
                     custom_form.fields[input_item.attrib["comment"]] = forms.FloatField(initial=input_item.attrib["val"])
@@ -195,8 +206,8 @@ def form_from_xml(xml, req=None, init=False):
                             initial=input_item.attrib["val"],
                             widget=forms.Textarea(
                                 attrs={
-                                    'cols': input_item.find('ncols').attrib['val'],
-                                    'rows': input_item.find('nrows').attrib['val']
+                                    'cols': 15,
+                                    'rows': 3,
                                 }
                                                   )
                                                                    )
