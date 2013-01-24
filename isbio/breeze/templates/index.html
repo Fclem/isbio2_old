@@ -30,12 +30,16 @@
     -------------------------------------------------- */
     /* Padding below the footer and lighter body text */
 
+    
     body {
       padding-top: 40px; 
       background-color: #eee;
       
       color: #5a5a5a;
+      
     }
+    
+    .help-block {display:none;}
       
     /* CUSTOMIZE THE NAVBAR
     -------------------------------------------------- */
@@ -234,26 +238,42 @@
           <a class="brand" href="/breeze">BREEZE</a>
           <div class="nav-collapse collapse">
             <ul class="nav">
-              <li><a href="/home">Home</a></li>
+              {% if user.is_authenticated %}
+                <li><a href="/home">Home</a></li>
+              {% endif %}
               <li><a href="http://www.fimm.fi/en/fimm/">About</a></li>
               <li><a href="http://www.fimm.fi/en/fimm/contacts/">Contact</a></li>
-	
-	          <li class="dropdown">
-                
-                  <a class="dropdown-toggle" role="button" data-toggle="dropdown" href="#">Login<b class="caret"></b></a>
-                  <div class="dropdown-menu">
-               	    <form style="margin: 0px" accept-charset="UTF-8" action="/sessions" method="post">
-                      <fieldset class='textbox' style="padding:10px">
-                        <input style="margin-top: 8px" type="text" placeholder="Username" />
-                        <input style="margin-top: 8px" type="password" placeholder="Passsword" />
-                        <input class="btn-primary" name="commit" type="submit" value="Login" />
-                      </fieldset>
-                    </form>
-                  </div>
-               
-              </li> 
             </ul>
           </div><!--/.nav-collapse -->
+          {% if user.is_authenticated %}
+            <div class="btn-group pull-right">
+              <a class="btn btn-inverse" href="#"><i class="icon-user icon-white"></i> {{ user }}</a>
+              <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret"></span></a>
+              <ul class="dropdown-menu">
+                <li><a href="/logout/"> Log Out <i class="icon-share"></i></a></li>
+              </ul>
+            </div>
+          {% else %}
+          <form class="navbar-form pull-right form-inline" method="post" action="/breeze/">
+          {% csrf_token %}   
+            <div class="control-group">
+              <div class="controls">
+              
+                <div class="input-prepend">
+                  <span class="add-on"><i class="icon-user"></i></span>
+                  
+                  {{ log_form.user_name|as_bootstrap:layout }}
+                </div>
+                <div class="input-prepend">
+                  <span class="add-on"><i class="icon-briefcase"></i></span>
+                  
+                  {{ log_form.password|as_bootstrap:layout }}
+                </div>
+                <input class="btn btn-inverse" type="submit" value="login" />
+              </div>
+            </div>
+          </form>
+          {% endif %}
         </div>
       </div>
     </div>

@@ -3,7 +3,31 @@ import re
 from django.forms.formsets import formset_factory, BaseFormSet
 import xml.etree.ElementTree as xml
 from breeze.models import CATEGORY_OPT
-from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapUneditableInput
+from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
+
+
+class LoginForm(forms.Form):
+    user_name = forms.CharField(
+        max_length=30,
+        label="",
+        widget=forms.TextInput(
+             attrs={
+             'placeholder': 'user name...',
+             'class': 'input-medium',
+         }),
+#        widget=forms.TextInput(attrs={
+#            'placeholder': 'user name...',
+#            'class': 'input-medium',
+#        })
+    )
+    password = forms.CharField(
+        max_length=30,
+        label="",
+        widget=forms.PasswordInput(attrs={
+            'placeholder': 'password...',
+            'class': 'input-small',
+        })
+    )
 
 class BasicJobForm(forms.Form):
     job_name = forms.CharField(

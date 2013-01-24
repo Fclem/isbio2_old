@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-import os, copy, tempfile, zipfile
-import shutil
+import os, copy, tempfile, zipfile, shutil
+from django.contrib import auth
 from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
 from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
+from django.contrib.auth.decorators import login_required
+
 
 from rpy2.robjects import r
 import xml.etree.ElementTree as xml
@@ -13,7 +15,6 @@ import shell as rshell
 
 import forms as breezeForms
 from breeze.models import Rscripts, Jobs
-from django.forms.formsets import INITIAL_FORM_COUNT
 
 class RequestStorage():
     form_details = dict()
@@ -35,30 +36,44 @@ class RequestStorage():
 
 storage = RequestStorage()
 
+
 def breeze(request):
-    return render_to_response('index.html')
+    login_form = breezeForms.LoginForm(request.POST or None)
+    if login_form.is_valid():
+        username = request.POST['user_name']
+        password = request.POST['password']
+        user = auth.authenticate(username=username, password=password)
+        if user is not None and user.is_active:
+            auth.login(request, user)
+            return HttpResponseRedirect('/home/')
+
+    return render_to_response('index.html', RequestContext(request, {'log_form': login_form, 'layout': 'inline' }))
+
+def logout(request):
+    auth.logout(request)
+    return HttpResponseRedirect('/breeze/')
 
 def base(request):
     return render_to_response('base.html')
 
-def login(request):
-    return render_to_response('login.html')
-
+@login_required(login_url='/breeze/')
 def home(request):
-    return render_to_response('home.html', {'home_status': 'active'})
+    return render_to_response('home.html', RequestContext(request, {'home_status': 'active'}))
 
+@login_required(login_url='/breeze/')
 def scripts(request):
     all_scripts = Rscripts.objects.all()
-    return render_to_response('scripts.html', {'script_list': all_scripts, 'scripts_status': 'active'})
+    return render_to_response('scripts.html', RequestContext(request, {'script_list': all_scripts, 'scripts_status': 'active'}))
 
+@login_required(login_url='/breeze/')
 def jobs(request):
     sched_jobs = Jobs.objects.filter(status__exact="scheduled")
     histr_jobs = Jobs.objects.exclude(status__exact="scheduled")
-    return render_to_response('jobs.html', {
+    return render_to_response('jobs.html', RequestContext(request, {
         'scheduled': sched_jobs,
         'history': histr_jobs,
         'jobs_status': 'active',
-    })
+    }))
 
 def delete_job(request, jid):
     job = Jobs.objects.get(id=jid)
@@ -113,6 +128,7 @@ def edit_job(request, jid=None):
         'layout': "horizontal",
         'mode': 'edit',
     }))
+
 
 def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
@@ -223,6 +239,7 @@ def append_param(request, which):
         'msg': msg, 'basic': basic_form, 'extra': extra_form, "type": which,
     }))
 
+@login_required(login_url='/breeze/')
 def create_script(request):
     tab = 'general'
     if request.method == 'POST':

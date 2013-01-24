@@ -9,7 +9,7 @@ admin.autodiscover()
 urlpatterns = patterns('',
     url(r'^base/$', views.base),
     url(r'^breeze/$', views.breeze),
-    url(r'^login/$', views.login),
+    url(r'^logout/$', views.logout),
     url(r'^home/$', views.home),
     url(r'^jobs/$', views.jobs),
     url(r'^jobs/delete/(?P<jid>\d+)$', views.delete_job),
