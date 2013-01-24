@@ -48,7 +48,7 @@
         <tbody>
             {% for scr in script_list %}
             <tr>
-                <td><!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
+                <td>{{ scr.author }}<!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
                 <td>{{ scr.name }}</td>
                 <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>

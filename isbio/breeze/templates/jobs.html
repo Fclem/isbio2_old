@@ -49,7 +49,7 @@
             <tbody>
               {% for job in scheduled %}
               <tr>
-                <td>01/Jan/2013</td>
+                <td>{{ job.staged }}</td>
                 <td>{{ job.jname }}</td>
                 <td></td>
                 <td></td>
@@ -79,7 +79,7 @@
             <tbody>
               {% for job in history %}
               <tr>
-                <td>01/Jan/2013</td>
+                <td>{{ job.staged }}</td>
                 <td>{{ job.jname }}</td>
                 <td></td>
                 <td><span class="label label-success">{{ job.status }}</span></td>

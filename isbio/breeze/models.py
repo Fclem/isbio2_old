@@ -1,3 +1,4 @@
+import datetime
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
@@ -14,8 +15,9 @@ class Rscripts(models.Model):
     name = models.CharField(max_length=15, unique=True)
     inln = models.CharField(max_length=75)
     details = models.CharField(max_length=350)
-    categoty = models.CharField(max_length=20)
-    # author = ForeignKey(User)
+    categoty = models.CharField(max_length=20, choices=CATEGORY_OPT)
+    author = ForeignKey(User)
+    creation_date = models.DateField(auto_now_add=True)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
@@ -25,7 +27,7 @@ class Rscripts(models.Model):
     docxml = models.FileField(upload_to=file_name)
     code = models.FileField(upload_to=file_name)
     header = models.FileField(upload_to=file_name)
-    logo = models.FileField(upload_to=file_name)
+    logo = models.FileField(upload_to=file_name, blank=True)
 
     def __unicode__(self):
         return self.name
@@ -41,6 +43,7 @@ class Jobs(models.Model):
     script = ForeignKey(Rscripts)
     # status may be changed to NUMVER later
     status = models.CharField(max_length=15)
+    staged = models.DateField(auto_now_add=True)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
