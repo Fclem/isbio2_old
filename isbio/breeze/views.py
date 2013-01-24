@@ -161,7 +161,7 @@ def create_job(request, sid=None):
     script_inline = script.inln
 
     if request.method == 'POST':
-        print request.FILES
+        # print request.FILES
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
