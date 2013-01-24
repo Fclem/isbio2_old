@@ -1,8 +1,7 @@
 from django import forms
 import re
-from django.forms.formsets import formset_factory, BaseFormSet
 import xml.etree.ElementTree as xml
-from breeze.models import CATEGORY_OPT
+import breeze.models
 from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
 
@@ -15,10 +14,6 @@ class LoginForm(forms.Form):
              'placeholder': 'user name...',
              'class': 'input-medium',
          }),
-#        widget=forms.TextInput(attrs={
-#            'placeholder': 'user name...',
-#            'class': 'input-medium',
-#        })
     )
     password = forms.CharField(
         max_length=30,
@@ -46,24 +41,10 @@ class CustomForm(forms.Form):
         for k in keys:
             self.fields[k] = kwds[k]
 
-class ScriptGeneral(forms.Form):
-    name = forms.CharField(
-        max_length=35,
-        help_text=u'Short name for new script',
-    )
-    inln = forms.CharField(
-        max_length=95,
-        help_text=u'Inline Description',
-    )
-    category = forms.ChoiceField(
-        choices=CATEGORY_OPT,
-        help_text=u'Pick a category from the list',
-    )
-    # logo = forms.FileField(required=False)
-    details = forms.CharField(
-        widget=forms.Textarea(attrs={'cols': 15, 'rows': 7}),
-        help_text=u'More datailed description',
-    )
+class ScriptMainForm(forms.ModelForm):
+    class Meta:
+        model = breeze.models.Rscripts
+        fields = ('name', 'inln', 'category', 'details', 'logo')
 
 class ScriptSources(forms.Form):
     code = forms.FileField()

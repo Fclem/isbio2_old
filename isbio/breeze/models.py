@@ -15,7 +15,7 @@ class Rscripts(models.Model):
     name = models.CharField(max_length=15, unique=True)
     inln = models.CharField(max_length=75)
     details = models.CharField(max_length=350)
-    categoty = models.CharField(max_length=20, choices=CATEGORY_OPT)
+    category = models.CharField(max_length=25, choices=CATEGORY_OPT)
     author = ForeignKey(User)
     creation_date = models.DateField(auto_now_add=True)
 

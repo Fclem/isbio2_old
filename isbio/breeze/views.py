@@ -274,26 +274,25 @@ def create_script(request):
         storage.hidden_form = breezeForms.HiddenForm(request.POST)
         tab = storage.hidden_form['next'].value()
         if storage.hidden_form['curr'].value() == 'general':
-            storage.form_general = breezeForms.ScriptGeneral(request.POST, request.FILES)
+            storage.form_general = breezeForms.ScriptMainForm(request.POST, request.FILES)
             storage.form_general.is_valid()
             local_representation = storage.get_param_list()
-#                storage.new_script.logo = request.FILES['logo']
         elif storage.hidden_form['curr'].value() == 'params':
             local_representation = storage.get_param_list()
         elif storage.hidden_form['curr'].value() == 'source':
             storage.form_sources = breezeForms.ScriptSources(request.POST, request.FILES)
             local_representation = storage.get_param_list()
             if storage.form_sources.is_valid():
-                storage.new_script.code = request.FILES['code']
+                storage.code = request.FILES['code']
         elif storage.hidden_form['curr'].value() == 'summary':
             pass
     else:
         storage.hidden_form = breezeForms.HiddenForm()
-        storage.form_general = breezeForms.ScriptGeneral()
+        storage.form_general = breezeForms.ScriptMainForm()
         storage.form_details = dict()
         local_representation = storage.get_param_list()
         storage.form_sources = breezeForms.ScriptSources()
-        storage.new_script = Rscripts()
+
     return render_to_response('new-script.html', RequestContext(request, {
         'hidden_form': storage.hidden_form,
         'general_form': storage.form_general,
@@ -312,18 +311,16 @@ def save(request):
         # .xml_from_form() - creates doc in tmp for now
         breezeForms.xml_from_form(storage.form_general, storage.form_details, storage.form_sources)
         breezeForms.build_header(storage.form_sources.cleaned_data['header'])
-        storage.new_script.name = storage.form_general.cleaned_data['name']
-        storage.new_script.inln = storage.form_general.cleaned_data['inln']
-        storage.new_script.details = storage.form_general.cleaned_data['details']
-        storage.new_script.category = storage.form_general.cleaned_data['category']
-        storage.new_script.author = request.user
 
-        storage.new_script.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
-        storage.new_script.header.save('name.txt', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt')))
-        storage.new_script.docxml.close()
-        storage.new_script.header.close()
+        dbinst = storage.form_general.save(commit=False)
 
-        storage.new_script.save()
+        dbinst.author = request.user
+        dbinst.code = storage.code
+        dbinst.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
+        dbinst.header.save('name.txt', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt')))
+
+        dbinst.save()
+
         # improve the manipulation with XML - tmp folder not a good idea!
         os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml")
         os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt")
