@@ -6,7 +6,7 @@ from django.core.servers.basehttp import FileWrapper
 from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 
 
 from rpy2.robjects import r
@@ -67,40 +67,63 @@ def scripts(request):
 
 @login_required(login_url='/breeze/')
 def jobs(request):
-    sched_jobs = Jobs.objects.filter(status__exact="scheduled")
-    histr_jobs = Jobs.objects.exclude(status__exact="scheduled")
+    sched_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled")
+    histr_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled")
     return render_to_response('jobs.html', RequestContext(request, {
         'scheduled': sched_jobs,
         'history': histr_jobs,
         'jobs_status': 'active',
     }))
 
+@login_required(login_url='/breeze/')
 def delete_job(request, jid):
     job = Jobs.objects.get(id=jid)
     rshell.del_job(job)
     return HttpResponseRedirect('/jobs/')
 
+@login_required(login_url='/breeze/')
 def delete_script(request, sid):
     script = Rscripts.objects.get(id=sid)
     rshell.del_script(script)
     return HttpResponseRedirect('/scripts/')
 
+@login_required(login_url='/breeze/')
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
 
-def edit_job(request, jid=None):
+@login_required(login_url='/breeze/')
+def edit_job(request, jid=None, mod=None):
     job = Jobs.objects.get(id=jid)
     tree = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.docxml))
 
+    if mod is not None:
+        mode = 'replicate'
+        tmpname = str(job.jname) + '_REPL'
+    else:
+        mode = 'edit'
+        tmpname = str(job.jname)
+
     if request.method == 'POST':
+
+        # post_values = copy.deepcopy(request.POST)
+        # post_values['job_name'] = request.POST['job_name'] + "_replicate"
+
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
-            loc = rshell.get_job_folder(job.jname)
-            shutil.rmtree(loc)
-
             breezeForms.get_job_xml(tree, custom_form, str(job.script.code), str(job.script.header))
+
+            if mode == 'replicate':
+                tmpscript = job.script
+                job = Jobs()
+                job.script = tmpscript
+                job.status = "scheduled"
+                job.juser = request.user
+            else:
+                loc = rshell.get_job_folder(job.jname)
+                shutil.rmtree(loc)
+
             job.jname = head_form.cleaned_data['job_name']
             job.jdetails = head_form.cleaned_data['job_details']
 
@@ -116,7 +139,7 @@ def edit_job(request, jid=None):
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
         return HttpResponseRedirect('/jobs/')
     else:
-        head_form = breezeForms.BasicJobForm(initial={'job_name': str(job.jname), 'job_details': str(job.jdetails)})
+        head_form = breezeForms.BasicJobForm(initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
         custom_form = breezeForms.form_from_xml(xml=tree)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
@@ -126,10 +149,10 @@ def edit_job(request, jid=None):
         'headform': head_form,
         'custform': custom_form,
         'layout': "horizontal",
-        'mode': 'edit',
+        'mode': mode,
     }))
 
-
+@login_required(login_url='/breeze/')
 def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     new_job = Jobs()
@@ -147,6 +170,7 @@ def create_job(request, sid=None):
             new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
             new_job.status = "scheduled"
+            new_job.juser = request.user
 
             new_job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r')))
             new_job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')))
@@ -174,12 +198,14 @@ def create_job(request, sid=None):
         'mode': 'create',
     }))
 
+@login_required(login_url='/breeze/')
 def run_script(request, jid):
     job = Jobs.objects.get(id=jid)
     script = str(job.script.code)
     rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
+@login_required(login_url='/breeze/')
 def delete_param(request, which):
     storage.del_param(which)
     local_representation = storage.get_param_list()
@@ -193,6 +219,7 @@ def delete_param(request, which):
             'status': 'info',
         }))
 
+@login_required(login_url='/breeze/')
 def append_param(request, which):
     basic_form = breezeForms.AddBasic(request.POST or None)
     extra_form = None
@@ -240,6 +267,7 @@ def append_param(request, which):
     }))
 
 @login_required(login_url='/breeze/')
+@permission_required('breeze.add_rscripts', login_url="/breeze/")
 def create_script(request):
     tab = 'general'
     if request.method == 'POST':
@@ -277,6 +305,7 @@ def create_script(request):
         'scripts_status': 'active',
         }))
 
+@login_required(login_url='/breeze/')
 def save(request):
     # validate form_details also somehow in the IF below
     if  storage.form_general.is_valid() and storage.form_sources.is_valid():
@@ -314,6 +343,7 @@ def show_rcode(request, jid):
     # code = str(open("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut), "r").read())
     return render_to_response('forms/code_modal.html', RequestContext(request, { 'job': name, 'scr': code }))
 
+@login_required(login_url='/breeze/')
 def send_zipfile(request, jid):
     job = Jobs.objects.get(id=jid)
     loc = rshell.get_job_folder(str(job.jname))

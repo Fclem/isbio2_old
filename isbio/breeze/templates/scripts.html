@@ -34,9 +34,11 @@
                 <th>Name</th>
                 <th>Inline description</th>
                 <th>
+                  {% if perms.breeze.add_rscripts %}
                   <a href="/new" class="btn btn-mini btn-info">
                     <i class="icon-plus"></i> Add Script
                   </a>
+                  {% endif %}
                 </th>
                 <th></th>
                 <th></th>
@@ -50,8 +52,16 @@
                 <td>{{ scr.name }}</td>
                 <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
-                <td><a href="#" class="btn btn-info" ><i class="icon-edit"></i></a></td>         
-                <td><a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a></td>
+                <td>
+                  {% if perms.breeze.change_rscripts %}
+                    <a href="#" class="btn btn-info" ><i class="icon-edit"></i></a>
+                  {% endif %}
+                </td>         
+                <td>
+                  {% if perms.breeze.delete_rscripts %}
+                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a>
+                  {% endif %}
+                </td>
                 <td></td>
             </tr>
             {% endfor %}

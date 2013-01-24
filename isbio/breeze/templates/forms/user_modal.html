@@ -24,9 +24,10 @@
         {% if  mode == "create" %}
         <input class="btn btn-inverse" type="submit" value="Schedule" />
         <input class="btn btn-inverse" type="submit" value="Run" />
-        {% endif %}
-        {% if  mode == "edit" %}
+        {% elif  mode == "edit" %}
         <input class="btn btn-inverse" type="submit" value="Save" />
+        {% elif  mode == "replicate" %}
+        <input class="btn btn-inverse" type="submit" value="ReSchedule" />
         {% endif %}
         <a class="btn btn-inverse" data-dismiss="modal">Close</a>
       </div>

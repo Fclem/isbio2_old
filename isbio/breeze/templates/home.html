@@ -20,7 +20,9 @@
       <h1>BREEZE DEMO</h1>
       <p class="text-info"><strong>Welcome to BREEZE Home Page!</strong></p>
       <p>&nbsp;</p>
-      <p class="text-info">The main idea behind BREEZE project is to build a 24/7 communication bridge between biologists and bioinformatics resources.</p>
+      <p>Use Name: {{ user.username }}</p>
+      <p>Last Login: {{ user.last_login }}</p>
+      <p>{{ user.get_all_permissions }}</p>
     </div>  
   
   </div>

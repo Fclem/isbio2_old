@@ -214,7 +214,6 @@ def form_from_xml(xml, req=None, init=False):
 
     if input_array != None:
         for input_item in input_array:
-            print "1"
             if input_item.tag == "inputItem":
                 if  input_item.attrib["type"] == "NUM":  # numeric input
                     custom_form.fields[input_item.attrib["comment"]] = forms.FloatField(initial=input_item.attrib["val"])
