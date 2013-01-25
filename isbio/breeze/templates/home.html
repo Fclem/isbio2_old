@@ -11,21 +11,26 @@
 {% block content %}
 <div class="row-fluid">    
   <div class="span3">
-    <div name="datepicker" id="datepicker"></div>
+    <div name="datepicker" id="datepicker" align="center" ></div>
+    <p>&nbsp;</p>
+    <div class="alert alert-info">
+    <p><strong>HUOM!</strong></p>
+    <p>For BUG Tracking reasons please make use of BREEZE GitHub 
+      <a href="https://github.com/findcomrade/isbio/issues" target="_blank"><u>Issues Page</u>.</a> 
+      Any other enhancement ideas are very welcome. Kiitos! </p>
+    </div>
   </div>
   
   <div class="span9">
   
-    <div class="hero-unit">
-      <h1>BREEZE DEMO</h1>
-      <p class="text-info"><strong>Welcome to BREEZE Home Page!</strong></p>
-      <p>&nbsp;</p>
-      <p>It is {% now "jS F Y H:i" %}</p>
+    <div class="well">
       <p>Use Name: {{ user.username }}</p>
       <p>Last Login: {{ user.last_login }}</p>
-      <p>{{ user.get_all_permissions }}</p>
-    </div>  
-  
+      <p>Rights: {{ user.get_all_permissions }}</p>
+    </div>
+    
+    <p>&nbsp;</p>  
+    
   </div>
 </div>
 

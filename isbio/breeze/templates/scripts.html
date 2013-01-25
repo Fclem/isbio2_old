@@ -6,33 +6,32 @@
 
 {% block content %}
 <div class="row-fluid">    
-  <div class="span3">
-    <ul class="nav  nav-pills nav-stacked">
-      <li class="nav-header"><strong>CATEGORIES:</strong></li>
-      <li class="divider"></li>
-      <li class="active"> <a href="#">Show All</a> </li>
-      <li class="divider"></li>
-      <li class="{{ categ_status }}"> <a href="#">General</a> </li>
-      <li class="{{ categ_status }}"> <a href="#">Visualization</a> </li>
-      <li class="{{ categ_status }}"> <a href="#">Screening</a> </li>
-      <li class="{{ categ_status }}"> <a href="#">Sequencing</a>  </li>
-    </ul>
-  </div>
+  <div class="tabbable">
   
-  <div class="span9">
-    <ul class="breadcrumb pull-right">
-      <li> <a href="#">A-Z</a> <span class="divider">/</span> </li> 
-      <li class="active"> <a href="#">Z-A</a>  </li> 
-    </ul>
+    <div class="span2">
+    <!-- Tabs' Header --> 
+      <ul class="nav nav-pills nav-stacked" id="scriptTabs">
+        <li class="nav-header"><strong>CATEGORIES:</strong></li>
+        <li class="active"><a href="#all" data-toggle="tab"><strong>Show All</strong></a></li>
+        {% for cat, key in cat_list %}
+        <li ><a href="#{{ cat }}" data-toggle="tab"><strong>{{ cat }}</strong></a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  
+    <div class="span10">
+      <!--<ul class="breadcrumb pull-right">
+        <li> <a href="#">A-Z</a> <span class="divider">/</span> </li> 
+        <li class="active"> <a href="#">Z-A</a>  </li> 
+      </ul> 
     
-    <div class="container-fluid">
-    <!-- TABLES -->
-    <table class="table table-striped">
-        <head>
-            <tr>
-                <th>Logo</th>
-                <th>Name</th>
-                <th>Inline description</th>
+      <!-- Tabs' Content --> 
+      <div class="tab-content">
+        <div class="tab-pane active" id="all">
+          <table class="table table-striped">
+            <head>
+              <tr>
+                <th>Logo</th> <th>Name</th> <th>Inline description</th>
                 <th>
                   {% if perms.breeze.add_rscripts %}
                   <a href="/new" class="btn btn-mini btn-info">
@@ -40,14 +39,12 @@
                   </a>
                   {% endif %}
                 </th>
-                <th></th>
-                <th></th>
-                <th></th>
+                <th></th> <th></th> <th></th>
             </tr>
-        </head>
-        <tbody>
-            {% for scr in script_list %}
-            <tr>
+            </head>
+            <tbody>
+              {% for scr in script_list %}
+              <tr>
                 <td>{{ scr.author }}<!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
                 <td>{{ scr.name }}</td>
                 <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
@@ -63,11 +60,54 @@
                   {% endif %}
                 </td>
                 <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>   
+        </div>
+        {% for cat, scr_list in cat_list %}
+        <div class="tab-pane" id="{{ cat }}">
+          <table class="table table-striped">
+            <head>
+              <tr>
+                <th>Logo</th> <th>Name</th> <th>Inline description</th>
+                <th>
+                  {% if perms.breeze.add_rscripts %}
+                  <a href="/new" class="btn btn-mini btn-info">
+                    <i class="icon-plus"></i> Add Script
+                  </a>
+                  {% endif %}
+                </th>
+                <th></th> <th></th> <th></th>
             </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </head>
+            <tbody>
+              {% for scr in scr_list %}
+              <tr>
+                <td>{{ scr.author }}<!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
+                <td>{{ scr.name }}</td>
+                <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
+                <td>
+                  {% if perms.breeze.change_rscripts %}
+                    <a href="#" class="btn btn-info" ><i class="icon-edit"></i></a>
+                  {% endif %}
+                </td>         
+                <td>
+                  {% if perms.breeze.delete_rscripts %}
+                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a>
+                  {% endif %}
+                </td>
+                <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>   
+        </div>
+        {% endfor %}
+      </div>
     </div>
+    
   </div>
 </div>
 

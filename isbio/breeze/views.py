@@ -63,7 +63,22 @@ def home(request):
 @login_required(login_url='/breeze/')
 def scripts(request):
     all_scripts = Rscripts.objects.all()
-    return render_to_response('scripts.html', RequestContext(request, {'script_list': all_scripts, 'scripts_status': 'active'}))
+
+    cat_list = dict()
+    categories = list()
+    for script in all_scripts:
+        if str(script.category).capitalize() not in categories:
+            categories.append(str(script.category).capitalize())
+            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category))
+
+    if request.user.has_perm('breeze.add_rscripts'):
+        cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
+    print cat_list
+    return render_to_response('scripts.html', RequestContext(request, {
+        'script_list': all_scripts,
+        'scripts_status': 'active',
+        'cat_list': sorted(cat_list.iteritems())
+    }))
 
 @login_required(login_url='/breeze/')
 def jobs(request):
@@ -72,7 +87,6 @@ def jobs(request):
     return render_to_response('jobs.html', RequestContext(request, {
         'scheduled': sched_jobs,
         'history': histr_jobs,
-        'jobs_status': 'active',
     }))
 
 @login_required(login_url='/breeze/')
@@ -105,10 +119,6 @@ def edit_job(request, jid=None, mod=None):
         tmpname = str(job.jname)
 
     if request.method == 'POST':
-
-        # post_values = copy.deepcopy(request.POST)
-        # post_values['job_name'] = request.POST['job_name'] + "_replicate"
-
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
