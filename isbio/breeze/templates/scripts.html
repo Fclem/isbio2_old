@@ -130,11 +130,12 @@
 <script type="text/javascript">
 function submitItemModalFormBind(url){
          $('#form_modal_apply').submit(function(ev){
+             var formData = new FormData($('form')[0]);
              $.ajax({
                 type: "POST",
                 url: url,
                 enctype: 'multipart/form-data',
-                data: $(this).serialize(),
+                data: formData,
                 success:function(response, textStatus, jqXHR){
                      var form = $("#form_modal_apply_div", response);
                      //form is returned if it is not valid. update modal with returned form
@@ -159,7 +160,10 @@ function submitItemModalFormBind(url){
                             //implement proper error handling
                             console.log("failure");
                             console.log(request.responseText);
-                        }
+                    },
+                cache: false,
+                contentType: false,
+                processData: false
                     });
                     return false;
                 });

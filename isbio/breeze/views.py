@@ -73,7 +73,7 @@ def scripts(request):
 
     if request.user.has_perm('breeze.add_rscripts'):
         cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
-    print cat_list
+
     return render_to_response('scripts.html', RequestContext(request, {
         'script_list': all_scripts,
         'scripts_status': 'active',
@@ -122,7 +122,7 @@ def edit_job(request, jid=None, mod=None):
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
-            breezeForms.get_job_xml(tree, custom_form, str(job.script.code), str(job.script.header))
+            rshell.asseble_job_folder(tree, custom_form, str(job.script.code), str(job.script.header))
 
             if mode == 'replicate':
                 tmpscript = job.script
@@ -142,18 +142,18 @@ def edit_job(request, jid=None, mod=None):
             job.rexecut.close()
             job.docxml.close()
 
-            rshell.submit_job(job)
+            rshell.schedule_job(job)
 
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml")
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
-        return HttpResponseRedirect('/jobs/')
+            return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
         custom_form = breezeForms.form_from_xml(xml=tree)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
-        'url': "/scripts/apply-script/" + str(jid),
+        'url': "/jobs/edit/" + str(jid),
         'name': str(job.script.name),
         'inline': str(job.script.inln),
         'headform': head_form,
@@ -171,11 +171,10 @@ def create_job(request, sid=None):
     script_inline = script.inln
 
     if request.method == 'POST':
-        # print request.FILES
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
-            breezeForms.get_job_xml(tree, custom_form, str(script.code), str(script.header))
+            rshell.asseble_job_folder(tree, custom_form, str(script.code), str(script.header))
             new_job.jname = head_form.cleaned_data['job_name']
             new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
@@ -187,7 +186,10 @@ def create_job(request, sid=None):
             new_job.rexecut.close()
             new_job.docxml.close()
 
-            rshell.submit_job(new_job)
+            rshell.schedule_job(new_job)
+
+            if request.FILES:
+                rshell.add_file_to_job(str(head_form.cleaned_data['job_name']), request.FILES['file'])
 
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml")
@@ -198,7 +200,6 @@ def create_job(request, sid=None):
         custom_form = breezeForms.form_from_xml(xml=tree)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
-        # 'id': sid,
         'url': "/scripts/apply-script/" + str(sid),
         'name': script_name,
         'inline': script_inline,
@@ -320,7 +321,7 @@ def save(request):
     if  storage.form_general.is_valid() and storage.form_sources.is_valid():
         # .xml_from_form() - creates doc in tmp for now
         breezeForms.xml_from_form(storage.form_general, storage.form_details, storage.form_sources)
-        breezeForms.build_header(storage.form_sources.cleaned_data['header'])
+        rshell.build_header(storage.form_sources.cleaned_data['header'])
 
         dbinst = storage.form_general.save(commit=False)
 

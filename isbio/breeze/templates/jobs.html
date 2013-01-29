@@ -144,42 +144,45 @@
             $(this).modal('show'); 
         });
         return false; // prevent the click propagation
-    });
-  
+    });  
 </script>
 <script type="text/javascript">
 function submitItemModalFormBind(url){
          $('#form_modal_apply').submit(function(ev){
-             $.ajax({
+             var formData = new FormData($('form')[0]);
+             $.ajax({                
                 type: "POST",
                 url: url,
                 enctype: 'multipart/form-data',
-                data: $(this).serialize(),
+                data: formData,
                 success:function(response, textStatus, jqXHR){
-                     var form = $("#form_modal_apply_div", response);
-                     //form is returned if it is not valid. update modal with returned form
-                     //change this "if" to check for a specific return code which should be set in the view
-                     if (form.html()) {
-                        //update modal div
-                        
-                         $('#form_modal_apply_div').html(form);
-                         $("input:file").customFileInput({ });
-                         $("#Apply").modal('show');
-                      }
-                      //form is not returned if form submission succeeded
-                      else{                          
+                    var form = $("#form_modal_apply_div", response);
+                    //form is returned if it is not valid. update modal with returned form
+                    //change this "if" to check for a specific return code which should be set in the view
+                    if (form.html()) {
+                       //update modal div
+                       
+                        $('#form_modal_apply_div').html(form);
+                        $("input:file").customFileInput({ });
+                        $("#Apply").modal('show');
+                    }
+                    //form is not returned if form submission succeeded
+                    else{                          
                         //update the entire document with the response received since we received a entire success page and we want to reload the entire page
                         document.open();
                         document.write(response);
                         document.close();
                         $("#Apply").modal('hide');
-                        }
-                },
+                    }
+                }, 
                 error: function (request, status, error) {
                             //implement proper error handling
                             console.log("failure");
                             console.log(request.responseText);
-                        }
+                    },
+                cache: false,
+                contentType: false,
+                processData: false
                     });
                     return false;
                 });

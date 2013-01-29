@@ -1,8 +1,8 @@
-import shutil
+import shutil, re
 from rpy2.robjects import r
 from django.template.defaultfilters import slugify
 
-def submit_job(job):
+def schedule_job(job):
     job.save()
     return 1
 
@@ -28,6 +28,60 @@ def run_job(job, script):
     job.status = "succeed"
     job.save()
     return 1
+
+def asseble_job_folder(tree, data, code, header):
+    rexec = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r", 'w')
+    script_header = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(header), "rb").read()
+    script_code = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(code), "rb").read()
+
+    params = ''
+    for item in tree.getroot().iter('inputItem'):
+        item.set('val', str(data.cleaned_data[item.attrib['comment']]))
+        if item.attrib['type'] == 'CHB':
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(data.cleaned_data[item.attrib['comment']]).upper() + '\n'
+        elif item.attrib['type'] == 'NUM':
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(data.cleaned_data[item.attrib['comment']]) + '\n'
+        elif item.attrib['type'] == 'TAR':
+            lst = re.split(', |,|\n|\r| ', str(data.cleaned_data[item.attrib['comment']]))
+            seq = 'c('
+            for itm in lst:
+                if itm != "":
+                    seq = seq + '\"%s\",' % itm
+            seq = seq[:-1] + ')'
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+        else:  # for text, text_are, drop_down, radio and file
+            params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
+
+    tree.write('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')
+
+    rexec.write("#####################################\n")
+    rexec.write("###       Code Section            ###\n")
+    rexec.write("#####################################\n")
+    rexec.write(script_code)
+    rexec.write("\n\n#####################################\n")
+    rexec.write("### Parameters Definition Section ###\n")
+    rexec.write("#####################################\n")
+    rexec.write(params)
+    rexec.write("\n\n#####################################\n")
+    rexec.write("###       Assembly Section        ###\n")
+    rexec.write("#####################################\n")
+    rexec.write(script_header)
+
+    rexec.close()
+    return 1
+
+def build_header(data):
+    header = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt", 'w')
+    string = str(data)
+    header.write(string)
+    header.close()
+    return header
+
+def add_file_to_job(job_name, f):
+    path = get_job_folder(job_name)
+    with open(path + 'name.txt', 'wb+') as destination:
+        for chunk in f.chunks():
+            destination.write(chunk)
 
 def get_job_folder(name):
     return "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', name))
