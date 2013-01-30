@@ -122,7 +122,8 @@ def edit_job(request, jid=None, mod=None):
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
-            rshell.asseble_job_folder(tree, custom_form, str(job.script.code), str(job.script.header))
+            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), tree, custom_form,
+                                                    str(job.script.code), str(job.script.header), request.FILES)
 
             if mode == 'replicate':
                 tmpscript = job.script
@@ -173,8 +174,10 @@ def create_job(request, sid=None):
     if request.method == 'POST':
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
+
         if head_form.is_valid() and custom_form.is_valid():
-            rshell.asseble_job_folder(tree, custom_form, str(script.code), str(script.header))
+            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), tree, custom_form,
+                                                    str(script.code), str(script.header), request.FILES)
             new_job.jname = head_form.cleaned_data['job_name']
             new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
@@ -187,9 +190,6 @@ def create_job(request, sid=None):
             new_job.docxml.close()
 
             rshell.schedule_job(new_job)
-
-            if request.FILES:
-                rshell.add_file_to_job(str(head_form.cleaned_data['job_name']), request.FILES['file'])
 
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml")

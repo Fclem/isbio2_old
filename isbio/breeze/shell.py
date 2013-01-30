@@ -1,4 +1,4 @@
-import shutil, re
+import os, shutil, re
 from rpy2.robjects import r
 from django.template.defaultfilters import slugify
 
@@ -29,7 +29,7 @@ def run_job(job, script):
     job.save()
     return 1
 
-def asseble_job_folder(tree, data, code, header):
+def assemble_job_folder(jname, tree, data, code, header, FILES):
     rexec = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r", 'w')
     script_header = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(header), "rb").read()
     script_code = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(code), "rb").read()
@@ -49,7 +49,10 @@ def asseble_job_folder(tree, data, code, header):
                     seq = seq + '\"%s\",' % itm
             seq = seq[:-1] + ')'
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
-        else:  # for text, text_are, drop_down, radio and file
+        elif item.attrib['type'] == 'FIL':
+            add_file_to_job(jname, FILES[item.attrib['comment']])
+            params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
+        else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
 
     tree.write('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')
@@ -78,8 +81,12 @@ def build_header(data):
     return header
 
 def add_file_to_job(job_name, f):
-    path = get_job_folder(job_name)
-    with open(path + 'name.txt', 'wb+') as destination:
+    directory = get_job_folder(job_name)
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(directory + f.name, 'wb+') as destination:
         for chunk in f.chunks():
             destination.write(chunk)
 
