@@ -1,7 +1,46 @@
 from django import forms
 import xml.etree.ElementTree as xml
 import breeze.models
+from django.contrib.auth.models import User
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
+
+
+class RegistrationForm(forms.ModelForm):
+    def __init__(self, *args, **kw):
+        super(forms.ModelForm, self).__init__(*args, **kw)
+        self.fields.keyOrder = [
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'fimm_group',
+            'password',
+            'password1']
+
+    username = forms.CharField(label=(u'User Name'))
+    email = forms.EmailField(label=(u'Email Address'))
+    password = forms.CharField(label=(u'Password'), widget=forms.PasswordInput(render_value=False))
+    password1 = forms.CharField(label=(u'Verify Password'), widget=forms.PasswordInput(render_value=False))
+
+    class Meta:
+        model = breeze.models.UserProfile
+        exclude = ('user', 'logo')
+
+    def clean_username(self):
+        username = self.cleaned_data['username']
+        try:
+            User.objects.get(username=username)
+        except User.DoesNotExist:
+            return username
+        raise forms.ValidationError("That user name is already taken, please select another.")
+
+    def clean(self):
+        password = self.cleaned_data.get('password', None)
+        password1 = self.cleaned_data.get('password1', None)
+        if password and password1 and (password == password1):
+            return self.cleaned_data
+        else:
+            raise forms.ValidationError("The passowords did not match. Please try again.")
 
 
 class LoginForm(forms.Form):

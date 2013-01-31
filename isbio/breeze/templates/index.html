@@ -245,8 +245,9 @@
           </div><!--/.nav-collapse -->
           {% if user.is_authenticated %}
             <div class="btn-group pull-right">
-              <a class="btn btn-inverse" href="#"><i class="icon-user icon-white"></i> {{ user }}</a>
-              <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret"></span></a>
+              <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#"> 
+                <i class="icon-user icon-white"></i>  {{ user.username }}  <span class="caret" />
+              </a>
               <ul class="dropdown-menu">
                 <li><a href="/logout/"> Log Out <i class="icon-share"></i></a></li>
               </ul>
@@ -267,7 +268,14 @@
                   
                   {{ log_form.password|as_bootstrap:layout }}
                 </div>
-                <input class="btn btn-inverse" type="submit" value="login" />
+                <div class="btn-group">
+                  <input class="btn btn-inverse" type="submit" value="login" />
+                  <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret" /></a>
+                  <ul class="dropdown-menu pull-right">
+                    <li align="right"><a href="#"> Forgot your Password    <i class="icon-question-sign"></i></a></li>
+                    <li align="right"><a href="/register/"> Register    <i class="icon-pencil"></i></a></li>
+                  </ul>
+                </div>
               </div>
             </div>
           </form>

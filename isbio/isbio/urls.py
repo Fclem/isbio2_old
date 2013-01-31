@@ -8,6 +8,7 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     url(r'^base/$', views.base),
+    url(r'^register/$', views.register_user),
     url(r'^breeze/$', views.breeze),
     url(r'^logout/$', views.logout),
     url(r'^home/$', views.home),

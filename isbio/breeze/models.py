@@ -4,6 +4,7 @@ from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User
 
+
 CATEGORY_OPT = (
         (u'general', u'General'),
         (u'visualization', u'Visualization'),
@@ -79,8 +80,14 @@ class UserProfile(models.Model):
         slug = slugify(self.name)
         return 'r_scripts/%s/%s.%s' % (slug, slug, extension)
 
-    fimm_group = models.CharField(max_length=75, blank=True)
+    first_name = models.CharField(max_length=35)
+    last_name = models.CharField(max_length=35)
+    fimm_group = models.CharField(max_length=75)
     logo = models.FileField(upload_to=file_name, blank=True)
 
     def __unicode__(self):
-        return self.name
+        return self.first_name
+
+# def create_profile_user_callback(sender, instance, **kwargs):
+#    profile, new = UserProfile.objects.get_or_create(user=instance)
+# models.signals.post_save.connect(create_profile_user_callback, User)

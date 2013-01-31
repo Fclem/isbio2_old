@@ -7,12 +7,13 @@ from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.models import User
 
 import xml.etree.ElementTree as xml
 import shell as rshell
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile
 
 class RequestStorage():
     form_details = dict()
@@ -50,6 +51,30 @@ def breeze(request):
 def logout(request):
     auth.logout(request)
     return HttpResponseRedirect('/breeze/')
+
+def register_user(request):
+    if request.user.is_authenticated():
+        return HttpResponseRedirect('/home/')
+    if request.method == 'POST':
+        form = breezeForms.RegistrationForm(request.POST)
+        if form.is_valid():
+            user = User.objects.create_user(username=form.cleaned_data['username'],
+                                    email=form.cleaned_data['email'], password=form.cleaned_data['password'])
+            user.save()
+            # profile = user.get_profile()
+            # profile.fimm_group = form.cleaned_data['fimm_group']
+            # profile.save()
+            profile = UserProfile(user=user, first_name=form.cleaned_data['first_name'],
+                                        last_name=form.cleaned_data['last_name'], fimm_group=form.cleaned_data['fimm_group'])
+            profile.save()
+            return HttpResponseRedirect('/home/')
+        else:
+            return render_to_response('forms/register.html', RequestContext(request, {'form': form}))
+    else:
+        form = breezeForms.RegistrationForm()
+        return render_to_response('forms/register.html', RequestContext(request, {'form': form}))
+
+    return 1
 
 def base(request):
     return render_to_response('base.html')
