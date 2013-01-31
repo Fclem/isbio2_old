@@ -1,7 +1,7 @@
 from django import forms
 import xml.etree.ElementTree as xml
 import breeze.models
-from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
+# from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
 
 class LoginForm(forms.Form):

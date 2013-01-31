@@ -8,8 +8,6 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required, permission_required
 
-
-from rpy2.robjects import r
 import xml.etree.ElementTree as xml
 import shell as rshell
 

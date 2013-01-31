@@ -1,5 +1,6 @@
-import os, shutil, re
+import os, shutil, re, sys, traceback
 from rpy2.robjects import r
+from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
 
 def schedule_job(job):
@@ -18,14 +19,26 @@ def del_script(script):
 
 def run_job(job, script):
     loc = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', job.jname))
-    r.assign('location', loc)
-    r('setwd(toString(location))')
-
     path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut)
-    r.assign('path', path)
-    r('source(toString(path))')
 
-    job.status = "succeed"
+    try:
+        r.assign('location', loc)
+        r('setwd(toString(location))')
+
+        r.assign('path', path)
+        r('source(toString(path))')
+    except RRuntimeError:
+        job.status = "failed"
+
+        log = open(loc + job.jname + ".log", 'w')
+        Type, Value, Trace = sys.exc_info()
+        log.write("Type: %s \nValue: %s \nTrace: %s \n\n" % (str(Type), str(Value), str(Trace)))
+        log.write("print_exception()".center(40, "-") + "\n")
+        traceback.print_exception(Type, Value, Trace, limit=5, file=log)
+        log.close()
+    else:
+        job.status = "succeed"
+
     job.save()
     return 1
 
