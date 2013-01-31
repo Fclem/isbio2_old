@@ -87,6 +87,9 @@ class AddOptions(forms.Form):
     options = forms.CharField(max_length=55,
         widget=forms.TextInput(attrs={'class': 'input-xlarge'}))
 
+class AddDatasetSelect(forms.Form):
+    options = forms.ModelMultipleChoiceField(queryset=breeze.models.DataSet.objects.all(), widget=forms.CheckboxSelectMultiple())
+
 class HiddenForm(forms.Form):
     next = forms.CharField(widget=forms.HiddenInput())
     curr = forms.CharField(widget=forms.HiddenInput())
@@ -114,16 +117,25 @@ def xml_from_form(form_g, form_d, form_s):
         ipt.attrib['default'] = form.cleaned_data['default']
         ipt.attrib['comment'] = form.cleaned_data['comment']
         ipt.attrib['val'] = ""
-        # ipt.attrib['val'] = ""
 
         if form.cleaned_data['type'] == 'DRP' or form.cleaned_data['type'] == 'RAD':
-            form = form_d[key][1]
+            form = form_d[key][1]  # [0] form is the common one
             altar = xml.Element('altArray')
             for opt in str(form.cleaned_data['options']).split():
                 altit = xml.Element('altItem')
                 altit.text = opt
                 altar.append(altit)
             ipt.append(altar)
+
+        if form.cleaned_data['type'] == 'DTS':
+            form = form_d[key][1]
+            altar = xml.Element('altArray')
+            for opt in form.cleaned_data['options']:
+                altit = xml.Element('altItem')
+                altit.text = str(opt)
+                altar.append(altit)
+            ipt.append(altar)
+
         input_array.append(ipt)
 
     root.append(input_array)
@@ -171,6 +183,14 @@ def form_from_xml(xml, req=None, init=False):
                     custom_form.fields[input_item.attrib["comment"]] = forms.BooleanField(required=False, initial=input_item.attrib["val"])
 
                 elif input_item.attrib["type"] == "DRP":  # drop down list
+                    drop_options = tuple()
+
+                    for alt in input_item.find('altArray').findall('altItem'):
+                        drop_options = drop_options + ((alt.text, alt.text),)
+
+                    custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(choices=drop_options, initial=input_item.attrib["val"])
+
+                elif input_item.attrib["type"] == "DTS":  # custom dataset (drop down list control)
                     drop_options = tuple()
 
                     for alt in input_item.find('altArray').findall('altItem'):

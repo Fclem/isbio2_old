@@ -12,7 +12,7 @@ CATEGORY_OPT = (
     )
 
 class Rscripts(models.Model):
-    name = models.CharField(max_length=15, unique=True)
+    name = models.CharField(max_length=35, unique=True)
     inln = models.CharField(max_length=75)
     details = models.CharField(max_length=350)
     category = models.CharField(max_length=25, choices=CATEGORY_OPT)
@@ -55,6 +55,21 @@ class Jobs(models.Model):
 
     def __unicode__(self):
         return self.jname
+
+class DataSet(models.Model):
+    name = models.CharField(max_length=55, unique=True)
+    description = models.CharField(max_length=350, blank=True)
+    author = ForeignKey(User)
+
+    def file_name(self, filename):
+        fname, dot, extension = filename.rpartition('.')
+        slug = slugify(self.name)
+        return 'datasets/%s.%s' % (slug, extension)
+
+    rdata = models.FileField(upload_to=file_name)
+
+    def __unicode__(self):
+        return self.name
 
 class UserProfile(models.Model):
     user = models.ForeignKey(User, unique=True)

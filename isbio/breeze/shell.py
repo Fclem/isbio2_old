@@ -52,10 +52,15 @@ def assemble_job_folder(jname, tree, data, code, header, FILES):
         elif item.attrib['type'] == 'FIL':
             add_file_to_job(jname, FILES[item.attrib['comment']])
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
+        elif item.attrib['type'] == 'DTS':
+            path_to_datasets = "/home/comrade/Projects/fimm/isbio/breeze/datasets/"
+            slug = slugify(data.cleaned_data[item.attrib['comment']]) + '.RData'
+            params = params + str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
         else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
 
     tree.write('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')
+
 
     rexec.write("#####################################\n")
     rexec.write("###       Code Section            ###\n")

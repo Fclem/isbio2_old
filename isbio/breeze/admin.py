@@ -1,6 +1,7 @@
 from django.contrib import admin
-from breeze.models import Rscripts, Jobs, UserProfile
+import breeze.models as breeze_models
 
-admin.site.register(Rscripts)
-admin.site.register(Jobs)
-admin.site.register(UserProfile)
+admin.site.register(breeze_models.Rscripts)
+admin.site.register(breeze_models.Jobs)
+admin.site.register(breeze_models.UserProfile)
+admin.site.register(breeze_models.DataSet)

@@ -14,7 +14,7 @@ import xml.etree.ElementTree as xml
 import shell as rshell
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs
+from breeze.models import Rscripts, Jobs, DataSet
 
 class RequestStorage():
     form_details = dict()
@@ -73,6 +73,7 @@ def scripts(request):
 
     if request.user.has_perm('breeze.add_rscripts'):
         cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
+        cat_list['_Datasets_'] = DataSet.objects.all()
 
     return render_to_response('scripts.html', RequestContext(request, {
         'script_list': all_scripts,
@@ -255,6 +256,10 @@ def append_param(request, which):
         msg = 'FILE INPUT'
     elif which == 'HED':
         msg = 'SECTION NAME'
+    elif which == 'DTS':
+        msg = 'DATASET SELECTOR'
+        extra_form = breezeForms.AddDatasetSelect(request.POST or None)
+        extra_form_valid = extra_form.is_valid()
     else:
         pass
 
