@@ -1,0 +1,22 @@
+{% load bootstrap_toolkit %}
+<!-- Register Modal -->
+
+  <form id="form_modal_register" class="form-horizontal" action="/register/" method="post" enctype="multipart/form-data" >
+    <div id="form_modal_register_div">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="myModalLabel">FIMM</h3>
+      </div>
+      <div class="modal-body">
+        <h4><p class="text-info" align="center"><strong>WELCOME to  BREEZE!</strong></p></h4>
+        <p>&nbsp;</p>
+        <blockquote>
+          <p align="justify">Now you have access to FIMM's custom datasets as well as bulk of Bioinformatics Resources to power your in silico discoveries. 
+              In case you want your own data analysis pipline available in BREEZE you need to be granted extra permissions. Refer to  Contacts Section
+              for more details.</p>
+        </blockquote>   
+        <p>&nbsp;</p>
+        
+        <div align="left"><p>Please login to start</p><a href="/breeze/" class="btn btn-info">START</a></div>        
+      </div>
+  </form>

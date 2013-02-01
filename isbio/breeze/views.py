@@ -7,7 +7,7 @@ from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required, permission_required
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 
 import xml.etree.ElementTree as xml
 import shell as rshell
@@ -60,14 +60,14 @@ def register_user(request):
         if form.is_valid():
             user = User.objects.create_user(username=form.cleaned_data['username'],
                                     email=form.cleaned_data['email'], password=form.cleaned_data['password'])
+            g = Group.objects.get(name='USERS')
+            g.user_set.add(user)
+            user.is_staff = False
             user.save()
-            # profile = user.get_profile()
-            # profile.fimm_group = form.cleaned_data['fimm_group']
-            # profile.save()
             profile = UserProfile(user=user, first_name=form.cleaned_data['first_name'],
                                         last_name=form.cleaned_data['last_name'], fimm_group=form.cleaned_data['fimm_group'])
             profile.save()
-            return HttpResponseRedirect('/home/')
+            return render_to_response('forms/welcome_modal.html', RequestContext(request))
         else:
             return render_to_response('forms/register.html', RequestContext(request, {'form': form}))
     else:

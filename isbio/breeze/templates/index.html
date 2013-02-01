@@ -11,10 +11,15 @@
     <!-- Le styles -->
     <link href="/static/css/bootstrap.css" rel="stylesheet">
     <link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="/static/css/jquery-ui-1.9.2.custom.css" rel="stylesheet">
     <script src="/static/js/bootstrap.js"></script>
     <script src="/static/js/jquery.js"></script>
+    <script src="/static/js/jquery-1.8.3.min.js"></script>
+    <script src="/static/js/jquery-ui-1.9.2.custom.min.js"></script>
+    <script src="/static/js/jquery.ajaxfileupload.js"></script>
     
     {% bootstrap_javascript_tag "dropdown" %}
+    {% bootstrap_javascript_tag "modal" %}
     {% bootstrap_javascript_tag "carousel" %}
     {% bootstrap_javascript_tag "slide" %}
     {% bootstrap_javascript_tag "carousel-iner" %}
@@ -273,7 +278,7 @@
                   <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret" /></a>
                   <ul class="dropdown-menu pull-right">
                     <li align="right"><a href="#"> Forgot your Password    <i class="icon-question-sign"></i></a></li>
-                    <li align="right"><a href="/register/"> Register    <i class="icon-pencil"></i></a></li>
+                    <li align="right"><a href="#" data-toggle="modal" class=" reg" data-target="#register"> Register    <i class="icon-pencil"></i></a></li>
                   </ul>
                 </div>
               </div>
@@ -330,13 +335,19 @@
 
     <footer>
       <div class="container">
-        <center><p>&middot; &copy; FIMM 2012 &middot;</p></center>
+        <center><p>&middot; &copy; FIMM 2013 &middot;</p></center>
       </div>
     </footer>
     
   </div><!-- /.container -->
 
+<!-- Modals -->
+<div id="register" class="modal fade" role="dialog"  aria-hidden="true"></div>
+
 <script>
+      $(document).ready(function() {
+          modalConnect();
+      });
       !function ($) {
         $(function(){
           $('#myCarousel').carousel()
@@ -347,6 +358,58 @@
 
         })
       }(window.jQuery)
-    </script>
+</script>
+<script type="text/javascript">
+function submitItemModalFormBind(url){
+         $('#form_modal_register').submit(function(ev){
+             $.ajax({                
+                type: "POST",
+                url: url,
+                enctype: 'multipart/form-data',
+                data: $(this).serialize(),
+                success:function(response, textStatus, jqXHR){
+                    var form = $("#form_modal_register_div", response);
+                    //form is returned if it is not valid. update modal with returned form
+                    //change this "if" to check for a specific return code which should be set in the view
+                    if (form.html()) {
+                        $('#form_modal_register_div').html(form);
+                        $("#register").modal('show');
+                    }
+                    //form is not returned if form submission succeeded
+                    else{                          
+                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
+                        $('#form_modal_register_div').html(form);
+                        $("#register").modal('show');
+                    }
+                }, 
+                error: function (request, status, error) {
+                            //implement proper error handling
+                            console.log("failure");
+                            console.log(request.responseText);
+                    }
+                });
+                    return false;
+                });
+              }
+function modalConnect()
+        {
+            $(".reg").unbind('click');
+            //bind the click event
+            $(".reg").click(function(ev) {
+                ev.preventDefault();        
+                $.get("/register/", function(results){
+                  //update the dom with the received form
+                  $('#register').html(results);
+                  $("#register").modal('show');
+                  $(document).ready(function () {
+                     //bind the form to an ajax call. ajax call will be set to the received update url
+                     submitItemModalFormBind("/register/");
+                  });
+
+                }, "html");
+                return false; // prevent the click propagation
+            })
+        }
+</script>
 </body>
 </html>
