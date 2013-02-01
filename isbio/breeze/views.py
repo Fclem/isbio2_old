@@ -35,6 +35,9 @@ class RequestStorage():
 
 storage = RequestStorage()
 
+def test(request):
+    print request.FILES
+    return HttpResponseRedirect('/home/')
 
 def breeze(request):
     login_form = breezeForms.LoginForm(request.POST or None)
@@ -110,6 +113,7 @@ def jobs(request):
     histr_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled")
     return render_to_response('jobs.html', RequestContext(request, {
         'scheduled': sched_jobs,
+        'jobs_status': 'active',
         'history': histr_jobs,
     }))
 
