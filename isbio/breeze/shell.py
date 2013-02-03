@@ -4,6 +4,7 @@ from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
 
 def schedule_job(job):
+    # job.progress = 0
     job.save()
     return 1
 
@@ -20,10 +21,16 @@ def del_script(script):
 def run_job(job, script):
     loc = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', job.jname))
     path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut)
+    job.progress = 10
+    job.save()
 
     try:
         r.assign('location', loc)
         r('setwd(toString(location))')
+
+        r('Sys.sleep(3)')
+        job.progress = 50
+        job.save()
 
         r.assign('path', path)
         r('source(toString(path))')
@@ -38,6 +45,7 @@ def run_job(job, script):
         log.close()
     else:
         job.status = "succeed"
+        job.progress = 100
 
     job.save()
     return 1

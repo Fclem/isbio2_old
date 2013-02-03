@@ -30,24 +30,54 @@
     </div>
     
     <p>&nbsp;</p>  
+    <p>
+      <div class="progress progress-striped active"><div class="bar" id="myProgress" style="width: 20%"></div></div>
+      <button id="test">Hey</button> 
+    </p>
     
   </div>
 </div>
 
 <script type="text/javascript">
- $(function () {
+    $(document).ready(function() {
+        GetProgres();
+    });
+    $(function () {
 
-    // Datepicker
-    $('#datepicker').datepicker({
-        inline: true,
-        autoSize: true
+        // Datepicker
+        $('#datepicker').datepicker({
+            inline: true,
+            autoSize: true
+        });
+        
+            
+        // File input (using http://filamentgroup.com/lab/jquery_custom_file_input_book_designing_with_progressive_enhancement/)
+        $('#file').customFileInput({ });
+        
     });
     
-    
-    // File input (using http://filamentgroup.com/lab/jquery_custom_file_input_book_designing_with_progressive_enhancement/)
-    $('#file').customFileInput({ });
-    
+    $("#test").click(function(){
+        GetProgres();    
     });
+</script>
+<script>
+    function GetProgres() {
+    $.ajax({
+        data: "data",
+        type: "GET",
+        url: "/get_progress/",
+        success: function (msg) {
+            var arg = "width: " + msg.toString() + "%";
+            $('#myProgress').attr('style', arg);
+
+            if (msg > 85) {
+                isDone = true;
+            } else {
+                window.setTimeout(GetProgres, 1000);
+            }
+        }
+    });
+    };  
 </script>
 
 {% endblock %}

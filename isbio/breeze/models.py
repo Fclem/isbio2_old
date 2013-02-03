@@ -45,6 +45,7 @@ class Jobs(models.Model):
     # status may be changed to NUMVER later
     status = models.CharField(max_length=15)
     staged = models.DateField(auto_now_add=True)
+    progress = models.IntegerField()
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')

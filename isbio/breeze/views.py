@@ -34,6 +34,7 @@ class RequestStorage():
         del self.form_details[var]
 
 storage = RequestStorage()
+storage.progress = 10
 
 def test(request):
     print request.FILES
@@ -157,6 +158,7 @@ def edit_job(request, jid=None, mod=None):
                 job.script = tmpscript
                 job.status = "scheduled"
                 job.juser = request.user
+                job.progress = 0
             else:
                 loc = rshell.get_job_folder(job.jname)
                 shutil.rmtree(loc)
@@ -212,6 +214,7 @@ def create_job(request, sid=None):
             new_job.script = script
             new_job.status = "scheduled"
             new_job.juser = request.user
+            new_job.progress = 0
 
             new_job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r')))
             new_job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')))
@@ -404,3 +407,9 @@ def send_zipfile(request, jid):
     response['Content-Length'] = temp.tell()
     temp.seek(0)
     return response
+
+def get_progress(request):
+    rep = storage.progress
+    print rep
+    storage.progress += 10
+    return HttpResponse(rep)
