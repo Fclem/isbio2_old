@@ -150,8 +150,6 @@ def edit_job(request, jid=None, mod=None):
         head_form = breezeForms.BasicJobForm(request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
-            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), tree, custom_form,
-                                                    str(job.script.code), str(job.script.header), request.FILES)
 
             if mode == 'replicate':
                 tmpscript = job.script
@@ -162,6 +160,9 @@ def edit_job(request, jid=None, mod=None):
             else:
                 loc = rshell.get_job_folder(job.jname)
                 shutil.rmtree(loc)
+
+            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), tree, custom_form,
+                                                    str(job.script.code), str(job.script.header), request.FILES)
 
             job.jname = head_form.cleaned_data['job_name']
             job.jdetails = head_form.cleaned_data['job_details']

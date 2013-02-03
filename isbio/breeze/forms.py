@@ -251,7 +251,7 @@ def form_from_xml(xml, req=None, init=False):
                                                                        )
                 elif input_item.attrib["type"] == "FIL":  # file upload field
                     custom_form.fields[input_item.attrib["comment"]] = forms.FileField(
-                            initial=input_item.attrib["val"],
+                            # initial=input_item.attrib["val"],
                             widget=forms.ClearableFileInput(
                                 attrs={
                                        'class': "fileup",
