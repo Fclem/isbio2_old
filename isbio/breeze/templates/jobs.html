@@ -9,14 +9,27 @@
   <div class="span3">
     <table class="table table-bordered table-condensed">
       <tbody>
-        <tr class="info"><td>Some Job Name</td></tr>
-        <tr class="info"><td><div class="progress progress-striped active"><div class="bar" style="width: 20%"></div></div></td></tr>
-        <tr class="info"><td>Another Job Name</td></tr>
-        <tr class="info"><td><div class="progress progress-striped active"><div class="bar" style="width: 75%"></div></div></td></tr>
-        <tr class="error"><td>Failed Job</td></tr>
-        <tr class="error"><td><div class="progress progress-danger"><div class="bar" style="width: 50%"></div></div></td></tr>
-        <tr class="success"><td>Accomplished Job</td></tr>
-        <tr class="success"><td><div class="progress"><div class="bar" style="width: 100%"></div></div></td></tr>
+        <div id="dashboard">
+        {% for job in current %}
+          <tr id="{{ job.id }}_tr1" class="info"> <td>{{ job.jname }}  -  {{ job.staged }}</td> </tr>
+          <tr id="{{ job.id }}_tr2" class="info"> 
+              <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" style="width: {{ job.progress }}%" /></div></td> 
+          </tr>
+        {% endfor %}
+        </div>
+        
+        {% for job in history %}
+          {% if job.status == "succeed" %}
+            <tr class="success"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
+            <tr class="success"><td><div class="progress progress-success"><div class="bar" style="width: 100%"/></div></td></tr>
+          {% elif job.status == "failed" %}
+            <tr class="error"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
+            <tr class="error"><td><div class="progress progress-danger"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
+          {% elif job.status == "aborted" %}
+            <tr class="error"><td>{{ job.jname }} - ABORTED!  -  {{ job.staged }}</td></tr>
+            <tr class="error"><td><div class="progress progress-warning"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
+          {% endif %}
+        {% endfor %}
       </tbody>
     </table>
   </div>
@@ -26,13 +39,13 @@
     <div class="tabbable">
       <!-- Tabs' Header --> 
       <ul class="nav nav-tabs" id="jobTabs">
-        <li class="active" ><a href="#scheduled" data-toggle="tab">Scheduled</a></li>
-        <li ><a href="#history" data-toggle="tab">History</a></li>
-        <li ><a href="#current" data-toggle="tab">In Progress</a></li>
+        <li class="{{ scheduled_tab }}" ><a href="#scheduled" data-toggle="tab">Scheduled</a></li>
+        <li class="{{ history_tab }}"><a href="#history" data-toggle="tab">History</a></li>
+        <li class="{{ current_tab }}"><a href="#current" data-toggle="tab">In Progress</a></li>
       </ul>
       <!-- Tabs' Content --> 
       <div class="tab-content">
-        <div class="tab-pane active" id="scheduled">
+        <div class="tab-pane {{ show_sched }}" id="scheduled">
           <table class="table table-striped">
             <head>
               <tr>
@@ -62,7 +75,7 @@
             </tbody>
           </table>
         </div>
-        <div class="tab-pane" id="history">
+        <div class="tab-pane {{ show_hist }}" id="history">
           <table class="table table-striped">
             <head>
               <tr>
@@ -76,7 +89,7 @@
                 <th></th>
               </tr>
             </head>
-            <tbody>
+            <tbody id="history_top">
               {% for job in history %}
               <tr>
                 <td>{{ job.staged }}</td>
@@ -100,7 +113,7 @@
             </tbody>
           </table>
         </div>
-        <div class="tab-pane" id="current">
+        <div class="tab-pane {{ show_curr }}" id="current">
           <table class="table table-striped">
             <head>
               <tr>
@@ -116,17 +129,17 @@
               </tr>
             </head>
             <tbody>
-              
-              <tr>
-                <td>01/Jan/2013</td>
-                <td> Some Name </td>
-                <td> 11% </td>
+              {% for job in current %}
+              <tr id="{{ job.id }}_list_tr">
+                <td>{{ job.staged }}</td>
+                <td>{{ job.jname }}</td>
+                <td id="{{ job.id }}_list_td">{{ job.progress }} %</td>
                 <td></td>
                 <td></td>
                 <td><a href="#" class="btn btn-danger">Abort</a></td>
                 <td></td><td></td><td></td>
               </tr>
-              
+              {% endfor %}
             </tbody>
           </table>
         </div>
@@ -144,6 +157,11 @@
 <script>
     $(document).ready(function() {
         modalConnect();
+        $(".jbar").each(function(){
+            var par = $(this).data("param");
+            updateJobs(par);        
+        });
+        
     });
     $(".rtext").click(function(ev) { 
         ev.preventDefault(); // prevent navigation
@@ -214,8 +232,55 @@ function modalConnect()
 
                 }, "html");
                 return false; // prevent the click propagation
-            })
+            });
         }
+
+function updateJobs(jid) {
+    $.ajax({
+        //data: "data",
+        type: "GET",
+        url: "/update-jobs/"+jid,
+        dataType : 'json',
+        success: function (msg) {
+            //alert(msg.name)
+            var arg = "width: " + msg.progress.toString() + "%";
+            $("#" + jid.toString() + "_bar").attr('style', arg);
+            $("#" + jid.toString() + "_list_td").text(msg.progress.toString() + "%");
+            
+            if (msg.status != "active") {
+                var jstatus = ''
+                var jbar = ''
+                if (msg.status == "succeed") { jstatus = "success"; jbar = "success"; }
+                if (msg.status == "failed") { jstatus = "error"; jbar = "danger"; }
+                if (msg.status == "aborted") { jstatus = "error"; jbar = "warning"; }
+                
+                $("#" + jid.toString() + "_tr1").attr('class', jstatus);
+                $("#" + jid.toString() + "_tr2").attr('class', jstatus);
+                $("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+                $('#history_top').prepend(appendToHistory(msg));
+                $("#" + jid.toString() + "_list_tr").remove();  
+            }
+            else {
+                window.setTimeout(updateJobs, 300, jid);
+            }
+        }
+    });
+    }; 
+function appendToHistory(job){
+    var jstatus = ''
+    if (job.status.toString() == "succeed") { jstatus = "success"; }
+    else if (job.status.toString() == "failed") { jstatus = "important"; }
+    else if (job.status.toString() == "aborted") { jstatus = "warning"; }
+    
+    var new_row = '<tr> <td>  NOW!</p></td> <td>' + job.name + '</td> <td></td>';
+    new_row += '<td> <span class="label label-' + jstatus + '">' + job.status.toString().toUpperCase() + '</span> </td>'
+    new_row += '<td><a class="btn btn-inverse" href="/jobs/download/' + job.id + '"><i class="icon-download-alt"></i> Download Results</a></td>'
+    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-info rtext" data-target="#script"  data-param=' + job.id + '><i class="icon-file"></i></a></td>'
+    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-info apply" data-target="#Apply" data-param="' + job.id + '-repl" ><i class="icon-repeat"></i></a></td>'
+    new_row += '<td><a href="/jobs/delete/' + job.id + '" class="btn btn-info" ><i class="icon-remove"></i></a></td>  </tr>'
+    return new_row;
+} ;
 </script>
+
 
 {% endblock %}

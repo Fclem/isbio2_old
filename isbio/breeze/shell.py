@@ -3,6 +3,7 @@ from rpy2.robjects import r
 from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
 
+
 def schedule_job(job):
     # job.progress = 0
     job.save()
@@ -28,8 +29,13 @@ def run_job(job, script):
         r.assign('location', loc)
         r('setwd(toString(location))')
 
-        r('Sys.sleep(3)')
+        job.progress = 30
+        job.save()
+        r('Sys.sleep(2)')
         job.progress = 50
+        job.save()
+        r('Sys.sleep(1)')
+        job.progress = 70
         job.save()
 
         r.assign('path', path)

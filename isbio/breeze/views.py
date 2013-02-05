@@ -8,6 +8,8 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User, Group
+from multiprocessing import Process
+from django.utils import simplejson
 
 import xml.etree.ElementTree as xml
 import shell as rshell
@@ -109,20 +111,31 @@ def scripts(request):
     }))
 
 @login_required(login_url='/breeze/')
-def jobs(request):
-    sched_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled")
-    histr_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled")
+def jobs(request, state="scheduled"):
+    if state == "history":
+        tab = "history_tab"
+        show_tab = "show_hist"
+    else:
+        tab = "scheduled_tab"
+        show_tab = "show_sched"
+
+    scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
+    history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
+    active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
     return render_to_response('jobs.html', RequestContext(request, {
-        'scheduled': sched_jobs,
+        str(tab): 'active',
+        str(show_tab): 'active',
         'jobs_status': 'active',
-        'history': histr_jobs,
+        'scheduled': scheduled_jobs,
+        'history': history_jobs,
+        'current': active_jobs,
     }))
 
 @login_required(login_url='/breeze/')
 def delete_job(request, jid):
     job = Jobs.objects.get(id=jid)
     rshell.del_job(job)
-    return HttpResponseRedirect('/jobs/')
+    return HttpResponseRedirect('/jobs/history')
 
 @login_required(login_url='/breeze/')
 def delete_script(request, sid):
@@ -245,7 +258,11 @@ def create_job(request, sid=None):
 def run_script(request, jid):
     job = Jobs.objects.get(id=jid)
     script = str(job.script.code)
-    rshell.run_job(job, script)
+    p = Process(target=rshell.run_job, args=(job, script))
+    job.status = "active"
+    job.save()
+    p.start()
+    # rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
 @login_required(login_url='/breeze/')
@@ -408,8 +425,9 @@ def send_zipfile(request, jid):
     temp.seek(0)
     return response
 
-def get_progress(request):
-    rep = storage.progress
-    print rep
-    storage.progress += 10
-    return HttpResponse(rep)
+@login_required(login_url='/breeze/')
+def update_jobs(request, jid):
+    job = Jobs.objects.get(id=jid)
+    response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress)
+
+    return HttpResponse(simplejson.dumps(response), mimetype='application/json')
