@@ -135,8 +135,12 @@ def jobs(request, state="scheduled"):
 @login_required(login_url='/breeze/')
 def delete_job(request, jid):
     job = Jobs.objects.get(id=jid)
+    if (job.status == "scheduled"):
+        tab = ""
+    else:
+        tab = "history"
     rshell.del_job(job)
-    return HttpResponseRedirect('/jobs/history')
+    return HttpResponseRedirect('/jobs/' + tab)
 
 @login_required(login_url='/breeze/')
 def delete_script(request, sid):

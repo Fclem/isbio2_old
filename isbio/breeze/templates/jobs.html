@@ -58,10 +58,10 @@
                 <th>Job Name</th>
                 <th></th>
                 <th></th>
-                <th>Actions:</th>
-                <th></th>
-                <th></th>
-                <th></th>
+                <th>RUN</th>
+                <th>Revise</th>
+                <th>Edit</th>
+                <th>Delete</th>
               </tr>
             </head>
             <tbody>
@@ -71,10 +71,13 @@
                 <td>{{ job.jname }}</td>
                 <td></td>
                 <td></td>
-                <td><a href="/jobs/run/{{ job.id }}" class="btn btn-inverse">Submit</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-info rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-file"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-info apply" data-target="#Apply"  data-param={{ job.id }}><i class="icon-edit"></i></a></td>
-                <td><a href="/jobs/delete/{{ job.id }}" class="btn btn-info" ><i class="icon-remove"></i></a></td>
+                <td><a href="/jobs/run/{{ job.id }}" class="btn btn-success"> <i class="icon-play-circle"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-file"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ job.id }}><i class="icon-white icon-edit"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
+                      <i class="icon-remove-circle"></i>
+                    </a>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -88,10 +91,10 @@
                 <th>Job Name</th>
                 <th></th>
                 <th>Status</th>
-                <th>Actions:</th>
-                <th></th>
-                <th></th>
-                <th></th>
+                <th>Download:</th>
+                <th>Summary</th>
+                <th>Reschedule</th>
+                <th>Delete</th>
               </tr>
             </head>
             <tbody id="history_top">
@@ -100,7 +103,7 @@
                 <td>{{ job.staged }}</td>
                 <td>{{ job.jname }}</td>
                 <td></td>
-                <td>
+                <td> 
                   {% if job.status == "succeed" %}
                     <span class="label label-success">{{ job.status.upper }}</span>
                   {% elif job.status == "failed" %}
@@ -109,10 +112,13 @@
                     <span class="label label-warning">{{ job.status.upper }}</span>
                   {% endif %}
                 </td>
-                <td><a class="btn btn-inverse" href="/jobs/download/{{ job.id }}"><i class="icon-download-alt"></i> Download Results</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-info rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-file"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-info apply" data-target="#Apply" data-param="{{ job.id }}-repl" ><i class="icon-repeat"></i></a></td>
-                <td><a href="/jobs/delete/{{ job.id }}" class="btn btn-info" ><i class="icon-remove"></i></a></td>
+                <td><a class="btn btn-inverse" href="/jobs/download/{{ job.id }}"><i class="icon-white icon-download-alt"></i> Results</a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-file"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.id }}-repl" ><i class="icon-white icon-repeat"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
+                      <i class="icon-remove-circle"></i>
+                    </a>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -158,6 +164,19 @@
 <!-- Modals -->
 <div id="script" class="modal fade" role="dialog"  aria-hidden="true"></div>
 <div id="Apply" class="modal fade" role="dialog"  aria-hidden="true"></div>
+<div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <h3 id="del_title">Delete JOB</h3>
+    </div>
+    <div class="modal-body">
+      <p> Are you sure you DO NOT need this job any more?! </p>
+    </div>
+    <div class="modal-footer">
+      <a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
+      <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+    </div>
+</div>
 
 <script>
     $(document).ready(function() {
@@ -279,10 +298,10 @@ function appendToHistory(job){
     
     var new_row = '<tr> <td>  NOW!</p></td> <td>' + job.name + '</td> <td></td>';
     new_row += '<td> <span class="label label-' + jstatus + '">' + job.status.toString().toUpperCase() + '</span> </td>'
-    new_row += '<td><a class="btn btn-inverse" href="/jobs/download/' + job.id + '"><i class="icon-download-alt"></i> Download Results</a></td>'
-    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-info rtext" data-target="#script"  data-param=' + job.id + '><i class="icon-file"></i></a></td>'
-    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-info apply" data-target="#Apply" data-param="' + job.id + '-repl" ><i class="icon-repeat"></i></a></td>'
-    new_row += '<td><a href="/jobs/delete/' + job.id + '" class="btn btn-info" ><i class="icon-remove"></i></a></td>  </tr>'
+    new_row += '<td><a class="btn btn-inverse" href="/jobs/download/' + job.id + '"><i class="icon-white icon-download-alt"></i> Results</a></td>'
+    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-file"></i></a></td>'
+    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="' + job.id + '-repl" ><i class="icon-white icon-repeat"></i></a></td>'
+    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$("#del_btn").attr("href", "/jobs/delete/' + job.id +'"); $("#del_title").text("' + job.jname + '");"><i class="icon-remove-circle"></i></a></td>  </tr>'
     return new_row;
 } ;
 </script>
