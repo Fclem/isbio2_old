@@ -353,7 +353,7 @@ def create_script(request):
     else:
         storage.hidden_form = breezeForms.HiddenForm()
         storage.form_general = breezeForms.ScriptMainForm()
-        storage.form_details = dict()
+        storage.form_details = OrderedDict()
         local_representation = storage.get_param_list()
         storage.form_sources = breezeForms.ScriptSources()
 
