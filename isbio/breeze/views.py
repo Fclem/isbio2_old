@@ -126,6 +126,7 @@ def jobs(request, state="scheduled"):
         str(tab): 'active',
         str(show_tab): 'active',
         'jobs_status': 'active',
+        'dash_history': history_jobs[0:3],
         'scheduled': scheduled_jobs,
         'history': history_jobs,
         'current': active_jobs,
