@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os, copy, tempfile, zipfile, shutil
+from collections import OrderedDict
 from django.contrib import auth
 from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
@@ -18,14 +19,13 @@ import forms as breezeForms
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile
 
 class RequestStorage():
-    form_details = dict()
+    form_details = OrderedDict()
     def get_param_list(self):
         class creepy():
             pass
         tmp = creepy()
         plist = list()
         pkeys = self.form_details.keys()
-        pkeys.sort()
         for key in pkeys:
             tmp.var = self.form_details[key][0].cleaned_data['inline_var']
             tmp.type = self.form_details[key][0].cleaned_data['type']
@@ -313,9 +313,9 @@ def append_param(request, which):
 
     if basic_form.is_valid() and extra_form_valid:
         # implement adding new param as a separate function in STORAGE class
-        storage.form_details[basic_form.cleaned_data['inline_var']] = list()
-        storage.form_details[basic_form.cleaned_data['inline_var']].append(basic_form)
-        storage.form_details[basic_form.cleaned_data['inline_var']].append(extra_form)
+        storage.form_details[str(basic_form.cleaned_data['inline_var'])] = list()
+        storage.form_details[str(basic_form.cleaned_data['inline_var'])].append(basic_form)
+        storage.form_details[str(basic_form.cleaned_data['inline_var'])].append(extra_form)
         local_representation = storage.get_param_list()
         return render_to_response('new-script.html', RequestContext(request, {
             'hidden_form': storage.hidden_form,

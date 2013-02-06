@@ -150,27 +150,27 @@ def xml_from_form(form_g, form_d, form_s):
     input_array = xml.Element('inputArray')
 
     for key in form_d:
-        form = form_d[key][0]
+        common_form = form_d[key][0]
         ipt = xml.Element('inputItem')
-        ipt.attrib['type'] = form.cleaned_data['type']
-        ipt.attrib['rvarname'] = form.cleaned_data['inline_var']
-        ipt.attrib['default'] = form.cleaned_data['default']
-        ipt.attrib['comment'] = form.cleaned_data['comment']
+        ipt.attrib['type'] = common_form.cleaned_data['type']
+        ipt.attrib['rvarname'] = common_form.cleaned_data['inline_var']
+        ipt.attrib['default'] = common_form.cleaned_data['default']
+        ipt.attrib['comment'] = common_form.cleaned_data['comment']
         ipt.attrib['val'] = ""
 
-        if form.cleaned_data['type'] == 'DRP' or form.cleaned_data['type'] == 'RAD':
-            form = form_d[key][1]  # [0] form is the common one
+        if common_form.cleaned_data['type'] == 'DRP' or common_form.cleaned_data['type'] == 'RAD':
+            extra_form = form_d[key][1]  # [0] form is the common one
             altar = xml.Element('altArray')
-            for opt in str(form.cleaned_data['options']).split():
+            for opt in str(extra_form.cleaned_data['options']).split():
                 altit = xml.Element('altItem')
                 altit.text = opt
                 altar.append(altit)
             ipt.append(altar)
 
-        if form.cleaned_data['type'] == 'DTS':
-            form = form_d[key][1]
+        if common_form.cleaned_data['type'] == 'DTS':
+            extra_form = form_d[key][1]
             altar = xml.Element('altArray')
-            for opt in form.cleaned_data['options']:
+            for opt in extra_form.cleaned_data['options']:
                 altit = xml.Element('altItem')
                 altit.text = str(opt)
                 altar.append(altit)
