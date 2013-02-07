@@ -7,8 +7,8 @@
   </div>
   <div class="modal-body">
     <blockquote>
-      <p>Categoty: {{ scr.category }}</p>
-      <p>{{ scr.inln }}</p>
+      <p class="text-info">Categoty: {{ scr.category|capfirst }}</p>
+      <p class="text-info">{{ scr.inln }}</p>
     </blockquote>   
     <p>&nbsp;</p>
     {{ scr.details }}   

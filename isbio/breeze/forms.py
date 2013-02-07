@@ -68,8 +68,7 @@ class BasicJobForm(forms.Form):
         max_length=35,
     )
     job_details = forms.CharField(
-        widget=forms.Textarea(attrs={'cols': 15, 'rows': 7}),
-        help_text=u'(optional)',
+        widget=forms.Textarea(attrs={'cols': 15, 'rows': 3, 'placeholder': 'optional'}),
         required=False
     )
 

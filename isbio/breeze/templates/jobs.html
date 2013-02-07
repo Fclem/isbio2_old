@@ -274,12 +274,10 @@ function modalConnect()
 
 function updateJobs(jid) {
     $.ajax({
-        //data: "data",
         type: "GET",
         url: "/update-jobs/"+jid,
         dataType : 'json',
         success: function (msg) {
-            //alert(msg.name)
             var arg = "width: " + msg.progress.toString() + "%";
             $("#" + jid.toString() + "_bar").attr('style', arg);
             $("#" + jid.toString() + "_list_td").text(msg.progress.toString() + "%");
@@ -295,6 +293,22 @@ function updateJobs(jid) {
                 $("#" + jid.toString() + "_tr2").attr('class', jstatus);
                 $("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
                 $('#history_top').prepend(appendToHistory(msg));
+                
+                modalConnect();
+                $(".rtext").click(function(ev) { 
+                    ev.preventDefault(); // prevent navigation
+                    var par = $(this).data("param"); 
+                    $("#script").load("/jobs/show-code/"+par, function() { 
+                        $('#collapseOne').collapse('hide');
+                        $(this).modal('show');            
+                    });
+                    return false; // prevent the click propagation
+                }); 
+                $("#new_" + jid.toString() + "_del").click(function(){
+                    $("#del_btn").attr("href", "/jobs/delete/" + jid.toString()); 
+                    $("#del_title").text(msg.name.toString());
+                });
+                
                 $("#" + jid.toString() + "_list_tr").remove();  
             }
             else {
@@ -309,15 +323,23 @@ function appendToHistory(job){
     else if (job.status.toString() == "failed") { jstatus = "important"; }
     else if (job.status.toString() == "aborted") { jstatus = "warning"; }
     
+    // var new_row = '<div class"alert ' + jstatus + '"><button type="button" class="close" data-dismiss="alert">&times;</button>'; 
+    // new_row += '<strong> ' + job.name + ' </strong> </div>';
     var new_row = '<tr> <td>  NOW!</p></td> <td>' + job.name + '</td> <td></td>';
     new_row += '<td> <span class="label label-' + jstatus + '">' + job.status.toString().toUpperCase() + '</span> </td>'
-    new_row += '<td><a class="btn btn-inverse" href="/jobs/download/' + job.id + '"><i class="icon-white icon-download-alt"></i> Results</a></td>'
-    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-file"></i></a></td>'
-    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="' + job.id + '-repl" ><i class="icon-white icon-repeat"></i></a></td>'
-    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$("#del_btn").attr("href", "/jobs/delete/' + job.id +'"); $("#del_title").text("' + job.jname + '");"><i class="icon-remove-circle"></i></a></td>  </tr>'
+    new_row += '<td><div class="btn-group"><a class="btn btn-inverse" href="/jobs/download/' + job.id + '-result"><i class="icon-white icon-download-alt"></i> Results</a>'
+    new_row += '<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button><ul class="dropdown-menu">'
+    new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-result">Results <i class="icon-picture"></i></a></li>'
+    new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-summary">Summary <i class="icon-file"></i></a></li>'
+    new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-code">Script Code <i class="icon-list-alt"></i></a></li>'
+    new_row += '<li class="divider"></li>'
+    new_row += '<li align="right"><a href="/jobs/download/' + job.id + '">Full Job Set <i class="icon-folder-open"></i></a></li></ul></div></td>'
+    new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-file"></i></a></td>'
+    new_row += '<td><a id="new_' + job.id + '_rep" href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="' + job.id + '-repl" ><i class="icon-white icon-repeat"></i></a></td>'
+    new_row += '<td><a id="new_' + job.id + '_del" href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" ><i class="icon-remove-circle"></i></a></td>  </tr>'
     return new_row;
 } ;
 </script>
-
+         
 
 {% endblock %}
