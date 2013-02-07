@@ -72,7 +72,7 @@
                 <td></td>
                 <td></td>
                 <td><a href="/jobs/run/{{ job.id }}" class="btn btn-success"> <i class="icon-play-circle"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-file"></i></a></td>
+                <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-eye-open"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ job.id }}><i class="icon-white icon-edit"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
                       <i class="icon-remove-circle"></i>
@@ -112,7 +112,19 @@
                     <span class="label label-warning">{{ job.status.upper }}</span>
                   {% endif %}
                 </td>
-                <td><a class="btn btn-inverse" href="/jobs/download/{{ job.id }}"><i class="icon-white icon-download-alt"></i> Results</a></td>
+                <td>
+                  <div class="btn-group">
+                    <a class="btn btn-inverse" href="/jobs/download/{{ job.id }}-result"><i class="icon-white icon-download-alt"></i> Results</a>
+                    <button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button>
+                    <ul class="dropdown-menu">
+                      <li align="right"><a href="/jobs/download/{{ job.id }}-result">Results <i class="icon-picture"></i></a></li>
+                      <li align="right"><a href="/jobs/download/{{ job.id }}-summary">Summary <i class="icon-file"></i></a></li>
+                      <li align="right"><a href="/jobs/download/{{ job.id }}-code">Script Code <i class="icon-list-alt"></i></a></li>
+                      <li class="divider"></li>
+                      <li align="right"><a href="/jobs/download/{{ job.id }}">Full Job Set <i class="icon-folder-open"></i></a></li>
+                    </ul>
+                  </div>                    
+                </td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-file"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.id }}-repl" ><i class="icon-white icon-repeat"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
@@ -191,7 +203,8 @@
         ev.preventDefault(); // prevent navigation
         var par = $(this).data("param"); 
         $("#script").load("/jobs/show-code/"+par, function() { 
-            $(this).modal('show'); 
+            $('#collapseOne').collapse('hide');
+            $(this).modal('show');            
         });
         return false; // prevent the click propagation
     });  

@@ -3,14 +3,36 @@
 
   <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">{{ job }}</h3>
+    <h3 id="myModalLabel">{{ name }}</h3>
   </div>
   <div class="modal-body">
+    <h4 id="myModalLabel">{{ script }}</h4>
     <blockquote>
-      <p>{{ scr }}</p>
-    </blockquote>   
+      <p>{{ inline }}</p>
+    </blockquote>
+    
+    <div class="accordion" id="details">
+      <div class="accordion-group">
+        <div class="accordion-heading">
+          <a class="accordion-toggle text-info" data-toggle="collapse" data-parent="#details" href="#collapseOne">
+            <strong>Job Description</strong>
+          </a>
+        </div>
+        <div id="collapseOne" class="accordion-body collapse in">
+          <div class="accordion-inner">
+            {{ description }}
+          </div>
+        </div>
+      </div>
+    </div>
+      
+    <dl>
+    {% for head,val in input %}
+      <dt class="text-info"> {{ head }} </dt>
+      <dd> {{ val }} </dd>
+    {% endfor %}
+    </dl>
   </div>
   <div class="modal-footer">
     <button class="btn btn-inverse" data-dismiss="modal">Okay</button>
   </div>
-    

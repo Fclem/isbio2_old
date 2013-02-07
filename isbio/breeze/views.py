@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, copy, tempfile, zipfile, shutil
+import os, copy, tempfile, zipfile, shutil, fnmatch
 from collections import OrderedDict
 from django.contrib import auth
 from django.core.files import File
@@ -401,17 +401,29 @@ def save(request):
 
 def show_rcode(request, jid):
     job = Jobs.objects.get(id=jid)
-    name = str(job.jname)
-    f = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut))
-    filecontents = f.readlines()
-    code = ''
-    for line in filecontents:
-        code = code + line + '\r\n'
-    # code = str(open("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut), "r").read())
-    return render_to_response('forms/code_modal.html', RequestContext(request, { 'job': name, 'scr': code }))
+    docxml = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.docxml))
+    script = docxml.getroot().attrib["name"]
+    inline = docxml.getroot().find('inline').text
+
+    fields = list()
+    values = list()
+    input_array = docxml.getroot().find('inputArray')
+    if input_array != None:
+        for input_item in input_array:
+            fields.append(input_item.attrib["comment"])
+            values.append(input_item.attrib["val"])
+    parameters = zip(fields, values)
+
+    return render_to_response('forms/code_modal.html', RequestContext(request, {
+        'name': str(job.jname),
+        'script': script,
+        'inline': inline,
+        'description': str(job.jdetails),
+        'input': parameters,
+    }))
 
 @login_required(login_url='/breeze/')
-def send_zipfile(request, jid):
+def send_zipfile(request, jid, mod=None):
     job = Jobs.objects.get(id=jid)
     loc = rshell.get_job_folder(str(job.jname))
     files_list = os.listdir(loc)
@@ -419,8 +431,20 @@ def send_zipfile(request, jid):
 
     temp = tempfile.TemporaryFile()
     archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
-    for item in files_list:
-        archive.write(loc + item, str(item))
+
+    if mod is None:
+        for item in files_list:
+            archive.write(loc + item, str(item))
+    elif mod == "-code":
+        for item in files_list:
+            if fnmatch.fnmatch(item, '*.r'):
+                archive.write(loc + item, str(item))
+    elif mod == "-result":
+        for item in files_list:
+            if not fnmatch.fnmatch(item, '*.xml') and not fnmatch.fnmatch(item, '*.r'):
+                archive.write(loc + item, str(item))
+    elif mod == "-summary":
+        pass
 
     archive.close()
     wrapper = FileWrapper(temp)
