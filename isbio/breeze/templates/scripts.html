@@ -4,11 +4,20 @@
 
 {% block title %}Scripts{% endblock %} 
 
+{% block extra_head %}
+<style>
+  .thumbnails .span4:nth-child(3n+1) {
+margin-left:0;
+}
+
+</style>  
+{% endblock %}
+
 {% block content %}
 <div class="row-fluid">    
   <div class="tabbable">
   
-    <div class="span2">
+    <div class="span2 well">
     <!-- Tabs' Header --> 
       <ul class="nav nav-pills nav-stacked" id="scriptTabs">
         <li class="nav-header"><strong>CATEGORIES:</strong></li>
@@ -20,14 +29,40 @@
     </div>
   
     <div class="span10">
-      <!--<ul class="breadcrumb pull-right">
-        <li> <a href="#">A-Z</a> <span class="divider">/</span> </li> 
-        <li class="active"> <a href="#">Z-A</a>  </li> 
-      </ul> 
+      <div class="row">
+        <ul class="breadcrumb pull-right">
+          <li> <a href="/scripts/">List</a> <span class="divider">/</span> </li> 
+          <li> <a href="/scripts/nails"> Nails</a></li>
+        </ul>
+      </div>
     
       <!-- Tabs' Content --> 
+      <!-- SHOW ALL list goes separately in markup -->
       <div class="tab-content">
         <div class="tab-pane active" id="all">
+        {% if thumbnails %}
+        <div>
+          <ul class="thumbnails">
+          {% for scr in script_list %}
+            <li class="span4">
+              <div class="thumbnail well">
+                <img src="/static/logos/logo.jpg" width="95" height="95" class="img-rounded">
+                <div class="caption">
+                  <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
+                  <p align="center"><i>{{ scr.inln }};</i></p>
+                  <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
+                  <p align="right">
+                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a> 
+                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></p>
+                </div>
+              </div>  
+            </li>
+          {% empty %}
+            <p>No resources available!</p>
+          {% endfor %}
+          </ul>
+        </div>
+        {% else %}
           <table class="table table-striped">
             <head>
               <tr>
@@ -45,28 +80,55 @@
             <tbody>
               {% for scr in script_list %}
               <tr>
-                <td>{{ scr.author }}<!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
-                <td>{{ scr.name }}</td>
-                <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
-                <td>
+                <td><img src="/static/logos/logo.jpg" width="55" height="55" class="img-rounded"></td>
+                <td style="vertical-align: middle">{{ scr.name }}</td>
+                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
+                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
+                <td style="vertical-align: middle">
                   {% if perms.breeze.change_rscripts %}
                     <a href="#" class="btn btn-info" ><i class="icon-edit"></i></a>
                   {% endif %}
                 </td>         
-                <td>
+                <td style="vertical-align: middle">
                   {% if perms.breeze.delete_rscripts %}
                     <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a>
                   {% endif %}
                 </td>
-                <td></td>
+                <td style="vertical-align: middle"></td>
               </tr>
               {% endfor %}
             </tbody>
           </table>   
+        {% endif %}
         </div>
+        
+        
+        <!-- By categories -->
         {% for cat, scr_list in cat_list %}
         <div class="tab-pane" id="{{ cat }}">
+        {% if thumbnails %}
+        <div>
+          <ul class="thumbnails">
+          {% for scr in scr_list %}
+            <li class="span4">
+              <div class="thumbnail well">
+                <img src="/static/logos/logo.jpg" width="95" height="95" class="img-rounded">
+                <div class="caption">
+                  <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
+                  <p align="center"><i>{{ scr.inln }};</i></p>
+                  <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
+                  <p align="right">
+                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a> 
+                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></p>
+                </div>
+              </div>  
+            </li>
+          {% empty %}
+            <p>No resources available!</p>
+          {% endfor %}
+          </ul>
+        </div>
+        {% else %}
           <table class="table table-striped">
             <head>
               <tr>
@@ -84,25 +146,26 @@
             <tbody>
               {% for scr in scr_list %}
               <tr>
-                <td>{{ scr.author }}<!-- <img src="/home/comrade/Projects/fimm/isbio/breeze/{{ scr.logo }}" width="75" height="75" class="img-rounded"> --> </td>
-                <td>{{ scr.name }}</td>
-                <td><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
-                <td>
+                <td style="vertical-align: middle"><img src="/static/logos/logo.jpg" width="55" height="55" class="img-rounded"></td>
+                <td style="vertical-align: middle">{{ scr.name }}</td>
+                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
+                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
+                <td style="vertical-align: middle">
                   {% if perms.breeze.change_rscripts %}
                     <a href="#" class="btn btn-info" ><i class="icon-edit"></i></a>
                   {% endif %}
                 </td>         
-                <td>
+                <td style="vertical-align: middle">
                   {% if perms.breeze.delete_rscripts %}
                     <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a>
                   {% endif %}
                 </td>
-                <td></td>
+                <td style="vertical-align: middle"></td>
               </tr>
               {% endfor %}
             </tbody>
-          </table>   
+          </table>  
+        {% endif %} 
         </div>
         {% endfor %}
       </div>

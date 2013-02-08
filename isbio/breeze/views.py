@@ -90,7 +90,12 @@ def home(request):
     return render_to_response('home.html', RequestContext(request, {'home_status': 'active'}))
 
 @login_required(login_url='/breeze/')
-def scripts(request):
+def scripts(request, layout="list"):
+    if layout == "nails":
+        nails = True
+    else:
+        nails = False
+
     all_scripts = Rscripts.objects.all()
 
     cat_list = dict()
@@ -107,7 +112,8 @@ def scripts(request):
     return render_to_response('scripts.html', RequestContext(request, {
         'script_list': all_scripts,
         'scripts_status': 'active',
-        'cat_list': sorted(cat_list.iteritems())
+        'cat_list': sorted(cat_list.iteritems()),
+        'thumbnails': nails
     }))
 
 @login_required(login_url='/breeze/')
