@@ -1,4 +1,3 @@
-import datetime
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
@@ -38,8 +37,8 @@ class Rscripts(models.Model):
 
 
 class Jobs(models.Model):
-    jname = models.CharField(max_length=55, unique=True)
-    jdetails = models.CharField(max_length=350, blank=True)
+    jname = models.CharField(max_length=55)
+    jdetails = models.CharField(max_length=4900, blank=True)
     juser = ForeignKey(User)
     script = ForeignKey(Rscripts)
     # status may be changed to NUMVER later
@@ -49,7 +48,7 @@ class Jobs(models.Model):
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
-        slug = slugify(self.jname)
+        slug = slugify(self.jname + '_' + self.juser.username)
         return 'jobs/%s/%s.%s' % (slug, slug, extension)
 
     docxml = models.FileField(upload_to=file_name)
@@ -88,7 +87,3 @@ class UserProfile(models.Model):
 
     def __unicode__(self):
         return self.first_name
-
-# def create_profile_user_callback(sender, instance, **kwargs):
-#    profile, new = UserProfile.objects.get_or_create(user=instance)
-# models.signals.post_save.connect(create_profile_user_callback, User)

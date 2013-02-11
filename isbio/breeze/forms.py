@@ -64,6 +64,11 @@ class LoginForm(forms.Form):
     )
 
 class BasicJobForm(forms.Form):
+    def __init__(self, user, edit, *args, **kwargs):
+        self._user = user
+        self._edit = edit
+        super(BasicJobForm, self).__init__(*args, **kwargs)
+
     job_name = forms.CharField(
         max_length=35,
     )
@@ -71,6 +76,18 @@ class BasicJobForm(forms.Form):
         widget=forms.Textarea(attrs={'cols': 15, 'rows': 3, 'placeholder': 'optional'}),
         required=False
     )
+
+    def clean_job_name(self):
+        job_name = self.cleaned_data.get('job_name')
+        try:
+            exst = breeze.models.Jobs.objects.filter(juser__exact=self._user).get(jname=job_name)
+        except breeze.models.Jobs.DoesNotExist:
+            return job_name
+        else:
+            if str(exst) == str(self._edit):
+                return job_name
+            else:
+                raise forms.ValidationError("That job name already exists.")
 
 class CustomForm(forms.Form):
     def setFields(self, kwds):

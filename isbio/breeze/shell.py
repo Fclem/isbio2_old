@@ -10,17 +10,17 @@ def schedule_job(job):
     return 1
 
 def del_job(job):
-    docxml_path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', job.jname))
+    docxml_path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', job.jname, job.juser.username))
     shutil.rmtree(docxml_path)
     job.delete()
 
 def del_script(script):
-    docxml_path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name("r_scripts" , script.name))
+    docxml_path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name("r_scripts" , script.name, None))
     shutil.rmtree(docxml_path)
     script.delete()
 
 def run_job(job, script):
-    loc = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', job.jname))
+    loc = "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', job.jname, job.juser.username))
     path = "/home/comrade/Projects/fimm/isbio/breeze/" + str(job.rexecut)
     job.progress = 10
     job.save()
@@ -56,7 +56,7 @@ def run_job(job, script):
     job.save()
     return 1
 
-def assemble_job_folder(jname, tree, data, code, header, FILES):
+def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     rexec = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r", 'w')
     script_header = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(header), "rb").read()
     script_code = open("/home/comrade/Projects/fimm/isbio/breeze/" + str(code), "rb").read()
@@ -77,7 +77,7 @@ def assemble_job_folder(jname, tree, data, code, header, FILES):
             seq = seq[:-1] + ')'
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
         elif item.attrib['type'] == 'FIL':
-            add_file_to_job(jname, FILES[item.attrib['comment']])
+            add_file_to_job(jname, juser, FILES[item.attrib['comment']])
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
         elif item.attrib['type'] == 'DTS':
             path_to_datasets = "/home/comrade/Projects/fimm/isbio/breeze/datasets/"
@@ -112,8 +112,8 @@ def build_header(data):
     header.close()
     return header
 
-def add_file_to_job(job_name, f):
-    directory = get_job_folder(job_name)
+def add_file_to_job(job_name, user_name, f):
+    directory = get_job_folder(job_name, user_name)
 
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -122,9 +122,9 @@ def add_file_to_job(job_name, f):
         for chunk in f.chunks():
             destination.write(chunk)
 
-def get_job_folder(name):
-    return "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', name))
+def get_job_folder(name, user=None):
+    return "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', name, user))
 
-def file_name(loc, name):
-        slug = slugify(name)
+def file_name(loc, name, user=None):
+        slug = slugify(name + '_' + str(user))
         return '%s/%s/' % (loc, slug)

@@ -167,12 +167,14 @@ def edit_job(request, jid=None, mod=None):
     if mod is not None:
         mode = 'replicate'
         tmpname = str(job.jname) + '_REPL'
+        edit = ""
     else:
         mode = 'edit'
         tmpname = str(job.jname)
+        edit = str(job.jname)
 
     if request.method == 'POST':
-        head_form = breezeForms.BasicJobForm(request.POST)
+        head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
         if head_form.is_valid() and custom_form.is_valid():
 
@@ -184,10 +186,10 @@ def edit_job(request, jid=None, mod=None):
                 job.juser = request.user
                 job.progress = 0
             else:
-                loc = rshell.get_job_folder(job.jname)
+                loc = rshell.get_job_folder(str(job.jname), str(job.juser.username))
                 shutil.rmtree(loc)
 
-            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), tree, custom_form,
+            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
                                                     str(job.script.code), str(job.script.header), request.FILES)
 
             job.jname = head_form.cleaned_data['job_name']
@@ -205,7 +207,7 @@ def edit_job(request, jid=None, mod=None):
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
             return HttpResponseRedirect('/jobs/')
     else:
-        head_form = breezeForms.BasicJobForm(initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
+        head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname), initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
         custom_form = breezeForms.form_from_xml(xml=tree)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
@@ -227,11 +229,11 @@ def create_job(request, sid=None):
     script_inline = script.inln
 
     if request.method == 'POST':
-        head_form = breezeForms.BasicJobForm(request.POST)
+        head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request)
 
         if head_form.is_valid() and custom_form.is_valid():
-            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), tree, custom_form,
+            rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
                                                     str(script.code), str(script.header), request.FILES)
             new_job.jname = head_form.cleaned_data['job_name']
             new_job.jdetails = head_form.cleaned_data['job_details']
@@ -252,7 +254,7 @@ def create_job(request, sid=None):
             os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
             return HttpResponseRedirect('/jobs/')
     else:
-        head_form = breezeForms.BasicJobForm()
+        head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
         custom_form = breezeForms.form_from_xml(xml=tree)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
@@ -431,7 +433,7 @@ def show_rcode(request, jid):
 @login_required(login_url='/breeze/')
 def send_zipfile(request, jid, mod=None):
     job = Jobs.objects.get(id=jid)
-    loc = rshell.get_job_folder(str(job.jname))
+    loc = rshell.get_job_folder(str(job.jname), str(job.juser.username))
     files_list = os.listdir(loc)
     zipname = 'attachment; filename=' + str(job.jname) + '.zip'
 
