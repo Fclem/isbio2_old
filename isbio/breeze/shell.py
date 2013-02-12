@@ -76,7 +76,7 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
                     seq = seq + '\"%s\",' % itm
             seq = seq[:-1] + ')'
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
-        elif item.attrib['type'] == 'FIL':
+        elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
             add_file_to_job(jname, juser, FILES[item.attrib['comment']])
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
         elif item.attrib['type'] == 'DTS':
@@ -126,5 +126,8 @@ def get_job_folder(name, user=None):
     return "/home/comrade/Projects/fimm/isbio/breeze/" + str(file_name('jobs', name, user))
 
 def file_name(loc, name, user=None):
+    if loc == "jobs":
         slug = slugify(name + '_' + str(user))
-        return '%s/%s/' % (loc, slug)
+    else:
+        slug = slugify(name)
+    return '%s/%s/' % (loc, slug)

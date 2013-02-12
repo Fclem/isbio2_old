@@ -72,6 +72,21 @@ class DataSet(models.Model):
     def __unicode__(self):
         return self.name
 
+class InputTemplate(models.Model):
+    name = models.CharField(max_length=55, unique=True)
+    description = models.CharField(max_length=350, blank=True)
+    author = ForeignKey(User)
+
+    def file_name(self, filename):
+        fname, dot, extension = filename.rpartition('.')
+        slug = slugify(self.name)
+        return 'mould/%s.%s' % (slug, extension)
+
+    file = models.FileField(upload_to=file_name)
+
+    def __unicode__(self):
+        return self.name
+
 class UserProfile(models.Model):
     user = models.ForeignKey(User, unique=True)
 

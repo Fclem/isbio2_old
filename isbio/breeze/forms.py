@@ -131,10 +131,10 @@ class AddBasic(forms.Form):
     comment = forms.CharField(max_length=55,
         widget=forms.TextInput(attrs={'class': 'input-xlarge'})
         )
-    default = forms.CharField(max_length=35,
-        widget=forms.TextInput(attrs={'class': 'input-mini'}),
-        required=False
-        )
+#    default = forms.CharField(max_length=35,
+#        widget=forms.TextInput(attrs={'class': 'input-mini'}),
+#        required=False
+#        )
 
 class AddOptions(forms.Form):
     def drop_titles(self, *args, **kwargs):
@@ -145,6 +145,11 @@ class AddOptions(forms.Form):
 
 class AddDatasetSelect(forms.Form):
     options = forms.ModelMultipleChoiceField(queryset=breeze.models.DataSet.objects.all(), widget=forms.CheckboxSelectMultiple())
+
+class AddTemplateInput(forms.Form):
+    """ This control is for uploading template
+        inpit file which can be downloaded from BREEZE beforehand """
+    options = forms.ModelChoiceField(queryset=breeze.models.InputTemplate.objects.all())
 
 class HiddenForm(forms.Form):
     next = forms.CharField(widget=forms.HiddenInput())
@@ -170,9 +175,14 @@ def xml_from_form(form_g, form_d, form_s):
         ipt = xml.Element('inputItem')
         ipt.attrib['type'] = common_form.cleaned_data['type']
         ipt.attrib['rvarname'] = common_form.cleaned_data['inline_var']
-        ipt.attrib['default'] = common_form.cleaned_data['default']
         ipt.attrib['comment'] = common_form.cleaned_data['comment']
         ipt.attrib['val'] = ""
+
+        if common_form.cleaned_data['type'] == 'TPL':
+            extra_form = form_d[key][1]
+            ipt.attrib['default'] = str(extra_form.cleaned_data['options'])
+        else:
+            ipt.attrib['default'] = ""
 
         if common_form.cleaned_data['type'] == 'DRP' or common_form.cleaned_data['type'] == 'RAD':
             extra_form = form_d[key][1]  # [0] form is the common one
@@ -265,12 +275,13 @@ def form_from_xml(xml, req=None, init=False):
                             widget=forms.RadioSelect(attrs={'value': input_item.attrib["default"]}),
                             choices=radio_options, help_text=u'',
                                                                        )
-                elif input_item.attrib["type"] == "FIL":  # file upload field
+                elif input_item.attrib["type"] == "FIL" or input_item.attrib["type"] == "TPL":  # file upload field
                     custom_form.fields[input_item.attrib["comment"]] = forms.FileField(
                             # initial=input_item.attrib["val"],
                             widget=forms.ClearableFileInput(
                                 attrs={
-                                       'class': "fileup",
+                                       'class': input_item.attrib["type"],
+                                       'which': input_item.attrib["default"],
                                 }
                                                             )
                                                                                        )

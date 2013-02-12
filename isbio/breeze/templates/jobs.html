@@ -226,7 +226,11 @@ function submitItemModalFormBind(url){
                        //update modal div
                        
                         $('#form_modal_apply_div').html(form);
-                        $("input:file").customFileInput({ });
+                        if ($("input:file").hasClass('TPL')){
+                            var which = $("input:file").filter('.TPL').attr('which');
+                            $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                        }
+                        //$("input:file").customFileInput({ });
                         $("#Apply").modal('show');
                     }
                     //form is not returned if form submission succeeded
@@ -261,6 +265,12 @@ function modalConnect()
                   //update the dom with the received form
                   $('#Apply').html(results);
                   $("input:file").customFileInput({ });
+                  
+                  if ($("input:file").hasClass('TPL')){
+                      var which = $("input:file").filter('.TPL').attr('which');
+                      $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                  }
+                  
                   $("#Apply").modal('show');
                   $(document).ready(function () {
                      //bind the form to an ajax call. ajax call will be set to the received update url

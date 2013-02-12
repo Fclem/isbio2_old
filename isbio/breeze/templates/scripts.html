@@ -207,6 +207,10 @@ function submitItemModalFormBind(url){
                         //update modal div
                         
                          $('#form_modal_apply_div').html(form);
+                         if ($("input:file").hasClass('TPL')){
+                             var which = $("input:file").filter('.TPL').attr('which');
+                             $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                         }
                          $("input:file").customFileInput({ });
                          $("#Apply").modal('show');
                       }
@@ -242,6 +246,11 @@ function modalConnect()
                 $.get("/scripts/apply-script/"+par, function(results){
                   //update the dom with the received form
                   $('#Apply').html(results);
+                  
+                  if ($("input:file").hasClass('TPL')){
+                      var which = $("input:file").filter('.TPL').attr('which');
+                      $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                  }
                   $("input:file").customFileInput({ });
                   $("#Apply").modal('show');
                   $(document).ready(function () {

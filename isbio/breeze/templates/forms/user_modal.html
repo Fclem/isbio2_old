@@ -17,7 +17,9 @@
         {% csrf_token %}
         {{ headform|as_bootstrap:layout }}
         <p class="text-info"><strong>Input/Output Specification:</strong></p>
-        {{ custform|as_bootstrap:layout }}
+        {% for item in custform %}
+          {{ item|as_bootstrap:layout }}
+        {% endfor %}
             
       </div>
       <div class="modal-footer">

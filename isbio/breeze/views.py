@@ -16,7 +16,7 @@ import xml.etree.ElementTree as xml
 import shell as rshell
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -317,6 +317,10 @@ def append_param(request, which):
         msg = 'FILE INPUT'
     elif which == 'HED':
         msg = 'SECTION NAME'
+    elif which == 'TPL':
+        msg = 'TEMPLATE INPUT'
+        extra_form = breezeForms.AddTemplateInput(request.POST or None)
+        extra_form_valid = extra_form.is_valid()
     elif which == 'DTS':
         msg = 'DATASET SELECTOR'
         extra_form = breezeForms.AddDatasetSelect(request.POST or None)
@@ -461,6 +465,18 @@ def send_zipfile(request, jid, mod=None):
     response['Content-Length'] = temp.tell()
     temp.seek(0)
     return response
+
+@login_required(login_url='/breeze/')
+def send_template(request, name):
+    template = InputTemplate.objects.get(name=name)
+    path_to_file = "/home/comrade/Projects/fimm/isbio/breeze/" + str(template.file)
+    f = open(path_to_file, 'r')
+    myfile = File(f)
+    response = HttpResponse(myfile, mimetype='application/force-download')
+    folder, slash, file = str(template.file).rpartition('/')
+    response['Content-Disposition'] = 'attachment; filename=' + file
+    return response
+
 
 @login_required(login_url='/breeze/')
 def update_jobs(request, jid):
