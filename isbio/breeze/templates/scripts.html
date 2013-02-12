@@ -7,25 +7,33 @@
 {% block extra_head %}
 <style>
   .thumbnails .span4:nth-child(3n+1) {
-margin-left:0;
+    
+    margin-left:0;
 }
+  .thumbnail {
+      border-style: groove; 
+      border-radius: 7px;
+      background: url('/static/nail.png');
+  }
 
 </style>  
 {% endblock %}
 
 {% block content %}
-<div class="row-fluid">    
-  <div class="tabbable">
+<div class="container">    
+  <div class="row-fluid">
   
-    <div class="span2 well">
+    <div class="span2">
     <!-- Tabs' Header --> 
-      <ul class="nav nav-pills nav-stacked" id="scriptTabs">
-        <li class="nav-header"><strong>CATEGORIES:</strong></li>
-        <li class="active"><a href="#all" data-toggle="tab"><strong>Show All</strong></a></li>
-        {% for cat, key in cat_list %}
-        <li ><a href="#{{ cat }}" data-toggle="tab"><strong>{{ cat }}</strong></a></li>
-        {% endfor %}
-      </ul>
+      <div data-spy="affix" >
+        <ul class="nav nav-pills nav-stacked" id="scriptTabs">
+          <li class="nav-header"><strong>CATEGORIES:</strong></li>
+          <li class="active"><a href="#all" data-toggle="tab"><strong>Show All</strong></a></li>
+          {% for cat, key in cat_list %}
+            <li ><a href="#{{ cat }}" data-toggle="tab"><strong>{{ cat }}</strong></a></li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
   
     <div class="span10">
@@ -45,7 +53,7 @@ margin-left:0;
           <ul class="thumbnails">
           {% for scr in script_list %}
             <li class="span4">
-              <div class="thumbnail well">
+              <div class="thumbnail">
                 <img src="/static/logos/logo.jpg" width="95" height="95" class="img-rounded">
                 <div class="caption">
                   <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
@@ -91,7 +99,7 @@ margin-left:0;
                 </td>         
                 <td style="vertical-align: middle">
                   {% if perms.breeze.delete_rscripts %}
-                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a>
+                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-trash"></i></a>
                   {% endif %}
                 </td>
                 <td style="vertical-align: middle"></td>

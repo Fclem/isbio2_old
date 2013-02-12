@@ -42,12 +42,15 @@
     {% bootstrap_javascript_tag "dropdown" %}
     {% bootstrap_javascript_tag "tab" %}
     {% bootstrap_javascript_tag "collapse" %}
+    {% bootstrap_javascript_tag "affix" %}
         
     {% block extra_head %}{% endblock %}
     <style type="text/css">
       /* Override some defaults */
       html, body {
-        background-color: #eee;
+        background: url('/static/wall.png');
+        
+        background-repeat: repeat;
       }
       body {
         padding-top: 5px; 

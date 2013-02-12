@@ -7,39 +7,41 @@
 {% block content %}
 <div class="row-fluid">    
   <div class="span3">
-    <table class="table table-bordered table-condensed">
-      <tbody>
-        <div id="dashboard">
-        {% for job in current %}
-          <tr id="{{ job.id }}_tr1" class="info"> <td>{{ job.jname }}  -  {{ job.staged }}</td> </tr>
-          <tr id="{{ job.id }}_tr2" class="info"> 
-              <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" style="width: {{ job.progress }}%" /></div></td> 
-          </tr>
-        {% empty %}
-          <tr class="info"><td> <div align="center"> Nothing is running at the moment. </div> </td></tr>
-        {% endfor %}
-        
-        </div>
-        
-        {% for job in dash_history %}
-          {% if job.status == "succeed" %}
-            <tr class="success"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
-            <tr class="success"><td><div class="progress progress-success"><div class="bar" style="width: 100%"/></div></td></tr>
-          {% elif job.status == "failed" %}
-            <tr class="error"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
-            <tr class="error"><td><div class="progress progress-danger"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
-          {% elif job.status == "aborted" %}
-            <tr class="error"><td>{{ job.jname }} - ABORTED!  -  {{ job.staged }}</td></tr>
-            <tr class="error"><td><div class="progress progress-warning"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
-          {% endif %}
+    <div data-spy="affix" class="span3">
+      <table class="table table-bordered table-condensed">
+        <tbody>
+          <div id="dashboard">
+          {% for job in current %}
+            <tr id="{{ job.id }}_tr1" class="info"> <td>{{ job.jname }}  -  {{ job.staged }}</td> </tr>
+            <tr id="{{ job.id }}_tr2" class="info"> 
+                <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" style="width: {{ job.progress }}%" /></div></td> 
+            </tr>
           {% empty %}
-            <tr class="info"><td> <div align="center"> You do not have job history yet. </div> </td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+            <tr class="info"><td> <div align="center"> Nothing is running at the moment. </div> </td></tr>
+          {% endfor %}
+          
+          </div>
+          
+          {% for job in dash_history %}
+            {% if job.status == "succeed" %}
+              <tr class="success"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
+              <tr class="success"><td><div class="progress progress-success"> <div class="bar" style="width: 100%"/> </div></td></tr>
+            {% elif job.status == "failed" %}
+              <tr class="error"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
+              <tr class="error"><td><div class="progress progress-danger"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
+            {% elif job.status == "aborted" %}
+              <tr class="error"><td>{{ job.jname }} - ABORTED!  -  {{ job.staged }}</td></tr>
+              <tr class="error"><td><div class="progress progress-warning"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
+            {% endif %}
+            {% empty %}
+              <tr class="info"><td> <div align="center"> You do not have job history yet. </div> </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   
-  <div class="span9">
+  <div class="span9" >
 
     <div class="tabbable">
       <!-- Tabs' Header --> 
@@ -50,7 +52,7 @@
       </ul>
       <!-- Tabs' Content --> 
       <div class="tab-content">
-        <div class="tab-pane {{ show_sched }}" id="scheduled">
+        <div class="tab-pane {{ show_sched }}" id="scheduled" style="padding-bottom: 250px">
           <table class="table table-striped">
             <head>
               <tr>
@@ -75,7 +77,7 @@
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-eye-open"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ job.id }}><i class="icon-white icon-edit"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
-                      <i class="icon-remove-circle"></i>
+                      <i class="icon-trash"></i>
                     </a>
                 </td>
               </tr>
@@ -83,7 +85,7 @@
             </tbody>
           </table>
         </div>
-        <div class="tab-pane {{ show_hist }}" id="history">
+        <div class="tab-pane {{ show_hist }}" id="history" style="padding-bottom: 250px">
           <table class="table table-striped">
             <head>
               <tr>
@@ -128,7 +130,7 @@
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-file"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.id }}-repl" ><i class="icon-white icon-repeat"></i></a></td>
                 <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
-                      <i class="icon-remove-circle"></i>
+                      <i class="icon-trash"></i>
                     </a>
                 </td>
               </tr>
@@ -136,7 +138,7 @@
             </tbody>
           </table>
         </div>
-        <div class="tab-pane {{ show_curr }}" id="current">
+        <div class="tab-pane {{ show_curr }}" id="current" style="padding-bottom: 250px">
           <table class="table table-striped">
             <head>
               <tr>
