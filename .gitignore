@@ -12,4 +12,5 @@ isbio/breeze/jobs
 isbio/breeze/tmp
 isbio/breeze/datasets/
 isbio/breeze/static/logos/
+isbio/breeze/mould/
 .gitignore~
