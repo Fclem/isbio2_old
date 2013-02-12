@@ -20,8 +20,8 @@ margin-left:0;
     <div class="row ">
       <img style="float: left; margin: 1px 11px 1px 19px; height: 72px; width: 72px;" src="/static/user.jpg" class="thumbnail img-rounded">
       <p>User Name: @{{ user.username }}</p>
-      <p><strong> {{ user.profile }} </strong></p>
-      <span class=" badge badge-warning">8 in progress</span> <span class=" badge badge-info">15 sheduled</span>            
+      <p><strong> First Last Name </strong></p>
+      <span class=" badge badge-info">15 sheduled</span>            
     </div>  
   </div>   
   
@@ -34,6 +34,11 @@ margin-left:0;
       <a href="https://github.com/findcomrade/isbio/issues" target="_blank"><u>Issues Page</u>.</a> 
       Any other enhancement ideas are very welcome. Kiitos! </p>
     </div>
+    
+    <div id="chart" style="width:100%; height:400px;">
+        
+    </div>
+
   </div>
         
 
@@ -48,6 +53,33 @@ margin-left:0;
 </div>
 
 <script type="text/javascript">
+    $(document).ready(function() {
+        var chart1 = new Highcharts.Chart({
+        chart: {
+            renderTo: 'chart',
+            backgroundColor: 'transparent',
+            type: 'bar',
+        },
+        title: {
+            text: 'Fruit Consumption'
+        },
+        xAxis: {
+            categories: ['Apples', 'Bananas', 'Oranges']
+        },
+        yAxis: {
+            title: {
+                text: 'Fruit eaten'
+            }
+        },
+        series: [{
+            name: 'Jane',
+            data: [1, 0, 4]
+        }, {
+            name: 'John',
+            data: [5, 7, 3]
+        }]
+    });
+});
     $(function () {
 
         // Datepicker
