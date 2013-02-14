@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+
+{% block title %}Help{% endblock %} 
+
+{% block extra_head %}
+
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+  <!-- Nav ========================== -->
+  <div class="span3">
+    <div data-spy="affix" >
+      <ul class="nav nav-pills nav-stacked bs-docs-sidenav" style="margin-left: 70px; margin-top: 50px;">
+        <li><a href="#intro"><strong> Introduction </strong></a></li>
+        <li><a href="#overview"><strong> Overview </strong></a></li>
+      </ul>
+    </div>
+  </div>
+  <!-- DOC ========================== -->
+  <div class="span9">
+    <!-- introduction ========================== -->
+    <section id="intro">
+        <div class="page-header"> <h2>Introduction</h2> </div>
+        <p class="lead">The main idea behind BREEZE project is to build a 24/7 communication bridge between biologists and bioinformatics resources.</p>
+    </section>
+    
+    <!-- overview ========================== -->
+    <section id="overview">
+        <div class="page-header"> <h2>Overview</h2> </div>
+        <p class="lead text-info">Development status: BETA VERSION</p>
+    </section>
+  </div>
+</div>
+
+{% endblock %}

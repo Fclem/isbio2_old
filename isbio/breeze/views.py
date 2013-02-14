@@ -90,6 +90,10 @@ def home(request):
     return render_to_response('home.html', RequestContext(request, {'home_status': 'active'}))
 
 @login_required(login_url='/breeze/')
+def dochelp(request):
+    return render_to_response('help.html', RequestContext(request, {'help_status': 'active'}))
+
+@login_required(login_url='/breeze/')
 def scripts(request, layout="list"):
     if layout == "nails":
         nails = True

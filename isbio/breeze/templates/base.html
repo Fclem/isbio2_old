@@ -65,7 +65,7 @@
   <link rel="stylesheet" type="text/css" href="/static/css/jquery.ui.1.9.2.ie.css"/>
   <![endif]-->
     <!-- /main navigation bar -->  
-    <div class="navbar navbar-inverse">
+    <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
           <a class="brand" href="/breeze/">BREEZE</a>
@@ -90,7 +90,7 @@
                 <a href="/scripts"> <i class="icon-list-alt"></i> Scripts</a> 
               </li>
               <li class="{{ help_status }}">
-                <a href="#"> <i class="icon-question-sign"></i> Help</a> 
+                <a href="/help"> <i class="icon-question-sign"></i> Help</a> 
               </li>
               <ul class="nav nav-tabs"></ul>
               <ul class="nav pull-right"></ul>
@@ -101,11 +101,9 @@
     </div> <!-- /main navigation bar -->
 
     <!-- /global container under the nav-bar -->
-    <div class="container-fluid">        
+    <div class="container-fluid" style="margin-top:  50px">        
       {% block content %}
-      <div class="row-fluid">    
       
-      </div>
       {% endblock %}
       
       <hr>
