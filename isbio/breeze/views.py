@@ -488,3 +488,8 @@ def update_jobs(request, jid):
     response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress)
 
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
+@login_required(login_url='/breeze/')
+def builder(request):
+    form = breezeForms.ScriptMainForm()
+    return render_to_response('form-builder.html', RequestContext(request, {'forma': form, }))

@@ -4,6 +4,7 @@ fimm_venv
 *.log
 *.r~
 *.html~
+*.js~
 isbio/.project
 isbio/.pydevproject
 isbio/.settings

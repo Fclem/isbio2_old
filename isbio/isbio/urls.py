@@ -29,6 +29,7 @@ urlpatterns = patterns('',
     url(r'^update-jobs/(?P<jid>\d+)?$', views.update_jobs),
     url(r'^jobs/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile),
     url(r'^get/template/(?P<name>[a-z]+\d+)$', views.send_template),
+    url(r'^builder/$', views.builder),
     url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
                  {'document_root': settings.MEDIA_ROOT}),
     # Examples:
