@@ -13,20 +13,22 @@ CATEGORY_OPT = (
 
 class Rscripts(models.Model):
     name = models.CharField(max_length=35, unique=True)
-    inln = models.CharField(max_length=75)
-    details = models.CharField(max_length=350)
-    category = models.CharField(max_length=25, choices=CATEGORY_OPT)
+    inln = models.CharField(max_length=75, blank=True)
+    details = models.CharField(max_length=350, blank=True)
+    category = models.CharField(max_length=25, choices=CATEGORY_OPT, default=u'general')
     author = ForeignKey(User)
     creation_date = models.DateField(auto_now_add=True)
+    draft = models.BooleanField(default=True)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
         slug = slugify(self.name)
         return 'r_scripts/%s/%s.%s' % (slug, slug, extension)
 
-    docxml = models.FileField(upload_to=file_name)
-    code = models.FileField(upload_to=file_name)
-    header = models.FileField(upload_to=file_name)
+
+    docxml = models.FileField(upload_to=file_name, blank=True)
+    code = models.FileField(upload_to=file_name, blank=True)
+    header = models.FileField(upload_to=file_name, blank=True)
     logo = models.FileField(upload_to=file_name, blank=True)
 
     def __unicode__(self):
