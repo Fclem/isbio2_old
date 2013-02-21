@@ -6,6 +6,7 @@ Unidecode==0.04.12
 argparse==1.2.1
 django-bootstrap-toolkit==2.6.22
 django-cerner-auth==0.2
+django-configurations==0.1
 django-social-auth==0.7.10
 httplib2==0.7.7
 logilab-astng==0.24.1
