@@ -1,4 +1,7 @@
 fimm_venv
+venv
+pids
+logs
 *.pyc
 *.py~
 *.log
