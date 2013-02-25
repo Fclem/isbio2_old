@@ -125,6 +125,7 @@ class BreezeSettings(Settings):
         'bootstrap_toolkit',
         'breeze',
         'south',
+        'gunicorn',
         # Uncomment the next line to enable the admin:
         'django.contrib.admin',
         # Uncomment the next line to enable admin documentation:

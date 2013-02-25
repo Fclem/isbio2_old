@@ -1,9 +1,13 @@
 fimm_venv
+venv
+pids
+logs
 *.pyc
 *.py~
 *.log
 *.r~
 *.html~
+*.js~
 isbio/.project
 isbio/.pydevproject
 isbio/.settings
@@ -14,3 +18,4 @@ isbio/breeze/datasets/
 isbio/breeze/static/logos/
 isbio/breeze/mould/
 .gitignore~
+
