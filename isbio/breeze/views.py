@@ -166,7 +166,7 @@ def read_descr(request, sid=None):
 @login_required(login_url='/breeze/')
 def edit_job(request, jid=None, mod=None):
     job = Jobs.objects.get(id=jid)
-    tree = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.docxml))
+    tree = xml.parse("/home/comrade/Projects/fimm/db/" + str(job.docxml))
 
     if mod is not None:
         mode = 'replicate'
@@ -199,16 +199,16 @@ def edit_job(request, jid=None, mod=None):
             job.jname = head_form.cleaned_data['job_name']
             job.jdetails = head_form.cleaned_data['job_details']
 
-            job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r')))
-            job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')))
+            job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/tmp/rexec.r')))
+            job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/tmp/job.xml')))
             job.rexecut.close()
             job.docxml.close()
 
             rshell.schedule_job(job)
 
             # improve the manipulation with XML - tmp folder not a good idea!
-            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml")
-            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
+            os.remove(r"/home/comrade/Projects/fimm/tmp/job.xml")
+            os.remove(r"/home/comrade/Projects/fimm/tmp/rexec.r")
             return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname), initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
@@ -228,7 +228,7 @@ def edit_job(request, jid=None, mod=None):
 def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     new_job = Jobs()
-    tree = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(script.docxml))
+    tree = xml.parse("/home/comrade/Projects/fimm/db/" + str(script.docxml))
     script_name = tree.getroot().attrib['name']
     script_inline = script.inln
 
@@ -246,16 +246,16 @@ def create_job(request, sid=None):
             new_job.juser = request.user
             new_job.progress = 0
 
-            new_job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r')))
-            new_job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml')))
+            new_job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/tmp/rexec.r')))
+            new_job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/tmp/job.xml')))
             new_job.rexecut.close()
             new_job.docxml.close()
 
             rshell.schedule_job(new_job)
 
             # improve the manipulation with XML - tmp folder not a good idea!
-            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/job.xml")
-            os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/rexec.r")
+            os.remove(r"/home/comrade/Projects/fimm/tmp/job.xml")
+            os.remove(r"/home/comrade/Projects/fimm/tmp/rexec.r")
             return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
@@ -401,14 +401,14 @@ def save(request):
 
         dbinst.author = request.user
         dbinst.code = storage.code
-        dbinst.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml')))
-        dbinst.header.save('name.txt', File(open('/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt')))
+        dbinst.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/tmp/test.xml')))
+        dbinst.header.save('name.txt', File(open('/home/comrade/Projects/fimm/tmp/header.txt')))
 
         dbinst.save()
 
         # improve the manipulation with XML - tmp folder not a good idea!
-        os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml")
-        os.remove(r"/home/comrade/Projects/fimm/isbio/breeze/tmp/header.txt")
+        os.remove(r"/home/comrade/Projects/fimm/tmp/test.xml")
+        os.remove(r"/home/comrade/Projects/fimm/tmp/header.txt")
 
         return HttpResponseRedirect('/scripts/')
     else:
@@ -417,7 +417,7 @@ def save(request):
 
 def show_rcode(request, jid):
     job = Jobs.objects.get(id=jid)
-    docxml = xml.parse("/home/comrade/Projects/fimm/isbio/breeze/" + str(job.docxml))
+    docxml = xml.parse("/home/comrade/Projects/fimm/db/" + str(job.docxml))
     script = docxml.getroot().attrib["name"]
     inline = docxml.getroot().find('inline').text
 
@@ -473,7 +473,7 @@ def send_zipfile(request, jid, mod=None):
 @login_required(login_url='/breeze/')
 def send_template(request, name):
     template = InputTemplate.objects.get(name=name)
-    path_to_file = "/home/comrade/Projects/fimm/isbio/breeze/" + str(template.file)
+    path_to_file = "/home/comrade/Projects/fimm/db/" + str(template.file)
     f = open(path_to_file, 'r')
     myfile = File(f)
     response = HttpResponse(myfile, mimetype='application/force-download')

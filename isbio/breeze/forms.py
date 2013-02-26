@@ -206,7 +206,7 @@ def xml_from_form(form_g, form_d, form_s):
 
     root.append(input_array)
 
-    newxml = open("/home/comrade/Projects/fimm/isbio/breeze/tmp/test.xml", 'w')
+    newxml = open("/home/comrade/Projects/fimm/tmp/test.xml", 'w')
     xml.ElementTree(root).write(newxml)
     newxml.close()
     return newxml

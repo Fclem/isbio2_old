@@ -22,7 +22,7 @@ class Rscripts(models.Model):
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
         slug = slugify(self.name)
-        return 'r_scripts/%s/%s.%s' % (slug, slug, extension)
+        return 'scripts/%s/%s.%s' % (slug, slug, extension)
 
     docxml = models.FileField(upload_to=file_name)
     code = models.FileField(upload_to=file_name)
@@ -93,7 +93,7 @@ class UserProfile(models.Model):
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
         slug = slugify(self.name)
-        return 'r_scripts/%s/%s.%s' % (slug, slug, extension)
+        return 'profiles/%s/%s.%s' % (slug, slug, extension)
 
     first_name = models.CharField(max_length=35)
     last_name = models.CharField(max_length=35)
