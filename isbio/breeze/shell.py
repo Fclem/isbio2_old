@@ -2,6 +2,7 @@ import os, shutil, re, sys, traceback
 from rpy2.robjects import r
 from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
+from django.conf import settings
 
 
 def schedule_job(job):
@@ -10,18 +11,18 @@ def schedule_job(job):
     return 1
 
 def del_job(job):
-    docxml_path = "/home/comrade/Projects/fimm/db/" + str(file_name('jobs', job.jname, job.juser.username))
+    docxml_path = str(settings.MEDIA_ROOT) + str(file_name('jobs', job.jname, job.juser.username))
     shutil.rmtree(docxml_path)
     job.delete()
 
 def del_script(script):
-    docxml_path = "/home/comrade/Projects/fimm/db/" + str(file_name("scripts" , script.name, None))
+    docxml_path = str(settings.MEDIA_ROOT) + str(file_name("scripts" , script.name, None))
     shutil.rmtree(docxml_path)
     script.delete()
 
 def run_job(job, script):
-    loc = "/home/comrade/Projects/fimm/db/" + str(file_name('jobs', job.jname, job.juser.username))
-    path = "/home/comrade/Projects/fimm/db/" + str(job.rexecut)
+    loc = str(settings.MEDIA_ROOT) + str(file_name('jobs', job.jname, job.juser.username))
+    path = str(settings.MEDIA_ROOT) + str(job.rexecut)
     job.progress = 10
     job.save()
 
@@ -58,8 +59,8 @@ def run_job(job, script):
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     rexec = open("/home/comrade/Projects/fimm/tmp/rexec.r", 'w')
-    script_header = open("/home/comrade/Projects/fimm/db/" + str(header), "rb").read()
-    script_code = open("/home/comrade/Projects/fimm/db/" + str(code), "rb").read()
+    script_header = open(str(settings.MEDIA_ROOT) + str(header), "rb").read()
+    script_code = open(str(settings.MEDIA_ROOT) + str(code), "rb").read()
 
     params = ''
     for item in tree.getroot().iter('inputItem'):
@@ -80,7 +81,7 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
             add_file_to_job(jname, juser, FILES[item.attrib['comment']])
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
         elif item.attrib['type'] == 'DTS':
-            path_to_datasets = "/home/comrade/Projects/fimm/db/datasets/"
+            path_to_datasets = str(settings.MEDIA_ROOT) + "datasets/"
             slug = slugify(data.cleaned_data[item.attrib['comment']]) + '.RData'
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
         else:  # for text, text_are, drop_down, radio
@@ -123,7 +124,7 @@ def add_file_to_job(job_name, user_name, f):
             destination.write(chunk)
 
 def get_job_folder(name, user=None):
-    return "/home/comrade/Projects/fimm/db/" + str(file_name('jobs', name, user))
+    return str(settings.MEDIA_ROOT) + str(file_name('jobs', name, user))
 
 def file_name(loc, name, user=None):
     if loc == "jobs":

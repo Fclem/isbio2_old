@@ -9,6 +9,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User, Group
+from django.conf import settings
 from multiprocessing import Process
 from django.utils import simplejson
 
@@ -166,7 +167,7 @@ def read_descr(request, sid=None):
 @login_required(login_url='/breeze/')
 def edit_job(request, jid=None, mod=None):
     job = Jobs.objects.get(id=jid)
-    tree = xml.parse("/home/comrade/Projects/fimm/db/" + str(job.docxml))
+    tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
 
     if mod is not None:
         mode = 'replicate'
@@ -228,7 +229,7 @@ def edit_job(request, jid=None, mod=None):
 def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     new_job = Jobs()
-    tree = xml.parse("/home/comrade/Projects/fimm/db/" + str(script.docxml))
+    tree = xml.parse(str(settings.MEDIA_ROOT) + str(script.docxml))
     script_name = tree.getroot().attrib['name']
     script_inline = script.inln
 
@@ -417,7 +418,7 @@ def save(request):
 
 def show_rcode(request, jid):
     job = Jobs.objects.get(id=jid)
-    docxml = xml.parse("/home/comrade/Projects/fimm/db/" + str(job.docxml))
+    docxml = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
     script = docxml.getroot().attrib["name"]
     inline = docxml.getroot().find('inline').text
 
@@ -473,7 +474,7 @@ def send_zipfile(request, jid, mod=None):
 @login_required(login_url='/breeze/')
 def send_template(request, name):
     template = InputTemplate.objects.get(name=name)
-    path_to_file = "/home/comrade/Projects/fimm/db/" + str(template.file)
+    path_to_file = str(settings.MEDIA_ROOT) + str(template.file)
     f = open(path_to_file, 'r')
     myfile = File(f)
     response = HttpResponse(myfile, mimetype='application/force-download')
