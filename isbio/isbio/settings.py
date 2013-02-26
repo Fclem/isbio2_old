@@ -181,7 +181,7 @@ class DevSettings(BreezeSettings):
         }
     }
 
-    MEDIA_ROOT = ''
+    MEDIA_ROOT = '/home/dbychkov/dev/isbio/db/'
     MEDIA_URL = '/media/'
 
     STATIC_ROOT = '/home/dbychkov/dev/isbio/static/'
