@@ -184,7 +184,7 @@ class DevSettings(BreezeSettings):
     MEDIA_ROOT = ''
     MEDIA_URL = '/media/'
 
-    STATIC_ROOT = ''
+    STATIC_ROOT = '/home/dbychkov/dev/isbio/static/'
     STATIC_URL = '/static/'
 
     # Additional locations of static files

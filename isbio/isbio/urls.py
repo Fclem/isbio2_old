@@ -7,9 +7,10 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
+    url(r'^$', views.breeze),
+    url(r'^breeze/$', views.breeze),
     url(r'^base/$', views.base),
     url(r'^register/$', views.register_user),
-    url(r'^breeze/$', views.breeze),
     url(r'^logout/$', views.logout),
     url(r'^home/$', views.home),
     url(r'^help/$', views.dochelp),

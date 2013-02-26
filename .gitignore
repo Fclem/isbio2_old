@@ -2,12 +2,16 @@ fimm_venv
 venv
 pids
 logs
+static
+tmp
+db
 *.pyc
 *.py~
 *.log
 *.r~
 *.html~
 *.js~
+*.sh~
 isbio/.project
 isbio/.pydevproject
 isbio/.settings
