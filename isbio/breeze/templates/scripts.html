@@ -29,6 +29,7 @@
         <ul class="nav nav-pills nav-stacked" id="scriptTabs">
           <li class="nav-header"><strong>CATEGORIES:</strong></li>
           <li class="active"><a href="#all" data-toggle="tab"><strong>Show All</strong></a></li>
+          <li class="divider"></li>
           {% for cat, key in cat_list %}
             <li ><a href="#{{ cat }}" data-toggle="tab"><strong>{{ cat }}</strong></a></li>
           {% endfor %}
@@ -61,7 +62,7 @@
                   <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
                   <p align="right">
                     <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a> 
-                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></p>
+                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}/">Apply</a></p>
                 </div>
               </div>  
             </li>
@@ -77,12 +78,19 @@
                 <th>Logo</th> <th>Name</th> <th>Inline description</th>
                 <th>
                   {% if perms.breeze.add_rscripts %}
-                  <a href="/new" class="btn btn-mini btn-info">
+                  <a href="/new" class="btn btn-mini btn-primary">
                     <i class="icon-plus"></i> Add Script
                   </a>
                   {% endif %}
                 </th>
-                <th></th> <th></th> <th></th>
+                <th>
+                  {% if perms.breeze.add_rscripts %}
+                  <a href="#" data-toggle="modal" class="btn btn-mini btn-primary apply" data-target="#Apply"  data-param="/new-script/">
+                    <i class="icon-plus"></i>
+                  </a>
+                  {% endif %}
+                </th>
+                <th></th> <th></th>
             </tr>
             </head>
             <tbody>
@@ -91,15 +99,15 @@
                 <td><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle">{{ scr.name }}</td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
+                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></td>
                 <td style="vertical-align: middle">
                   {% if perms.breeze.change_rscripts %}
-                    <a href="#" class="btn btn-info" ><i class="icon-edit"></i></a>
+                    <a href="/scripts/script-editor/{{ scr.id }}" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
                   {% endif %}
                 </td>         
                 <td style="vertical-align: middle">
                   {% if perms.breeze.delete_rscripts %}
-                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-trash"></i></a>
+                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-danger" ><i class="icon-trash"></i></a>
                   {% endif %}
                 </td>
                 <td style="vertical-align: middle"></td>
@@ -127,7 +135,7 @@
                   <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
                   <p align="right">
                     <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a> 
-                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></p>
+                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></p>
                 </div>
               </div>  
             </li>
@@ -157,15 +165,15 @@
                 <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle">{{ scr.name }}</td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
+                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></td>
                 <td style="vertical-align: middle">
                   {% if perms.breeze.change_rscripts %}
-                    <a href="#" class="btn btn-info" ><i class="icon-edit"></i></a>
+                    <a href="#" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
                   {% endif %}
                 </td>         
                 <td style="vertical-align: middle">
                   {% if perms.breeze.delete_rscripts %}
-                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-info" ><i class="icon-remove"></i></a>
+                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-danger" ><i class="icon-trash"></i></a>
                   {% endif %}
                 </td>
                 <td style="vertical-align: middle"></td>
@@ -251,7 +259,7 @@ function modalConnect()
             $(".apply").click(function(ev) {
                 ev.preventDefault(); // prevent navigation
                 var par = $(this).data("param");
-                $.get("/scripts/apply-script/"+par, function(results){
+                $.get(par.toString(), function(results){
                   //update the dom with the received form
                   $('#Apply').html(results);
                   
@@ -263,7 +271,7 @@ function modalConnect()
                   $("#Apply").modal('show');
                   $(document).ready(function () {
                      //bind the form to an ajax call. ajax call will be set to the received update url
-                     submitItemModalFormBind("/scripts/apply-script/"+par);
+                     submitItemModalFormBind(par.toString());
                   });
 
                 }, "html");

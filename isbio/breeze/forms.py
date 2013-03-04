@@ -64,6 +64,19 @@ class LoginForm(forms.Form):
         })
     )
 
+class NewScriptDialog(forms.Form):
+    name = forms.CharField(label=(u'Script Name'))
+
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        try:
+            breeze.models.Rscripts.objects.get(name=name)
+        except breeze.models.Rscripts.DoesNotExist:
+            return name
+        else:
+            raise forms.ValidationError("That script name is already taken.")
+
+
 class BasicJobForm(forms.Form):
     def __init__(self, user, edit, *args, **kwargs):
         self._user = user
@@ -96,6 +109,22 @@ class CustomForm(forms.Form):
         keys.sort()
         for k in keys:
             self.fields[k] = kwds[k]
+
+### Forms for script submissions ###
+class ScriptBasics(forms.ModelForm):
+    class Meta:
+        model = breeze.models.Rscripts
+        fields = ('name', 'inln', 'category', 'details')
+
+class ScriptAttributes(forms.ModelForm):
+    class Meta:
+        model = breeze.models.Rscripts
+        fields = ('author', 'draft')
+
+class ScriptLogo(forms.ModelForm):
+    class Meta:
+        model = breeze.models.Rscripts
+        fields = ('logo',)
 
 class ScriptMainForm(forms.ModelForm):
     class Meta:

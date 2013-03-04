@@ -489,3 +489,47 @@ def update_jobs(request, jid):
     response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress)
 
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
+@login_required(login_url='/breeze/')
+def builder(request):
+    form = breezeForms.ScriptMainForm()
+    return render_to_response('form-builder.html', RequestContext(request, {'forma': form, }))
+
+@login_required(login_url='/breeze/')
+def editor(request, sid=None):
+    script = Rscripts.objects.get(id=sid)
+    basic = breezeForms.ScriptBasics()
+    attrs = breezeForms.ScriptAttributes()
+    logos = breezeForms.ScriptLogo()
+    return render_to_response('script-editor.html', RequestContext(request, {
+        'scripts_status': 'active',
+        'script': script,
+        'basic_form': basic,
+        'attr_form': attrs,
+        'logo_form': logos
+    }))
+
+@login_required(login_url='/breeze/')
+def new_script_dialog(request):
+    """
+    This view provides a dialog to create a new script and save new script in DB.
+    If script name is valid, the view creates an instance in DB which has the following fields completed:
+    Name, Category, Creation Date, Author and Script's root folder.
+    """
+    form = breezeForms.NewScriptDialog(request.POST or None)
+
+    if form.is_valid():
+        sname = str(form.cleaned_data.get('name', None))
+        newpath = rshell.new_script_folder(sname)
+        dbitem = Rscripts(name=sname, author=request.user)
+        dbitem.save()
+        return HttpResponseRedirect('/scripts/')
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': form,
+        'action': '/new-script/',
+        'header': 'Create New Script',
+        'layout': 'horizontal',
+        'submit': 'Add'
+    }))
+

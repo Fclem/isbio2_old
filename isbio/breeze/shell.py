@@ -4,6 +4,9 @@ from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
 from django.conf import settings
 
+def new_script_folder(name):
+    path = ""
+    return path
 
 def schedule_job(job):
     # job.progress = 0
@@ -18,6 +21,7 @@ def del_job(job):
 def del_script(script):
     docxml_path = str(settings.MEDIA_ROOT) + str(file_name("scripts" , script.name, None))
     shutil.rmtree(docxml_path)
+
     script.delete()
 
 def run_job(job, script):
