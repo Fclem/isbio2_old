@@ -200,16 +200,16 @@ def edit_job(request, jid=None, mod=None):
             job.jname = head_form.cleaned_data['job_name']
             job.jdetails = head_form.cleaned_data['job_details']
 
-            job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/tmp/rexec.r')))
-            job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/tmp/job.xml')))
+            job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
+            job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
             job.rexecut.close()
             job.docxml.close()
 
             rshell.schedule_job(job)
 
             # improve the manipulation with XML - tmp folder not a good idea!
-            os.remove(r"/home/comrade/Projects/fimm/tmp/job.xml")
-            os.remove(r"/home/comrade/Projects/fimm/tmp/rexec.r")
+            os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
+            os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
             return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname), initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
@@ -247,16 +247,16 @@ def create_job(request, sid=None):
             new_job.juser = request.user
             new_job.progress = 0
 
-            new_job.rexecut.save('name.r', File(open('/home/comrade/Projects/fimm/tmp/rexec.r')))
-            new_job.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/tmp/job.xml')))
+            new_job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
+            new_job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
             new_job.rexecut.close()
             new_job.docxml.close()
 
             rshell.schedule_job(new_job)
 
             # improve the manipulation with XML - tmp folder not a good idea!
-            os.remove(r"/home/comrade/Projects/fimm/tmp/job.xml")
-            os.remove(r"/home/comrade/Projects/fimm/tmp/rexec.r")
+            os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
+            os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
             return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
@@ -402,19 +402,19 @@ def save(request):
 
         dbinst.author = request.user
         dbinst.code = storage.code
-        dbinst.docxml.save('name.xml', File(open('/home/comrade/Projects/fimm/tmp/test.xml')))
-        dbinst.header.save('name.txt', File(open('/home/comrade/Projects/fimm/tmp/header.txt')))
+        dbinst.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'test.xml')))
+        dbinst.header.save('name.txt', File(open(str(settings.TEMP_FOLDER) + 'header.txt')))
 
         dbinst.save()
 
         # improve the manipulation with XML - tmp folder not a good idea!
-        os.remove(r"/home/comrade/Projects/fimm/tmp/test.xml")
-        os.remove(r"/home/comrade/Projects/fimm/tmp/header.txt")
+        os.remove(str(settings.TEMP_FOLDER) + 'test.xml')
+        os.remove(str(settings.TEMP_FOLDER) + 'header.txt')
 
         return HttpResponseRedirect('/scripts/')
     else:
         # need an error handler here!
-        pass
+        return HttpResponseRedirect('/scripts/')
 
 def show_rcode(request, jid):
     job = Jobs.objects.get(id=jid)

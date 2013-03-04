@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 import xml.etree.ElementTree as xml
 import breeze.models
 from django.contrib.auth.models import User
@@ -206,7 +207,8 @@ def xml_from_form(form_g, form_d, form_s):
 
     root.append(input_array)
 
-    newxml = open("/home/comrade/Projects/fimm/tmp/test.xml", 'w')
+    # newxml = open("/home/comrade/Projects/fimm/tmp/test.xml", 'w')
+    newxml = open(str(settings.TEMP_FOLDER) + 'test.xml', 'w')
     xml.ElementTree(root).write(newxml)
     newxml.close()
     return newxml

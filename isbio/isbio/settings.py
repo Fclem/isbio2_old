@@ -45,6 +45,9 @@ class BreezeSettings(Settings):
     # If you set this to False, Django will not use timezone-aware datetimes.
     USE_TZ = True
 
+    # !CUSTOM! tempory folder for the application
+    TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
+
     # Absolute filesystem path to the directory that will hold user-uploaded files.
     # Example: "/home/media/media.lawrence.com/media/"
     MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
@@ -181,6 +184,7 @@ class DevSettings(BreezeSettings):
         }
     }
 
+    TEMP_FOLDER = '/home/dbychkov/dev/isbio/tmp/'
     MEDIA_ROOT = '/home/dbychkov/dev/isbio/db/'
     MEDIA_URL = '/media/'
 

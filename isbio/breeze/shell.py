@@ -58,7 +58,8 @@ def run_job(job, script):
     return 1
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
-    rexec = open("/home/comrade/Projects/fimm/tmp/rexec.r", 'w')
+    # rexec = open("/home/comrade/Projects/fimm/tmp/rexec.r", 'w')
+    rexec = open(str(settings.TEMP_FOLDER) + 'rexec.r', 'w')
     script_header = open(str(settings.MEDIA_ROOT) + str(header), "rb").read()
     script_code = open(str(settings.MEDIA_ROOT) + str(code), "rb").read()
 
@@ -87,7 +88,8 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
         else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
 
-    tree.write('/home/comrade/Projects/fimm/tmp/job.xml')
+    # tree.write('/home/comrade/Projects/fimm/tmp/job.xml')
+    tree.write(str(settings.TEMP_FOLDER) + 'job.xml')
 
 
     rexec.write("#####################################\n")
@@ -107,7 +109,8 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     return 1
 
 def build_header(data):
-    header = open("/home/comrade/Projects/fimm/tmp/header.txt", 'w')
+    # header = open("/home/comrade/Projects/fimm/tmp/header.txt", 'w')
+    header = open(str(settings.TEMP_FOLDER) + 'header.txt', 'w')
     string = str(data)
     header.write(string)
     header.close()

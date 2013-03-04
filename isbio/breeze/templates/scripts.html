@@ -54,7 +54,7 @@
           {% for scr in script_list %}
             <li class="span4">
               <div class="thumbnail">
-                <img src="/static/logos/logo.jpg" width="95" height="95" class="img-rounded">
+                <img src="/media/{{ scr.logo }}" width="95" height="95" class="img-rounded">
                 <div class="caption">
                   <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
                   <p align="center"><i>{{ scr.inln }};</i></p>
@@ -88,7 +88,7 @@
             <tbody>
               {% for scr in script_list %}
               <tr>
-                <td><img src="/static/logos/logo.jpg" width="55" height="55" class="img-rounded"></td>
+                <td><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle">{{ scr.name }}</td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
@@ -120,7 +120,7 @@
           {% for scr in scr_list %}
             <li class="span4">
               <div class="thumbnail well">
-                <img src="/static/logos/logo.jpg" width="95" height="95" class="img-rounded">
+                <img src="/media/{{ scr.logo }}" width="95" height="95" class="img-rounded">
                 <div class="caption">
                   <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
                   <p align="center"><i>{{ scr.inln }};</i></p>
@@ -154,7 +154,7 @@
             <tbody>
               {% for scr in scr_list %}
               <tr>
-                <td style="vertical-align: middle"><img src="/static/logos/logo.jpg" width="55" height="55" class="img-rounded"></td>
+                <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle">{{ scr.name }}</td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ scr.id }}>Apply</a></td>
