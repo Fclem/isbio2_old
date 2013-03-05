@@ -168,6 +168,7 @@ class BreezeSettings(Settings):
         'django.contrib.auth.context_processors.auth',
         'django.core.context_processors.media',
         'django.core.context_processors.static',
+        'breeze.context.user_context'
     )
 
 class DevSettings(BreezeSettings):

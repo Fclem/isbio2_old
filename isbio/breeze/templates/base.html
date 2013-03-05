@@ -100,6 +100,14 @@
               <li class="{{ scripts_status }}">
                 <a href="/scripts"> <i class="icon-list-alt"></i> Scripts</a> 
               </li>
+              <li class="{{ reports_status }}">
+                <a href="/reports"> <i class="icon-th"></i> Reports</a> 
+              </li>
+              {% if is_local_admin %}
+              <li class="{{ resources_status }}">
+                <a href="/resources"> <i class="icon-wrench"></i> Manage Resources</a> 
+              </li>
+              {% endif %}
               <li class="{{ help_status }}">
                 <a href="/help"> <i class="icon-question-sign"></i> Help</a> 
               </li>
