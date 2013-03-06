@@ -46,6 +46,16 @@
 {% block content %}
   <div class="row-fluid">
     <div class="span10 offset1">
+      <ul class="breadcrumb pull-left" style="background-color: transparent;">
+        <li><a href="/resources/">Manage Resources</a> <span class="divider">/</span></li>
+        <li><a href="/resources/scripts/">Manage Scripts</a> <span class="divider">/</span></li>
+        <li class="active"> {{ script.name }} </li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="row-fluid">
+    <div class="span10 offset1">
       <h2>{{ script.name }} {% if script.draft %} :: ( draft ) {% endif %}</h2>
       <hr> 
     </div>    

@@ -29,7 +29,8 @@
     <div class="span6 alert alert-info">
       <h4>Entity Report Card <span class="badge badge-info pull-right">0 tags</span></h4>
       <hr />
-      <form class="navbar-search">
+      <form class="navbar-search" action="/reports/" method="post">
+        {% csrf_token %}
         <div class="controls">
           <input type="text" class="input-xlarge search-query" placeholder="Search... ">
           <div class="btn-group" data-toggle="buttons-radio">
@@ -49,4 +50,23 @@
       <br>&nbsp;<br>    
     </p>  
   </div>
+  
+  {% if search_result %}
+  <div class="row-fluid">
+    <div class="span8 offset2">
+      <table class="table table-striped table-condensed table-hover">
+        <tbody>
+        {% for item in output %}
+          <tr>             
+            <td>&nbsp; {{ item.name }} </td>
+            <td> {{ item.db }} </td>
+          </tr>
+        {% empty %}
+          <p>No results for your query!</p>
+        {% endfor %}
+        </tbody>
+      </table>   
+    </div>
+  </div>
+  {% endif %}
 {% endblock %}

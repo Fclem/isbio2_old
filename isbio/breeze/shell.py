@@ -139,3 +139,18 @@ def file_name(loc, name, user=None):
     else:
         slug = slugify(name)
     return '%s/%s/' % (loc, slug)
+
+def get_dataset_info(path):
+    path = str(settings.MEDIA_ROOT) + str(path)
+    lst = list()
+
+    r('library(vcd)')
+    r.assign('dataset', str(path))
+    r('load(dataset)')
+    r('dataSet1 <- sangerSet[1:131,]')
+    drugs = r('featureNames(dataSet1)')
+
+    for pill in drugs:
+        lst.append(dict(name=str(pill), db="Sanger.RData"))
+
+    return lst

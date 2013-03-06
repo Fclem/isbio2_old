@@ -141,6 +141,19 @@ def scripts(request, layout="list"):
 
 @login_required(login_url='/breeze/')
 def reports(request):
+    if request.method == 'POST':
+        ds = DataSet.objects.all()
+
+        for set in ds:
+            output = rshell.get_dataset_info(set.rdata)
+
+        return render_to_response('reports.html', RequestContext(request, {
+            'reports_status': 'active',
+            'search_result': True,
+            'output': output,
+
+        }))
+
     return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', }))
 
 @login_required(login_url='/breeze/')
