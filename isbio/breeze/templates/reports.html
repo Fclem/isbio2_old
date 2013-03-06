@@ -2,14 +2,51 @@
 
 {% load bootstrap_toolkit %}
 
-{% block title %}Manage Resources{% endblock %} 
+{% block title %}Reports{% endblock %} 
 
 {% block extra_head %}
 
 {% endblock %}
 
 {% block content %}
+  <div class="row-fluid">
+    <p>
+      <br>&nbsp;<br>    
+    </p>  
+  </div>
 
-<p>REPORTS</p>
-
+  <div class="row-fluid">
+    <div class="span4 offset1 alert alert-info">
+      <h4>DB Search <span class="badge badge-info pull-right">1555 instances</span> </h4>
+      <hr />
+      <form class="navbar-search">
+        <input type="text" class="search-query input-xlarge " placeholder="Search... ">
+        <p>&nbsp; e.g. CEP.701</p>
+        <button type="submit" class="btn btn-info input-medium pull-left"><strong>Search</strong></button>
+      </form>
+    </div> 
+    
+    <div class="span6 alert alert-info">
+      <h4>Entity Report Card <span class="badge badge-info pull-right">0 tags</span></h4>
+      <hr />
+      <form class="navbar-search">
+        <div class="controls">
+          <input type="text" class="input-xlarge search-query" placeholder="Search... ">
+          <div class="btn-group" data-toggle="buttons-radio">
+            <button type="button" class="btn btn-info"><strong>Gene</strong></button>
+            <button type="button" class="btn btn-info"><strong>Drug</strong></button>
+            <button type="button" class="btn btn-info"><strong>Patient</strong></button>
+          </div>
+          <p>&nbsp; e.g. Bosutinib</p>
+          <button type="submit" class="btn btn-info input-medium pull-left"><strong> QUERY </strong></button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <div class="row-fluid">
+    <p>
+      <br>&nbsp;<br>    
+    </p>  
+  </div>
 {% endblock %}
