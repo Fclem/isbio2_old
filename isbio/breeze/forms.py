@@ -114,7 +114,7 @@ class CustomForm(forms.Form):
 class ScriptBasics(forms.ModelForm):
     class Meta:
         model = breeze.models.Rscripts
-        fields = ('name', 'inln', 'details')
+        fields = ('name', 'inln')
 
 class ScriptAttributes(forms.ModelForm):
     class Meta:

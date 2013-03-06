@@ -91,37 +91,6 @@ def home(request):
     return render_to_response('home.html', RequestContext(request, {'home_status': 'active'}))
 
 @login_required(login_url='/breeze/')
-def dochelp(request):
-    return render_to_response('help.html', RequestContext(request, {'help_status': 'active'}))
-
-@login_required(login_url='/breeze/')
-def scripts(request, layout="list"):
-    if layout == "nails":
-        nails = True
-    else:
-        nails = False
-
-    all_scripts = Rscripts.objects.all()
-
-    cat_list = dict()
-    categories = list()
-    for script in all_scripts:
-        if str(script.category).capitalize() not in categories:
-            categories.append(str(script.category).capitalize())
-            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category))
-
-    if request.user.has_perm('breeze.add_rscripts'):
-        cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
-        cat_list['_Datasets_'] = DataSet.objects.all()
-
-    return render_to_response('scripts.html', RequestContext(request, {
-        'script_list': all_scripts,
-        'scripts_status': 'active',
-        'cat_list': sorted(cat_list.iteritems()),
-        'thumbnails': nails
-    }))
-
-@login_required(login_url='/breeze/')
 def jobs(request, state="scheduled"):
     if state == "history":
         tab = "history_tab"
@@ -141,6 +110,77 @@ def jobs(request, state="scheduled"):
         'scheduled': scheduled_jobs,
         'history': history_jobs,
         'current': active_jobs,
+    }))
+
+@login_required(login_url='/breeze/')
+def scripts(request, layout="list"):
+    if layout == "nails":
+        nails = True
+    else:
+        nails = False
+
+    all_scripts = Rscripts.objects.all()
+
+    cat_list = dict()
+    categories = list()
+    for script in all_scripts:
+        if str(script.category).capitalize() not in categories:
+            categories.append(str(script.category).capitalize())
+            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category))
+
+    # if request.user.has_perm('breeze.add_rscripts'):
+    #    cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
+    #    cat_list['_Datasets_'] = DataSet.objects.all()
+
+    return render_to_response('scripts.html', RequestContext(request, {
+        'script_list': all_scripts,
+        'scripts_status': 'active',
+        'cat_list': sorted(cat_list.iteritems()),
+        'thumbnails': nails
+    }))
+
+@login_required(login_url='/breeze/')
+def reports(request):
+    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', }))
+
+@login_required(login_url='/breeze/')
+def resources(request):
+    return render_to_response('resources.html', RequestContext(request, {'resources_status': 'active', }))
+
+@login_required(login_url='/breeze/')
+def manage_scripts(request):
+    all_scripts = Rscripts.objects.all()
+    return render_to_response('manage-scripts.html', RequestContext(request, {
+        'script_list': all_scripts,
+        'resources_status': 'active',
+    }))
+
+@login_required(login_url='/breeze/')
+def manage_reports(request):
+    return render_to_response('manage-reports.html', RequestContext(request, {
+        'resources_status': 'active',
+    }))
+
+@login_required(login_url='/breeze/')
+def dochelp(request):
+    return render_to_response('help.html', RequestContext(request, {'help_status': 'active'}))
+
+
+######################################
+###      SUPPLEMENTARY VIEWS       ###
+######################################
+@login_required(login_url='/breeze/')
+def script_editor(request, sid=None):
+    script = Rscripts.objects.get(id=sid)
+    basic = breezeForms.ScriptBasics()
+    attrs = breezeForms.ScriptAttributes()
+    logos = breezeForms.ScriptLogo()
+    return render_to_response('script-editor.html', RequestContext(request, {
+        'resources_status': 'active',
+        'script': script,
+        'basic_form': basic,
+        'attr_form': attrs,
+        'logo_form': logos
     }))
 
 @login_required(login_url='/breeze/')
@@ -495,19 +535,6 @@ def builder(request):
     form = breezeForms.ScriptMainForm()
     return render_to_response('form-builder.html', RequestContext(request, {'forma': form, }))
 
-@login_required(login_url='/breeze/')
-def editor(request, sid=None):
-    script = Rscripts.objects.get(id=sid)
-    basic = breezeForms.ScriptBasics()
-    attrs = breezeForms.ScriptAttributes()
-    logos = breezeForms.ScriptLogo()
-    return render_to_response('script-editor.html', RequestContext(request, {
-        'scripts_status': 'active',
-        'script': script,
-        'basic_form': basic,
-        'attr_form': attrs,
-        'logo_form': logos
-    }))
 
 @login_required(login_url='/breeze/')
 def new_script_dialog(request):

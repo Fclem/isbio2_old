@@ -78,17 +78,13 @@
     <!-- /main navigation bar -->  
     <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">
-        <div class="container">
+        <div class="container-fluid">
           <a class="brand" href="/breeze/">BREEZE</a>
           <div class="navbar-content">
             <div class="btn-group pull-right">
-              <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#"> 
-                  <i class="icon-user icon-white"></i>  {{ user.username }}  <span class="caret" />
-              </a>
-              <ul class="dropdown-menu">
-                <li align="right"><a href="#">Account Settings  <i class="icon-wrench"></i></a></li>
-                <li align="right"><a href="/logout/">Log Out  <i class="icon-share"></i></a></li>
-              </ul>
+              <p class="navbar-text">
+                <a class="btn btn-inverse" href="/logout/">logout <i class="icon-white icon-share"></i></a>
+              </p>
             </div>
             <ul class="nav">
               <li class="{{ home_status }}">

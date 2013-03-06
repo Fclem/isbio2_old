@@ -20,13 +20,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">    
+   
   <div class="row-fluid">
   
-    <div class="span2">
+    <div class="span2 offset1">
     <!-- Tabs' Header --> 
       <div data-spy="affix" >
-        <ul class="nav nav-pills nav-stacked" id="scriptTabs">
+        <ul class="nav nav-pills nav-stacked" id="scriptTabs" style="margin-top: 55px;">
           <li class="nav-header"><strong>CATEGORIES:</strong></li>
           <li class="active"><a href="#all" data-toggle="tab"><strong>Show All</strong></a></li>
           <li class="divider"></li>
@@ -37,7 +37,7 @@
       </div>
     </div>
   
-    <div class="span10">
+    <div class="span8">
       <div class="row">
         <ul class="breadcrumb pull-right">
           <li> <a href="/scripts/">List</a> <span class="divider">/</span> </li> 
@@ -75,7 +75,7 @@
           <table class="table table-striped">
             <head>
               <tr>
-                <th>Logo</th> <th>Name</th> <th>Inline description</th>
+                <th>Logo</th> <th>Name</th> <th>Inline Description</th>
                 <th>
                   {% if perms.breeze.add_rscripts %}
                   <a href="/new" class="btn btn-mini btn-primary">
@@ -100,16 +100,6 @@
                 <td style="vertical-align: middle">{{ scr.name }}</td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></td>
-                <td style="vertical-align: middle">
-                  {% if perms.breeze.change_rscripts %}
-                    <a href="/scripts/script-editor/{{ scr.id }}" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
-                  {% endif %}
-                </td>         
-                <td style="vertical-align: middle">
-                  {% if perms.breeze.delete_rscripts %}
-                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-danger" ><i class="icon-trash"></i></a>
-                  {% endif %}
-                </td>
                 <td style="vertical-align: middle"></td>
               </tr>
               {% endfor %}
@@ -148,7 +138,7 @@
           <table class="table table-striped">
             <head>
               <tr>
-                <th>Logo</th> <th>Name</th> <th>Inline description</th>
+                <th>Logo</th> <th>Name</th> <th>Inline Description</th>
                 <th>
                   {% if perms.breeze.add_rscripts %}
                   <a href="/new" class="btn btn-mini btn-info">
@@ -166,16 +156,6 @@
                 <td style="vertical-align: middle">{{ scr.name }}</td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
                 <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></td>
-                <td style="vertical-align: middle">
-                  {% if perms.breeze.change_rscripts %}
-                    <a href="#" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
-                  {% endif %}
-                </td>         
-                <td style="vertical-align: middle">
-                  {% if perms.breeze.delete_rscripts %}
-                    <a href="/scripts/delete/{{ scr.id }}" class="btn btn-danger" ><i class="icon-trash"></i></a>
-                  {% endif %}
-                </td>
                 <td style="vertical-align: middle"></td>
               </tr>
               {% endfor %}
@@ -188,7 +168,7 @@
     </div>
     
   </div>
-</div>
+
 
 <div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
 <div id="Describe" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>

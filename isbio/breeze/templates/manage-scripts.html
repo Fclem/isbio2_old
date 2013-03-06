@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+
+{% block title %}Manage Resources{% endblock %} 
+
+{% block extra_head %}
+
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">    
+  
+  <div class="row-fluid">
+    <div class="span10 offset1">
+      <ul class="breadcrumb pull-left" style="background-color: transparent;">
+        <li><a href="/resources/">Manage Resources</a> <span class="divider">/</span></li>
+        <li class="active"> Manage Scripts </li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="row-fluid">
+    <div class="span10 offset1">
+    <table class="table table-striped">
+      <head>
+        <tr>
+          <th>id</th><th>Name</th><th>Author</th><th>Last Modified</th><th>Category</th><th>Draft</th><th>Edit</th><th>Remove</th>
+        </tr>
+      </head>
+      <tbody>
+      {% for scr in script_list %}
+        <tr>
+          <td style="vertical-align: middle">{{ scr.id }}</td>
+          <td style="vertical-align: middle">{{ scr.name }}</td>
+          <td style="vertical-align: middle">{{ scr.author.username }}</td>
+          <td style="vertical-align: middle">{{ scr.creation_date }}</td>
+          <td style="vertical-align: middle">{{ scr.category }}</td>
+          <td style="vertical-align: middle">{% if scr.draft %} <span class="badge badge-inverse">DRAFT</span> {% endif %}</td>
+          <td style="vertical-align: middle">
+            {% if perms.breeze.change_rscripts %}
+              <a href="script-editor/{{ scr.id }}" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
+            {% endif %}
+          </td>         
+          <td style="vertical-align: middle">
+            {% if perms.breeze.delete_rscripts %}
+              <a href="/scripts/delete/{{ scr.id }}" class="btn btn-danger" ><i class="icon-trash"></i></a><br />
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>   
+    </div>
+  </div>
+</div>
+      
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+
+{% block title %}Manage Resources{% endblock %} 
+
+{% block extra_head %}
+<style>
+  .thumbnail {
+      border-style: groove; 
+      border-radius: 7px;
+      background: url('/static/dash.png');
+  }
+
+</style>  
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row" >
+    
+  <ul class="thumbnails">
+  <div class="span5 offset1">
+    <li class="span5">
+      <div class="thumbnail">
+        <img src="/static/scripts.png" width="300" height="125" class="img-rounded">
+        <div class="caption">
+          <p align="right">
+            <a href="/resources/scripts/" class="btn btn-inverse btn-large btn-block"> touch >></a> 
+          </p>
+        </div>
+      </div>  
+    </li>
+  </div>
+  
+  <div class="span5">
+    <li class="span5">
+      <div class="thumbnail">
+        <img src="/static/reports.png" width="300" height="125" class="img-rounded">
+        <div class="caption">
+          <p align="right">
+            <a href="/resources/reports/" class="btn btn-inverse btn-large btn-block"> touch >></a> 
+          </p>
+        </div>
+      </div>  
+    </li>
+  </div>
+  
+  </ul>
+  </div>
+  
+  <div class="row" >  
+  <ul class="thumbnails">
+  <div class="span4">
+    <li class="span4">
+      <div class="thumbnail">
+        <img src="/static/datasets.png" width="250" height="105" class="img-rounded">
+        <div class="caption">
+          <p align="right">
+            <a href="#" class="btn btn-inverse btn-large btn-block"> touch >></a> 
+          </p>
+        </div>
+      </div>  
+    </li>
+    </div>
+    
+    <div class="span4">
+    <li class="span4">
+      <div class="thumbnail">
+        <img src="/static/files.png" width="241" height="100" class="img-rounded">
+        <div class="caption">
+          <p align="right">
+            <a href="#" class="btn btn-inverse btn-large btn-block"> touch >></a> 
+          </p>
+        </div>
+      </div>  
+    </li>
+    </div>
+    
+    <div class="span4">
+    <li class="span4">
+      <div class="thumbnail">
+        <img src="/static/integration.png" width="310" height="115" class="img-rounded">
+        <div class="caption">
+          <p align="right">
+            <a href="#" class="btn btn-inverse btn-large btn-block"> touch >></a> 
+          </p>
+        </div>
+      </div>  
+    </li>
+    </div>
+  </ul>
+  </div>
+</div>
+{% endblock %}

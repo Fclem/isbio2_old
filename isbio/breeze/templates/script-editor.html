@@ -5,6 +5,7 @@
 {% block title %}Script Editor{% endblock %} 
 
 {% block extra_head %}
+  
 <style>
       body {
         padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
@@ -43,251 +44,64 @@
 {% endblock %}
 
 {% block content %}
-
-<div class="row">
-  <!-- Nav ========================== -->
-  <div class="span3 ">
-    <div data-spy="affix">
-      <ul id="editorNav" class="nav nav-tabs nav-stacked" style="margin-left: 70px; margin-top: 50px;">
-        <li class="active"><a href="#general" data-toggle="tab"><strong> General Settings </strong></a></li>
-        <li><a href="#builder" data-toggle="tab"><strong> Form Builder </strong></a></li>
-        <li><a href="#source" data-toggle="tab"><strong> Sources </strong></a></li>
-        
-      </ul>
-    </div>
+  <div class="row-fluid">
+    <div class="span10 offset1">
+      <h2>{{ script.name }} {% if script.draft %} :: ( draft ) {% endif %}</h2>
+      <hr> 
+    </div>    
   </div>
   
-  <!-- BODY ========================== -->
-  <div class="span9">
-    <h2>{{ script.name }} {% if script.draft %} :: ( draft ) {% endif %}</h2>
-    <hr>
-    <div class="tab-content">
-      
-      <!-- General =================== -->
-      <div class="tab-pane active" id="general">
-        <div class="tabbable">
-          <!-- Tabs' Header --> 
-          <ul class="nav nav-tabs" id="jobTabs">
-            <li class="active" ><a href="#basic" data-toggle="tab">Basics</a></li>
-            <li ><a href="#attributes" data-toggle="tab">Attributes</a></li>
-            <li ><a href="#logos" data-toggle="tab">Logos</a></li>
-          </ul>
-          <!-- Tabs' Content --> 
-          <div class="tab-content">
-            <div class="tab-pane active" id="basic" style="padding-bottom: 250px">
+  <div class="row-fluid">
+    <div class="span10 offset1">
+      <div class="tabbable tabs-left">
+        <!-- TABS' HEADER -->
+        <ul class="nav nav-tabs">
+          <li class="active"><a href="#general" data-toggle="tab"><strong> General </strong></a></li>
+          <li><a href="#description" data-toggle="tab"><strong> Description </strong></a></li>
+          <li><a href="#attributes" data-toggle="tab"><strong> Attributes </strong></a></li>
+          <li><a href="#builder" data-toggle="tab"><strong> Form Builder </strong></a></li>
+          <li><a href="#sources" data-toggle="tab"><strong> Sources </strong></a></li>
+          <li><a href="#logos" data-toggle="tab"><strong> Logos </strong></a></li>
+        </ul>
+        
+        <!-- TABS' CONTENT -->
+        <div class="tab-content offset1" style="margin-top: 35px">
+          <!-- General =================== -->
+          <div class="tab-pane active" id="general">
+            <form class="form-horizontal" action="/register/" method="post" enctype="multipart/form-data">
               {% csrf_token %}
               {{ basic_form|as_bootstrap }}
-            </div>
-            <div class="tab-pane" id="attributes" style="padding-bottom: 250px">
+            </form>
+          </div>  
+          <!-- Description =================== -->
+          <div class="tab-pane" id="description">
+  
+          </div>  
+          <!-- Attributes =================== --> 
+          <div class="tab-pane" id="attributes">
+            <form class="form-horizontal" action="/register/" method="post" enctype="multipart/form-data">
               {% csrf_token %}
               {{ attr_form|as_bootstrap }}
-            </div>
-            <div class="tab-pane" id="logos" style="padding-bottom: 250px">
-              {% csrf_token %}
-              {{ logo_form|as_bootstrap }}
-            </div>
+            </form>
           </div>
-          <!-- END of Tabs' Content -->
-        </div>  
+          <!-- Builder =================== -->
+          <div class="tab-pane" id="builder">
+            {% include "uibuilder.html" %}
+          </div>
+          <!-- Sources =================== -->
+          <div class="tab-pane" id="sources">
+  
+          </div>
+          <!-- Logos =================== -->
+          <div class="tab-pane" id="logos">
+  
+          </div>
+        </div>
+      <!-- END of TABS' CONTENT -->
+         
       </div>
-      
-      <!-- Builder =================== -->
-      <div class="tab-pane" id="builder">
-        <div class="container">
-          <div class="row clearfix">
-              
-            <div class="span4">
-              <div class="clearfix">
-                <div id="build">
-                  <form id="target" class="form-inline">
-                    <fieldset>
-                      <div id="legend" class="component" rel="popover" title="Form Title" trigger="manual"
-                        data-content="
-                        <form class='form'>
-                          <div class='controls'>
-                            <label class='control-label'>Title</label> <input class='input-large' type='text' name='title' id='text'>
-                            <hr/>
-                            <button class='btn btn-info'>Save</button><button class='btn btn-danger'>Cancel</button>
-                          </div>
-                        </form>"
-                        >
-                        <legend class="valtype" data-valtype="text">Form Name</legend>
-                      </div>
-                    </fieldset>
-                  </form>
-                </div>
-              </div>
-            </div> <!-- span 6(1) -->
-    
-            <div class="span5">
-              <div class="tabbable">
-                <ul class="nav nav-tabs" id="navtab tab-pills">
-                  <li class="active"><a href="#1" data-toggle="tab">Input</a></li>
-                  <li class><a href="#2" data-toggle="tab">Select</a></li>
-                  <li class><a id="sourcetab" href="#5" data-toggle="tab">XML Source</a></li>
-                </ul>
-                <form class="form-horizontal" id="components">
-                  <fieldset>
-                    <div class="tab-content">
-    
-                      <div class="tab-pane active" id="1">
-    
-                        <div class="control-group component" data-type="text" rel="popover" title="Text Input" trigger="manual"
-                          data-content="
-                          <form class='form'>
-                            <div class='controls' style='margin-left: 0px'>
-                              <label class='control-label'>Label Text</label> <input class='input-large' type='text' name='label' id='label'>
-                              <label class='control-label'>Placeholder</label> <input type='text' name='placeholder' id='placeholder'>
-                              <label class='control-label'>Help Text</label> <input type='text' name='help' id='help'>
-                              <hr/>
-                              <button class='btn btn-info'>Save</button><button class='btn btn-danger'>Cancel</button>
-                            </div>
-                          </form>"
-                          >
-    
-                          <!-- Text input-->
-                          <label class="control-label valtype" for="input01" data-valtype='label'>Text input</label>
-                          <div class="controls">
-                            <input type="text" placeholder="placeholder" class="input valtype" data-valtype="placeholder" >
-                            <p class="help-block valtype" data-valtype='help'>Supporting help text</p>
-                          </div>
-                        </div>
-    
-                        <div class="control-group component" rel="popover" title="Search Input" trigger="manual"
-                          data-content="
-                          <form class='form'>
-                            <div class='controls' style='margin-left: 10px'>
-                              <label class='control-label'>Label Text</label> <input class='input-large' type='text' name='label' id='label'>
-                              <hr/>
-                              <button class='btn btn-info'>Save</button><button class='btn btn-danger'>Cancel</button>
-                            </div>
-                          </form>"
-                          >
-    
-                          <!-- Textarea -->
-                          <label class="control-label valtype" data-valtype="label">Textarea</label>
-                          <div class="controls">
-                            <div class="textarea">
-                                  <textarea type="" class="valtype" data-valtype="checkbox" /> </textarea>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div class="control-group component" rel="popover" title="File Upload" trigger="manual"
-                          data-content="
-                          <form class='form'>
-                            <div class='controls' style='margin-left: 10px'>
-                              <label class='control-label'>Label Text</label> <input class='input-large' type='text' name='label' id='label'>
-                              <hr/>
-                              <button class='btn btn-info'>Save</button><button class='btn btn-danger'>Cancel</button>
-                            </div>
-                          </form>"
-                          >
-                          <label class="control-label valtype" data-valtype="label">File Upload</label>
-    
-                          <!-- File Upload -->
-                          <div class="controls">
-                            <input class="input-file" id="fileInput" type="file">
-                          </div>
-                        </div>
-    
-                      </div>
-    
-                      <div class="tab-pane" id="2">
-                          
-                        <div class="control-group component" rel="popover" title="Checkbox (Boolean)" trigger="manual"
-                          data-content="
-                          <form class='form'>
-                            <div class='controls' style='margin-left: 10px'>
-                              <label class='control-label'>Label Text</label> <input class='input-large' type='text' name='label' id='label'>
-                              <textarea style='min-height: 200px' id='inline-checkboxes'></textarea>
-                              <hr/>
-                              <button class='btn btn-info'>Save</button><button class='btn btn-danger'>Cancel</button>
-                            </div>
-                          </form>"
-                          >
-                          <label class="control-label valtype" data-valtype="label">Checkbox (Boolean)</label>
-    
-                          <!-- Single  Checkbox -->
-                          <div class="controls valtype" data-valtype="single-checkbox">
-                            <label class="checkbox inline">
-                              <input type="checkbox" value="1"> 1
-                            </label>
-                          </div>
-    
-                        </div>
-    
-                        <div class="control-group component" rel="popover" title="Search Input" trigger="manual"
-                          data-content="
-                          <form class='form'>
-                            <div class='controls' style='margin-left: 10px'>
-                              <label class='control-label'>Label Text</label> <input class='input-large' type='text' name='label' id='label'>
-                              <label class='control-label'>Options: </label>
-                              <textarea style='min-height: 200px' id='option'> </textarea>
-                              <hr/>
-                              <button class='btn btn-info'>Save</button><button class='btn btn-danger'>Cancel</button>
-                            </div>
-                          </form>"
-                          >
-    
-                          <!-- Drop Down -->
-                          <label class="control-label valtype" data-valtype="label">Dropdown</label>
-                          <div class="controls">
-                            <select class="input valtype" data-valtype="option">
-                              <option>Enter</option>
-                              <option>Your</option>
-                              <option>Options</option>
-                            </select>
-                          </div>
-    
-                        </div>
-    
-                        <div class="control-group component" rel="popover" title="Search Input" trigger="manual"
-                          data-content="
-                          <form class='form'>
-                            <div class='controls' style='margin-left: 10px'>
-                              <label class='control-label'>Label Text</label> <input class='input-large' type='text' name='label' id='label'>
-                              <label class='control-label'>Options: </label>
-                              <textarea style='min-height: 200px' id='option'></textarea>
-                              <hr/>
-                              <button class='btn btn-info'>Save</button><button class='btn btn-danger'>Cancel</button>
-                            </div>
-                          </form>"
-                          >
-    
-                          <!-- Select Multiple -->
-                          <label class="control-label valtype" data-valtype="label">Select - Multiple</label>
-                          <div class="controls">
-                            <select class="input valtype" multiple="multiple" data-valtype="option">
-                              <option>Enter</option>
-                              <option>Your</option>
-                              <option>Options</option>
-                            </select>
-                          </div>
-                        </div>
-    
-                      </div>
-    
-    
-                      <div class="tab-pane" id="5">
-                        <textarea id="source" class="span4"></textarea>
-                      </div>
-                    </fieldset>
-                </form>
-              </div> <!-- tabbable -->
-            </div> <!-- span 6(2) -->
-          
-          </div> <!-- row -->
-        </div> <!-- /container -->
-
-      </div>
-    
-      <!-- Source =================== -->
-      <div class="tab-pane" id="source">
-        <p>source</p>
-      </div>    
+</div>
     </div>
   </div>
-</div>
 
 {% endblock %}
