@@ -21,9 +21,11 @@
         
     
     <script src="/static/js/jquery.js"></script>
-    <script src="/static/js/bootstrap.js"></script>
+    <!-- <script src="/static/js/bootstrap.js"></script> -->
     <script src="/static/js/jquery-1.8.3.min.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
+    
+    
     
     <script src="/static/js/jquery-ui-1.9.2.custom.min.js"></script>
     <script src="/static/js/jquery.ajaxfileupload.js"></script>
@@ -52,12 +54,13 @@
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
     
-    {% bootstrap_javascript_tag "modal" %}
-    {% bootstrap_javascript_tag "dropdown" %}
+    {% bootstrap_javascript_tag "transition" %}
+    
     {% bootstrap_javascript_tag "tab" %}
-    {% bootstrap_javascript_tag "collapse" %}
     {% bootstrap_javascript_tag "affix" %}
-    {% bootstrap_javascript_tag "popover" %}
+    <!-- {% bootstrap_javascript_tag "popover" %} -->
+    
+    
         
     {% block extra_head %}{% endblock %}
     <style type="text/css">

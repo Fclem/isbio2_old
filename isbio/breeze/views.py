@@ -149,12 +149,27 @@ def reports(request):
 
         return render_to_response('reports.html', RequestContext(request, {
             'reports_status': 'active',
+            'search': True,
             'search_result': True,
             'output': output,
-
         }))
 
-    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', }))
+    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search': True }))
+
+@login_required(login_url='/breeze/')
+def report_overview(request, iid, mod=None):
+    if mod is None:
+        # render an overview with a set of available tags
+        tags = ['one', 'two', 'three']
+        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags }))
+    elif mod == '-full':
+        # if we need to generate full report (create a new tab/window for that)
+        html = 'my_report.html'
+        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
+    else:
+        # if smth stupid came as a mod
+        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search': True }))
+
 
 @login_required(login_url='/breeze/')
 def resources(request):
