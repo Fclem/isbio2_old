@@ -90,17 +90,24 @@
                   </a>
                   {% endif %}
                 </th>
-                <th></th> <th></th>
-            </tr>
+              </tr>
             </head>
             <tbody>
               {% for scr in script_list %}
               <tr>
-                <td><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
-                <td style="vertical-align: middle">{{ scr.name }}</td>
-                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></td>
-                <td style="vertical-align: middle"></td>
+                <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
+                <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
+                <td style="vertical-align: middle"><i>{{ scr.inln }}</i></td>
+                <td style="vertical-align: middle">
+                  <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
+                    <i class="icon-info-sign icon-white"></i>
+                  </a>
+                </td>
+                <td style="vertical-align: middle">
+                  <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
+                    <strong>Create Job &nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
+                  </a>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -139,24 +146,25 @@
             <head>
               <tr>
                 <th>Logo</th> <th>Name</th> <th>Inline Description</th>
-                <th>
-                  {% if perms.breeze.add_rscripts %}
-                  <a href="/new" class="btn btn-mini btn-info">
-                    <i class="icon-plus"></i> Add Script
-                  </a>
-                  {% endif %}
-                </th>
-                <th></th> <th></th> <th></th>
-            </tr>
+                <th></th><th></th>
+              </tr>
             </head>
             <tbody>
               {% for scr in scr_list %}
               <tr>
                 <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
-                <td style="vertical-align: middle">{{ scr.name }}</td>
-                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class=" describe" data-target="#Describe" data-param={{ scr.id }}>{{ scr.inln }}</a></td>
-                <td style="vertical-align: middle"><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></td>
-                <td style="vertical-align: middle"></td>
+                <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
+                <td style="vertical-align: middle"><i>{{ scr.inln }}</i></td>
+                <td style="vertical-align: middle">
+                  <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
+                    <i class="icon-info-sign icon-white"></i>
+                  </a>
+                </td>
+                <td style="vertical-align: middle">
+                  <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
+                    <strong>Create Job &nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
+                  </a>
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -169,6 +177,7 @@
     
   </div>
 
+<div class="row-fluid">&nbsp;</div>
 
 <div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
 <div id="Describe" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
