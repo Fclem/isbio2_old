@@ -97,7 +97,7 @@
               <tr>
                 <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
-                <td style="vertical-align: middle"><i>{{ scr.inln }}</i></td>
+                <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
                     <i class="icon-info-sign icon-white"></i>
@@ -105,7 +105,7 @@
                 </td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
-                    <strong>Create Job &nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
+                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
                   </a>
                 </td>
               </tr>
@@ -154,7 +154,7 @@
               <tr>
                 <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
-                <td style="vertical-align: middle"><i>{{ scr.inln }}</i></td>
+                <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
                     <i class="icon-info-sign icon-white"></i>
@@ -162,7 +162,7 @@
                 </td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
-                    <strong>Create Job &nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
+                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
                   </a>
                 </td>
               </tr>

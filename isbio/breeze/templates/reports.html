@@ -22,7 +22,7 @@
 
 {% block content %}
   <!-- SEARCH BARS -->
-  {% if search %}
+  {% if search_bars %}
   <div class="row-fluid">
     <div class="span10 offset1">
       <ul class="breadcrumb pull-left" style="background-color: transparent;">
@@ -32,21 +32,28 @@
     </div>
   </div>
   
+  <!-- DATASETS -->
   <div class="row-fluid">
     <div class="span4 offset1 alert alert-info">
-      <h4>DB Search <span class="badge badge-info pull-right">1555 instances</span> </h4>
+      <h4>DB Search <span class="badge badge-info pull-right">{{ds_count}} instances</span> </h4>
       <hr />
-      <form class="navbar-search">
+      <form class="navbar-search" action="/reports/dataset" method="post">
+        {% csrf_token %}
         <input type="text" class="search-query input-xlarge " placeholder="Search... ">
-        <p>&nbsp; e.g. CEP.701</p>
+        <p>&nbsp; e.g. Sanger</p>
         <button type="submit" class="btn btn-info input-medium pull-left"><strong>Search</strong></button>
       </form>
     </div> 
     
+    <!-- ENTITIES -->
     <div class="span6 alert alert-info">
-      <h4>Entity Report Card <span class="badge badge-info pull-right">0 tags</span></h4>
+      <h4>
+        Entity Report Card 
+        <span class="badge badge-info pull-right">0 tags</span> &nbsp; 
+        <span class="badge badge-info pull-right">0 reports</span>
+      </h4>
       <hr />
-      <form class="navbar-search" action="/reports/" method="post">
+      <form class="navbar-search" action="/reports/entity" method="post">
         {% csrf_token %}
         <div class="controls">
           <input type="text" class="input-xlarge search-query" placeholder="Search... ">
@@ -77,10 +84,22 @@
       <table class="table table-striped table-condensed table-hover">
         <tbody>
         {% for item in output %}
+          {% if result_type == "entity" %}
           <tr>             
             <td>&nbsp; <a href="/reports/overview/1"> {{ item.name }} </a> </td>
             <td> {{ item.db }} </td>
           </tr>
+          {% endif %}
+          
+          {% if result_type == "dataset" %}
+          <tr>
+            <td>&nbsp; <strong>{{ item.name|upper }}</strong>  </td>
+            <td> <i>{{ item.description }}</i> </td>
+            <td>
+              <a class="btn btn-inverse pull-right" href="/get/dataset-{{ item.name }}"><i class="icon-white icon-download-alt"></i> <strong>Download</strong></a> 
+            </td>
+          </tr>
+          {% endif %}
         {% empty %}
           <p>No results for your query!</p>
         {% endfor %}

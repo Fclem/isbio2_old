@@ -140,21 +140,32 @@ def scripts(request, layout="list"):
     }))
 
 @login_required(login_url='/breeze/')
-def reports(request):
-    if request.method == 'POST':
-        ds = DataSet.objects.all()
+def reports(request, what=None):
+    ds = DataSet.objects.all()
+    ds_count = len(ds)
 
-        for set in ds:
-            output = rshell.get_dataset_info(set.rdata)
+    if request.method == 'POST':
+        result_type = what
+
+        # search for entities
+        if what == 'entity':
+            for set in ds:
+                output = rshell.get_dataset_info(set.rdata)
+
+        # search for datasets
+        if what == 'dataset':
+            output = ds
 
         return render_to_response('reports.html', RequestContext(request, {
             'reports_status': 'active',
-            'search': True,
+            'search_bars': True,
+            'ds_count': ds_count,
             'search_result': True,
-            'output': output,
+            'result_type': result_type,
+            'output': output
         }))
 
-    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search': True }))
+    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True, 'ds_count': ds_count }))
 
 @login_required(login_url='/breeze/')
 def report_overview(request, iid, mod=None):
@@ -168,7 +179,7 @@ def report_overview(request, iid, mod=None):
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
     else:
         # if smth stupid came as a mod
-        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search': True }))
+        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True }))
 
 
 @login_required(login_url='/breeze/')
@@ -550,6 +561,25 @@ def send_template(request, name):
     response['Content-Disposition'] = 'attachment; filename=' + file
     return response
 
+@login_required(login_url='/breeze/')
+def send_file(request, ftype, fname):
+    """
+        Supposed to be generic function that can send single file to client.
+        Each IF case prepare dispatch data of a certain type.
+        ! Should supbstitute send_template() function soon !
+    """
+    if ftype == 'dataset':
+        print str(fname)
+        fitem = DataSet.objects.get(name=str(fname))
+        local_path = str(fitem.rdata)
+        path_to_file = str(settings.MEDIA_ROOT) + local_path
+
+    f = open(path_to_file, 'r')
+    myfile = File(f)
+    response = HttpResponse(myfile, mimetype='application/force-download')
+    folder, slash, file = local_path.rpartition('/')
+    response['Content-Disposition'] = 'attachment; filename=' + file
+    return response
 
 @login_required(login_url='/breeze/')
 def update_jobs(request, jid):
