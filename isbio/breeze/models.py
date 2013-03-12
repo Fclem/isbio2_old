@@ -13,8 +13,8 @@ CATEGORY_OPT = (
 
 class Rscripts(models.Model):
     name = models.CharField(max_length=35, unique=True)
-    inln = models.CharField(max_length=75, blank=True)
-    details = models.CharField(max_length=350, blank=True)
+    inln = models.CharField(max_length=150, blank=True)
+    details = models.CharField(max_length=5500, blank=True)
     category = models.CharField(max_length=25, choices=CATEGORY_OPT, default=u'general')
     author = ForeignKey(User)
     creation_date = models.DateField(auto_now_add=True)
