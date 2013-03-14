@@ -6,6 +6,9 @@
 
 {% block extra_head %}
 
+  <link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
+  <script src="/static/js/bootstrapSwitch.js"></script>
+
 <style>
       body {
         padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
@@ -56,8 +59,10 @@
   
   <div class="row-fluid">
     <div class="span10 offset1">
-      <h2>{{ script.name }} {% if script.draft %} :: ( draft ) {% endif %}</h2>
-      <hr> 
+      <h2>
+        {{ script.name }} {% if script.draft %} :: ( draft ) {% endif %}
+        <img style="border: 1px solid black;" {% if script.logo %} src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="100" height="100" class="img-rounded pull-right">
+      </h2>
     </div>    
   </div>
   
@@ -78,21 +83,40 @@
         <div class="tab-content offset1" style="margin-top: 35px">
           <!-- General =================== -->
           <div class="tab-pane active" id="general">
-            <form class="form-horizontal" action="/register/" method="post" enctype="multipart/form-data">
-              {% csrf_token %}
+            <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
+              {% csrf_token %}        
+              <input type="hidden" name="form_name" value="general">      
               {{ basic_form|as_bootstrap }}
+              <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
             </form>
           </div>  
           <!-- Description =================== -->
           <div class="tab-pane" id="description">
-  
+            <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
+              {% csrf_token %}        
+              <input type="hidden" name="form_name" value="description">      
+              {{ descr_form|as_bootstrap }}
+              <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
+            </form>  
           </div>  
           <!-- Attributes =================== --> 
           <div class="tab-pane" id="attributes">
-            <form class="form-horizontal" action="/register/" method="post" enctype="multipart/form-data">
+            <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
               {% csrf_token %}
+              <input type="hidden" name="form_name" value="attributes">
+              
+              <div class="control-group">
+                <label class="control-label" for="id_ID">ID</label>
+                <div class="controls"><input id="id_ID" class="input-mini" type="text" value="&nbsp;{{ script.id }}" disabled></div>
+              </div>  
+              <div class="control-group">
+                <label class="control-label" for="id_DATE">Created</label>
+                <div class="controls"><input id="id_DATE" class="input-medium" type="text" value="&nbsp;{{ script.creation_date }}" disabled></div>
+              </div>  
+               
               {{ attr_form|as_bootstrap }}
-            </form>
+              <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
+            </form>  
           </div>
           <!-- Builder =================== -->
           <div class="tab-pane" id="builder">
@@ -104,14 +128,36 @@
           </div>
           <!-- Logos =================== -->
           <div class="tab-pane" id="logos">
-  
+            <form class="form-inline offset1" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post" enctype="multipart/form-data">
+              {% csrf_token %}        
+              <input type="hidden" name="form_name" value="logos">
+              <p>Appers in Details / Apperars in Script List</p>    
+              <div class="control-group">
+                <label class="control-label" for="id_ID"></label>
+                <img style="border: 1px solid black;" {% if script.logo %} src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="100" height="100" class="img-rounded">
+                <img style="border: 1px solid black; margin-left: 35px;" {% if script.logo %} src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded">
+              </div>    
+              {{ logo_form|as_bootstrap }}
+              <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
+            </form>   
           </div>
         </div>
       <!-- END of TABS' CONTENT -->
          
       </div>
-</div>
     </div>
   </div>
+  
+<script>
+$(document).ready(function() {
+  // $('#id_draft').replaceWith(function() {
+      // var new_tag = '<div class="switch switch-small" data-on="primary" data-off="info" data-on-label="Draft" data-off-label="Release">';
+      // new_tag += '  <input type="checkbox">';
+      // new_tag += '</div>';
+      // return new_tag;
+  // });
+  $('#id_logo').customFileInput({ });
+});
+</script>
 
 {% endblock %}

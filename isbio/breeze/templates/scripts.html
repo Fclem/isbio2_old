@@ -55,7 +55,7 @@
           {% for scr in script_list %}
             <li class="span4">
               <div class="thumbnail">
-                <img src="/media/{{ scr.logo }}" width="95" height="95" class="img-rounded">
+                <img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="95" height="95" class="img-rounded">
                 <div class="caption">
                   <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
                   <p align="center"><i>{{ scr.inln }};</i></p>
@@ -95,7 +95,7 @@
             <tbody>
               {% for scr in script_list %}
               <tr>
-                <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
+                <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
                 <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
                 <td style="vertical-align: middle">
@@ -125,7 +125,7 @@
           {% for scr in scr_list %}
             <li class="span4">
               <div class="thumbnail well">
-                <img src="/media/{{ scr.logo }}" width="95" height="95" class="img-rounded">
+                <img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="95" height="95" class="img-rounded">
                 <div class="caption">
                   <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
                   <p align="center"><i>{{ scr.inln }};</i></p>
@@ -152,7 +152,7 @@
             <tbody>
               {% for scr in scr_list %}
               <tr>
-                <td style="vertical-align: middle"><img src="/media/{{ scr.logo }}" width="55" height="55" class="img-rounded"></td>
+                <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
                 <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
                 <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
                 <td style="vertical-align: middle">

@@ -111,21 +111,56 @@ class CustomForm(forms.Form):
             self.fields[k] = kwds[k]
 
 ### Forms for script submissions ###
-class ScriptBasics(forms.ModelForm):
-    class Meta:
-        model = breeze.models.Rscripts
-        fields = ('name', 'inln')
+class ScriptBasics(forms.Form):
+    name = forms.CharField(
+        max_length=35,
+        widget=forms.TextInput(
+             attrs={
+                'class': 'input-large',
+         }),
+    )
+    inline = forms.CharField(
+        max_length=150,
+        label="Inline Description",
+        widget=forms.Textarea(
+             attrs={
+                'class': 'input-xxlarge',
+                'rows': 3
+         }),
+    )
+
+    def clean_name(self):
+        name = self.cleaned_data['name']
+        try:
+            exst = breeze.models.Rscripts.objects.get(name=name)
+        except breeze.models.Rscripts.DoesNotExist:
+            return name
+        else:
+            if str(exst) == str(name):
+                return name
+            else:
+                raise forms.ValidationError("That script name is already taken.")
+
+class ScriptDescription(forms.Form):
+    description = forms.CharField(
+        max_length=5500,
+        label="",
+        widget=forms.Textarea(
+             attrs={
+                'class': 'input-xxlarge',
+                'rows': 11
+         }),
+    )
 
 class ScriptAttributes(forms.ModelForm):
     class Meta:
         model = breeze.models.Rscripts
         fields = ('category', 'author', 'draft')
 
-class ScriptLogo(forms.ModelForm):
-    class Meta:
-        model = breeze.models.Rscripts
-        fields = ('logo',)
+class ScriptLogo(forms.Form):
+    logo = forms.FileField(label=(u''))
 
+### old implementation ###
 class ScriptMainForm(forms.ModelForm):
     class Meta:
         model = breeze.models.Rscripts
@@ -177,8 +212,10 @@ class AddDatasetSelect(forms.Form):
     options = forms.ModelMultipleChoiceField(queryset=breeze.models.DataSet.objects.all(), widget=forms.CheckboxSelectMultiple())
 
 class AddTemplateInput(forms.Form):
-    """ This control is for uploading template
-        inpit file which can be downloaded from BREEZE beforehand """
+    """ 
+        This control is for uploading template
+        inpit file which can be downloaded from BREEZE beforehand 
+    """
     options = forms.ModelChoiceField(queryset=breeze.models.InputTemplate.objects.all())
 
 class HiddenForm(forms.Form):

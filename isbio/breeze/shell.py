@@ -8,6 +8,20 @@ def new_script_folder(name):
     path = ""
     return path
 
+def update_script_dasics(script, form):
+    script.name = form.cleaned_data['name']
+    script.inln = form.cleaned_data['inline']
+    script.save()
+    return True
+
+def update_script_logo(script, pic):
+    if script.logo:
+        os.remove(str(settings.MEDIA_ROOT) + str(script.logo))
+
+    script.logo = pic
+    script.save()
+    return True
+
 def schedule_job(job):
     # job.progress = 0
     job.save()
