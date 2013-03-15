@@ -22,6 +22,11 @@
   
   <div class="row-fluid">
     <div class="span10 offset1">
+    {% if perms.breeze.add_rscripts %}
+      <a href="#" data-toggle="modal" class="btn btn-small btn-primary apply btn-block" data-target="#Apply"  data-param="/new-script/">
+        <i class="icon-plus"></i>
+      </a>
+    {% endif %}
     <table class="table table-striped">
       <head>
         <tr>
@@ -36,7 +41,7 @@
           <td style="vertical-align: middle">{{ scr.author.username }}</td>
           <td style="vertical-align: middle">{{ scr.creation_date }}</td>
           <td style="vertical-align: middle">{{ scr.category }}</td>
-          <td style="vertical-align: middle">{% if scr.draft %} <span class="badge badge-inverse">DRAFT</span> {% endif %}</td>
+          <td style="vertical-align: middle">{% if scr.draft %} <span class="badge badge-warning">DRAFT</span> {% endif %}</td>
           <td style="vertical-align: middle">
             {% if perms.breeze.change_rscripts %}
               <a href="script-editor/{{ scr.id }}" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
@@ -44,7 +49,7 @@
           </td>         
           <td style="vertical-align: middle">
             {% if perms.breeze.delete_rscripts %}
-              <a href="/scripts/delete/{{ scr.id }}" class="btn btn-danger" ><i class="icon-trash"></i></a><br />
+              <a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/scripts/delete/{{ scr.id }}'); $('#del_title').text('{{ scr.name }}');" class="btn btn-danger" ><i class="icon-trash"></i></a><br />
             {% endif %}
           </td>
         </tr>
@@ -55,4 +60,94 @@
   </div>
 </div>
       
+<div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+<div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <h3 id="del_title">Delete SCRIPT from Breeze db</h3>
+    </div>
+    <div class="modal-body">
+      <p>After this operation the script will be permanently deleted from Breeze DB, thus you will not be able to recover any information regarding the script!</p>
+      <p><strong>Are you sure you DO NOT need this script any more?! </strong></p>
+    </div>
+    <div class="modal-footer">
+      <a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
+      <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        modalConnect();
+    });
+</script>
+<script type="text/javascript">    
+function submitItemModalFormBind(url){
+         $('#form_modal_apply').submit(function(ev){
+             var formData = new FormData($('form')[0]);
+             $.ajax({
+                type: "POST",
+                url: url,
+                enctype: 'multipart/form-data',
+                data: formData,
+                success:function(response, textStatus, jqXHR){
+                     var form = $("#form_modal_apply_div", response);
+                     //form is returned if it is not valid. update modal with returned form
+                     //change this "if" to check for a specific return code which should be set in the view
+                     if (form.html()) {
+                        //update modal div
+                        
+                         $('#form_modal_apply_div').html(form);
+                         if ($("input:file").hasClass('TPL')){
+                             var which = $("input:file").filter('.TPL').attr('which');
+                             $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                         }
+                         $("input:file").customFileInput({ });
+                         $("#Apply").modal('show');
+                      }
+                      //form is not returned if form submission succeeded
+                      else{                          
+                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
+                        document.open();
+                        document.write(response);
+                        document.close();
+                        $("#Apply").modal('hide');
+                        }
+                },
+                error: function (request, status, error) {
+                            //implement proper error handling
+                            console.log("failure");
+                            console.log(request.responseText);
+                    },
+                cache: false,
+                contentType: false,
+                processData: false
+                    });
+                    return false;
+                });
+              }
+function modalConnect()
+        {
+            //unbind the click event. If not done we will end up with multiple click event bindings, since binding is done after each ajax call.
+            $(".apply").unbind('click');
+            //bind the click event
+            $(".apply").click(function(ev) {
+                ev.preventDefault(); // prevent navigation
+                var par = $(this).data("param");
+                $.get(par.toString(), function(results){
+                  //update the dom with the received form
+                  $('#Apply').html(results);
+                  
+                  $("#Apply").modal('show');
+                  $(document).ready(function () {
+                     //bind the form to an ajax call. ajax call will be set to the received update url
+                     submitItemModalFormBind(par.toString());
+                  });
+
+                }, "html");
+                return false; // prevent the click propagation
+            })
+        }
+</script>
+
 {% endblock %}

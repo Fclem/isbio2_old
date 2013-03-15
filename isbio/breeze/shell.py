@@ -1,4 +1,5 @@
 import os, shutil, re, sys, traceback
+from datetime import datetime
 from rpy2.robjects import r
 from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
@@ -49,10 +50,12 @@ def update_script_dasics(script, form):
             # delete old folder
             shutil.rmtree(old_folder)
 
+            script.creation_date = datetime.now()
             script.save()
         return True
     else:
         script.inln = form.cleaned_data['inline']
+        script.creation_date = datetime.now()
         script.save()
         return True
 
@@ -61,6 +64,7 @@ def update_script_logo(script, pic):
         os.remove(str(settings.MEDIA_ROOT) + str(script.logo))
 
     script.logo = pic
+    script.creation_date = datetime.now()
     script.save()
     return True
 

@@ -160,7 +160,7 @@ class ScriptDescription(forms.Form):
 class ScriptAttributes(forms.ModelForm):
     class Meta:
         model = breeze.models.Rscripts
-        fields = ('category', 'author', 'draft')
+        fields = ('author', 'category', 'draft')
 
 class ScriptLogo(forms.Form):
     logo = forms.FileField(label=(u''))
@@ -215,6 +215,7 @@ class AddOptions(forms.Form):
 
 class AddDatasetSelect(forms.Form):
     options = forms.ModelMultipleChoiceField(queryset=breeze.models.DataSet.objects.all(), widget=forms.CheckboxSelectMultiple())
+
 
 class AddTemplateInput(forms.Form):
     """ 
