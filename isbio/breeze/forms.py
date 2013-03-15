@@ -112,6 +112,10 @@ class CustomForm(forms.Form):
 
 ### Forms for script submissions ###
 class ScriptBasics(forms.Form):
+    def __init__(self, edit, *args, **kwargs):
+        self._edit = edit
+        super(ScriptBasics, self).__init__(*args, **kwargs)
+
     name = forms.CharField(
         max_length=35,
         widget=forms.TextInput(
@@ -119,6 +123,7 @@ class ScriptBasics(forms.Form):
                 'class': 'input-large',
          }),
     )
+
     inline = forms.CharField(
         max_length=150,
         label="Inline Description",
@@ -136,7 +141,7 @@ class ScriptBasics(forms.Form):
         except breeze.models.Rscripts.DoesNotExist:
             return name
         else:
-            if str(exst) == str(name):
+            if str(exst) == str(self._edit):
                 return name
             else:
                 raise forms.ValidationError("That script name is already taken.")

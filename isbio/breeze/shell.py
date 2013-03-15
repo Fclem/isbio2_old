@@ -3,16 +3,58 @@ from rpy2.robjects import r
 from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
 from django.conf import settings
+from django.core.files import File
+import breeze.models
 
-def new_script_folder(name):
-    path = ""
-    return path
+def init_script(name, person):
+    spath = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts" , name, None))
+
+    if not os.path.isdir(spath):
+        os.makedirs(spath)
+        dbitem = breeze.models.Rscripts(name=name, author=person)
+        dbitem.save()
+        return spath
+
+    return False
 
 def update_script_dasics(script, form):
-    script.name = form.cleaned_data['name']
-    script.inln = form.cleaned_data['inline']
-    script.save()
-    return True
+    """ 
+        Careates a new folder for script and makes file copies but preserves db istance id 
+    """
+
+    if str(script.name) != str(form.cleaned_data['name']):
+        new_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", str(form.cleaned_data['name']), None))
+        old_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", script.name, None))
+        new_slug = slugify(form.cleaned_data['name'])
+
+        if not os.path.isdir(new_folder):
+            os.makedirs(new_folder)
+            script.name = form.cleaned_data['name']
+            script.inln = form.cleaned_data['inline']
+            script.save()
+            # copy folder
+            files_list = os.listdir(old_folder)
+            for item in files_list:
+                fileName, fileExtension = os.path.splitext(item)
+                # shutil.copy2(old_folder + item, str(new_folder) + str(new_slug) + str(fileExtension))
+                if fileExtension == '.xml':
+                    script.docxml.save('name.xml', File(open(old_folder + item)))
+                elif fileExtension == '.txt':
+                    script.header.save('name.txt', File(open(old_folder + item)))
+                elif fileExtension == '.r' or fileExtension == '.R':
+                    script.code.save('name.r', File(open(old_folder + item)))
+                else:
+                    script.logo.save('name' + str(fileExtension), File(open(old_folder + item)))
+
+            # delete old folder
+            shutil.rmtree(old_folder)
+
+            script.save()
+        return True
+    else:
+        script.inln = form.cleaned_data['inline']
+        script.save()
+        return True
 
 def update_script_logo(script, pic):
     if script.logo:
@@ -22,24 +64,29 @@ def update_script_logo(script, pic):
     script.save()
     return True
 
+def del_script(script):
+    folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts" , script.name, None))
+
+    if os.path.isdir(folder):
+        shutil.rmtree(folder)
+        script.delete()
+        return True
+
+    return False
+
 def schedule_job(job):
     # job.progress = 0
     job.save()
     return 1
 
 def del_job(job):
-    docxml_path = str(settings.MEDIA_ROOT) + str(file_name('jobs', job.jname, job.juser.username))
+    docxml_path = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
     shutil.rmtree(docxml_path)
     job.delete()
 
-def del_script(script):
-    docxml_path = str(settings.MEDIA_ROOT) + str(file_name("scripts" , script.name, None))
-    shutil.rmtree(docxml_path)
-
-    script.delete()
 
 def run_job(job, script):
-    loc = str(settings.MEDIA_ROOT) + str(file_name('jobs', job.jname, job.juser.username))
+    loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
     path = str(settings.MEDIA_ROOT) + str(job.rexecut)
     job.progress = 10
     job.save()
@@ -145,9 +192,9 @@ def add_file_to_job(job_name, user_name, f):
             destination.write(chunk)
 
 def get_job_folder(name, user=None):
-    return str(settings.MEDIA_ROOT) + str(file_name('jobs', name, user))
+    return str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', name, user))
 
-def file_name(loc, name, user=None):
+def get_folder_name(loc, name, user=None):
     if loc == "jobs":
         slug = slugify(name + '_' + str(user))
     else:

@@ -25,7 +25,6 @@ class Rscripts(models.Model):
         slug = slugify(self.name)
         return 'scripts/%s/%s.%s' % (slug, slug, extension)
 
-
     docxml = models.FileField(upload_to=file_name, blank=True)
     code = models.FileField(upload_to=file_name, blank=True)
     header = models.FileField(upload_to=file_name, blank=True)

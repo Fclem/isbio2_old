@@ -212,7 +212,7 @@ def dochelp(request):
 def script_editor(request, sid=None):
     script = Rscripts.objects.get(id=sid)
 
-    f_basic = breezeForms.ScriptBasics({'name': script.name, 'inline': script.inln })
+    f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln })
     f_descr = breezeForms.ScriptDescription({'description': script.details})
     f_attrs = breezeForms.ScriptAttributes()
     f_logos = breezeForms.ScriptLogo()
@@ -233,54 +233,22 @@ def script_editor_update(request, sid=None):
 
         # General Tab
         if request.POST['form_name'] == 'general':
-            f_basic = breezeForms.ScriptBasics(request.POST)
+            f_basic = breezeForms.ScriptBasics(script.name, request.POST)
             if f_basic.is_valid():
-
-                script.name = f_basic.cleaned_data['name']
-                script.inln = f_basic.cleaned_data['inline']
-                script.save()
+                print f_basic.cleaned_data['name']
+                rshell.update_script_dasics(script, f_basic)
                 return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
         else:
-            f_basic = breezeForms.ScriptBasics({'name': script.name, 'inline': script.inln })
+            f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln })
 
-        # Description Tab
-        if request.POST['form_name'] == 'description':
-            f_descr = breezeForms.ScriptDescription(request.POST)
-            if f_descr.is_valid():
-                script.details = f_descr.cleaned_data['description']
-                script.save()
-                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
-        else:
-            f_descr = breezeForms.ScriptDescription({script.details})
-
-        # Attributes Tab
-        if request.POST['form_name'] == 'attributes':
-            f_attrs = breezeForms.ScriptAttributes(request.POST)
-            if f_attrs.is_valid():
-                # f_attrs.save()
-                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
-        else:
-            f_attrs = breezeForms.ScriptAttributes({})
-
-        # Form Builder Tab
-        # Sources Tab
-
-        # Logos Tab
-        if request.POST['form_name'] == 'logos':
-            f_logos = breezeForms.ScriptLogo(request.POST, request.FILES)
-            if f_logos.is_valid():
-                rshell.update_script_logo(script, request.FILES['logo'])
-                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
-        else:
-            f_logos = breezeForms.ScriptLogo()
 
         return render_to_response('script-editor.html', RequestContext(request, {
                 'resources_status': 'active',
                 'script': script,
                 'basic_form': f_basic,
-                'descr_form': f_descr,
-                'attr_form': f_attrs,
-                'logo_form': f_logos
+                # 'descr_form': f_descr,
+                # 'attr_form': f_attrs,
+                # 'logo_form': f_logos
             }))
     # if NOT POST
     return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id)
@@ -669,9 +637,7 @@ def new_script_dialog(request):
 
     if form.is_valid():
         sname = str(form.cleaned_data.get('name', None))
-        newpath = rshell.new_script_folder(sname)
-        dbitem = Rscripts(name=sname, author=request.user)
-        dbitem.save()
+        newpath = rshell.init_script(sname, request.user)
         return HttpResponseRedirect('/scripts/')
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
