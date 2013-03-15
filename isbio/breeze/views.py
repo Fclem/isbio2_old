@@ -265,6 +265,11 @@ def script_editor_update(request, sid=None):
             f_attrs = breezeForms.ScriptAttributes(instance=script)
 
         # Form Builder Tab
+        if request.POST['form_name'] == 'xml_data':
+            print request.POST['xml_data']
+            rshell.update_script_xml(script, request.POST['xml_data'])
+        else:
+            pass
         # Sources Tab
 
         # Logos Tab

@@ -1,5 +1,6 @@
 import os, shutil, re, sys, traceback
 from datetime import datetime
+import xml.etree.ElementTree as xml
 from rpy2.robjects import r
 from rpy2.rinterface import RRuntimeError
 from django.template.defaultfilters import slugify
@@ -58,6 +59,37 @@ def update_script_dasics(script, form):
         script.creation_date = datetime.now()
         script.save()
         return True
+
+def update_script_xml(script, xml_data):
+    if os.path.isfile(str(settings.MEDIA_ROOT) + str(script.docxml)):
+        os.remove(str(settings.MEDIA_ROOT) + str(script.docxml))
+    root = xml.Element('rScript')
+    root.attrib['name'] = str(script.name)
+    inline = xml.Element('inline')
+    inline.text = str(script.inln)
+    root.append(inline)
+    details = xml.Element('details')
+    details.text = str(script.details)
+    root.append(details)
+    draft = xml.Element('draft')
+    draft.attrib['val'] = str(script.draft)
+    root.append(draft)
+    input_array = xml.Element('inputArray')
+
+    # important stuff goes here
+    input_array.text = xml_data
+
+    root.append(input_array)
+
+    newxml = open(str(settings.TEMP_FOLDER) + 'script.xml', 'w')
+    xml.ElementTree(root).write(newxml)
+    newxml.close()
+
+    script.docxml.save('script.xml', File(open(str(settings.TEMP_FOLDER) + 'script.xml')))
+    script.creation_date = datetime.now()
+    script.save()
+    os.remove(str(settings.TEMP_FOLDER) + 'script.xml')
+    return True
 
 def update_script_logo(script, pic):
     if script.logo:

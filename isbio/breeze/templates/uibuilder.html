@@ -3,6 +3,7 @@
           <div class="row-fluid">
               
             <div class="span4">
+              <button class="btn btn-primary btn-block" type="submit" form="components"><strong>Rebuild Form</strong></button>
               <div class="clearfix">
                 <div id="build">
                   <form id="target" class="form-inline">
@@ -17,7 +18,7 @@
                           </div>
                         </form>"
                         >
-                        <legend class="valtype" data-valtype="text">Form Name</legend>
+                        <legend class="valtype" data-valtype="text">Custom Form</legend>
                       </div>
                     </fieldset>
                   </form>
@@ -32,8 +33,10 @@
                   <li class><a href="#tab2" data-toggle="tab">Select</a></li>
                   <li class><a id="sourcetab" href="#xmlsource" data-toggle="tab">XML Source</a></li>
                 </ul>
-                <form class="form-horizontal" id="components">
+                <form class="form-horizontal" id="components" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
+                  {% csrf_token %}
                   <fieldset>
+                    <input type="hidden" name="form_name" value="xml_data">
                     <div class="tab-content">
     
                       <div class="tab-pane active" id="tab1">
@@ -175,10 +178,11 @@
                       </div>
     
                       <div class="tab-pane" id="xmlsource">
-                        <textarea id="source" class="input-xxlarge"></textarea>
+                        <textarea id="source" class="input-xxlarge" name="xml_data"></textarea>
                       </div>
                     
                     </div>
+                    
                   </fieldset>
                 </form>
               </div> <!-- tabbable -->
