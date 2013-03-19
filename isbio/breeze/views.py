@@ -204,7 +204,6 @@ def report_overview(request, rtype, iname, mod=None):
             attribs['form'] = breezeForms.form_from_xml(xml=tree)
             tags_attrib.append(copy.deepcopy(attribs))
 
-
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'instance_name': iname, 'report_type': rtype }))
 
     elif mod == '-full':
