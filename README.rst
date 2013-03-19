@@ -4,8 +4,7 @@ Django + Statistical-Computing - TOOLKIT
 Here is an initial sketch of the web-based tool for biomedical data analysis.
 
 
-Insired by:
-**The Institute for Molecular Medicine Finland**
+Insired by: ...
 
 
 Why?
@@ -26,5 +25,5 @@ Getting Started
 What's There
 ------------
 
-- 
+- Web interface to R-engine
 
