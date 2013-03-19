@@ -181,12 +181,27 @@ def reports(request, what=None):
 def report_overview(request, rtype, iname, mod=None):
     if mod is None:
         # renders an Overview with available Tags
-        tags = ['one', 'two', 'three']
-        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags, 'instance_name': iname, 'report_type': rtype }))
+        # tags = ['one', 'two', 'three']
+
+        tags = Rscripts.objects.filter(draft="0").filter(istag="1")
+
+        attribs = dict()
+        tags_attrib = list()
+        for item in tags:
+            tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
+            attribs['id'] = item.id
+            attribs['name'] = str(item.name)
+            attribs['form'] = breezeForms.form_from_xml(xml=tree)
+            tags_attrib.append(copy.deepcopy(attribs))
+
+
+        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'instance_name': iname, 'report_type': rtype }))
+
     elif mod == '-full':
         # renders Full Report (create a new tab/window for that)
         html = 'my_report.html'
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
+
     else:
         # if smth stupid came as a mod
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True }))

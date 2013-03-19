@@ -140,16 +140,16 @@
           {% for item in tags_available %}
             <tr class="info">
               <!-- tag title -->
-              <td> <strong>&nbsp;{{ item }}</strong> </td>
+              <td> <strong>&nbsp;{{ item.name }}</strong> </td>
               <!-- tag options button -->
               <td> 
-                <button id="{{ item }}_optbtn" disabled="disabled" type="button" class="btn btn btn-info pull-right" data-toggle="collapse" data-target="#{{ item }}_options"> 
+                <button id="{{ item.id }}_optbtn" disabled="disabled" type="button" class="btn btn btn-info pull-right" data-toggle="collapse" data-target="#{{ item.id }}_options"> 
                   <i class="icon-tags icon-white"></i> 
                 </button> 
               </td>
               <!-- tag trigger -->
               <td>
-                <div class="switch switch-small pull-right trigger" data-which="{{ item }}" data-on="primary" data-off="info" data-on-label="<i class='icon-ok icon-white'></i>" data-off-label="<i class='icon-remove icon-white'></i>">
+                <div class="switch switch-small pull-right trigger" data-which="{{ item.id }}" data-on="primary" data-off="info" data-on-label="<i class='icon-ok icon-white'></i>" data-off-label="<i class='icon-remove icon-white'></i>">
                   <input type="checkbox">
                 </div> 
               </td>
@@ -157,13 +157,10 @@
             <tr>
               <!-- tag options form (collapse) -->  
               <td>
-                <div id="{{ item }}_options" class="collapse options"> 
+                <div id="{{ item.id }}_options" class="collapse options"> 
                   <form class="form-inline">
-                    <input type="text" class="input-small" placeholder="name">
-                    <label class="checkbox">
-                      <input type="checkbox"> Example
-                    </label>
-                    <a type="button" href="#" class="btn">Update</a>
+                    {{ item.form|as_bootstrap:'inline' }}
+                    <a type="button" href="#" class="btn">Configure</a>
                   </form>
                 </div>
               </td>
