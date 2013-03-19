@@ -145,15 +145,18 @@ def reports(request, what=None):
     ds = DataSet.objects.all()
     ds_count = len(ds)
     query_val = ""
+    report_type = ""
 
     if request.method == 'POST':
         result_type = what
 
         # search for entities
         if what == 'entity':
+            report_type = request.POST['type']
             query_val = str(request.POST['query'])
+
             for set in ds:
-                output = rshell.report_search(set.rdata, request.POST['type'], request.POST['query'])
+                output = rshell.report_search(set.rdata, report_type, query_val)
                 # output = rshell.get_dataset_info(set.rdata)
 
         # search for datasets
@@ -167,19 +170,20 @@ def reports(request, what=None):
             'search_result': True,
             'result_type': result_type,
             'query_value': query_val,
+            'report_type': report_type,
             'output': output
         }))
 
     return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True, 'ds_count': ds_count }))
 
 @login_required(login_url='/breeze/')
-def report_overview(request, iid, mod=None):
+def report_overview(request, rtype, iname, mod=None):
     if mod is None:
-        # render an overview with a set of available tags
+        # renders an Overview with available Tags
         tags = ['one', 'two', 'three']
-        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags }))
+        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags, 'instance_name': iname, 'report_type': rtype }))
     elif mod == '-full':
-        # if we need to generate full report (create a new tab/window for that)
+        # renders Full Report (create a new tab/window for that)
         html = 'my_report.html'
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
     else:
