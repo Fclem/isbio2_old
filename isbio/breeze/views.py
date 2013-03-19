@@ -120,7 +120,8 @@ def scripts(request, layout="list"):
     else:
         nails = False
 
-    all_scripts = Rscripts.objects.all()
+    # all_scripts = Rscripts.objects.all()
+    all_scripts = Rscripts.objects.filter(draft="0").filter(istag="0")
 
     cat_list = dict()
     categories = list()
