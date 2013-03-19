@@ -56,8 +56,8 @@
       <form class="navbar-search" action="/reports/entity" method="post">
         {% csrf_token %}
         <div class="controls">
-          <input type="text" class="input-xlarge search-query" placeholder="Search... ">
-          <select class="input-medium search-query">
+          <input name="query" type="text" class="input-xlarge search-query" placeholder="Search... " value="{{ query_value }}">
+          <select name="type" class="input-medium search-query">
             <option><strong>Drug</strong></option>
             <option><strong>Sample</strong></option>
             <option><strong>Patient</strong></option>

@@ -144,14 +144,17 @@ def scripts(request, layout="list"):
 def reports(request, what=None):
     ds = DataSet.objects.all()
     ds_count = len(ds)
+    query_val = ""
 
     if request.method == 'POST':
         result_type = what
 
         # search for entities
         if what == 'entity':
+            query_val = str(request.POST['query'])
             for set in ds:
-                output = rshell.get_dataset_info(set.rdata)
+                output = rshell.report_search(set.rdata, request.POST['type'], request.POST['query'])
+                # output = rshell.get_dataset_info(set.rdata)
 
         # search for datasets
         if what == 'dataset':
@@ -163,6 +166,7 @@ def reports(request, what=None):
             'ds_count': ds_count,
             'search_result': True,
             'result_type': result_type,
+            'query_value': query_val,
             'output': output
         }))
 

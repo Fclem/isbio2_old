@@ -251,3 +251,26 @@ def get_dataset_info(path):
         lst.append(dict(name=str(pill), db="Sanger.RData"))
 
     return lst
+
+def report_search(data_set, report_type, query):
+    data_set = str(settings.MEDIA_ROOT) + str(data_set)
+    lst = list()
+
+    if str(report_type) == 'Drug':
+        r('library(vcd)')
+        r.assign('dataset', str(data_set))
+        r('load(dataset)')
+        r('dataSet1 <- sangerSet[1:131,]')
+        r('featureNames(dataSet1) <- gsub("_IC_50","",featureNames(dataSet1))')
+        drugs = r('featureNames(dataSet1)')
+
+        if str(query) == "*":
+            for pill in drugs:
+                lst.append(dict(name=str(pill), db="Sanger.RData"))
+
+        else:
+            for pill in drugs:
+                if str(pill) == str(query):
+                    lst.append(dict(name=str(pill), db="Sanger.RData"))
+
+    return lst
