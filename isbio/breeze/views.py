@@ -89,7 +89,17 @@ def base(request):
 
 @login_required(login_url='/breeze/')
 def home(request):
-    return render_to_response('home.html', RequestContext(request, {'home_status': 'active'}))
+    occurrences = dict()
+
+    occurrences['jobs_running'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").count()
+    occurrences['jobs_scheduled'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").count()
+    occurrences['jobs_history'] = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").count()
+
+    occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
+    occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
+
+    print occurrences
+    return render_to_response('home.html', RequestContext(request, {'home_status': 'active', 'dbStat': occurrences }))
 
 @login_required(login_url='/breeze/')
 def jobs(request, state="scheduled"):

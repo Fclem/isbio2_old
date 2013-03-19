@@ -30,7 +30,7 @@
     <table class="table table-striped">
       <head>
         <tr>
-          <th>id</th><th>Name</th><th>Author</th><th>Last Modified</th><th>Category</th><th>Draft</th><th>Edit</th><th>Remove</th>
+          <th>id</th><th>Name</th><th>Author</th><th>Last Modified</th><th>Category</th><th>Draft</th><th>Is Tag</th><th>Edit</th><th>Remove</th>
         </tr>
       </head>
       <tbody>
@@ -42,6 +42,7 @@
           <td style="vertical-align: middle">{{ scr.creation_date }}</td>
           <td style="vertical-align: middle">{{ scr.category }}</td>
           <td style="vertical-align: middle">{% if scr.draft %} <span class="badge badge-warning">DRAFT</span> {% endif %}</td>
+          <td style="vertical-align: middle">{% if scr.istag %} <span class="badge badge-info">TAG</span> {% endif %}</td>
           <td style="vertical-align: middle">
             {% if perms.breeze.change_rscripts %}
               <a href="script-editor/{{ scr.id }}" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
