@@ -19,6 +19,7 @@ class Rscripts(models.Model):
     author = ForeignKey(User)
     creation_date = models.DateField(auto_now_add=True)
     draft = models.BooleanField(default=True)
+    istag = models.BooleanField(default=False)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
