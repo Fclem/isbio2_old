@@ -190,6 +190,11 @@
   
 <script>
 $(document).ready(function() {
+    if ($("input:file").hasClass('TPL')){
+        var which = $("input:file").filter('.TPL').attr('which');
+        $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+    }
+    $("input:file").customFileInput({ });
   //$('.options').collapse('hide');
 });
 
