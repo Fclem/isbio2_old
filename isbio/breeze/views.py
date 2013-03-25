@@ -220,7 +220,8 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
     elif mod == '-full':
         #### renders Full Report (create a new tab/window for that) ####
-        html = 'my_report.html'
+        # html = 'my_report.html'
+        html = rshell.build_report(rtype, iname, iid, request.user)
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
 
     else:

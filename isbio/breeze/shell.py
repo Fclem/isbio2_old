@@ -270,12 +270,12 @@ def report_search(data_set, report_type, query):
 
                 if str(query) == "*":
                     for pill in drugs:
-                        lst.append(dict(name=str(pill), db=str(dset.name)))
+                        lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
 
                 else:
                     for pill in drugs:
                         if str(pill) == str(query):
-                            lst.append(dict(name=str(pill), db=str(dset.name)))
+                            lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
 
     ### GENE - Entrez search with BioPython ###
     elif str(report_type) == 'Gene' and len(query) > 0:
@@ -317,3 +317,43 @@ def get_report_overview(report_type, instance_name, instance_id):
             summary_srting = "Instance ID is missing!"
 
     return summary_srting
+
+def build_report(report_type, instance_name, instance_id, author):
+    html_path = str()
+    loc = str(settings.MEDIA_ROOT) + str("reports/")
+    path = str(author.username) + '_' + str(instance_name)
+    dochtml = path + '/' + str(instance_name)
+    report_name = report_type + ' Report' + ' :: ' + instance_name
+
+    try:
+        r.assign('location', loc)
+        r('setwd(toString(location))')
+        r.assign('path', path)
+        r('dir.create( toString(path), showWarnings=FALSE );')
+        r('require( Nozzle.R1 )')
+
+        r.assign('report_name', report_name)
+        r('REPORT <- newCustomReport(toString(report_name));')
+
+        # tags come here
+        r('ss1 <- newSection( "My Subsection 1" );')
+        r('t <- newTable( iris[45:55,], "Iris data." );')
+        r('ss1 <- addTo( ss1, t );')
+
+        r('ss2 <- newSection( "My Subsection 2" );')
+        r('p <- newParagraph( "Some sample text." );')
+        r('ss2 <- addTo( ss2, p );')
+
+        #
+        r('REPORT <- addTo( REPORT, ss1, ss2 );')
+        r.assign('dochtml', dochtml)
+        r('writeReport( REPORT, filename=toString(dochtml));')
+
+    except RRuntimeError:
+        # redirect to error-page
+        html_path = str("reports/rfail.html")
+    else:
+        # succeed
+        html_path = 'reports/' + dochtml + '.html'
+
+    return html_path
