@@ -3,6 +3,7 @@ from datetime import datetime
 import xml.etree.ElementTree as xml
 from rpy2.robjects import r
 from rpy2.rinterface import RRuntimeError
+from Bio import Entrez
 from django.template.defaultfilters import slugify
 from django.conf import settings
 from django.core.files import File
@@ -253,24 +254,66 @@ def get_dataset_info(path):
     return lst
 
 def report_search(data_set, report_type, query):
-    data_set = str(settings.MEDIA_ROOT) + str(data_set)
     lst = list()
 
-    if str(report_type) == 'Drug':
-        r('library(vcd)')
-        r.assign('dataset', str(data_set))
-        r('load(dataset)')
-        r('dataSet1 <- sangerSet[1:131,]')
-        r('featureNames(dataSet1) <- gsub("_IC_50","",featureNames(dataSet1))')
-        drugs = r('featureNames(dataSet1)')
+    ### DRUG - local db search for drugs ###
+    if str(report_type) == 'Drug' and len(query) > 0:
+        for dset in data_set:
+            if dset.name == "Sanger" or dset.name == "Duplicate":
+                data = str(settings.MEDIA_ROOT) + str(dset.rdata)
+                r('library(vcd)')
+                r.assign('dataset', str(data))
+                r('load(dataset)')
+                r('dataSet1 <- sangerSet[1:131,]')
+                r('featureNames(dataSet1) <- gsub("_IC_50","",featureNames(dataSet1))')
+                drugs = r('featureNames(dataSet1)')
 
-        if str(query) == "*":
-            for pill in drugs:
-                lst.append(dict(name=str(pill), db="Sanger.RData"))
+                if str(query) == "*":
+                    for pill in drugs:
+                        lst.append(dict(name=str(pill), db=str(dset.name)))
 
-        else:
-            for pill in drugs:
-                if str(pill) == str(query):
-                    lst.append(dict(name=str(pill), db="Sanger.RData"))
+                else:
+                    for pill in drugs:
+                        if str(pill) == str(query):
+                            lst.append(dict(name=str(pill), db=str(dset.name)))
+
+    ### GENE - Entrez search with BioPython ###
+    elif str(report_type) == 'Gene' and len(query) > 0:
+        Entrez.email = "dmitrii.bychkov@helsinki.fi"
+        instance = str(query) + '[Gene/Protein Name]'  #  e.g. 'DMPK[Gene/Protein Name]'
+        species = 'Homo sapiens[Organism]'
+        search_query = instance + ' AND ' + species
+        handle = Entrez.esearch(db="gene", term=search_query)
+        record = Entrez.read(handle)
+
+        for item in record["IdList"]:
+            record_summary = Entrez.esummary(db="gene", id=item)
+            record_summary = Entrez.read(record_summary)
+            if record_summary[0]["Name"]:
+                lst.append(dict(id=str(record_summary[0]["Id"]), name=str(record_summary[0]["Name"]), db="Entrez[Gene]"))
 
     return lst
+
+def get_report_overview(report_type, instance_name, instance_id):
+    """ 
+        Most likely will call rCode to generate overview in order 
+        to partition BREEZE and report content. 
+    """
+    summary_srting = str()
+
+    if str(report_type) == 'Drug' and len(instance_name) > 0:
+        summary_srting = ""
+
+    if str(report_type) == 'Gene' and len(instance_name) > 0:
+        if instance_id is not None:
+            record_summary = Entrez.esummary(db="gene", id=instance_id)
+            record_summary = Entrez.read(record_summary)
+
+            if record_summary[0]["NomenclatureName"]:
+                summary_srting += record_summary[0]["NomenclatureName"]
+            if record_summary[0]["Orgname"]:
+                summary_srting += " [" + record_summary[0]["Orgname"] + "] "
+        else:
+            summary_srting = "Instance ID is missing!"
+
+    return summary_srting

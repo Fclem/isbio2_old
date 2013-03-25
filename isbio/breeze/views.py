@@ -98,7 +98,6 @@ def home(request):
     occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
     occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
 
-    print occurrences
     return render_to_response('home.html', RequestContext(request, {'home_status': 'active', 'dbStat': occurrences }))
 
 @login_required(login_url='/breeze/')
@@ -155,22 +154,28 @@ def scripts(request, layout="list"):
 def reports(request, what=None):
     ds = DataSet.objects.all()
     ds_count = len(ds)
+
+    overview = dict()
     query_val = ""
-    report_type = ""
+    overview['report_type'] = ""
 
     if request.method == 'POST':
         result_type = what
 
-        # search for entities
+        # search for ENTITIES (right bar)
         if what == 'entity':
-            report_type = request.POST['type']
+            overview['report_type'] = request.POST['type']
             query_val = str(request.POST['query'])
 
-            for set in ds:
-                output = rshell.report_search(set.rdata, report_type, query_val)
-                # output = rshell.get_dataset_info(set.rdata)
+            if overview['report_type'] == 'Drug':
+                output = rshell.report_search(ds, overview['report_type'], query_val)
+                # for set in ds:
+                #    output = rshell.report_search(set.rdata, overview['report_type'], query_val)
 
-        # search for datasets
+            elif overview['report_type'] == 'Gene':
+                output = rshell.report_search(None, overview['report_type'], query_val)
+
+        # search for DATASETS (left bar)
         if what == 'dataset':
             output = ds
 
@@ -181,18 +186,25 @@ def reports(request, what=None):
             'search_result': True,
             'result_type': result_type,
             'query_value': query_val,
-            'report_type': report_type,
+            'overview_info': overview,
             'output': output
         }))
 
     return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True, 'ds_count': ds_count }))
 
 @login_required(login_url='/breeze/')
-def report_overview(request, rtype, iname, mod=None):
+def report_overview(request, rtype, iname, iid=None, mod=None):
     if mod is None:
-        # renders an Overview with available Tags
-        # tags = ['one', 'two', 'three']
+        ### renders an Overview with available Tags ###
 
+        # BUILD OVERVIEW SECTION
+        overview = dict()
+        overview['report_type'] = rtype
+        overview['instance_name'] = iname
+        overview['instance_id'] = iid
+        overview['details'] = rshell.get_report_overview(rtype, iname, iid)
+
+        # BUILD LIST OF TAGS
         tags = Rscripts.objects.filter(draft="0").filter(istag="1")
 
         attribs = dict()
@@ -204,15 +216,15 @@ def report_overview(request, rtype, iname, mod=None):
             attribs['form'] = breezeForms.form_from_xml(xml=tree)
             tags_attrib.append(copy.deepcopy(attribs))
 
-        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'instance_name': iname, 'report_type': rtype }))
+        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'overview_info': overview }))
 
     elif mod == '-full':
-        # renders Full Report (create a new tab/window for that)
+        #### renders Full Report (create a new tab/window for that) ####
         html = 'my_report.html'
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
 
     else:
-        # if smth stupid came as a mod
+        ### if smth stupid came as a mod ###
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True }))
 
 
@@ -673,7 +685,6 @@ def send_file(request, ftype, fname):
         ! Should supbstitute send_template() function soon !
     """
     if ftype == 'dataset':
-        print str(fname)
         fitem = DataSet.objects.get(name=str(fname))
         local_path = str(fitem.rdata)
         path_to_file = str(settings.MEDIA_ROOT) + local_path
@@ -701,9 +712,9 @@ def builder(request):
 @login_required(login_url='/breeze/')
 def new_script_dialog(request):
     """
-    This view provides a dialog to create a new script and save new script in DB.
-    If script name is valid, the view creates an instance in DB which has the following fields completed:
-    Name, Category, Creation Date, Author and Script's root folder.
+        This view provides a dialog to create a new script and save new script in DB.
+        If script name is valid, the view creates an instance in DB which has the following fields completed:
+        Name, Category, Creation Date, Author and Script's root folder.
     """
     form = breezeForms.NewScriptDialog(request.POST or None)
 
