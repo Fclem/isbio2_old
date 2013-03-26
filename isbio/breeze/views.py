@@ -58,7 +58,7 @@ def breeze(request):
 
 def logout(request):
     auth.logout(request)
-    return HttpResponseRedirect('/breeze/')
+    return HttpResponseRedirect('/')
 
 def register_user(request):
     if request.user.is_authenticated():
@@ -87,7 +87,7 @@ def register_user(request):
 def base(request):
     return render_to_response('base.html')
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def home(request):
     occurrences = dict()
 
@@ -101,7 +101,7 @@ def home(request):
     print occurrences
     return render_to_response('home.html', RequestContext(request, {'home_status': 'active', 'dbStat': occurrences }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def jobs(request, state="scheduled"):
     if state == "history":
         tab = "history_tab"
@@ -123,7 +123,7 @@ def jobs(request, state="scheduled"):
         'current': active_jobs,
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def scripts(request, layout="list"):
     if layout == "nails":
         nails = True
@@ -151,7 +151,7 @@ def scripts(request, layout="list"):
         'thumbnails': nails
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def reports(request, what=None):
     ds = DataSet.objects.all()
     ds_count = len(ds)
@@ -187,7 +187,7 @@ def reports(request, what=None):
 
     return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True, 'ds_count': ds_count }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def report_overview(request, rtype, iname, mod=None):
     if mod is None:
         # renders an Overview with available Tags
@@ -216,11 +216,11 @@ def report_overview(request, rtype, iname, mod=None):
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True }))
 
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def resources(request):
     return render_to_response('resources.html', RequestContext(request, {'resources_status': 'active', }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def manage_scripts(request):
     all_scripts = Rscripts.objects.all()
     return render_to_response('manage-scripts.html', RequestContext(request, {
@@ -228,13 +228,13 @@ def manage_scripts(request):
         'resources_status': 'active',
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def manage_reports(request):
     return render_to_response('manage-reports.html', RequestContext(request, {
         'resources_status': 'active',
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def dochelp(request):
     return render_to_response('help.html', RequestContext(request, {'help_status': 'active'}))
 
@@ -242,7 +242,7 @@ def dochelp(request):
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###
 ######################################
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def script_editor(request, sid=None):
     script = Rscripts.objects.get(id=sid)
 
@@ -260,7 +260,7 @@ def script_editor(request, sid=None):
         'logo_form': f_logos
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def script_editor_update(request, sid=None):
     if request.method == 'POST':
         script = Rscripts.objects.get(id=sid)
@@ -326,7 +326,7 @@ def script_editor_update(request, sid=None):
     return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id)
 
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def delete_job(request, jid):
     job = Jobs.objects.get(id=jid)
     if (job.status == "scheduled"):
@@ -336,18 +336,18 @@ def delete_job(request, jid):
     rshell.del_job(job)
     return HttpResponseRedirect('/jobs/' + tab)
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def delete_script(request, sid):
     script = Rscripts.objects.get(id=sid)
     rshell.del_script(script)
     return HttpResponseRedirect('/resources/scripts/')
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def edit_job(request, jid=None, mod=None):
     job = Jobs.objects.get(id=jid)
     tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
@@ -408,7 +408,7 @@ def edit_job(request, jid=None, mod=None):
         'mode': mode,
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     new_job = Jobs()
@@ -455,7 +455,7 @@ def create_job(request, sid=None):
         'mode': 'create',
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def run_script(request, jid):
     job = Jobs.objects.get(id=jid)
     script = str(job.script.code)
@@ -466,7 +466,7 @@ def run_script(request, jid):
     # rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def delete_param(request, which):
     storage.del_param(which)
     local_representation = storage.get_param_list()
@@ -480,7 +480,7 @@ def delete_param(request, which):
             'status': 'info',
         }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def append_param(request, which):
     basic_form = breezeForms.AddBasic(request.POST or None)
     extra_form = None
@@ -535,8 +535,8 @@ def append_param(request, which):
         'msg': msg, 'basic': basic_form, 'extra': extra_form, "type": which,
     }))
 
-@login_required(login_url='/breeze/')
-@permission_required('breeze.add_rscripts', login_url="/breeze/")
+@login_required(login_url='/')
+@permission_required('breeze.add_rscripts', login_url="/")
 def create_script(request):
     tab = 'general'
     if request.method == 'POST':
@@ -573,7 +573,7 @@ def create_script(request):
         'scripts_status': 'active',
         }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def save(request):
     # validate form_details also somehow in the IF below
     if  storage.form_general.is_valid() and storage.form_sources.is_valid():
@@ -622,7 +622,7 @@ def show_rcode(request, jid):
         'input': parameters,
     }))
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def send_zipfile(request, jid, mod=None):
     job = Jobs.objects.get(id=jid)
     loc = rshell.get_job_folder(str(job.jname), str(job.juser.username))
@@ -654,7 +654,7 @@ def send_zipfile(request, jid, mod=None):
     temp.seek(0)
     return response
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def send_template(request, name):
     template = InputTemplate.objects.get(name=name)
     path_to_file = str(settings.MEDIA_ROOT) + str(template.file)
@@ -665,7 +665,7 @@ def send_template(request, name):
     response['Content-Disposition'] = 'attachment; filename=' + file
     return response
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def send_file(request, ftype, fname):
     """
         Supposed to be generic function that can send single file to client.
@@ -685,20 +685,20 @@ def send_file(request, ftype, fname):
     response['Content-Disposition'] = 'attachment; filename=' + file
     return response
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def update_jobs(request, jid):
     job = Jobs.objects.get(id=jid)
     response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress)
 
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def builder(request):
     form = breezeForms.ScriptMainForm()
     return render_to_response('form-builder.html', RequestContext(request, {'forma': form, }))
 
 
-@login_required(login_url='/breeze/')
+@login_required(login_url='/')
 def new_script_dialog(request):
     """
     This view provides a dialog to create a new script and save new script in DB.
