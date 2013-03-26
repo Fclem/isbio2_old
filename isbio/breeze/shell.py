@@ -318,7 +318,7 @@ def get_report_overview(report_type, instance_name, instance_id):
 
     return summary_srting
 
-def build_report(report_type, instance_name, instance_id, author):
+def build_report(report_type, instance_name, instance_id, author, taglist):
     html_path = str()
     loc = str(settings.MEDIA_ROOT) + str("reports/")
     path = str(author.username) + '_' + str(instance_name)
@@ -340,12 +340,37 @@ def build_report(report_type, instance_name, instance_id, author):
         r('t <- newTable( iris[45:55,], "Iris data." );')
         r('ss1 <- addTo( ss1, t );')
 
-        r('ss2 <- newSection( "My Subsection 2" );')
-        r('p <- newParagraph( "Some sample text." );')
-        r('ss2 <- addTo( ss2, p );')
+        for key, val in sorted(taglist.items()):
+            if len(val) == 1:
+                if int(val) == 1:
+                    tag = breeze.models.Rscripts.objects.get(id=int(key))
+
+                    t_id = str(tag.id)
+                    sec_id = t_id
+                    t_name = str(tag.name)
+                    sec_name = t_name
+                    rstring = 'section_%s <- newSection("%s");' % (sec_id, sec_name)
+                    r(rstring)
+                    code = str(settings.MEDIA_ROOT) + str(tag.code)
+                    r.assign('code', code)
+                    r('source(toString(code))')
+                    rstring = 'gene_id <- %d' % (int(instance_id))
+                    r(rstring)
+                    header = str(settings.MEDIA_ROOT) + str(tag.header)
+                    r.assign('header', header)
+                    r('source(toString(header))')
+                    r('t <- newParagraph( mySummary$Summary )')
+                    rstring = 'section_%s <- addTo( section_%s, t)' % (sec_id, sec_id)
+                    print rstring
+                    r(rstring)
+
+
+#        r('mySummary <- gene_summary(gene_id)')
+#        r('t <- newParagraph( mySummary$Summary );')
+#        r('ss3 <- addTo( ss3, t );')
 
         #
-        r('REPORT <- addTo( REPORT, ss1, ss2 );')
+        r('REPORT <- addTo( REPORT, ss1, section_29);')
         r.assign('dochtml', dochtml)
         r('writeReport( REPORT, filename=toString(dochtml));')
 

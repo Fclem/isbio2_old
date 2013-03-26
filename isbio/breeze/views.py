@@ -212,6 +212,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         for item in tags:
             tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
             attribs['id'] = item.id
+            attribs['inline'] = str(item.inln)
             attribs['name'] = str(item.name)
             attribs['form'] = breezeForms.form_from_xml(xml=tree)
             tags_attrib.append(copy.deepcopy(attribs))
@@ -221,7 +222,13 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
     elif mod == '-full':
         #### renders Full Report (create a new tab/window for that) ####
         # html = 'my_report.html'
-        html = rshell.build_report(rtype, iname, iid, request.user)
+
+        if request.method == 'POST':
+            html = rshell.build_report(rtype, iname, iid, request.user, copy.deepcopy(request.POST))
+            return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
+
+        tags = None
+        html = rshell.build_report(rtype, iname, iid, request.user, tags)
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
 
     else:
