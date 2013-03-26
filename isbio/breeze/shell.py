@@ -134,9 +134,6 @@ def run_job(job, script):
 
         job.progress = 30
         job.save()
-        r('Sys.sleep(2)')
-        job.progress = 50
-        job.save()
         r('Sys.sleep(1)')
         job.progress = 70
         job.save()
@@ -336,10 +333,7 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
         r('REPORT <- newCustomReport(toString(report_name));')
 
         # tags come here
-        r('ss1 <- newSection( "My Subsection 1" );')
-        r('t <- newTable( iris[45:55,], "Iris data." );')
-        r('ss1 <- addTo( ss1, t );')
-
+        section_list = list()
         for key, val in sorted(taglist.items()):
             if len(val) == 1:
                 if int(val) == 1:
@@ -349,28 +343,36 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
                     sec_id = t_id
                     t_name = str(tag.name)
                     sec_name = t_name
+                    rstring = 'section_%s' % (sec_id)
+                    section_list.append(rstring)
                     rstring = 'section_%s <- newSection("%s");' % (sec_id, sec_name)
                     r(rstring)
+
                     code = str(settings.MEDIA_ROOT) + str(tag.code)
                     r.assign('code', code)
                     r('source(toString(code))')
+
                     rstring = 'gene_id <- %d' % (int(instance_id))
                     r(rstring)
+
                     header = str(settings.MEDIA_ROOT) + str(tag.header)
                     r.assign('header', header)
                     r('source(toString(header))')
-                    r('t <- newParagraph( mySummary$Summary )')
-                    rstring = 'section_%s <- addTo( section_%s, t)' % (sec_id, sec_id)
-                    print rstring
-                    r(rstring)
 
+                    if sec_name == "Gene Summary":
+                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Gene ID"), newParagraph( mySummary$Id )) )' % (sec_id, sec_id)
+                        r(rstring)
+                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Aliases"), newParagraph( mySummary$OtherAliases )) )' % (sec_id, sec_id)
+                        r(rstring)
+                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Description"), newParagraph( mySummary$Summary )) )' % (sec_id, sec_id)
+                        r(rstring)
 
-#        r('mySummary <- gene_summary(gene_id)')
-#        r('t <- newParagraph( mySummary$Summary );')
-#        r('ss3 <- addTo( ss3, t );')
-
-        #
-        r('REPORT <- addTo( REPORT, ss1, section_29);')
+        # collect sections
+        rstring = 'REPORT <- addTo( REPORT'
+        for sse in section_list:
+            rstring += ', ' + sse
+        rstring += ')'
+        r(rstring)
         r.assign('dochtml', dochtml)
         r('writeReport( REPORT, filename=toString(dochtml));')
 

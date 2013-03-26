@@ -205,18 +205,20 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         overview['details'] = rshell.get_report_overview(rtype, iname, iid)
 
         # BUILD LIST OF TAGS
-        tags = Rscripts.objects.filter(draft="0").filter(istag="1")
+        if rtype == 'Gene':
+            tags = Rscripts.objects.filter(draft="0").filter(istag="1")
 
-        attribs = dict()
-        tags_attrib = list()
-        for item in tags:
-            tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
-            attribs['id'] = item.id
-            attribs['inline'] = str(item.inln)
-            attribs['name'] = str(item.name)
-            attribs['form'] = breezeForms.form_from_xml(xml=tree)
-            tags_attrib.append(copy.deepcopy(attribs))
-
+            attribs = dict()
+            tags_attrib = list()
+            for item in tags:
+                tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
+                attribs['id'] = item.id
+                attribs['inline'] = str(item.inln)
+                attribs['name'] = str(item.name)
+                attribs['form'] = breezeForms.form_from_xml(xml=tree)
+                tags_attrib.append(copy.deepcopy(attribs))
+        else:
+            tags_attrib = list()
         return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'overview_info': overview }))
 
     elif mod == '-full':
