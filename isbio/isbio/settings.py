@@ -99,9 +99,17 @@ class BreezeSettings(Settings):
         'django.middleware.csrf.CsrfViewMiddleware',
         'django.contrib.auth.middleware.AuthenticationMiddleware',
         'django.contrib.messages.middleware.MessageMiddleware',
+        'django.middleware.doc.XViewMiddleware',
         # Uncomment the next line for simple clickjacking protection:
         # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
     )
+
+    AUTHENTICATION_BACKENDS = (
+        'django.contrib.auth.backends.ModelBackend',
+        'django_cas.backends.CASBackend',
+    )
+
+    CAS_SERVER_URL = 'https://192.168.0.218:8443/cas/'
 
     ROOT_URLCONF = 'isbio.urls'
 

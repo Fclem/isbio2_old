@@ -7,11 +7,11 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
-    url(r'^$', views.breeze),
-    url(r'^breeze/$', views.breeze),
+    url(r'^$', 'django_cas.views.login'),  # views.breeze),
+    url(r'^breeze/$', 'django_cas.views.login'),  # views.breeze),
     url(r'^base/$', views.base),
     url(r'^register/$', views.register_user),
-    url(r'^logout/$', views.logout),
+    url(r'^logout/$', 'django_cas.views.logout'),  # views.logout),
     url(r'^home/$', views.home),
     url(r'^help/$', views.dochelp),
     url(r'^jobs/(?P<state>[a-z]+)?$', views.jobs),
