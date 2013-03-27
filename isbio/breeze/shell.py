@@ -384,8 +384,11 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
                         r(rstring)
 
                     if sec_name == "Expression BoxPlot":
-                        rstring = 'section_%s <- addTo( section_%s, newFigure( figureName, "Expression BoxPlot" ) )' % (sec_id, sec_id)
+                        rstring = 'section_%s <- addTo( section_%s, newFigure( file_name, fileHighRes=file_name1, "Expression BoxPlot" ) )' % (sec_id, sec_id)
                         r(rstring)
+
+                    else:
+                        pass
 
         # collect sections
         rstring = 'REPORT <- addTo( REPORT'
