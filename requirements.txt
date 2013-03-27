@@ -4,7 +4,9 @@ PIL==1.1.7
 South==0.7.6
 Unidecode==0.04.12
 argparse==1.2.1
+biopython==1.61
 django-bootstrap-toolkit==2.6.22
+django-cas==2.1.1
 django-cerner-auth==0.2
 django-configurations==0.1
 django-social-auth==0.7.10
@@ -14,6 +16,7 @@ httplib2==0.7.7
 logilab-astng==0.24.1
 logilab-common==0.58.3
 meld3==0.6.10
+numpy==1.7.0
 oauth2==1.5.211
 paramiko==1.9.0
 pep8==1.3.3

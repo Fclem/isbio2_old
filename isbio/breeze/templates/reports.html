@@ -58,11 +58,12 @@
         <div class="controls">
           <input name="query" type="text" class="input-xlarge search-query" placeholder="Search... " value="{{ query_value }}">
           <select name="type" class="input-medium search-query">
-            <option><strong>Drug</strong></option>
-            <option><strong>Sample</strong></option>
-            <option><strong>Patient</strong></option>
+            <option id="optDrug">Drug</option>
+            <option id="optGene">Gene</option>
+            <option id="optSample">Sample*</option>
+            <option id="optPatient">Patient*</option>
           </select>
-          <p>&nbsp; e.g. Bosutinib</p>
+          <p>&nbsp; e.g. Bosutinib </p>
           <button type="submit" class="btn btn-info input-medium pull-left"><strong> QUERY </strong></button>
         </div>
       </form>
@@ -86,7 +87,8 @@
         {% for item in output %}
           {% if result_type == "entity" %}
           <tr>             
-            <td>&nbsp; <a href="/reports/overview/{{ report_type }}-{{ item.name }}"> {{ item.name }} </a> </td>
+            <td> {{ item.id }} </td>
+            <td>&nbsp; <a href="/reports/overview/{{ overview_info.report_type }}-{{ item.name }}-{{ item.id }}"> {{ item.name }} </a> </td>
             <td> {{ item.db }} </td>
           </tr>
           {% endif %}
@@ -124,20 +126,24 @@
   <div class="row-fluid">
     <div class="span4 offset1">
       <div class="row-fluid thumbnail">
-        <h5> {{ report_type }} Report </h5>
-        <h3> {{ instance_name }} </h3>
-        <p> (upon bioinformaticians) </p>
+        <h5> {{ overview_info.report_type }} Report </h5>
+        <h3> {{ overview_info.instance_name }} </h3>
+        <p> {{ overview_info.details }} </p>
       </div>
       <div class="row-fluid">&nbsp;</div>
       <div class="row-fluid" align="center">
-        <a href="/reports/overview/{{ report_type }}-{{ instance_name }}-full" class="input-medium btn-large btn-primary" target="_blank"> <strong> Generate Report </strong></a>
+        <input class="input-medium btn-large btn-primary" type="submit" form="TagList" target="_blank" value="Generate Report"></input>
       </div>
     </div>
       
     <div class="span6">
+      <form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full" method="post">
+      {% csrf_token %}
+      <div class="controls">
       <table class="table  table-condensed">
         <tbody>
           {% for item in tags_available %}
+            <input type="hidden" id="{{ item.id }}_ref" name="{{ item.id }}" value="0" form="TagList"/>
             <tr class="info">
               <!-- tag title -->
               <td> <strong>&nbsp;{{ item.name }}</strong> </td>
@@ -158,10 +164,13 @@
               <!-- tag options form (collapse) -->  
               <td>
                 <div id="{{ item.id }}_options" class="collapse options"> 
+                  <p>{{ item.inline }}</p>
+                  <!--
                   <form class="form-inline">
                     {{ item.form|as_bootstrap:'inline' }}
                     <a type="button" href="#" class="btn">Configure</a>
-                  </form>
+                  </form> 
+                  --> 
                 </div>
               </td>
               <td></td><td></td>
@@ -171,6 +180,8 @@
           {% endfor %}
         </tbody>
       </table>
+      <div>
+      </form>
     </div>
   </div>
   {% endif %}
@@ -195,7 +206,10 @@ $(document).ready(function() {
         $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
     }
     $("input:file").customFileInput({ });
-  //$('.options').collapse('hide');
+    
+    $("#opt"+"{{ overview_info.report_type }}").attr("selected", "selected");
+    
+    //$('.options').collapse('hide');
 });
 
 $('.trigger').on('switch-change', function (e, data) {
@@ -204,9 +218,11 @@ $('.trigger').on('switch-change', function (e, data) {
     
     if (value){
         $("#"+which+"_optbtn").removeClass("btn-info").addClass("btn-primary").removeAttr("disabled");
+        $("#"+which+"_ref").attr("value", "1")
     }
     else {
         $("#"+which+"_optbtn").removeClass("btn-primary").addClass("btn-info").attr("disabled", "disabled");
+        $("#"+which+"_ref").attr("value", "0")
         //$("#"+which+"_options").collapse('hide');
     }
 });
