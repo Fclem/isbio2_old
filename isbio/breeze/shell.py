@@ -2,6 +2,7 @@ import os, shutil, re, sys, traceback
 from datetime import datetime
 import xml.etree.ElementTree as xml
 from rpy2.robjects import r
+import rpy2.robjects as robjects
 from rpy2.rinterface import RRuntimeError
 from Bio import Entrez
 from django.template.defaultfilters import slugify
@@ -365,6 +366,21 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
                         rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Aliases"), newParagraph( mySummary$OtherAliases )) )' % (sec_id, sec_id)
                         r(rstring)
                         rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Description"), newParagraph( mySummary$Summary )) )' % (sec_id, sec_id)
+                        r(rstring)
+
+                    if sec_name == "Protein Information":
+                        other = r('mySummary$`Entrezgene_prot`$`Prot-ref`$`Prot-ref_name`')
+                        other = list(other)
+
+                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Prefered Name"), newParagraph( mySummary$`Entrezgene_prot`$`Prot-ref`$`Prot-ref_desc` )) )' % (sec_id, sec_id)
+                        r(rstring)
+
+                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Other names"), newList( ' % (sec_id, sec_id)
+                        for name in other:
+                            rstring += 'newParagraph( "%s" ),' % (name)
+                        rstring = rstring[:-1] + ') ) )'
+
+                        print rstring
                         r(rstring)
 
         # collect sections
