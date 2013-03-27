@@ -383,6 +383,10 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
                         print rstring
                         r(rstring)
 
+                    if sec_name == "Expression BoxPlot":
+                        rstring = 'section_%s <- addTo( section_%s, newFigure( figureName, "Expression BoxPlot" ) )' % (sec_id, sec_id)
+                        r(rstring)
+
         # collect sections
         rstring = 'REPORT <- addTo( REPORT'
         for sse in section_list:
