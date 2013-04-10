@@ -40,9 +40,6 @@ class RequestStorage():
 storage = RequestStorage()
 storage.progress = 10
 
-def test(request):
-    print request.FILES
-    return HttpResponseRedirect('/home/')
 
 def breeze(request):
     login_form = breezeForms.LoginForm(request.POST or None)
@@ -292,7 +289,6 @@ def script_editor_update(request, sid=None):
         if request.POST['form_name'] == 'general':
             f_basic = breezeForms.ScriptBasics(script.name, request.POST)
             if f_basic.is_valid():
-                print f_basic.cleaned_data['name']
                 rshell.update_script_dasics(script, f_basic)
                 return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
         else:
@@ -326,7 +322,13 @@ def script_editor_update(request, sid=None):
             rshell.update_script_xml(script, request.POST['xml_data'])
         else:
             pass
+
         # Sources Tab
+        if request.POST['form_name'] == 'source_files' and request.is_ajax():
+            rshell.update_script_sources(script, request.POST)
+            return HttpResponse(True)
+        else:
+            return HttpResponse(False)
 
         # Logos Tab
         if request.POST['form_name'] == 'logos':
@@ -348,6 +350,25 @@ def script_editor_update(request, sid=None):
     # if NOT POST
     return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id)
 
+@login_required(login_url='/')
+def get_rcode(request, sid=None, sfile=None):
+    script = Rscripts.objects.get(id=sid)
+    rcode = ""
+    if request.method == 'GET' and sid is not None:
+
+        if sfile == 'Header':
+            file_path = rshell.settings.MEDIA_ROOT + str(script.header)
+        elif sfile == 'Main':
+            file_path = rshell.settings.MEDIA_ROOT + str(script.code)
+
+        if os.path.isfile(file_path):
+            handle = open(file_path, 'r')
+            rcode = handle.read()
+            handle.close()
+        else:
+            rcode = "file does not exist"
+
+    return HttpResponse(rcode)
 
 @login_required(login_url='/')
 def delete_job(request, jid):
@@ -731,7 +752,8 @@ def new_script_dialog(request):
 
     if form.is_valid():
         sname = str(form.cleaned_data.get('name', None))
-        newpath = rshell.init_script(sname, request.user)
+        sinline = str(form.cleaned_data.get('inline', None))
+        newpath = rshell.init_script(sname, sinline, request.user)
         return HttpResponseRedirect('/resources/scripts/')
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {

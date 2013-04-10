@@ -65,7 +65,20 @@ class LoginForm(forms.Form):
     )
 
 class NewScriptDialog(forms.Form):
-    name = forms.CharField(label=(u'Script Name'))
+    name = forms.CharField(
+        max_length=35,
+        label=(u'Script Name')
+    )
+
+    inline = forms.CharField(
+        max_length=150,
+        label="Inline Description",
+        widget=forms.Textarea(
+             attrs={
+                'class': 'input-large',
+                'rows': 3
+         }),
+    )
 
     def clean_name(self):
         name = self.cleaned_data['name']

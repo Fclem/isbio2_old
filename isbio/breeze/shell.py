@@ -7,15 +7,21 @@ from rpy2.rinterface import RRuntimeError
 from Bio import Entrez
 from django.template.defaultfilters import slugify
 from django.conf import settings
-from django.core.files import File
+from django.core.files import File, base
 import breeze.models
 
-def init_script(name, person):
+def init_script(name, inline, person):
     spath = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts" , name, None))
 
     if not os.path.isdir(spath):
         os.makedirs(spath)
-        dbitem = breeze.models.Rscripts(name=name, author=person)
+        dbitem = breeze.models.Rscripts(name=name, inln=inline, author=person)
+
+        # create empty files for header, code and xml
+        dbitem.header.save('name.txt', base.ContentFile('empty header'))
+        dbitem.code.save('name.r', base.ContentFile('empty code'))
+        dbitem.docxml.save('name.xml', base.ContentFile(''))
+
         dbitem.save()
         return spath
 
@@ -23,7 +29,8 @@ def init_script(name, person):
 
 def update_script_dasics(script, form):
     """ 
-        Careates a new folder for script and makes file copies but preserves db istance id 
+        Update script name and its inline description. In case of a new name it
+        careates a new folder for script and makes file copies but preserves db istance id 
     """
 
     if str(script.name) != str(form.cleaned_data['name']):
@@ -91,6 +98,17 @@ def update_script_xml(script, xml_data):
     script.creation_date = datetime.now()
     script.save()
     os.remove(str(settings.TEMP_FOLDER) + 'script.xml')
+    return True
+
+def update_script_sources(script, post_data):
+    if post_data['source_file'] == 'Header':
+        file_path = settings.MEDIA_ROOT + str(script.header)
+    elif post_data['source_file'] == 'Main':
+        file_path = settings.MEDIA_ROOT + str(script.code)
+
+    handle = open(file_path, 'w')
+    handle.write(str(post_data['mirrorEditor']))
+    handle.close()
     return True
 
 def update_script_logo(script, pic):

@@ -8,6 +8,11 @@
 
   <link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
   <script src="/static/js/bootstrapSwitch.js"></script>
+  
+  <script src="/static/js/codemirror.js"></script>
+  <link rel="stylesheet" href="/static/css/codemirror.css">
+  <link rel="stylesheet" href="/static/css/r-theme.css">
+  <script src="/static/js/r.js"></script>
 
 <style>
       body {
@@ -124,7 +129,24 @@
           </div>
           <!-- Sources =================== -->
           <div class="tab-pane" id="sources">
-  
+            <form class="form-horizontal tab_form" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
+              {% csrf_token %}
+              <input type="hidden" name="form_name" value="source_files">
+              
+              <input id="source_file_id" type="hidden" name="source_file" value="">
+              <div class="btn-group">
+                <a id="dropDown_header" class="btn btn-inverse" href="#"><i class="icon-white icon-pencil"></i>&nbsp;Edit:</a>
+                <button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                  <li align="right"><a class="get_code_btn" data-param="Header" href="#">Header <i class="icon-file"></i></a></li>
+                  <li align="right"><a class="get_code_btn" data-param="Main" href="#">Main <i class="icon-file"></i></a></li>
+                </ul>
+              </div>
+              <input id="save_code_btn" class="btn btn-primary pull-right input-medium" disabled="" type="submit" value="Save"/>
+              <BR>&nbsp;<BR>
+                
+              <textarea id="r_editor_textar" name="mirrorEditor" style="visibility: hidden;"> </textarea>
+            </form>
           </div>
           <!-- Logos =================== -->
           <div class="tab-pane" id="logos">
@@ -150,13 +172,52 @@
   
 <script>
 $(document).ready(function() {
-  // $('#id_draft').replaceWith(function() {
-      // var new_tag = '<div class="switch switch-small" data-on="primary" data-off="info" data-on-label="Draft" data-off-label="Release">';
-      // new_tag += '  <input type="checkbox">';
-      // new_tag += '</div>';
-      // return new_tag;
-  // });
+  // INIT 
   $('#id_logo').customFileInput({ });
+  var mirrorEditor = CodeMirror.fromTextArea(document.getElementById('r_editor_textar'), {
+    mode: 'text/x-rsrc',
+    theme: 'cobalt',
+    lineNumbers: true,
+    matchBrackets: true,    
+    indentUnit: 2,
+    undoDepth: 10,
+  });
+  
+  // activates save button when content is changed
+  mirrorEditor.on("change", function(){ $('#save_code_btn').removeAttr('disabled') });
+  
+  // obtain HEAD or MAIN file source code - ajax 
+  $('.get_code_btn').click(function(){
+    var par = $(this).data("param");
+    $('#dropDown_header').text(" "+par)
+    $('#dropDown_header').prepend('<i class="icon-white icon-pencil">&nbsp;')
+    $('#source_file_id').attr("value", par) // say which file we edit
+    $.ajax({
+      type: "GET",
+      url: "/resources/scripts/script-editor/get-code/{{ script.id }}/"+par,
+      dataType: "text",
+      success: function(content){
+        mirrorEditor.setValue(content);
+        $('#save_code_btn').attr('disabled', ''); // SAVE button disabled after code upload
+      }
+    });
+  });
+  
+  // save changes in HEAD or MAIN source
+  $('.tab_form').submit(function(ev){
+    ev.preventDefault(); // prevent default submition
+    $('r_editor_textar').val(mirrorEditor.getValue()); // copy content from mirror to texar
+    $.ajax({
+      type: $(this).attr('method'),
+      url: $(this).attr('action'),
+      data: $(this).serialize(),
+      success: function(response){
+        if (response == "False") alert("File can not be saved!");
+        else $('#save_code_btn').attr('disabled', ''); // SAVE button disabled after saving
+      }
+    });    
+  }); 
+  
 });
 </script>
 
