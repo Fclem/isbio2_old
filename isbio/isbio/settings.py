@@ -193,11 +193,11 @@ class DevSettings(BreezeSettings):
         }
     }
 
-    TEMP_FOLDER = '/home/dbychkov/dev/isbio/tmp/'
-    MEDIA_ROOT = '/home/dbychkov/dev/isbio/db/'
+    TEMP_FOLDER = '/homes/dbychkov/dev/isbio/tmp/'
+    MEDIA_ROOT = '/homes/dbychkov/dev/isbio/db/'
     MEDIA_URL = '/media/'
 
-    STATIC_ROOT = '/home/dbychkov/dev/isbio/static/'
+    STATIC_ROOT = '/homes/dbychkov/dev/isbio/static/'
     STATIC_URL = '/static/'
 
     # Additional locations of static files
