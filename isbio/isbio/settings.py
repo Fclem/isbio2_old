@@ -110,6 +110,7 @@ class BreezeSettings(Settings):
     )
 
     CAS_SERVER_URL = 'https://192.168.0.218:8443/cas/'
+    CAS_REDIRECT_URL = ''
 
     ROOT_URLCONF = 'isbio.urls'
 
