@@ -20,8 +20,9 @@
 
 {% endblock %}
 
-{% block content %}
-  
+{% block content %}  
+  <!-- SEARCH BARS -->
+  {% if search_bars %}
   <!-- breadcrumb navigation -->
   <div class="row-fluid">
     <div class="span10 offset1">
@@ -31,10 +32,7 @@
       </ul>
     </div>
   </div>
-  
-  <!-- SEARCH BARS -->
   <!-- 1. DATASETS -->
-  {% if search_bars %}
   <div class="row-fluid">
     <div class="span4 offset1 alert alert-info">
       <h4>DB Search <span class="badge badge-info pull-right">{{ds_count}} instances</span> </h4>
