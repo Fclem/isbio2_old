@@ -313,7 +313,7 @@ def report_search(data_set, report_type, query):
 def get_report_overview(report_type, instance_name, instance_id):
     """ 
         Most likely will call rCode to generate overview in order 
-        to partition BREEZE and report content. 
+        to separate BREEZE and report content. 
     """
     summary_srting = str()
 
@@ -335,85 +335,60 @@ def get_report_overview(report_type, instance_name, instance_id):
     return summary_srting
 
 def build_report(report_type, instance_name, instance_id, author, taglist):
+    """
+        taglist: corresponds to list of input fields from TagList form
+        in reports.html. Contains tag IDs and enabled/disabled-value
+    """
     html_path = str()
     loc = str(settings.MEDIA_ROOT) + str("reports/")
-    path = str(author.username) + '_' + str(instance_name)
+    path = str(author.username) + '_' + str(instance_name)  # actually, it's report folder name
     dochtml = path + '/' + str(instance_name)
-    report_name = report_type + ' Report' + ' :: ' + instance_name
+
+    report_name = report_type + ' Report' + ' :: ' + instance_name  # displayed as a header
 
     try:
+        # setup R working directory
         r.assign('location', loc)
         r('setwd(toString(location))')
+        # create report folder for our new report
         r.assign('path', path)
         r('dir.create( toString(path), showWarnings=FALSE );')
+        # load required libraries
         r('require( Nozzle.R1 )')
 
+        # create root report element
         r.assign('report_name', report_name)
         r('REPORT <- newCustomReport(toString(report_name));')
 
-        # tags come here
-        section_list = list()
+        # tags come as elements of the first level (sections)
+        # section_list = list()
         for key, val in sorted(taglist.items()):
             if len(val) == 1:
                 if int(val) == 1:
+                    # if tag enabled
+                    # get db instance (which is a script)
                     tag = breeze.models.Rscripts.objects.get(id=int(key))
 
-                    t_id = str(tag.id)
-                    sec_id = t_id
-                    t_name = str(tag.name)
-                    sec_name = t_name
-                    rstring = 'section_%s' % (sec_id)
-                    section_list.append(rstring)
-                    rstring = 'section_%s <- newSection("%s");' % (sec_id, sec_name)
-                    r(rstring)
 
+                    # source main code segment
                     code = str(settings.MEDIA_ROOT) + str(tag.code)
                     r.assign('code', code)
                     r('source(toString(code))')
 
-                    rstring = 'gene_id <- %d' % (int(instance_id))
+                    # input parameters definition
+                    rstring = 'instance_id <- %d' % (int(instance_id))
                     r(rstring)
 
+                    # final step - fire header
                     header = str(settings.MEDIA_ROOT) + str(tag.header)
                     r.assign('header', header)
                     r('source(toString(header))')
 
-                    if sec_name == "Gene Summary":
-                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Gene ID"), newParagraph( mySummary$Id )) )' % (sec_id, sec_id)
-                        r(rstring)
-                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Aliases"), newParagraph( mySummary$OtherAliases )) )' % (sec_id, sec_id)
-                        r(rstring)
-                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Description"), newParagraph( mySummary$Summary )) )' % (sec_id, sec_id)
-                        r(rstring)
+                else:
+                    # if tag disabled - do nothing
+                    pass
 
-                    if sec_name == "Protein Information":
-                        other = r('mySummary$`Entrezgene_prot`$`Prot-ref`$`Prot-ref_name`')
-                        other = list(other)
-
-                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Prefered Name"), newParagraph( mySummary$`Entrezgene_prot`$`Prot-ref`$`Prot-ref_desc` )) )' % (sec_id, sec_id)
-                        r(rstring)
-
-                        rstring = 'section_%s <- addTo( section_%s, addTo( newSubSubSection("Other names"), newList( ' % (sec_id, sec_id)
-                        for name in other:
-                            rstring += 'newParagraph( "%s" ),' % (name)
-                        rstring = rstring[:-1] + ') ) )'
-
-                        print rstring
-                        r(rstring)
-
-                    if sec_name == "Expression BoxPlot":
-                        rstring = 'section_%s <- addTo( section_%s, newFigure( file_name, fileHighRes=file_name1, "Expression BoxPlot" ) )' % (sec_id, sec_id)
-                        r(rstring)
-
-                    else:
-                        pass
-
-        # collect sections
-        rstring = 'REPORT <- addTo( REPORT'
-        for sse in section_list:
-            rstring += ', ' + sse
-        rstring += ')'
-        r(rstring)
+        # render report to file
         r.assign('dochtml', dochtml)
         r('writeReport( REPORT, filename=toString(dochtml));')
 

@@ -21,8 +21,8 @@
 {% endblock %}
 
 {% block content %}
-  <!-- SEARCH BARS -->
-  {% if search_bars %}
+  
+  <!-- breadcrumb navigation -->
   <div class="row-fluid">
     <div class="span10 offset1">
       <ul class="breadcrumb pull-left" style="background-color: transparent;">
@@ -32,7 +32,9 @@
     </div>
   </div>
   
-  <!-- DATASETS -->
+  <!-- SEARCH BARS -->
+  <!-- 1. DATASETS -->
+  {% if search_bars %}
   <div class="row-fluid">
     <div class="span4 offset1 alert alert-info">
       <h4>DB Search <span class="badge badge-info pull-right">{{ds_count}} instances</span> </h4>
@@ -45,7 +47,7 @@
       </form>
     </div> 
     
-    <!-- ENTITIES -->
+    <!-- 2. ENTITIES -->
     <div class="span6 alert alert-info">
       <h4>
         Entity Report Card 
@@ -143,7 +145,9 @@
       <table class="table  table-condensed">
         <tbody>
           {% for item in tags_available %}
+            <!-- the input below contains info about each tag: ID, enabled/disabled (1/0)-->
             <input type="hidden" id="{{ item.id }}_ref" name="{{ item.id }}" value="0" form="TagList"/>
+            
             <tr class="info">
               <!-- tag title -->
               <td> <strong>&nbsp;{{ item.name }}</strong> </td>
