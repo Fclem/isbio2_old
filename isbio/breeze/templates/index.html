@@ -259,32 +259,7 @@
               </ul>
             </div>
           {% else %}
-          <form class="navbar-form pull-right form-inline" method="post" action="/breeze/">
-          {% csrf_token %}   
-            <div class="control-group">
-              <div class="controls">
-              
-                <div class="input-prepend">
-                  <span class="add-on"><i class="icon-user"></i></span>
-                  
-                  {{ log_form.user_name|as_bootstrap:layout }}
-                </div>
-                <div class="input-prepend">
-                  <span class="add-on"><i class="icon-briefcase"></i></span>
-                  
-                  {{ log_form.password|as_bootstrap:layout }}
-                </div>
-                <div class="btn-group">
-                  <input class="btn btn-inverse" type="submit" value="login" />
-                  <a class="btn btn-inverse dropdown-toggle" data-toggle="dropdown" href="#"><span class="caret" /></a>
-                  <ul class="dropdown-menu pull-right">
-                    <li align="right"><a href="#"> Forgot your Password    <i class="icon-question-sign"></i></a></li>
-                    <li align="right"><a href="#" data-toggle="modal" class=" reg" data-target="#register"> Register    <i class="icon-pencil"></i></a></li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </form>
+            <a class="btn btn-inverse pull-right" href="/home/"> <strong>LogIn</strong> </a>
           {% endif %}
         </div>
       </div>

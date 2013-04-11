@@ -42,16 +42,7 @@ storage.progress = 10
 
 
 def breeze(request):
-    login_form = breezeForms.LoginForm(request.POST or None)
-    if login_form.is_valid():
-        username = request.POST['user_name']
-        password = request.POST['password']
-        user = auth.authenticate(username=username, password=password)
-        if user is not None and user.is_active:
-            auth.login(request, user)
-            return HttpResponseRedirect('/home/')
-
-    return render_to_response('index.html', RequestContext(request, {'log_form': login_form, 'layout': 'inline' }))
+    return render_to_response('index.html', RequestContext(request, {'layout': 'inline' }))
 
 def logout(request):
     auth.logout(request)
