@@ -15,14 +15,28 @@ def init_script(name, inline, person):
 
     if not os.path.isdir(spath):
         os.makedirs(spath)
-        dbitem = breeze.models.Rscripts(name=name, inln=inline, author=person)
+        dbitem = breeze.models.Rscripts(name=name, inln=inline, author=person, details="empty")
 
         # create empty files for header, code and xml
-        dbitem.header.save('name.txt', base.ContentFile('empty header'))
-        dbitem.code.save('name.r', base.ContentFile('empty code'))
-        dbitem.docxml.save('name.xml', base.ContentFile(''))
-
+        dbitem.header.save('name.txt', base.ContentFile('write your header here...'))
+        dbitem.code.save('name.r', base.ContentFile('copy and paste main code here...'))
         dbitem.save()
+
+        root = xml.Element('rScript')
+        root.attrib['ID'] = str(dbitem.id)
+        input_array = xml.Element('inputArray')
+        input_array.text = "empty"
+        root.append(input_array)
+
+        newxml = open(str(settings.TEMP_FOLDER) + 'script_%s.xml' % (person), 'w')
+        xml.ElementTree(root).write(newxml)
+        newxml.close()
+
+        dbitem.docxml.save('script.xml', File(open(str(settings.TEMP_FOLDER) + 'script_%s.xml' % (person))))
+        dbitem.save()
+        os.remove(str(settings.TEMP_FOLDER) + 'script_%s.xml' % (person))
+        # dbitem.docxml.save('name.xml', base.ContentFile(''))
+
         return spath
 
     return False
@@ -70,35 +84,17 @@ def update_script_dasics(script, form):
         return True
 
 def update_script_xml(script, xml_data):
-    if os.path.isfile(str(settings.MEDIA_ROOT) + str(script.docxml)):
-        os.remove(str(settings.MEDIA_ROOT) + str(script.docxml))
-    root = xml.Element('rScript')
-    root.attrib['name'] = str(script.name)
-    inline = xml.Element('inline')
-    inline.text = str(script.inln)
-    root.append(inline)
-    details = xml.Element('details')
-    details.text = str(script.details)
-    root.append(details)
-    draft = xml.Element('draft')
-    draft.attrib['val'] = str(script.draft)
-    root.append(draft)
-    input_array = xml.Element('inputArray')
+    file_path = str(settings.MEDIA_ROOT) + str(script.docxml)
+    if os.path.isfile(file_path):
+        handle = open(file_path, 'w')
+        handle.write(str(xml_data))
+        handle.close()
 
-    # important stuff goes here
-    input_array.text = xml_data
-
-    root.append(input_array)
-
-    newxml = open(str(settings.TEMP_FOLDER) + 'script.xml', 'w')
-    xml.ElementTree(root).write(newxml)
-    newxml.close()
-
-    script.docxml.save('script.xml', File(open(str(settings.TEMP_FOLDER) + 'script.xml')))
-    script.creation_date = datetime.now()
-    script.save()
-    os.remove(str(settings.TEMP_FOLDER) + 'script.xml')
-    return True
+        script.creation_date = datetime.now()
+        script.save()
+        return True
+    else:
+        return False
 
 def update_script_sources(script, post_data):
     if post_data['source_file'] == 'Header':
@@ -109,6 +105,9 @@ def update_script_sources(script, post_data):
     handle = open(file_path, 'w')
     handle.write(str(post_data['mirrorEditor']))
     handle.close()
+
+    script.creation_date = datetime.now()
+    script.save()
     return True
 
 def update_script_logo(script, pic):
@@ -203,6 +202,16 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
             path_to_datasets = str(settings.MEDIA_ROOT) + "datasets/"
             slug = slugify(data.cleaned_data[item.attrib['comment']]) + '.RData'
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
+        elif item.attrib['type'] == 'MLT':
+            res = ''
+            seq = 'c('
+            for itm in data.cleaned_data[item.attrib['comment']]:
+                if itm != "":
+                    res += str(itm) + ','
+                    seq = seq + '\"%s\",' % itm
+            seq = seq[:-1] + ')'
+            item.set('val', res[:-1])
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
         else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
 

@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="/static/css/codemirror.css">
   <link rel="stylesheet" href="/static/css/r-theme.css">
   <script src="/static/js/r.js"></script>
+  
+  <!-- <script type="text/javascript" src="/static/js/fb.js"></script> -->
 
 <style>
       body {
@@ -125,6 +127,10 @@
           </div>
           <!-- Builder =================== -->
           <div class="tab-pane" id="builder">
+            <div id="form_update_alert" class="" style="visibility: hidden">
+              <a class="close" onclick="$('#form_update_alert').css('visibility', 'hidden');">×</a>
+              <p id='form_alert_text'></p>
+            </div>
             {% include "uibuilder.html" %}
           </div>
           <!-- Sources =================== -->
@@ -173,7 +179,13 @@
 <script>
 $(document).ready(function() {
   // INIT 
-  $('#id_logo').customFileInput({ });
+  // $('#fileInput').customFileInput({ });
+  var genSourceExport;
+  $.getScript("/static/js/fb.js", function(data, textStatus, jqxhr){
+    // this trick is to export functions from fb.js
+    genSourceExport = genSource;
+  });
+  
   var mirrorEditor = CodeMirror.fromTextArea(document.getElementById('r_editor_textar'), {
     mode: 'text/x-rsrc',
     theme: 'cobalt',
@@ -185,6 +197,42 @@ $(document).ready(function() {
   
   // activates save button when content is changed
   mirrorEditor.on("change", function(){ $('#save_code_btn').removeAttr('disabled') });
+   
+  // Obtain Form Composition - get from XML on the server
+  $.ajax({
+    type: "GET",
+    url: "/resources/scripts/script-editor/get-form/{{ script.id }}",
+    dataType: "text",
+    success: function(builderHTML){
+      if (builderHTML != "False") {
+        var formHTML = builderHTML.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        $("#target").html(formHTML);
+        $("#target .component").popover({trigger: "manual", html: true, placement: "right"});
+        $(".popover").remove();
+        genSourceExport();
+      }       
+    }
+  });
+  
+  // Update Form Composition - send XML code to server
+  $('.xml_form').submit(function(ev){
+    ev.preventDefault(); // prevent default submition
+    $.ajax({
+      type: $(this).attr('method'),
+      url: $(this).attr('action'),
+      data: $(this).serialize(),
+      success: function(response){
+        if (response == "False") {
+          $('#form_alert_text').text('Can not be updated!');
+          $('#form_update_alert').attr('class', 'alert-error').css('visibility', 'visible');
+        } 
+        else {
+          $('#form_alert_text').text('Updated!');
+          $('#form_update_alert').attr('class', 'alert-info').css('visibility', 'visible');
+        }
+      }
+    });
+  });
   
   // obtain HEAD or MAIN file source code - ajax 
   $('.get_code_btn').click(function(){

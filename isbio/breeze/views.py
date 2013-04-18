@@ -307,18 +307,17 @@ def script_editor_update(request, sid=None):
             f_attrs = breezeForms.ScriptAttributes(instance=script)
 
         # Form Builder Tab
-        if request.POST['form_name'] == 'xml_data':
-            print request.POST['xml_data']
-            rshell.update_script_xml(script, request.POST['xml_data'])
+        if request.POST['form_name'] == 'xml_data' and request.is_ajax():
+            return HttpResponse(rshell.update_script_xml(script, request.POST['xml_data']))
         else:
-            pass
+            pass  # return HttpResponse(False)
 
         # Sources Tab
         if request.POST['form_name'] == 'source_files' and request.is_ajax():
             rshell.update_script_sources(script, request.POST)
             return HttpResponse(True)
         else:
-            return HttpResponse(False)
+            pass  # return HttpResponse(False)
 
         # Logos Tab
         if request.POST['form_name'] == 'logos':
@@ -339,6 +338,26 @@ def script_editor_update(request, sid=None):
             }))
     # if NOT POST
     return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id)
+
+@login_required(login_url='/')
+def get_form(request, sid=None):
+    script = Rscripts.objects.get(id=sid)
+    builder_form = ""
+
+    if request.method == 'GET' and sid is not None:
+        file_path = rshell.settings.MEDIA_ROOT + str(script.docxml)
+
+        if os.path.isfile(file_path):
+            tree = xml.parse(file_path)
+            if tree.getroot().find('builder') is not None:
+                builder_form = tree.getroot().find('builder').text
+            else:
+                builder_form = "False"
+        else:
+            builder_form = "False"
+
+    return HttpResponse(builder_form)
+
 
 @login_required(login_url='/')
 def get_rcode(request, sid=None, sfile=None):
@@ -447,7 +466,7 @@ def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     new_job = Jobs()
     tree = xml.parse(str(settings.MEDIA_ROOT) + str(script.docxml))
-    script_name = tree.getroot().attrib['name']
+    script_name = str(script.name)  # tree.getroot().attrib['name']
     script_inline = script.inln
 
     if request.method == 'POST':
@@ -636,8 +655,8 @@ def save(request):
 def show_rcode(request, jid):
     job = Jobs.objects.get(id=jid)
     docxml = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
-    script = docxml.getroot().attrib["name"]
-    inline = docxml.getroot().find('inline').text
+    script = job.jname  # docxml.getroot().attrib["name"]
+    inline = job.script.inln  # docxml.getroot().find('inline').text
 
     fields = list()
     values = list()
@@ -722,6 +741,23 @@ def send_file(request, ftype, fname):
 def update_jobs(request, jid):
     job = Jobs.objects.get(id=jid)
     response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress)
+
+    return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
+@login_required(login_url='/')
+def send_dbcontent(request, content):
+    response = dict()
+
+    if content == "datasets":
+        clist = DataSet.objects.all()
+    elif content == "templates":
+        clist = InputTemplate.objects.all()
+    else:
+        # return empty dictionary if content was smth creepy
+        return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
+    for item in clist:
+        response[item.name] = item.description
 
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
 

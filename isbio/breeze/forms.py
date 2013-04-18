@@ -1,7 +1,7 @@
 from django import forms
 from django.conf import settings
 import xml.etree.ElementTree as xml
-import breeze.models
+import breeze.models, re
 from django.contrib.auth.models import User
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
@@ -76,7 +76,7 @@ class NewScriptDialog(forms.Form):
         widget=forms.Textarea(
              attrs={
                 'class': 'input-large',
-                'rows': 3
+                'rows': 1
          }),
     )
 
@@ -313,14 +313,18 @@ def form_from_xml(xml, req=None, init=False):
         for input_item in input_array:
             if input_item.tag == "inputItem":
                 if  input_item.attrib["type"] == "NUM":  # numeric input
-                    custom_form.fields[input_item.attrib["comment"]] = forms.FloatField(initial=input_item.attrib["val"])
+                    custom_form.fields[input_item.attrib["comment"]] = forms.FloatField(
+                            initial=input_item.attrib["val"]
+                            # max_value=input_item.attrib["max"],
+                            # min_value=input_item.attrib["min"]
+                    )
 
                 elif input_item.attrib["type"] == "TEX":  # text box
                     custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
                             initial=input_item.attrib["val"],
                             max_length=100,
                             widget=forms.TextInput(attrs={'type': 'text', })
-                                                                   )
+                    )
                 elif input_item.attrib["type"] == "TAR":  # text area
                     custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
                             initial=input_item.attrib["val"],
@@ -333,7 +337,10 @@ def form_from_xml(xml, req=None, init=False):
                                                                    )
 
                 elif input_item.attrib["type"] == "CHB":  # check box
-                    custom_form.fields[input_item.attrib["comment"]] = forms.BooleanField(required=False, initial=input_item.attrib["val"])
+                    checked = False
+                    if input_item.attrib["val"] == "true":
+                        checked = True
+                    custom_form.fields[input_item.attrib["comment"]] = forms.BooleanField(required=False, initial=checked)
 
                 elif input_item.attrib["type"] == "DRP":  # drop down list
                     drop_options = tuple()
@@ -372,6 +379,16 @@ def form_from_xml(xml, req=None, init=False):
                                 }
                                                             )
                                                                                        )
+                elif input_item.attrib["type"] == "MLT":  # multiple select
+                    mult_options = tuple()
+
+                    for alt in input_item.find('altArray').findall('altItem'):
+                        mult_options = mult_options + ((alt.text, alt.text),)
+
+                    custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
+                            initial=re.split(',', input_item.attrib["val"]),
+                            choices=mult_options
+                    )
 
                 elif input_item.attrib["type"] == "HED":  # section header
                     pass

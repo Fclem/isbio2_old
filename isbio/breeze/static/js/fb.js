@@ -1,4 +1,4 @@
-$(document).ready(function(){
+//$(document).ready(function(){
   $("form").delegate(".component", "mousedown", function(md){
     $(".popover").remove();
 
@@ -14,7 +14,7 @@ $(document).ready(function(){
       form: 120
     }
     var type;
-
+    
     if($this.parent().parent().parent().parent().attr("id") === "components"){
       type = "main";
     } else {
@@ -35,7 +35,7 @@ $(document).ready(function(){
       $temp.css({"position" : "absolute",
                  "top"      : mouseY - ($temp.height()/2) + "px",
                  "left"     : mouseX - ($temp.width()/2) + "px",
-                 "opacity"  : "0.9"}).show()
+                 "opacity"  : "0.8"}).show()
 
       var half_box_height = ($temp.height()/2);
       var half_box_width = ($temp.width()/2);
@@ -56,7 +56,7 @@ $(document).ready(function(){
           mm_mouseY > tar_pos.top &&
           mm_mouseY < tar_pos.top + $target.height() + $temp.height()/2
           ){
-            $("#target").css("background-color", "#fafdff");
+            $("#target").css("background-color", "#ffffff");
             $target_component.css({"border-top" : "1px solid white", "border-bottom" : "none"});
             tops = $.grep($target_component, function(e){
               return ($(e).position().top -  mm_mouseY + half_box_height > 0 && $(e).attr("id") !== "legend");
@@ -95,7 +95,7 @@ $(document).ready(function(){
             if(tops.length > 0){
               $($temp.html()).insertBefore(tops[0]);
             } else {
-              $("#target fieldset").append($temp.append("\n\n\ \ \ \ ").html());
+              $("#target fieldset").append($temp.append("\n\n\ ").html());
             }
           } else {
             // no add
@@ -107,7 +107,7 @@ $(document).ready(function(){
         $target.css("background-color", "#fff");
         $(document).undelegate("body", "mousemove");
         $("body").undelegate("#temp","mouseup");
-        $("#target .component").popover({trigger: "manual", html: true, placement: "bottom"});
+        $("#target .component").popover({trigger: "manual", html: true, placement: "right"});
         $temp.remove();
         genSource();
       });
@@ -137,146 +137,254 @@ $(document).ready(function(){
     $($temptxt).find(".valtype").attr("data-valtype", null).removeClass("valtype");
     $($temptxt).find(".component").removeClass("component");
     $($temptxt).find("form").attr({"id":  null, "style": null});
-    $("#source").val($temptxt.html().replace(/\n\ \ \ \ \ \ \ \ \ \ \ \ /g,"\n"));
+    $("#source").val( constructXML() );
+    //$("#source").val($temptxt.html().replace(/\n\ \ \ \ \ \ \ \ \ \ \ \ /g,"\n"));
+  }
+  
+  var constructXML = function(){
+    // create root element; script ID should better be obtained here
+    var docxml = "<rScript name=\"undefined\">\n<inputArray>\n";
+    // create input array
+    $("#target").find(".component").each(function(){
+      var tmp = '';
+      var fieldLabel = $(this).find('[data-valtype="label"]').text();
+      var fieldVar = $(this).find('[data-valtype="r_inline"]').val();
+      switch ($(this).attr("breeze-control")){
+        case "numeric_input":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"NUM\" val=\"\" ';
+          docxml += 'max=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('max') + '\" min=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('min') + '\"/> \n';
+          break;
+        case "text_input":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TEX\" val=\"\" />' + '\n';
+          break;
+        case "text_area":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TAR\" val=\"\" />' + '\n';
+          break;    
+        case "check_box":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"CHB\" val=\"' + $(this).find('[data-valtype="checkbox_def"]').prop('checked') + '\" />' + '\n';
+          break;  
+        case "file_upload":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"FIL\" val=\"\" />' + '\n';
+          break; 
+        case "template_upload":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"' + $(this).find('[data-valtype="tmpl_list"]').val() + '\" rvarname=\"' + fieldVar + '\" type=\"TPL\" val=\"\" />' + '\n';
+          break; 
+        case "dataset_selector":
+          tmp = '';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DTS\" val=\"\">' + '\n';
+          docxml += '<altArray>' + '\n';
+          tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
+          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";         
+          docxml += '</altArray>\n</inputItem>\n';
+          break;  
+        case "drop_down":
+          tmp = '';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DRP\" val=\"\">' + '\n';
+          docxml += '<altArray>' + '\n';
+          tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
+          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";         
+          docxml += '</altArray>\n</inputItem>\n';
+          break;  
+        case "mult_select":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"MLT\" val=\"\">' + '\n';
+          docxml += '<altArray>' + '\n';
+          tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
+          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";         
+          docxml += '</altArray>\n</inputItem>\n';
+          break;  
+      }
+    });
+    
+    docxml += "</inputArray>\n"
+    // escape builder form html and incorporate it into xml; (xml parsing fails if not escaped!)
+    var builder_form = $("#target").html().replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    docxml += '<builder representation=\"\">' + builder_form + '</builder>' + '\n'; 
+    docxml += "</rScript>";
+    return docxml;
   }
 
   //activate legend popover
-  $("#target .component").popover({trigger: "manual", html: true, placement: "bottom"});
+  $("#target .component").popover({trigger: "manual", html: true, placement: "right"});
   //popover on click event
   $("#target").delegate(".component", "click", function(e){
     e.preventDefault();
     $(".popover").hide();
+    // $active_component is .valtype - content of .component div tag
     var $active_component = $(this);
     $active_component.popover("show");
+    
     var valtypes = $active_component.find(".valtype");
+    // iterate over all the elements of the component 
     $.each(valtypes, function(i,e){
-      var valID ="#" + $(e).attr("data-valtype");
+      // fill out the form on popover 
+      // by extracting data tha is stored on the form
+      // valID - input ID on the popover form
+      var valID ="#" + $(e).attr("data-valtype"); 
       var val;
       if(valID ==="#placeholder"){
-        val = $(e).attr("placeholder");
-        $(".popover " + valID).val(val);
+          val = $(e).attr("placeholder");
+          $(".popover " + valID).val(val);
       } else if(valID==="#checkbox"){
-        val = $(e).attr("checked");
-        $(".popover " + valID).attr("checked",val);
+          val = $(e).attr("checked");
+          $(".popover " + valID).attr("checked",val);
       } else if(valID==="#option"){
-        val = $.map($(e).find("option"), function(e,i){return $(e).text()});
-        val = val.join("\n")
-      $(".popover "+valID).text(val);
+          val = $.map($(e).find("option"), function(e,i){return $(e).text()});
+          val = val.join("\n")
+          $(".popover "+valID).text(val);
       } else if(valID==="#checkboxes"){
-        val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
-        val = val.join("\n")
-      $(".popover "+valID).text(val);
+          val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
+          val = val.join("\n")
+          $(".popover "+valID).text(val);
       } else if(valID==="#radios"){
-        val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
-        val = val.join("\n");
-        $(".popover "+valID).text(val);
-        $(".popover #name").val($(e).find("input").attr("name"));
+          val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
+          val = val.join("\n");
+          $(".popover "+valID).text(val);
+          $(".popover #name").val($(e).find("input").attr("name"));
       } else if(valID==="#inline-checkboxes"){
-        val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
-        val = val.join("\n")
+          val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
+          val = val.join("\n")
           $(".popover "+valID).text(val);
       } else if(valID==="#inline-radios"){
-        val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
-        val = val.join("\n")
+          val = $.map($(e).find("label"), function(e,i){return $(e).text().trim()});
+          val = val.join("\n")
           $(".popover "+valID).text(val);
-        $(".popover #name").val($(e).find("input").attr("name"));
+          $(".popover #name").val($(e).find("input").attr("name"));
       } else if(valID==="#button") {
+          val = $(e).text();
+          var type = $(e).find("button").attr("class").split(" ").filter(function(e){return e.match(/btn-.*/)});
+          $(".popover #color option").attr("selected", null);
+          if(type.length === 0){
+            $(".popover #color #default").attr("selected", "selected");
+          } else {
+            $(".popover #color #"+type[0]).attr("selected", "selected");
+          }
+          val = $(e).find(".btn").text();
+          $(".popover #button").val(val);
+      } else if (valID==="#r_inline"){
+          val = $(e).val();  
+          $(".popover " + valID).val(val);
+      } else if (valID==="#numeric_limits"){
+          $(".popover #max_limit").val($(e).attr('max'));
+          $(".popover #min_limit").val($(e).attr('min'));
+      } else if (valID==="#checkbox_def"){
+          if ($(e).prop("checked")) $(".popover " + valID).prop('checked', true);
+          else $(".popover " + valID).prop('checked', false);
+      } else if (valID==="#db_list"){
+          var existing = $(e).find("option");
+          $.getJSON('/resources/scripts/script-editor/get-content/datasets', function(data) {
+            var options = [];
+            $.each(data, function(key, val) { options.push('<option>' + key + '</option>'); });
+            $(valID).append(options);
+            // mark previously selected
+            $.each(existing, function(i,e){ 
+              $(valID).find("option:contains(" + $(e).text() + ")").prop('selected', true); 
+            });
+          });
+      } else if (valID==="#tmpl_list"){
+          var existing = $(e).val();
+          $.getJSON('/resources/scripts/script-editor/get-content/templates', function(data) {
+            var options = [];
+            $.each(data, function(key, val) { options.push('<option>' + key + '</option>'); });
+            $(valID).append(options);
+            // mark previously selected
+            $(valID).find("option:contains(" + existing + ")").prop('selected', true); 
+          });
+      } else { // apparently 'label' goes to ELSE
         val = $(e).text();
-        var type = $(e).find("button").attr("class").split(" ").filter(function(e){return e.match(/btn-.*/)});
-        $(".popover #color option").attr("selected", null);
-        if(type.length === 0){
-          $(".popover #color #default").attr("selected", "selected");
-        } else {
-          $(".popover #color #"+type[0]).attr("selected", "selected");
-        }
-        val = $(e).find(".btn").text();
-        $(".popover #button").val(val);
-      } else {
-        val = $(e).text();
-        $(".popover " + valID).val(val);
+        $(".popover " + valID).val(val); 
       }
     });
 
+    // fired when click CANCE button on field popover
     $(".popover").delegate(".btn-danger", "click", function(e){
       e.preventDefault();
       $active_component.popover("hide");
     });
 
-    $(".popover").delegate(".btn-info", "click", function(e){
+    // fired when click SAVE button on field popover
+    $(".popover").delegate(".btn-primary", "click", function(e){
       e.preventDefault();
-      var inputs = $(".popover input");
+      var inputs = $(".popover input,.popover select");
+      // why textarea is pushed here?
       inputs.push($(".popover textarea")[0]);
+      // for each input on the popover
       $.each(inputs, function(i,e){
-      var vartype = $(e).attr("id");
-      var value = $active_component.find('[data-valtype="'+vartype+'"]')
-      if(vartype==="placeholder"){
-        $(value).attr("placeholder", $(e).val());
-      } else if (vartype==="checkbox"){
-        if($(e).is(":checked")){
-          $(value).attr("checked", true);
-        }
-        else{
-          $(value).attr("checked", false);
-        }
-      } else if (vartype==="option"){
-        var options = $(e).val().split("\n");
-        $(value).html("");
-        $.each(options, function(i,e){
-          $(value).append("\n      ");
-          $(value).append($("<option>").text(e));
-        });
-      } else if (vartype==="checkboxes"){
-        var checkboxes = $(e).val().split("\n");
-        $(value).html("\n      <!-- Multiple Checkboxes -->");
-        $.each(checkboxes, function(i,e){
-          if(e.length > 0){
-            $(value).append('\n      <label class="checkbox">\n        <input type="checkbox" value="'+e+'">\n        '+e+'\n      </label>');
-          }
-        });
-        $(value).append("\n  ")
-      } else if (vartype==="radios"){
-        var group_name = $(".popover #name").val();
-        var radios = $(e).val().split("\n");
-        $(value).html("\n      <!-- Multiple Radios -->");
-        $.each(radios, function(i,e){
-          if(e.length > 0){
-            $(value).append('\n      <label class="radio">\n        <input type="radio" value="'+e+'" name="'+group_name+'">\n        '+e+'\n      </label>');
-          }
-        });
-        $(value).append("\n  ")
+        var vartype = $(e).attr("id");
+        var value = $active_component.find('[data-valtype="'+vartype+'"]')
+        if(vartype==="placeholder"){
+          $(value).attr("placeholder", $(e).val());
+        } else if (vartype==="option"){
+          var options = $(e).val().split("\n");
+          $(value).html("");
+          $.each(options, function(i,e){
+            $(value).append("\n      ");
+            $(value).append($("<option>").text(e));
+          });
+        } else if (vartype==="checkboxes"){
+          var checkboxes = $(e).val().split("\n");
+          $(value).html("\n      <!-- Multiple Checkboxes -->");
+          $.each(checkboxes, function(i,e){
+            if(e.length > 0){
+              $(value).append('\n      <label class="checkbox">\n        <input type="checkbox" value="'+e+'">\n        '+e+'\n      </label>');
+            }
+          });
+          $(value).append("\n  ")
+        } else if (vartype==="radios"){
+          var group_name = $(".popover #name").val();
+          var radios = $(e).val().split("\n");
+          $(value).html("\n      <!-- Multiple Radios -->");
+          $.each(radios, function(i,e){
+            if(e.length > 0){
+              $(value).append('\n      <label class="radio">\n        <input type="radio" value="'+e+'" name="'+group_name+'">\n        '+e+'\n      </label>');
+            }
+          });
+          $(value).append("\n  ")
           $($(value).find("input")[0]).attr("checked", true)
-      } else if (vartype==="inline-checkboxes"){
-        var checkboxes = $(e).val().split("\n");
-        $(value).html("\n      <!-- Inline Checkboxes -->");
-        $.each(checkboxes, function(i,e){
-          if(e.length > 0){
-            $(value).append('\n      <label class="checkbox inline">\n        <input type="checkbox" value="'+e+'">\n        '+e+'\n      </label>');
-          }
-        });
-        $(value).append("\n  ")
-      } else if (vartype==="inline-radios"){
-        var radios = $(e).val().split("\n");
-        var group_name = $(".popover #name").val();
-        $(value).html("\n      <!-- Inline Radios -->");
-        $.each(radios, function(i,e){
-          if(e.length > 0){
-            $(value).append('\n      <label class="radio inline">\n        <input type="radio" value="'+e+'" name="'+group_name+'">\n        '+e+'\n      </label>');
-          }
-        });
-        $(value).append("\n  ")
+        } else if (vartype==="inline-checkboxes"){
+          var checkboxes = $(e).val().split("\n");
+          $(value).html("\n      <!-- Inline Checkboxes -->");
+          $.each(checkboxes, function(i,e){
+            if(e.length > 0){
+              $(value).append('\n      <label class="checkbox inline">\n        <input type="checkbox" value="'+e+'">\n        '+e+'\n      </label>');
+            }
+          });
+          $(value).append("\n  ")
+        } else if (vartype==="inline-radios"){
+          var radios = $(e).val().split("\n");
+          var group_name = $(".popover #name").val();
+          $(value).html("\n      <!-- Inline Radios -->");
+          $.each(radios, function(i,e){
+            if(e.length > 0){
+              $(value).append('\n      <label class="radio inline">\n        <input type="radio" value="'+e+'" name="'+group_name+'">\n        '+e+'\n      </label>');
+            }
+          });
+          $(value).append("\n  ")
           $($(value).find("input")[0]).attr("checked", true)
-      } else if (vartype === "button"){
-        var type =  $(".popover #color option:selected").attr("id");
-        $(value).find("button").text($(e).val()).attr("class", "btn "+type);
-      } else {
-        $(value).text($(e).val());
-      }
-    $active_component.popover("hide");
-    genSource();
+        } else if (vartype === "button"){
+          var type =  $(".popover #color option:selected").attr("id");
+          $(value).find("button").text($(e).val()).attr("class", "btn "+type);
+        } else if (vartype === "r_inline"){
+          $(value).val($(e).val());  
+        } else if (vartype === "max_limit"){
+          $active_component.find('[data-valtype="numeric_limits"]').attr('max', $(e).val()); 
+        } else if (vartype === "min_limit"){
+          $active_component.find('[data-valtype="numeric_limits"]').attr('min', $(e).val());  
+        } else if (vartype === "checkbox_def"){
+          $(value).prop("checked", $(e).prop("checked"));  
+        } else if (vartype === "db_list"){
+          $(value).find("option").remove();
+          $(e).find("option:selected").clone().appendTo(value);
+        } else if (vartype === "tmpl_list"){
+          $(value).val($(e).find("option:selected").text());
+        } else {
+          $(value).text($(e).val());
+        }
+      $active_component.popover("hide");
+      genSource();
     });
     });
   });
   $("#navtab").delegate("#sourcetab", "click", function(e){
     genSource();
   });
-});
+//});
