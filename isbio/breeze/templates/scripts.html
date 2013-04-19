@@ -9,12 +9,16 @@
   .thumbnails .span4:nth-child(3n+1) {
     
     margin-left:0;
-}
+  }
   .thumbnail {
       border-style: groove; 
       border-radius: 7px;
       background: url('/static/nail.png');
   }
+  .subscript {
+    color: gray;
+    font-size: 79%;
+   }
 
 </style>  
 {% endblock %}
@@ -89,7 +93,7 @@
               {% for scr in script_list %}
               <tr>
                 <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
-                <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
+                <td style="vertical-align: middle"><strong>{{ scr.name }} <br /> <span class="subscript"> (author: {{ scr.author }}) </span> </strong></td>
                 <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
@@ -146,7 +150,7 @@
               {% for scr in scr_list %}
               <tr>
                 <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
-                <td style="vertical-align: middle"><strong>{{ scr.name }}</strong></td>
+                <td style="vertical-align: middle"><strong>{{ scr.name }} <br /> <span class="subscript"> (author: {{ scr.author }}) </span> </strong></td>
                 <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>

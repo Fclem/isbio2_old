@@ -125,7 +125,7 @@ def scripts(request, layout="list"):
     for script in all_scripts:
         if str(script.category).capitalize() not in categories:
             categories.append(str(script.category).capitalize())
-            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category))
+            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
 
     # if request.user.has_perm('breeze.add_rscripts'):
     #    cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
