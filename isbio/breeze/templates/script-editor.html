@@ -78,18 +78,18 @@
       <div class="tabbable tabs-left">
         <!-- TABS' HEADER -->
         <ul class="nav nav-tabs">
-          <li class="active"><a href="#general" data-toggle="tab"><strong> General </strong></a></li>
-          <li><a href="#description" data-toggle="tab"><strong> Description </strong></a></li>
-          <li><a href="#attributes" data-toggle="tab"><strong> Attributes </strong></a></li>
-          <li><a href="#builder" data-toggle="tab"><strong> Form Builder </strong></a></li>
-          <li><a href="#sources" data-toggle="tab"><strong> Sources </strong></a></li>
-          <li><a href="#logos" data-toggle="tab"><strong> Logos </strong></a></li>
+          <li class="{{ general_tab }}"><a href="#general" data-toggle="tab"><strong> General </strong></a></li>
+          <li class="{{ descript_tab }}"><a href="#description" data-toggle="tab"><strong> Description </strong></a></li>
+          <li class="{{ attribut_tab }}"><a href="#attributes" data-toggle="tab"><strong> Attributes </strong></a></li>
+          <li class="{{ fbuilder_tab }}"><a href="#builder" data-toggle="tab"><strong> Form Builder </strong></a></li>
+          <li class="{{ sources_tab }}"><a href="#sources" data-toggle="tab"><strong> Sources </strong></a></li>
+          <li class="{{ logos_tab }}"><a href="#logos" data-toggle="tab"><strong> Logos </strong></a></li>
         </ul>
         
         <!-- TABS' CONTENT -->
         <div class="tab-content offset1" style="margin-top: 35px">
           <!-- General =================== -->
-          <div class="tab-pane active" id="general">
+          <div class="tab-pane {{ general_tab }}" id="general">
             <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
               {% csrf_token %}        
               <input type="hidden" name="form_name" value="general">      
@@ -99,15 +99,17 @@
           </div>  
           <!-- Description =================== -->
           <div class="tab-pane" id="description">
-            <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
+            <form id="description_form" class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
               {% csrf_token %}        
               <input type="hidden" name="form_name" value="description">      
-              {{ descr_form|as_bootstrap }}
+              <div class="control-group">
+                <div class="controls"><textarea id="description_field" class="input-xxlarge" rows="11" name="description_field" > </textarea></div>
+              </div>
               <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
             </form>  
           </div>  
           <!-- Attributes =================== --> 
-          <div class="tab-pane" id="attributes">
+          <div class="tab-pane {{ attribut_tab }}" id="attributes">
             <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
               {% csrf_token %}
               <input type="hidden" name="form_name" value="attributes">
@@ -155,7 +157,7 @@
             </form>
           </div>
           <!-- Logos =================== -->
-          <div class="tab-pane" id="logos">
+          <div class="tab-pane {{ logos_tab }}" id="logos">
             <form class="form-inline offset1" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post" enctype="multipart/form-data">
               {% csrf_token %}        
               <input type="hidden" name="form_name" value="logos">
@@ -197,7 +199,25 @@ $(document).ready(function() {
   
   // activates save button when content is changed
   mirrorEditor.on("change", function(){ $('#save_code_btn').removeAttr('disabled') });
-   
+  
+  // Get Description
+  $.getJSON('/resources/scripts/script-editor/get-content/description-{{ script.id }}', function(data) {
+    $("#description_field").text(data.description); 
+  });
+  // Update Description
+  $('#description_form').submit(function(ev){
+    ev.preventDefault(); // prevent default submition
+    $.ajax({
+      type: $(this).attr('method'),
+      url: $(this).attr('action'),
+      data: $(this).serialize(),
+      success: function(response){
+        console.log(response)
+        if (response == "False") alert("Description can not be saved!");
+      }
+    });
+  });
+  
   // Obtain Form Composition - get from XML on the server
   $.ajax({
     type: "GET",

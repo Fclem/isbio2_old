@@ -83,6 +83,12 @@ def update_script_dasics(script, form):
         script.save()
         return True
 
+def update_script_description(script, post_data):
+    script.details = str(post_data['description_field'])
+    script.creation_date = datetime.now()
+    script.save()
+    return True
+
 def update_script_xml(script, xml_data):
     file_path = str(settings.MEDIA_ROOT) + str(script.docxml)
     if os.path.isfile(file_path):

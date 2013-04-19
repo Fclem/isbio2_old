@@ -253,19 +253,21 @@ def dochelp(request):
 ###      SUPPLEMENTARY VIEWS       ###
 ######################################
 @login_required(login_url='/')
-def script_editor(request, sid=None):
+def script_editor(request, sid=None, tab=None):
     script = Rscripts.objects.get(id=sid)
 
     f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln })
-    f_descr = breezeForms.ScriptDescription({'description': script.details})
     f_attrs = breezeForms.ScriptAttributes(instance=script)
     f_logos = breezeForms.ScriptLogo()
 
+    if tab is None:
+        tab = '-general_tab'
+
     return render_to_response('script-editor.html', RequestContext(request, {
+        str(tab)[1:]: 'active',
         'resources_status': 'active',
         'script': script,
         'basic_form': f_basic,
-        'descr_form': f_descr,
         'attr_form': f_attrs,
         'logo_form': f_logos
     }))
@@ -280,20 +282,15 @@ def script_editor_update(request, sid=None):
             f_basic = breezeForms.ScriptBasics(script.name, request.POST)
             if f_basic.is_valid():
                 rshell.update_script_dasics(script, f_basic)
-                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
+                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-general_tab')
         else:
             f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln })
 
         # Description Tab
-        if request.POST['form_name'] == 'description':
-            f_descr = breezeForms.ScriptDescription(request.POST)
-            if f_descr.is_valid():
-                script.details = f_descr.cleaned_data['description']
-                script.creation_date = datetime.now()
-                script.save()
-                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
+        if request.POST['form_name'] == 'description' and request.is_ajax():
+            return HttpResponse(rshell.update_script_description(script, request.POST))
         else:
-            f_descr = breezeForms.ScriptDescription({'description': script.details})
+            pass
 
         # Attributes Tab
         if request.POST['form_name'] == 'attributes':
@@ -302,7 +299,7 @@ def script_editor_update(request, sid=None):
                 f_attrs.save()
                 script.creation_date = datetime.now()
                 script.save()
-                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
+                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-attribut_tab')
         else:
             f_attrs = breezeForms.ScriptAttributes(instance=script)
 
@@ -324,15 +321,14 @@ def script_editor_update(request, sid=None):
             f_logos = breezeForms.ScriptLogo(request.POST, request.FILES)
             if f_logos.is_valid():
                 rshell.update_script_logo(script, request.FILES['logo'])
-                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id))
+                return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-logos_tab')
         else:
             f_logos = breezeForms.ScriptLogo()
 
         return render_to_response('script-editor.html', RequestContext(request, {
                 'resources_status': 'active',
                 'script': script,
-                'basic_form': f_basic,
-                'descr_form': f_descr,
+                'basic_form': f_basic
                 # 'attr_form': f_attrs,
                 # 'logo_form': f_logos
             }))
@@ -745,13 +741,17 @@ def update_jobs(request, jid):
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
 
 @login_required(login_url='/')
-def send_dbcontent(request, content):
+def send_dbcontent(request, content, iid=None):
     response = dict()
 
     if content == "datasets":
         clist = DataSet.objects.all()
     elif content == "templates":
         clist = InputTemplate.objects.all()
+    elif content == "description":
+        script = Rscripts.objects.get(id=int(iid[1:]))
+        response["description"] = script.details
+        return HttpResponse(simplejson.dumps(response), mimetype='application/json')
     else:
         # return empty dictionary if content was smth creepy
         return HttpResponse(simplejson.dumps(response), mimetype='application/json')
