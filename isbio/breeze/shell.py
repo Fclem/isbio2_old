@@ -1,8 +1,6 @@
 import os, shutil, re, sys, traceback, stat
 from datetime import datetime
 import xml.etree.ElementTree as xml
-from rpy2.robjects import r
-from rpy2.rinterface import RRuntimeError
 from Bio import Entrez
 from django.template.defaultfilters import slugify
 from django.conf import settings
@@ -281,14 +279,14 @@ def get_dataset_info(path):
     path = str(settings.MEDIA_ROOT) + str(path)
     lst = list()
 
-    r('library(vcd)')
-    r.assign('dataset', str(path))
-    r('load(dataset)')
-    r('dataSet1 <- sangerSet[1:131,]')
-    drugs = r('featureNames(dataSet1)')
-
-    for pill in drugs:
-        lst.append(dict(name=str(pill), db="Sanger.RData"))
+#    r('library(vcd)')
+#    r.assign('dataset', str(path))
+#    r('load(dataset)')
+#    r('dataSet1 <- sangerSet[1:131,]')
+#    drugs = r('featureNames(dataSet1)')
+#
+#    for pill in drugs:
+#        lst.append(dict(name=str(pill), db="Sanger.RData"))
 
     return lst
 
@@ -300,21 +298,21 @@ def report_search(data_set, report_type, query):
         for dset in data_set:
             if dset.name == "Sanger" or dset.name == "Duplicate":
                 data = str(settings.MEDIA_ROOT) + str(dset.rdata)
-                r('library(vcd)')
-                r.assign('dataset', str(data))
-                r('load(dataset)')
-                r('dataSet1 <- sangerSet[1:131,]')
-                r('featureNames(dataSet1) <- gsub("_IC_50","",featureNames(dataSet1))')
-                drugs = r('featureNames(dataSet1)')
-
-                if str(query) == "*":
-                    for pill in drugs:
-                        lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
-
-                else:
-                    for pill in drugs:
-                        if str(pill) == str(query):
-                            lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
+#                r('library(vcd)')
+#                r.assign('dataset', str(data))
+#                r('load(dataset)')
+#                r('dataSet1 <- sangerSet[1:131,]')
+#                r('featureNames(dataSet1) <- gsub("_IC_50","",featureNames(dataSet1))')
+#                drugs = r('featureNames(dataSet1)')
+#
+#                if str(query) == "*":
+#                    for pill in drugs:
+#                        lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
+#
+#                else:
+#                    for pill in drugs:
+#                        if str(pill) == str(query):
+#                            lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
 
     ### GENE - Entrez search with BioPython ###
     elif str(report_type) == 'Gene' and len(query) > 0:
@@ -369,57 +367,57 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
 
     report_name = report_type + ' Report' + ' :: ' + instance_name  # displayed as a header
 
-    try:
-        # setup R working directory
-        r.assign('location', loc)
-        r('setwd(toString(location))')
-        # create report folder for our new report
-        r.assign('path', path)
-        r('dir.create( toString(path), showWarnings=FALSE );')
-        # load required libraries
-        r('require( Nozzle.R1 )')
-
-        # create root report element
-        r.assign('report_name', report_name)
-        r('REPORT <- newCustomReport(toString(report_name));')
-
-        # tags come as elements of the first level (sections)
-        # section_list = list()
-        for key, val in sorted(taglist.items()):
-            if len(val) == 1:
-                if int(val) == 1:
-                    # if tag enabled
-                    # get db instance (which is a script)
-                    tag = breeze.models.Rscripts.objects.get(id=int(key))
-
-
-                    # source main code segment
-                    code = str(settings.MEDIA_ROOT) + str(tag.code)
-                    r.assign('code', code)
-                    r('source(toString(code))')
-
-                    # input parameters definition
-                    rstring = 'instance_id <- %d' % (int(instance_id))
-                    r(rstring)
-
-                    # final step - fire header
-                    header = str(settings.MEDIA_ROOT) + str(tag.header)
-                    r.assign('header', header)
-                    r('source(toString(header))')
-
-                else:
-                    # if tag disabled - do nothing
-                    pass
-
-        # render report to file
-        r.assign('dochtml', dochtml)
-        r('writeReport( REPORT, filename=toString(dochtml));')
-
-    except RRuntimeError:
-        # redirect to error-page
-        html_path = str("reports/rfail.html")
-    else:
-        # succeed
-        html_path = 'reports/' + dochtml + '.html'
+#    try:
+#        # setup R working directory
+#        r.assign('location', loc)
+#        r('setwd(toString(location))')
+#        # create report folder for our new report
+#        r.assign('path', path)
+#        r('dir.create( toString(path), showWarnings=FALSE );')
+#        # load required libraries
+#        r('require( Nozzle.R1 )')
+#
+#        # create root report element
+#        r.assign('report_name', report_name)
+#        r('REPORT <- newCustomReport(toString(report_name));')
+#
+#        # tags come as elements of the first level (sections)
+#        # section_list = list()
+#        for key, val in sorted(taglist.items()):
+#            if len(val) == 1:
+#                if int(val) == 1:
+#                    # if tag enabled
+#                    # get db instance (which is a script)
+#                    tag = breeze.models.Rscripts.objects.get(id=int(key))
+#
+#
+#                    # source main code segment
+#                    code = str(settings.MEDIA_ROOT) + str(tag.code)
+#                    r.assign('code', code)
+#                    r('source(toString(code))')
+#
+#                    # input parameters definition
+#                    rstring = 'instance_id <- %d' % (int(instance_id))
+#                    r(rstring)
+#
+#                    # final step - fire header
+#                    header = str(settings.MEDIA_ROOT) + str(tag.header)
+#                    r.assign('header', header)
+#                    r('source(toString(header))')
+#
+#                else:
+#                    # if tag disabled - do nothing
+#                    pass
+#
+#        # render report to file
+#        r.assign('dochtml', dochtml)
+#        r('writeReport( REPORT, filename=toString(dochtml));')
+#
+#    except RRuntimeError:
+#        # redirect to error-page
+#        html_path = str("reports/rfail.html")
+#    else:
+#        # succeed
+#        html_path = 'reports/' + dochtml + '.html'
 
     return html_path
