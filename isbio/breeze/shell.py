@@ -1,8 +1,7 @@
-import os, shutil, re, sys, traceback
+import os, shutil, re, sys, traceback, stat
 from datetime import datetime
 import xml.etree.ElementTree as xml
 from rpy2.robjects import r
-import rpy2.robjects as robjects
 from rpy2.rinterface import RRuntimeError
 from Bio import Entrez
 from django.template.defaultfilters import slugify
@@ -136,6 +135,24 @@ def del_script(script):
     return False
 
 def schedule_job(job):
+    """
+        Creates SGE configuration file for QSUB command
+    """
+    job_path = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
+    config_path = job_path + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
+    config = open(config_path, 'w')
+    # config should be executble
+    st = os.stat(config_path)
+    os.chmod(config_path, st.st_mode | stat.S_IEXEC)
+
+    command = str(settings.R_ENGINE_PATH) + 'CMD BATCH ' + str(settings.MEDIA_ROOT) + str(job.rexecut)
+
+    config.write("#!/bin/bash \n")
+    config.write("#$ -M dmitrii.bychkov@helsinki.fi\n")
+    config.write("#$ -m abe\n")
+    config.write(command)
+    config.close()
+
     # job.progress = 0
     job.save()
     return 1
@@ -148,40 +165,30 @@ def del_job(job):
 
 def run_job(job, script):
     loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
-    path = str(settings.MEDIA_ROOT) + str(job.rexecut)
+    config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
     job.progress = 10
     job.save()
 
-    try:
-        r.assign('location', loc)
-        r('setwd(toString(location))')
-
-        job.progress = 30
-        job.save()
-        r('Sys.sleep(1)')
-        job.progress = 70
-        job.save()
-
-        r.assign('path', path)
-        r('source(toString(path))')
-    except RRuntimeError:
-        job.status = "failed"
-
-        log = open(loc + job.jname + ".log", 'w')
-        Type, Value, Trace = sys.exc_info()
-        log.write("Type: %s \nValue: %s \nTrace: %s \n\n" % (str(Type), str(Value), str(Trace)))
-        log.write("print_exception()".center(40, "-") + "\n")
-        traceback.print_exception(Type, Value, Trace, limit=5, file=log)
-        log.close()
-    else:
-        job.status = "succeed"
-        job.progress = 100
+    os.chdir(loc)
+    print os.system('pwd')
+    os.system('qsub -cwd %s' % config)
+    job.status = "succeed"
+    job.progress = 100
 
     job.save()
     return 1
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
-    # rexec = open("/home/comrade/Projects/fimm/tmp/rexec.r", 'w')
+    """ 
+        Builds (singe) R-exacutable file: puts together sources, header
+        and input parameters from user
+    """
+
+    # create job folder
+    directory = get_job_folder(jname, juser)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     rexec = open(str(settings.TEMP_FOLDER) + 'rexec.r', 'w')
     script_header = open(str(settings.MEDIA_ROOT) + str(header), "rb").read()
     script_code = open(str(settings.MEDIA_ROOT) + str(code), "rb").read()
@@ -225,6 +232,7 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     tree.write(str(settings.TEMP_FOLDER) + 'job.xml')
 
 
+    rexec.write("setwd(\"%s\")\n" % directory)
     rexec.write("#####################################\n")
     rexec.write("###       Code Section            ###\n")
     rexec.write("#####################################\n")

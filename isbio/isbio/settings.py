@@ -45,8 +45,11 @@ class BreezeSettings(Settings):
     # If you set this to False, Django will not use timezone-aware datetimes.
     USE_TZ = True
 
-    # !CUSTOM! tempory folder for the application
+    # !CUSTOM!
+    # Tempory folder for the application
     TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
+    # Path to R installation
+    R_ENGINE_PATH = 'R '
 
     # Absolute filesystem path to the directory that will hold user-uploaded files.
     # Example: "/home/media/media.lawrence.com/media/"
@@ -194,6 +197,7 @@ class DevSettings(BreezeSettings):
         }
     }
 
+    R_ENGINE_PATH = '/projects/breeze/R/bin/R '
     TEMP_FOLDER = '/homes/dbychkov/dev/isbio/tmp/'
     MEDIA_ROOT = '/homes/dbychkov/dev/isbio/db/'
     MEDIA_URL = '/media/'
