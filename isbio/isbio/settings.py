@@ -199,7 +199,7 @@ class DevSettings(BreezeSettings):
 
     R_ENGINE_PATH = '/projects/breeze/R/bin/R '
     TEMP_FOLDER = '/homes/dbychkov/dev/isbio/tmp/'
-    MEDIA_ROOT = '/homes/dbychkov/dev/isbio/db/'
+    MEDIA_ROOT = '/projects/breeze/db/'  # '/homes/dbychkov/dev/isbio/db/'
     MEDIA_URL = '/media/'
 
     STATIC_ROOT = '/homes/dbychkov/dev/isbio/static/'
