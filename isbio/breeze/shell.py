@@ -174,8 +174,7 @@ def run_job(job, script):
     default_dir = os.getcwd()
     os.chdir(loc)
 
-    subprocess.call(["qsub", "-cwd", str(config)])
-    # os.system('qsub -cwd %s' % config)
+    os.system('qsub -cwd %s' % config)
     job.status = "succeed"
     job.progress = 100
     job.save()
