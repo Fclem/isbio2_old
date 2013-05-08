@@ -1,9 +1,16 @@
 # Django settings for isbio project.
 from configurations import Settings
+import logging
+
 
 class BreezeSettings(Settings):
     DEBUG = True
     TEMPLATE_DEBUG = DEBUG
+
+    logging.basicConfig(level=logging.DEBUG,
+        format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
+        datefmt='%a, %d %b %Y %H:%M:%S',
+        filename='/tmp/BREEZE.log', filemode='w')
 
     ADMINS = (
         # ('Dmitrii Bychkov', 'piter.dmitry@gmail.com'),

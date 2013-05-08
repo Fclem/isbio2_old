@@ -6,6 +6,9 @@ from django.template.defaultfilters import slugify
 from django.conf import settings
 from django.core.files import File, base
 import breeze.models
+import logging
+
+logger = logging.getLogger(__name__)
 
 def init_script(name, inline, person):
     spath = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts" , name, None))
@@ -168,7 +171,11 @@ def run_job(job, script):
     job.save()
 
     os.chdir(loc)
-    print os.system('pwd')
+
+    logger.info(loc)
+    logger.info(config)
+    logger.info(os.getcwd())
+
     os.system('qsub -cwd %s' % config)
     job.status = "succeed"
     job.progress = 100
