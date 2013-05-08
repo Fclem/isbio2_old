@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.files import File, base
 import breeze.models
 import logging
+import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -170,17 +171,16 @@ def run_job(job, script):
     job.progress = 10
     job.save()
 
+    default_dir = os.getcwd()
     os.chdir(loc)
 
-    logger.info(loc)
-    logger.info(config)
-    logger.info(os.getcwd())
-
-    os.system('qsub -cwd %s' % config)
+    subprocess.call(["qsub", "-cwd", str(config)])
+    # os.system('qsub -cwd %s' % config)
     job.status = "succeed"
     job.progress = 100
-
     job.save()
+
+    os.chdir(default_dir)
     return 1
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
