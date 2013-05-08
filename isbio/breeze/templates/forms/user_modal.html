@@ -16,10 +16,35 @@
         <p class="text-info"><strong>General Job Info:</strong></p>
         {% csrf_token %}
         {{ headform|as_bootstrap:layout }}
+        
+        
+        <div class="control-group">
+          <label class="control-label" for="mail_id">Report to</label>
+          <div class="controls">
+            <input type="text" id="mail_id" name="email" placeholder="first.last@helsinki.fi">
+          </div>
+        </div>
+        
+        <div class="control-group">
+          <div class="controls">
+            <label class="checkbox inline">
+              <input type="checkbox" id="b_id" name="Started" value="b"> Started
+            </label>
+            <label class="checkbox inline">
+              <input type="checkbox" id="e_id" name="Ready" value="e"> Ready
+            </label>
+            <label class="checkbox inline">
+              <input type="checkbox" id="a_id" name="Aborted" value="a"> Aborted
+            </label>
+          </div>
+        </div>          
+        
+        
         <p class="text-info"><strong>Input/Output Specification:</strong></p>
         {% for item in custform %}
           {{ item|as_bootstrap:layout }}
         {% endfor %}
+        
             
       </div>
       <div class="modal-footer">

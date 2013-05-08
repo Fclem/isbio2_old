@@ -100,9 +100,10 @@ class BasicJobForm(forms.Form):
         max_length=35,
     )
     job_details = forms.CharField(
-        widget=forms.Textarea(attrs={'cols': 15, 'rows': 3, 'placeholder': 'optional'}),
+        widget=forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'optional'}),
         required=False
     )
+
 
     def clean_job_name(self):
         job_name = self.cleaned_data.get('job_name')

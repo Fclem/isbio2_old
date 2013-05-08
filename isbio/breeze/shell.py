@@ -136,7 +136,7 @@ def del_script(script):
 
     return False
 
-def schedule_job(job):
+def schedule_job(job, mailing):
     """
         Creates SGE configuration file for QSUB command
     """
@@ -147,15 +147,24 @@ def schedule_job(job):
     st = os.stat(config_path)
     os.chmod(config_path, st.st_mode | stat.S_IEXEC)
 
+    options = '#!/bin/bash \n'
+    mail = mailing['email']
+    if mail:
+        options += '#$ -M %s\n' % mail
+        abe = '#$ -m '
+        if 'Aborted' in mailing: abe += 'a'
+        if 'Started' in mailing: abe += 'b'
+        if 'Ready' in mailing: abe += 'e'
+        if len(abe) == 6: abe += 'n'
+        options += abe + '\n'
+
     command = str(settings.R_ENGINE_PATH) + 'CMD BATCH ' + str(settings.MEDIA_ROOT) + str(job.rexecut)
 
-    config.write("#!/bin/bash \n")
-    config.write("#$ -M dmitrii.bychkov@helsinki.fi\n")
-    config.write("#$ -m abe\n")
+    config.write(options)
     config.write(command)
     config.close()
 
-    # job.progress = 0
+    job.progress = 0
     job.save()
     return 1
 

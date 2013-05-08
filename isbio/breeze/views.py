@@ -437,7 +437,7 @@ def edit_job(request, jid=None, mod=None):
             job.rexecut.close()
             job.docxml.close()
 
-            rshell.schedule_job(job)
+            rshell.schedule_job(job, request.POST)
 
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
@@ -484,7 +484,7 @@ def create_job(request, sid=None):
             new_job.rexecut.close()
             new_job.docxml.close()
 
-            rshell.schedule_job(new_job)
+            rshell.schedule_job(new_job, request.POST)
 
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
@@ -510,6 +510,9 @@ def run_script(request, jid):
     script = str(job.script.code)
     p = Process(target=rshell.run_job, args=(job, script))
     p.start()
+    job.status = "succeed"
+    job.progress = 100
+    job.save()
     # rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
