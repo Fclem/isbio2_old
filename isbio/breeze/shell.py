@@ -177,12 +177,18 @@ def del_job(job):
 def run_job(job, script):
     loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
     config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
+    job.status = "active"
+    job.progress = 50
+    job.save()
 
     default_dir = os.getcwd()
     os.chdir(loc)
 
-    subprocess.call(['qsub', '-cwd', config])
+    subprocess.call(['ls', '-l'])  # subprocess.call(['qsub', '-cwd', config])
 
+    job.status = "succeed"
+    job.progress = 100
+    job.save()
     os.chdir(default_dir)
     return 1
 

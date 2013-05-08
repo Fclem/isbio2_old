@@ -510,9 +510,7 @@ def run_script(request, jid):
     script = str(job.script.code)
     p = Process(target=rshell.run_job, args=(job, script))
     p.start()
-    job.status = "succeed"
-    job.progress = 100
-    job.save()
+
     # rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
