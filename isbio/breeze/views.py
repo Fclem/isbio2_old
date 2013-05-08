@@ -508,14 +508,9 @@ def create_job(request, sid=None):
 def run_script(request, jid):
     job = Jobs.objects.get(id=jid)
     script = str(job.script.code)
-
-    rshell.run_job(job, script)
-    job.status = "active"
-    job.save()
-
-    # p = Process(target=rshell.run_job, args=(job, script))
-    # p.start()
-
+    p = Process(target=rshell.run_job, args=(job, script))
+    p.start()
+    # rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
 @login_required(login_url='/')
