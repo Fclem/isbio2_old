@@ -158,7 +158,7 @@ def schedule_job(job, mailing):
         if len(abe) == 6: abe += 'n'
         options += abe + '\n'
 
-    command = str(settings.R_ENGINE_PATH) + 'CMD BATCH ' + str(settings.MEDIA_ROOT) + str(job.rexecut)
+    command = str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(job.rexecut)
 
     config.write(options)
     config.write(command)
@@ -184,7 +184,7 @@ def run_job(job, script):
     default_dir = os.getcwd()
     os.chdir(loc)
 
-    subprocess.call(['ls', '-l'])  # subprocess.call(['qsub', '-cwd', config])
+    os.system('qsub -cwd %s' % config)
 
     job.status = "succeed"
     job.progress = 100

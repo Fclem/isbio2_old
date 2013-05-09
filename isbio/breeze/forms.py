@@ -44,6 +44,19 @@ class RegistrationForm(forms.ModelForm):
         else:
             raise forms.ValidationError("The passowords did not match. Please try again.")
 
+class PersonalInfo(forms.Form):
+    first_name = forms.CharField(
+        max_length=55,
+        widget=forms.TextInput(attrs={'placeholder': ' First Name ', })
+    )
+    last_name = forms.CharField(
+        max_length=55,
+        widget=forms.TextInput(attrs={'placeholder': ' Last Name ', })
+    )
+    email = forms.EmailField(
+        max_length=75,
+        widget=forms.TextInput(attrs={'placeholder': ' first.last@helsinki.fi ', })
+    )
 
 class LoginForm(forms.Form):
     user_name = forms.CharField(

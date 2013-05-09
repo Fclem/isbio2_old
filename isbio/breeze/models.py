@@ -97,8 +97,6 @@ class UserProfile(models.Model):
         slug = slugify(self.name)
         return 'profiles/%s/%s.%s' % (slug, slug, extension)
 
-    first_name = models.CharField(max_length=35)
-    last_name = models.CharField(max_length=35)
     fimm_group = models.CharField(max_length=75)
     logo = models.FileField(upload_to=file_name, blank=True)
 

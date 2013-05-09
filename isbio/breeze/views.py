@@ -400,6 +400,7 @@ def read_descr(request, sid=None):
 def edit_job(request, jid=None, mod=None):
     job = Jobs.objects.get(id=jid)
     tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
+    user_info = User.objects.get(username=request.user)
 
     if mod is not None:
         mode = 'replicate'
@@ -455,6 +456,7 @@ def edit_job(request, jid=None, mod=None):
         'custform': custom_form,
         'layout': "horizontal",
         'mode': mode,
+        'email': user_info.email
     }))
 
 @login_required(login_url='/')
@@ -464,6 +466,7 @@ def create_job(request, sid=None):
     tree = xml.parse(str(settings.MEDIA_ROOT) + str(script.docxml))
     script_name = str(script.name)  # tree.getroot().attrib['name']
     script_inline = script.inln
+    user_info = User.objects.get(username=request.user)
 
     if request.method == 'POST':
         head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
@@ -502,6 +505,7 @@ def create_job(request, sid=None):
         'custform': custom_form,
         'layout': "horizontal",
         'mode': 'create',
+        'email': user_info.email
     }))
 
 @login_required(login_url='/')
@@ -789,3 +793,27 @@ def new_script_dialog(request):
         'submit': 'Add'
     }))
 
+@login_required(login_url='/')
+def update_user_info_dialog(request):
+    user_info = User.objects.get(username=request.user)
+
+    if request.method == 'POST':
+        personal_form = breezeForms.PersonalInfo(request.POST)
+        if personal_form.is_valid():
+            user_info.first_name = personal_form.cleaned_data.get('first_name', None)
+            user_info.last_name = personal_form.cleaned_data.get('last_name', None)
+            user_info.email = personal_form.cleaned_data.get('email', None)
+            user_info.save()
+            return HttpResponseRedirect('/home/')
+        else:
+            return render_to_response('forms/user_info.html', RequestContext(request, {
+                'form': personal_form,
+                'action': '/update-user-info/'
+            }))
+    else:
+        personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email })
+
+    return render_to_response('forms/user_info.html', RequestContext(request, {
+        'form': personal_form,
+        'action': '/update-user-info/'
+    }))
