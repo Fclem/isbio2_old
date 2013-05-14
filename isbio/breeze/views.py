@@ -18,7 +18,7 @@ import xml.etree.ElementTree as xml
 import shell as rshell
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -139,46 +139,9 @@ def scripts(request, layout="list"):
     }))
 
 @login_required(login_url='/')
-def reports(request, what=None):
-    ds = DataSet.objects.all()
-    ds_count = len(ds)
-
-    overview = dict()
-    query_val = ""
-    overview['report_type'] = ""
-
-    if request.method == 'POST':
-        result_type = what
-
-        # search for ENTITIES (right bar)
-        if what == 'entity':
-            overview['report_type'] = request.POST['type']
-            query_val = str(request.POST['query'])
-
-            if overview['report_type'] == 'Drug':
-                output = rshell.report_search(ds, overview['report_type'], query_val)
-                # for set in ds:
-                #    output = rshell.report_search(set.rdata, overview['report_type'], query_val)
-
-            elif overview['report_type'] == 'Gene':
-                output = rshell.report_search(None, overview['report_type'], query_val)
-
-        # search for DATASETS (left bar)
-        if what == 'dataset':
-            output = ds
-
-        return render_to_response('reports.html', RequestContext(request, {
-            'reports_status': 'active',
-            'search_bars': True,
-            'ds_count': ds_count,
-            'search_result': True,
-            'result_type': result_type,
-            'query_value': query_val,
-            'overview_info': overview,
-            'output': output
-        }))
-
-    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True, 'ds_count': ds_count }))
+def reports(request):
+    all_reports = Report.objects.filter(status="submitted")
+    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'reports': all_reports }))
 
 
 @login_required(login_url='/')
@@ -208,23 +171,64 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                 tags_attrib.append(copy.deepcopy(attribs))
         else:
             tags_attrib = list()
-        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'overview_info': overview }))
+        return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'overview_info': overview }))
 
     elif mod == '-full':
         #### renders Full Report (should create a new tab/window for that) ####
 
         if request.method == 'POST':
             html = rshell.build_report(rtype, iname, iid, request.user, copy.deepcopy(request.POST))
-            return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
+            return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
         else:
             tags = None
             html = rshell.build_report(rtype, iname, iid, request.user, tags)
-            return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
+            return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
 
     else:
         ### if smth stupid came as a mod ###
-        return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True }))
+        return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True }))
 
+@login_required(login_url='/')
+def search(request, what=None):
+    ds = DataSet.objects.all()
+    ds_count = len(ds)
+
+    overview = dict()
+    query_val = ""
+    overview['report_type'] = ""
+
+    if request.method == 'POST':
+        result_type = what
+
+        # search for ENTITIES (right bar)
+        if what == 'entity':
+            overview['report_type'] = request.POST['type']
+            query_val = str(request.POST['query'])
+
+            if overview['report_type'] == 'Drug':
+                output = rshell.report_search(ds, overview['report_type'], query_val)
+                # for set in ds:
+                #    output = rshell.report_search(set.rdata, overview['report_type'], query_val)
+
+            elif overview['report_type'] == 'Gene':
+                output = rshell.report_search(None, overview['report_type'], query_val)
+
+        # search for DATASETS (left bar)
+        if what == 'dataset':
+            output = ds
+
+        return render_to_response('search.html', RequestContext(request, {
+            'search_status': 'active',
+            'search_bars': True,
+            'ds_count': ds_count,
+            'search_result': True,
+            'result_type': result_type,
+            'query_value': query_val,
+            'overview_info': overview,
+            'output': output
+        }))
+
+    return render_to_response('search.html', RequestContext(request, {'search_status': 'active', 'search_bars': True, 'ds_count': ds_count }))
 
 @login_required(login_url='/')
 def resources(request):

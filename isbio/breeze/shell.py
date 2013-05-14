@@ -7,7 +7,6 @@ from django.conf import settings
 from django.core.files import File, base
 import breeze.models
 import logging
-import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -143,8 +142,8 @@ def schedule_job(job, mailing):
     job_path = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
     config_path = job_path + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
     config = open(config_path, 'w')
-    # config should be executble
-    st = os.stat(config_path)
+
+    st = os.stat(config_path)  # config should be executble
     os.chmod(config_path, st.st_mode | stat.S_IEXEC)
 
     options = '#!/bin/bash \n'
@@ -175,6 +174,11 @@ def del_job(job):
 
 
 def run_job(job, script):
+    """
+        Submits scripts as an R-job to cluster with qsub (SGE);
+        This submission implements SCRIPTS concept in BREEZE
+        (For REPOTS submission see run_report)
+    """
     loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
     config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
     job.status = "active"
@@ -190,7 +194,24 @@ def run_job(job, script):
     job.progress = 100
     job.save()
     os.chdir(default_dir)
-    return 1
+    return True
+
+def run_report(report):
+    """
+        Submits reports as an R-job to cluster with qsub (SGE);
+        This submission implements REPORTS concept in BREEZE
+        (For SCRIPTS submission see run_job)
+    """
+    loc = str(settings.MEDIA_ROOT) + report.home
+    config = loc + '/sgeconfig.sh'
+
+    default_dir = os.getcwd()
+    os.chdir(loc)
+
+    os.system('qsub -cwd %s' % config)
+
+    os.chdir(default_dir)
+    return True
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     """ 
@@ -242,9 +263,7 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
         else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.cleaned_data[item.attrib['comment']]) + '"\n'
 
-    # tree.write('/home/comrade/Projects/fimm/tmp/job.xml')
     tree.write(str(settings.TEMP_FOLDER) + 'job.xml')
-
 
     rexec.write("setwd(\"%s\")\n" % directory)
     rexec.write("#####################################\n")
@@ -264,7 +283,6 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     return 1
 
 def build_header(data):
-    # header = open("/home/comrade/Projects/fimm/tmp/header.txt", 'w')
     header = open(str(settings.TEMP_FOLDER) + 'header.txt', 'w')
     string = str(data)
     header.write(string)
@@ -309,6 +327,8 @@ def get_dataset_info(path):
 def report_search(data_set, report_type, query):
     lst = list()
 
+    # !!! HANDLE EXCEPTIONS IN THIS FUNCTION !!! #
+
     ### DRUG - local db search for drugs ###
     if str(report_type) == 'Drug' and len(query) > 0:
         for dset in data_set:
@@ -332,7 +352,7 @@ def report_search(data_set, report_type, query):
 
     ### GENE - Entrez search with BioPython ###
     elif str(report_type) == 'Gene' and len(query) > 0:
-        Entrez.email = "dmitrii.bychkov@helsinki.fi"
+        Entrez.email = "dmitrii.bychkov@helsinki.fi"  # <- bring user's email here
         instance = str(query) + '[Gene/Protein Name]'  #  e.g. 'DMPK[Gene/Protein Name]'
         species = 'Homo sapiens[Organism]'
         search_query = instance + ' AND ' + species
@@ -377,63 +397,78 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
         in reports.html. Contains tag IDs and enabled/disabled-value
     """
     html_path = str()
-    loc = str(settings.MEDIA_ROOT) + str("reports/")
-    path = str(author.username) + '_' + str(instance_name)  # actually, it's report folder name
-    dochtml = path + '/' + str(instance_name)
-
     report_name = report_type + ' Report' + ' :: ' + instance_name  # displayed as a header
 
-#    try:
-#        # setup R working directory
-#        r.assign('location', loc)
-#        r('setwd(toString(location))')
-#        # create report folder for our new report
-#        r.assign('path', path)
-#        r('dir.create( toString(path), showWarnings=FALSE );')
-#        # load required libraries
-#        r('require( Nozzle.R1 )')
-#
-#        # create root report element
-#        r.assign('report_name', report_name)
-#        r('REPORT <- newCustomReport(toString(report_name));')
-#
-#        # tags come as elements of the first level (sections)
-#        # section_list = list()
-#        for key, val in sorted(taglist.items()):
-#            if len(val) == 1:
-#                if int(val) == 1:
-#                    # if tag enabled
-#                    # get db instance (which is a script)
-#                    tag = breeze.models.Rscripts.objects.get(id=int(key))
-#
-#
-#                    # source main code segment
-#                    code = str(settings.MEDIA_ROOT) + str(tag.code)
-#                    r.assign('code', code)
-#                    r('source(toString(code))')
-#
-#                    # input parameters definition
-#                    rstring = 'instance_id <- %d' % (int(instance_id))
-#                    r(rstring)
-#
-#                    # final step - fire header
-#                    header = str(settings.MEDIA_ROOT) + str(tag.header)
-#                    r.assign('header', header)
-#                    r('source(toString(header))')
-#
-#                else:
-#                    # if tag disabled - do nothing
-#                    pass
-#
-#        # render report to file
-#        r.assign('dochtml', dochtml)
-#        r('writeReport( REPORT, filename=toString(dochtml));')
-#
-#    except RRuntimeError:
-#        # redirect to error-page
-#        html_path = str("reports/rfail.html")
-#    else:
-#        # succeed
-#        html_path = 'reports/' + dochtml + '.html'
+    # create initial instance so that we can use its db id
+    dbitem = breeze.models.Report(
+                type=breeze.models.ReportType.objects.get(type=report_type),
+                name=str(instance_name),
+                author=author,
+            )
+    dbitem.save()
 
+    # define location
+    path = slugify(str(dbitem.id) + '_' + dbitem.name + '_' + dbitem.author.username)  # that is report's folder name
+    loc = str(settings.MEDIA_ROOT) + str("reports/") + path
+    dochtml = loc + '/doc.html'
+    dbitem.home = str("reports/") + path
+    dbitem.save()
+
+    # build r-file
+    script_string = 'setwd(\"%s\")\n' % loc
+    script_string += 'require( Nozzle.R1 )\n\n'
+    script_string += 'REPORT <- newCustomReport(toString(\"%s\"))\n\n\n' % report_name
+
+    for key, val in sorted(taglist.items()):
+        if len(val) == 1:
+            if int(val) == 1:  # if tag enabled
+                # get db instance (which is a script)
+                tag = breeze.models.Rscripts.objects.get(id=int(key))
+                script_string += '### TAG: %s ###\n\n' % tag.name
+
+                # source main code segment
+                code_path = str(settings.MEDIA_ROOT) + str(tag.code)
+                script_string += '# <--- source ---> \n' + open(code_path, 'r').read() + '\n\n'
+
+                # input parameters definition
+                # final step - fire header
+                header_path = str(settings.MEDIA_ROOT) + str(tag.header)
+                script_string += '# <- header -> \n' + open(header_path, 'r').read() + '\n\n\n'
+
+            else:  # if tag disabled - do nothing
+                pass
+
+    # render report to file
+    script_string += '# Render the report to a file\n' + '\nwriteReport( REPORT, filename=toString(\"%s\"))' % dochtml
+
+    # save r-file
+    dbitem.rexec.save('script.r', base.ContentFile(script_string))
+    dbitem.save()
+
+    # configure shell-file for SGE and qsub submission
+    config_path = loc + '/sgeconfig.sh'
+    config = open(config_path, 'w')
+    job_name = slugify(dbitem.name) + '_REPORT'
+
+    st = os.stat(config_path)  # config should be executble
+    os.chmod(config_path, st.st_mode | stat.S_IEXEC)
+
+    options = '#!/bin/bash \n'
+    mail = dbitem.author.email
+    if mail:
+        options += '#$ -N %s\n' % job_name
+        options += '#$ -M %s\n' % mail
+        options += '#$ -m e\n'
+    command = str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(dbitem.rexec)
+
+    config.write(options)
+    config.write(command)
+    config.close()
+
+    # submit r-code
+    run_report(dbitem)
+    dbitem.status = 'submitted'
+    dbitem.save()
+
+    html_path = str("reports/rfail.html")
     return html_path

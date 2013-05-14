@@ -102,3 +102,35 @@ class UserProfile(models.Model):
 
     def __unicode__(self):
         return self.first_name
+
+class ReportType(models.Model):
+    type = models.CharField(max_length=17)
+    description = models.CharField(max_length=350, blank=True)
+    tags = models.ManyToManyField(Rscripts, blank=True)
+
+    def __unicode__(self):
+        return self.type
+
+    class Meta:
+        ordering = ('type',)
+
+class Report(models.Model):
+    type = models.ForeignKey(ReportType)
+    name = models.CharField(max_length=55)
+    description = models.CharField(max_length=350, blank=True)
+    author = ForeignKey(User)
+    created = models.DateField(auto_now_add=True)
+    home = models.CharField(max_length=155, blank=True)
+    status = models.CharField(max_length=15, blank=True)
+    # query = models.CharField(max_length=35)
+
+    def file_name(self, filename):
+        fname, dot, extension = filename.rpartition('.')
+        slug = slugify(str(self.id) + '_' + self.name + '_' + self.author.username)
+        return 'reports/%s/%s' % (slug, filename)
+
+    rexec = models.FileField(upload_to=file_name, blank=True)
+    dochtml = models.FileField(upload_to=file_name, blank=True)
+
+    def __unicode__(self):
+        return self.name
