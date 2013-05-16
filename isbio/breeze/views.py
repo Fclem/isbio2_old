@@ -396,6 +396,12 @@ def delete_script(request, sid):
     return HttpResponseRedirect('/resources/scripts/')
 
 @login_required(login_url='/')
+def delete_report(request, rid):
+    report = Report.objects.get(id=rid)
+    rshell.del_report(report)
+    return HttpResponseRedirect('/reports/')
+
+@login_required(login_url='/')
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))

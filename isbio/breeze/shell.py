@@ -1,11 +1,13 @@
-import os, shutil, re, sys, traceback, stat
+import os, shutil, re, stat
 from datetime import datetime
+from multiprocessing import Process
 import xml.etree.ElementTree as xml
 from Bio import Entrez
 from django.template.defaultfilters import slugify
 from django.conf import settings
 from django.core.files import File, base
 import breeze.models
+import drmaa
 import logging
 
 logger = logging.getLogger(__name__)
@@ -135,6 +137,22 @@ def del_script(script):
 
     return False
 
+def del_report(report):
+    path = str(settings.MEDIA_ROOT) + report.home
+
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+        report.delete()
+        return True
+
+    return False
+
+def del_job(job):
+    docxml_path = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
+    shutil.rmtree(docxml_path)
+    job.delete()
+    return True
+
 def schedule_job(job, mailing):
     """
         Creates SGE configuration file for QSUB command
@@ -167,11 +185,6 @@ def schedule_job(job, mailing):
     job.save()
     return 1
 
-def del_job(job):
-    docxml_path = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
-    shutil.rmtree(docxml_path)
-    job.delete()
-
 
 def run_job(job, script):
     """
@@ -198,7 +211,7 @@ def run_job(job, script):
 
 def run_report(report):
     """
-        Submits reports as an R-job to cluster with qsub (SGE);
+        Submits reports as an R-job to cluster with SGE;
         This submission implements REPORTS concept in BREEZE
         (For SCRIPTS submission see run_job)
     """
@@ -208,10 +221,38 @@ def run_report(report):
     default_dir = os.getcwd()
     os.chdir(loc)
 
-    os.system('qsub -cwd %s' % config)
+    s = drmaa.Session()
+    s.initialize()
+
+    jt = s.createJobTemplate()
+
+    jt.workingDirectory = loc
+    jt.jobName = slugify(report.name) + '_REPORT'
+    jt.blockEmail = False
+    jt.email = [str(report.author.email)]
+    jt.remoteCommand = config
+    jt.joinFiles = True
+
+    report.sgeid = s.runJob(jt)
+    report.status = 'submitted'
+    report.save()
+
+    # waiting for the job to end
+    retval = s.wait(report.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+
+    if retval.hasExited and retval.exitStatus == 0:
+        report.status = 'ready'
+    else:
+        report.status = 'failed'
+
+    report.save()
 
     os.chdir(default_dir)
     return True
+
+def track_sge_job():
+    status = ''
+    return status
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     """ 
@@ -410,7 +451,7 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
     # define location
     path = slugify(str(dbitem.id) + '_' + dbitem.name + '_' + dbitem.author.username)  # that is report's folder name
     loc = str(settings.MEDIA_ROOT) + str("reports/") + path
-    dochtml = loc + '/doc.html'
+    dochtml = loc + '/report'
     dbitem.home = str("reports/") + path
     dbitem.save()
 
@@ -445,30 +486,20 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
     dbitem.rexec.save('script.r', base.ContentFile(script_string))
     dbitem.save()
 
-    # configure shell-file for SGE and qsub submission
+    # configure shell-file
     config_path = loc + '/sgeconfig.sh'
     config = open(config_path, 'w')
-    job_name = slugify(dbitem.name) + '_REPORT'
 
     st = os.stat(config_path)  # config should be executble
     os.chmod(config_path, st.st_mode | stat.S_IEXEC)
 
-    options = '#!/bin/bash \n'
-    mail = dbitem.author.email
-    if mail:
-        options += '#$ -N %s\n' % job_name
-        options += '#$ -M %s\n' % mail
-        options += '#$ -m e\n'
-    command = str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(dbitem.rexec)
-
-    config.write(options)
+    command = '#!/bin/bash \n' + str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(dbitem.rexec)
     config.write(command)
     config.close()
 
     # submit r-code
-    run_report(dbitem)
-    dbitem.status = 'submitted'
-    dbitem.save()
+    p = Process(target=run_report, args=(dbitem))
+    p.start()
 
     html_path = str("reports/rfail.html")
     return html_path

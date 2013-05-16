@@ -51,7 +51,7 @@
         {% if reports %}
         <thead>
           <tr>
-            <th>Date</th> <th>Report Type</th> <th>Report Name</th> <th>Author</th> <th>Download</th>
+            <th>Date</th> <th>Report Type</th> <th>Report Name</th> <th>Author</th> <th>HTML</th> <th></th>
           </tr>
         </thead>
         {% endif %}
@@ -62,7 +62,16 @@
             <td> {{ report.type }} </td> <!-- Implement TYPE in colors depending on report type =) -->
             <td> {{ report.name }} </td>
             <td> {{ report.author }} </td>
-            <td><a href="{{ report.dochtml }}"> HTML <i class="icon-download-alt"></i></a></td>
+            <td>
+              <a class="Glyph" data-toggle="tooltip" title="View the Report" href="{{ report.dochtml }}"><i class="icon-eye-open"></i></a>
+              &nbsp;&nbsp;&nbsp;&nbsp;
+              <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="{{ report.dochtml }}"><i class="icon-download-alt"></i></a>
+            </td>
+            <td>
+              <a href="#" data-toggle="modal" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('{{ report.name }}');" >
+                <i class="icon-trash"></i>
+              </a>
+            </td>
           </tr>
         {% empty %}
           <tr> <td></td> <td> No reports in the data base... </td> </tr>
@@ -72,9 +81,24 @@
     </div>
   </div>
   
-    
+  <div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="del_title">Delete JOB</h3>
+      </div>
+      <div class="modal-body">
+        <p> Are you sure you DO NOT need this report any more?! </p>
+      </div>
+      <div class="modal-footer">
+        <a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
+        <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+      </div>
+  </div>
+
 <script>
 $(document).ready(function() {
+  $('.Glyph').tooltip()
+  
   $('#new_popover').popover({
     title: "New Report Query",
     trigger: "click", 
