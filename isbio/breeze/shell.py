@@ -247,11 +247,6 @@ def run_report(report):
         report.status = 'ready'
 
         # clean up the folder
-        for item in os.listdir(loc):
-            if fnmatch.fnmatch(item, '*.RData') or fnmatch.fnmatch(item, '*.Rout'):
-                os.remove(loc + item)
-            if fnmatch.fnmatch(item, '*.o' + str(report.sgeid)):
-                os.remove(loc + item)
 
     else:
         report.status = 'failed'
@@ -469,29 +464,41 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
     # build r-file
     script_string = 'setwd(\"%s\")\n' % loc
     script_string += 'require( Nozzle.R1 )\n\n'
-    script_string += 'REPORT <- newCustomReport(toString(\"%s\"))\n\n\n' % report_name
+    script_string += 'path <- \"%s\"\n' % loc
+    script_string += 'report_name <- \"%s\"\n' % report_name
+    # define a function for exception handler
+    script_string += 'failed_fun_print <- function(section_name){\n'
+    script_string += '  section_name <- addTo( section_name, newParagraph( "This section FAILED! Contact the development team... " ) )\n'
+    script_string += '  return (section_name)\n}\n\n'
+
+    script_string += 'REPORT <- newCustomReport(report_name)\n'
 
     for key, val in sorted(taglist.items()):
         if len(val) == 1:
             if int(val) == 1:  # if tag enabled
                 # get db instance (which is a script)
                 tag = breeze.models.Rscripts.objects.get(id=int(key))
-                script_string += '### TAG: %s ###\n\n' % tag.name
+                script_string += '##### TAG: %s #####\n\n' % tag.name
 
                 # source main code segment
                 code_path = str(settings.MEDIA_ROOT) + str(tag.code)
-                script_string += '# <--- source ---> \n' + open(code_path, 'r').read() + '\n\n'
-
+                script_string += '# <----------  body  ----------> \n' + open(code_path, 'r').read() + '\n'
+                script_string += '# <------- end of body --------> \n'
                 # input parameters definition
                 # final step - fire header
                 header_path = str(settings.MEDIA_ROOT) + str(tag.header)
-                script_string += '# <- header -> \n' + open(header_path, 'r').read() + '\n\n\n'
+                script_string += '# <----------  header  ----------> \n' + open(header_path, 'r').read() + '\n\n'
+                script_string += 'new_section <- newSection( section_name )\n'
+                script_string += 'tag_section <- tryCatch({section_body(new_section)}, error = function(e){ failed_fun_print(new_section) })\n'
+                script_string += 'REPORT <- addTo( REPORT, tag_section )\n'
+                script_string += '# <------- end of header --------> \n'
+                script_string += '##### END OF TAG #####\n\n\n'
 
             else:  # if tag disabled - do nothing
                 pass
 
     # render report to file
-    script_string += '# Render the report to a file\n' + '\nwriteReport( REPORT, filename=toString(\"%s\"))' % dochtml
+    script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))' % dochtml
 
     # save r-file
     dbitem.rexec.save('script.r', base.ContentFile(script_string))
