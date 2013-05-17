@@ -140,9 +140,8 @@ def scripts(request, layout="list"):
 
 @login_required(login_url='/')
 def reports(request):
-    all_reports = Report.objects.filter(status="submitted")
+    all_reports = Report.objects.filter(status="ready")
     return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'reports': all_reports }))
-
 
 @login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):
@@ -739,6 +738,11 @@ def send_file(request, ftype, fname):
         local_path = str(fitem.rdata)
         path_to_file = str(settings.MEDIA_ROOT) + local_path
 
+    if ftype == 'report':
+        fitem = Report.objects.get(id=fname)
+        local_path = fitem.home + '/report.html'
+        path_to_file = str(settings.MEDIA_ROOT) + local_path
+
     f = open(path_to_file, 'r')
     myfile = File(f)
     response = HttpResponse(myfile, mimetype='application/force-download')
@@ -773,6 +777,7 @@ def send_dbcontent(request, content, iid=None):
         response[item.name] = item.description
 
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
 
 @login_required(login_url='/')
 def builder(request):

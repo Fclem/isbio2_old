@@ -7,8 +7,11 @@ from django.template.defaultfilters import slugify
 from django.conf import settings
 from django.core.files import File, base
 import breeze.models
-import drmaa
 import logging
+
+import socket
+if socket.gethostname().startswith('breeze'):
+    import drmaa
 
 logger = logging.getLogger(__name__)
 
@@ -498,7 +501,7 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
     config.close()
 
     # submit r-code
-    p = Process(target=run_report, args=(dbitem))
+    p = Process(target=run_report, args=(dbitem,))
     p.start()
 
     html_path = str("reports/rfail.html")

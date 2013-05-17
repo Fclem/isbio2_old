@@ -199,6 +199,7 @@ class DevSettings(BreezeSettings):
     os.environ['SGE_EXECD_PORT'] = '537'
     os.environ['SGE_ARCH'] = 'UNSUPPORTED-lx3.2.0-40-generic-amd64'
     os.environ['SGE_CELL'] = 'default'
+    os.environ['DRMAA_LIBRARY_PATH'] = '/opt/gridengine/lib/lx26-amd64/libdrmaa.so'
 
 
     DATABASES = {

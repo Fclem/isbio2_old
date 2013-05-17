@@ -63,9 +63,13 @@
             <td> {{ report.name }} </td>
             <td> {{ report.author }} </td>
             <td>
-              <a class="Glyph" data-toggle="tooltip" title="View the Report" href="{{ report.dochtml }}"><i class="icon-eye-open"></i></a>
+              <a class="Glyph" data-toggle="tooltip" title="View the Report" href="/media/{{ report.home }}/report.html" target="_blank">
+                <i class="icon-eye-open"></i>
+              </a>
               &nbsp;&nbsp;&nbsp;&nbsp;
-              <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="{{ report.dochtml }}"><i class="icon-download-alt"></i></a>
+              <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="/get/report-{{ report.id }}">
+                <i class="icon-download-alt"></i>
+              </a>
             </td>
             <td>
               <a href="#" data-toggle="modal" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('{{ report.name }}');" >
