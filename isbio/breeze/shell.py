@@ -1,4 +1,4 @@
-import os, shutil, re, stat
+import os, shutil, re, stat, fnmatch
 from datetime import datetime
 from multiprocessing import Process
 import xml.etree.ElementTree as xml
@@ -245,6 +245,14 @@ def run_report(report):
 
     if retval.hasExited and retval.exitStatus == 0:
         report.status = 'ready'
+
+        # clean up the folder
+        for item in os.listdir(loc):
+            if fnmatch.fnmatch(item, '*.RData') or fnmatch.fnmatch(item, '*.Rout'):
+                os.remove(loc + item)
+            if fnmatch.fnmatch(item, '*.o' + str(report.sgeid)):
+                os.remove(loc + item)
+
     else:
         report.status = 'failed'
 
