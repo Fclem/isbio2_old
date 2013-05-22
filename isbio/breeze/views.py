@@ -18,7 +18,7 @@ import xml.etree.ElementTree as xml
 import shell as rshell
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -156,20 +156,18 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         overview['details'] = rshell.get_report_overview(rtype, iname, iid)
 
         # BUILD LIST OF TAGS
-        if rtype == 'Gene':
-            tags = Rscripts.objects.filter(draft="0").filter(istag="1")
+        # filter tags according to report type
+        tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype))
 
-            attribs = dict()
-            tags_attrib = list()
-            for item in tags:
-                # tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
-                attribs['id'] = item.id
-                attribs['inline'] = str(item.inln)
-                attribs['name'] = str(item.name)
-                attribs['form'] = "no form"  # breezeForms.form_from_xml(xml=tree)
-                tags_attrib.append(copy.deepcopy(attribs))
-        else:
-            tags_attrib = list()
+        attribs = dict()
+        tags_attrib = list()
+        for item in tags:
+            attribs['id'] = item.id
+            attribs['inline'] = str(item.inln)
+            attribs['name'] = str(item.name)
+            attribs['form'] = "no form"  # breezeForms.form_from_xml(xml=tree)
+            tags_attrib.append(copy.deepcopy(attribs))
+
         return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'overview_info': overview }))
 
     elif mod == '-full':
@@ -808,6 +806,28 @@ def new_script_dialog(request):
         'layout': 'horizontal',
         'submit': 'Add'
     }))
+
+@login_required(login_url='/')
+def new_rtype_dialog(request):
+    """
+        This view provides a dialog to create a new report type in DB.
+    """
+    print request.POST
+    form = breezeForms.NewRepTypeDialog(request.POST or None)
+
+    if form.is_valid():
+        print "valid"
+        form.save()
+        return HttpResponse(True)
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': form,
+        'action': '/new-rtype/',
+        'header': 'Create New Report Type',
+        'layout': 'horizontal',
+        'submit': 'Add'
+    }))
+
 
 @login_required(login_url='/')
 def update_user_info_dialog(request):
