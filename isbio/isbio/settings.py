@@ -195,6 +195,7 @@ class BreezeSettings(Settings):
 class DevSettings(BreezeSettings):
     DEBUG = True
 
+    os.environ['PATH'] = '/homes/dbychkov/dev/isbio/venv/bin:/opt/gridengine/bin/UNSUPPORTED-lx3.2.0-40-generic-amd64:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/lib/jvm/java-6-openjdk/jre/bin:/opt/gridengine/bin/lx26-amd64:/projects/breeze/R/R-3.0.0/bin:/opt/gridengine/bin/lx26-amd64:/opt/gridengine/bin/lx26-amd64'
     os.environ['LD_LIBRARY_PATH'] = '/opt/gridengine/lib/UNSUPPORTED-lx3.2.0-40-generic-amd64'
     os.environ['SGE_ROOT'] = '/opt/gridengine'
     os.environ['SGE_QMASTER_PORT'] = '536'
