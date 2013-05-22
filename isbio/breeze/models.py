@@ -11,6 +11,17 @@ CATEGORY_OPT = (
         (u'sequencing', u'Sequencing'),
     )
 
+class ReportType(models.Model):
+    type = models.CharField(max_length=17)
+    description = models.CharField(max_length=350, blank=True)
+    # tags = models.ManyToManyField(Rscripts, blank=True)
+
+    def __unicode__(self):
+        return self.type
+
+    class Meta:
+        ordering = ('type',)
+
 class Rscripts(models.Model):
     name = models.CharField(max_length=35, unique=True)
     inln = models.CharField(max_length=150, blank=True)
@@ -20,6 +31,7 @@ class Rscripts(models.Model):
     creation_date = models.DateField(auto_now_add=True)
     draft = models.BooleanField(default=True)
     istag = models.BooleanField(default=False)
+    report_type = models.ForeignKey(ReportType, null=True, blank=True)  # assosiation with report type
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
@@ -102,17 +114,6 @@ class UserProfile(models.Model):
 
     def __unicode__(self):
         return self.first_name
-
-class ReportType(models.Model):
-    type = models.CharField(max_length=17)
-    description = models.CharField(max_length=350, blank=True)
-    tags = models.ManyToManyField(Rscripts, blank=True)
-
-    def __unicode__(self):
-        return self.type
-
-    class Meta:
-        ordering = ('type',)
 
 class Report(models.Model):
     type = models.ForeignKey(ReportType)

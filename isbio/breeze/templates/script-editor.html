@@ -124,6 +124,7 @@
               </div> 
               
               {{ attr_form|as_bootstrap }}
+              
               <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
             </form>  
           </div>
@@ -178,8 +179,31 @@
     </div>
   </div>
   
+  <div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+  
+  
 <script>
 $(document).ready(function() {
+  var addRTbtn = '<a id="id_addRTbtn" href="#" data-toggle="modal" class="apply btn btn-small btn-inverse" data-target="#Apply"  data-param="/new-rtype/">\
+                    <i class="icon-plus icon-white"></i>\
+                  </a>'
+  $('#id_report_type').parent().append(addRTbtn);
+  modalConnect();
+  if (!$('#id_istag').attr('checked')){
+    $('#id_report_type').attr("disabled", "disabled");
+    $('#id_addRTbtn').addClass("disabled").removeClass('apply');
+  }
+  
+  $('#id_istag').change(function(){
+    if ($('#id_istag').attr('checked')){
+      $('#id_report_type').removeAttr('disabled');
+      $('#id_addRTbtn').removeClass('disabled').addClass('apply');
+    } else{
+      $('#id_report_type').attr('disabled', 'disabled');
+      $('#id_addRTbtn').addClass('disabled').removeClass('apply');
+    }
+  });
+  
   // INIT 
   // $('#fileInput').customFileInput({ });
   var genSourceExport;
@@ -287,6 +311,69 @@ $(document).ready(function() {
   }); 
   
 });
+</script>
+<script type="text/javascript">    
+function submitItemModalFormBind(url){
+         $('#form_modal_apply').submit(function(ev){
+             ev.preventDefault(); // prevent navigation
+             var formData = new FormData($('#form_modal_apply')[0]);
+             $.ajax({
+                type: "POST",
+                url: url,
+                enctype: 'multipart/form-data',
+                data: formData,
+                success:function(response, textStatus, jqXHR){
+                     var form = $("#form_modal_apply_div", response);
+                     console.log(form)
+                     //form is returned if it is not valid. update modal with returned form
+                     //change this "if" to check for a specific return code which should be set in the view
+                     if (form.html()) {
+                        //update modal div
+                         $('#form_modal_apply_div').html(form);
+                         $("#Apply").modal('show');
+                      }
+                      //form is not returned if form submission succeeded
+                      else{                          
+                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
+                        $("#Apply").modal('hide');
+                        window.location.replace("/resources/scripts/script-editor/{{ script.id }}-attribut_tab");
+                       }
+                },
+                error: function (request, status, error) {
+                            //implement proper error handling
+                            console.log("failure");
+                            console.log(request.responseText);
+                    },
+                cache: false,
+                contentType: false,
+                processData: false
+                    });
+                    return false;
+                });
+              }
+function modalConnect()
+        {
+            //unbind the click event. If not done we will end up with multiple click event bindings, since binding is done after each ajax call.
+            $(".apply").unbind('click');
+            //bind the click event
+            $(".apply").click(function(ev) {
+                ev.preventDefault(); // prevent navigation
+                console.log("here")
+                var par = $(this).data("param");
+                $.get(par.toString(), function(results){
+                  //update the dom with the received form
+                  $('#Apply').html(results);
+                  
+                  $("#Apply").modal('show');
+                  $(document).ready(function () {
+                     //bind the form to an ajax call. ajax call will be set to the received update url
+                     submitItemModalFormBind(par.toString());
+                  });
+
+                }, "html");
+                return false; // prevent the click propagation
+            })
+        }
 </script>
 
 {% endblock %}

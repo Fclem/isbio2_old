@@ -102,6 +102,9 @@ class NewScriptDialog(forms.Form):
         else:
             raise forms.ValidationError("That script name is already taken.")
 
+class NewRepTypeDialog(forms.ModelForm):
+    class Meta:
+        model = breeze.models.ReportType
 
 class BasicJobForm(forms.Form):
     def __init__(self, user, edit, *args, **kwargs):
@@ -187,7 +190,7 @@ class ScriptDescription(forms.Form):
 class ScriptAttributes(forms.ModelForm):
     class Meta:
         model = breeze.models.Rscripts
-        fields = ('author', 'category', 'draft', 'istag')
+        fields = ('author', 'category', 'draft', 'istag', 'report_type')
 
 class ScriptLogo(forms.Form):
     logo = forms.FileField(label=(u''))

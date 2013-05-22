@@ -27,6 +27,7 @@ class BreezeSettings(Settings):
             'PASSWORD': 'rna',  # Not used with sqlite3.
             'HOST': '/var/run/mysqld/mysqld.sock',  # Set to empty string for localhost. Not used with sqlite3.
             'PORT': '3306',  # Set to empty string for default. Not used with sqlite3.
+            'OPTIONS': { "init_command": "SET foreign_key_checks = 0;", },
         }
     }
 
