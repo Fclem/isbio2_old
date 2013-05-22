@@ -195,6 +195,7 @@ class BreezeSettings(Settings):
 class DevSettings(BreezeSettings):
     DEBUG = True
 
+    os.environ['LD_LIBRARY_PATH'] = '/opt/gridengine/lib/UNSUPPORTED-lx3.2.0-40-generic-amd64'
     os.environ['SGE_ROOT'] = '/opt/gridengine'
     os.environ['SGE_QMASTER_PORT'] = '536'
     os.environ['SGE_EXECD_PORT'] = '537'
