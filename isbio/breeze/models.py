@@ -31,7 +31,7 @@ class Rscripts(models.Model):
     creation_date = models.DateField(auto_now_add=True)
     draft = models.BooleanField(default=True)
     istag = models.BooleanField(default=False)
-    report_type = models.ForeignKey(ReportType, null=True, blank=True)  # assosiation with report type
+    report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
