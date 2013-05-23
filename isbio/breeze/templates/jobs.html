@@ -198,6 +198,7 @@
 <script>
     $(document).ready(function() {
         modalConnect();
+        
         $(".jbar").each(function(){
             var par = $(this).data("param");
             updateJobs(par);        
@@ -338,15 +339,12 @@ function appendToHistory(job){
     else if (job.status.toString() == "failed") { jstatus = "important"; }
     else if (job.status.toString() == "aborted") { jstatus = "warning"; }
     
-    // var new_row = '<div class"alert ' + jstatus + '"><button type="button" class="close" data-dismiss="alert">&times;</button>'; 
-    // new_row += '<strong> ' + job.name + ' </strong> </div>';
     var new_row = '<tr> <td>  NOW!</p></td> <td>' + job.name + '</td> <td></td>';
     new_row += '<td> <span class="label label-' + jstatus + '">' + job.status.toString().toUpperCase() + '</span> </td>'
     new_row += '<td><div class="btn-group"><a class="btn btn-inverse" href="/jobs/download/' + job.id + '-result"><i class="icon-white icon-download-alt"></i> Results</a>'
     new_row += '<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button><ul class="dropdown-menu">'
     new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-result">Results <i class="icon-picture"></i></a></li>'
-    new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-summary">Summary <i class="icon-file"></i></a></li>'
-    new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-code">Script Code <i class="icon-list-alt"></i></a></li>'
+    new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-code">R-Debug Info <i class="icon-list-alt"></i></a></li>'
     new_row += '<li class="divider"></li>'
     new_row += '<li align="right"><a href="/jobs/download/' + job.id + '">Full Job Set <i class="icon-folder-open"></i></a></li></ul></div></td>'
     new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-file"></i></a></td>'

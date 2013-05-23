@@ -59,6 +59,7 @@ class Jobs(models.Model):
     status = models.CharField(max_length=15)
     staged = models.DateField(auto_now_add=True)
     progress = models.IntegerField()
+    sgeid = models.CharField(max_length=15, blank=True)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
