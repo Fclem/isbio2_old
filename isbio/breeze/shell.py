@@ -167,20 +167,7 @@ def schedule_job(job, mailing):
     st = os.stat(config_path)  # config should be executble
     os.chmod(config_path, st.st_mode | stat.S_IEXEC)
 
-    options = '#!/bin/bash \n'
-    mail = mailing['email']
-    if mail:
-        options += '#$ -M %s\n' % mail
-        abe = '#$ -m '
-        if 'Aborted' in mailing: abe += 'a'
-        if 'Started' in mailing: abe += 'b'
-        if 'Ready' in mailing: abe += 'e'
-        if len(abe) == 6: abe += 'n'
-        options += abe + '\n'
-
-    command = str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(job.rexecut)
-
-    config.write(options)
+    command = '#!/bin/bash \n' + str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(job.rexecut)
     config.write(command)
     config.close()
 
@@ -198,17 +185,42 @@ def run_job(job, script):
     loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
     config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
     job.status = "active"
-    job.progress = 50
+    job.progress = 30
     job.save()
 
     default_dir = os.getcwd()
     os.chdir(loc)
 
-    os.system('qsub -cwd %s' % config)
+    s = drmaa.Session()
+    s.initialize()
 
-    job.status = "succeed"
-    job.progress = 100
+    jt = s.createJobTemplate()
+
+    jt.workingDirectory = loc
+    jt.jobName = slugify(job.jname) + '_JOB'
+    jt.email = [str(job.juser.email)]
+    jt.blockEmail = False
+    jt.remoteCommand = config
+    jt.joinFiles = True
+
+    sgeid = s.runJob(jt)
+    job.progress = 50
     job.save()
+
+    # waiting for the job to end
+    retval = s.wait(sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+
+    if retval.hasExited and retval.exitStatus == 0:
+        job.status = "succeed"
+        job.progress = 100
+
+        # clean up the folder
+
+    else:
+        job.status = 'failed'
+
+    job.save()
+
     os.chdir(default_dir)
     return True
 
