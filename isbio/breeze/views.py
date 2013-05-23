@@ -698,14 +698,12 @@ def send_zipfile(request, jid, mod=None):
             archive.write(loc + item, str(item))
     elif mod == "-code":
         for item in files_list:
-            if fnmatch.fnmatch(item, '*.r'):
+            if fnmatch.fnmatch(item, '*.r') or fnmatch.fnmatch(item, '*.Rout'):
                 archive.write(loc + item, str(item))
     elif mod == "-result":
         for item in files_list:
-            if not fnmatch.fnmatch(item, '*.xml') and not fnmatch.fnmatch(item, '*.r'):
+            if not fnmatch.fnmatch(item, '*.xml') and not fnmatch.fnmatch(item, '*.r*') and not fnmatch.fnmatch(item, '*.sh*'):
                 archive.write(loc + item, str(item))
-    elif mod == "-summary":
-        pass
 
     archive.close()
     wrapper = FileWrapper(temp)
