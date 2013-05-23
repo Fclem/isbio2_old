@@ -59,10 +59,9 @@
         <div class="controls">
           <input name="query" type="text" class="input-xlarge search-query" placeholder="Search... " value="{{ query_value }}">
           <select name="type" class="input-medium search-query">
-            <option id="optDrug">Drug</option>
-            <option id="optGene">Gene</option>
-            <option id="optSample">Sample*</option>
-            <option id="optPatient">Patient*</option>
+          {% for item in rtypes %}
+            <option id="opt{{ item.type }}" value="{{ item.type }}">{{ item.type }}</option>
+          {% endfor %}
           </select>
           <p>&nbsp; e.g. Bosutinib </p>
           <button type="submit" class="btn btn-info input-medium pull-left"><strong> QUERY </strong></button>

@@ -231,8 +231,8 @@ def run_report(report):
 
     jt.workingDirectory = loc
     jt.jobName = slugify(report.name) + '_REPORT'
-    jt.blockEmail = False
     jt.email = [str(report.author.email)]
+    jt.blockEmail = False
     jt.remoteCommand = config
     jt.joinFiles = True
 
@@ -372,45 +372,34 @@ def get_dataset_info(path):
     return lst
 
 def report_search(data_set, report_type, query):
+    """ 
+        Each report type assumes its own search implementation;
+        RPy2 could be a good option (use local installation on VM):
+            - each report is assosiated with an r-script for searching;
+            - each report should have another r-script to generate an overview
+    """
     lst = list()
 
     # !!! HANDLE EXCEPTIONS IN THIS FUNCTION !!! #
 
-    ### DRUG - local db search for drugs ###
-    if str(report_type) == 'Drug' and len(query) > 0:
-        for dset in data_set:
-            if dset.name == "Sanger" or dset.name == "Duplicate":
-                data = str(settings.MEDIA_ROOT) + str(dset.rdata)
-#                r('library(vcd)')
-#                r.assign('dataset', str(data))
-#                r('load(dataset)')
-#                r('dataSet1 <- sangerSet[1:131,]')
-#                r('featureNames(dataSet1) <- gsub("_IC_50","",featureNames(dataSet1))')
-#                drugs = r('featureNames(dataSet1)')
-#
-#                if str(query) == "*":
-#                    for pill in drugs:
-#                        lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
-#
-#                else:
-#                    for pill in drugs:
-#                        if str(pill) == str(query):
-#                            lst.append(dict(id=str("drugID"), name=str(pill), db=str(dset.name)))
-
-    ### GENE - Entrez search with BioPython ###
-    elif str(report_type) == 'Gene' and len(query) > 0:
+    # GENE - Entrez search with BioPython #
+    if str(report_type) == 'Gene' and len(query) > 0:
         Entrez.email = "dmitrii.bychkov@helsinki.fi"  # <- bring user's email here
         instance = str(query) + '[Gene/Protein Name]'  #  e.g. 'DMPK[Gene/Protein Name]'
         species = 'Homo sapiens[Organism]'
         search_query = instance + ' AND ' + species
-        handle = Entrez.esearch(db="gene", term=search_query)
+        handle = Entrez.esearch(db='gene', term=search_query)
         record = Entrez.read(handle)
 
-        for item in record["IdList"]:
-            record_summary = Entrez.esummary(db="gene", id=item)
+        for item in record['IdList']:
+            record_summary = Entrez.esummary(db='gene', id=item)
             record_summary = Entrez.read(record_summary)
-            if record_summary[0]["Name"]:
-                lst.append(dict(id=str(record_summary[0]["Id"]), name=str(record_summary[0]["Name"]), db="Entrez[Gene]"))
+            if record_summary[0]['Name']:
+                lst.append(dict(id=str(record_summary[0]['Id']), name=str(record_summary[0]['Name']), db='Entrez[Gene]'))
+
+    # Other report types should be implemented in a generalized way! #
+    else:
+        pass
 
     return lst
 

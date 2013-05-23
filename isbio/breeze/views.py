@@ -141,7 +141,8 @@ def scripts(request, layout="list"):
 @login_required(login_url='/')
 def reports(request):
     all_reports = Report.objects.filter(status="ready")
-    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'reports': all_reports }))
+    report_type_lst = ReportType.objects.all()
+    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'reports': all_reports, 'rtypes': report_type_lst }))
 
 @login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):
@@ -188,28 +189,25 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
 @login_required(login_url='/')
 def search(request, what=None):
+    report_type_lst = ReportType.objects.all()
     ds = DataSet.objects.all()
     ds_count = len(ds)
 
     overview = dict()
-    query_val = ""
-    overview['report_type'] = ""
+    query_val = str()
+    overview['report_type'] = str()
 
+    # when query
     if request.method == 'POST':
         result_type = what
 
         # search for ENTITIES (right bar)
         if what == 'entity':
             overview['report_type'] = request.POST['type']
+            print overview['report_type']
             query_val = str(request.POST['query'])
 
-            if overview['report_type'] == 'Drug':
-                output = rshell.report_search(ds, overview['report_type'], query_val)
-                # for set in ds:
-                #    output = rshell.report_search(set.rdata, overview['report_type'], query_val)
-
-            elif overview['report_type'] == 'Gene':
-                output = rshell.report_search(None, overview['report_type'], query_val)
+            output = rshell.report_search(ds, overview['report_type'], query_val)
 
         # search for DATASETS (left bar)
         if what == 'dataset':
@@ -218,15 +216,19 @@ def search(request, what=None):
         return render_to_response('search.html', RequestContext(request, {
             'search_status': 'active',
             'search_bars': True,
-            'ds_count': ds_count,
             'search_result': True,
+            'rtypes': report_type_lst,
+            'ds_count': ds_count,
             'result_type': result_type,
             'query_value': query_val,
             'overview_info': overview,
             'output': output
         }))
 
-    return render_to_response('search.html', RequestContext(request, {'search_status': 'active', 'search_bars': True, 'ds_count': ds_count }))
+    else:
+        pass
+
+    return render_to_response('search.html', RequestContext(request, {'search_status': 'active', 'search_bars': True, 'ds_count': ds_count, 'rtypes': report_type_lst }))
 
 @login_required(login_url='/')
 def resources(request):

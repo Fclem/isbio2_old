@@ -114,10 +114,9 @@ $(document).ready(function() {
       <div class="control-group">\
         <div class="controls">\
           <select name="type" class="input-medium search-query">\
-            <option id="optDrug">Drug</option>\
-            <option id="optGene">Gene</option>\
-            <option id="optSample">Sample*</option>\
-            <option id="optPatient">Patient*</option>\
+          {% for item in rtypes %}\
+            <option id="{{ item.id }}" value="{{ item.type }}">{{ item.type }}</option>\
+          {% endfor %}\
           </select>\
         </div>\
       </div>\
