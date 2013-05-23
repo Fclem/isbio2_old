@@ -750,8 +750,11 @@ def send_file(request, ftype, fname):
 
 @login_required(login_url='/')
 def update_jobs(request, jid):
+    sge_status = rshell.track_sge_job(Jobs.objects.get(id=jid))
+    # request job instance again to be sure that the data is updated
     job = Jobs.objects.get(id=jid)
-    response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress)
+
+    response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress, sge=sge_status)
 
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
 

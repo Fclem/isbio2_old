@@ -16,7 +16,7 @@
         <tbody>
           <div id="dashboard">
           {% for job in current %}
-            <tr id="{{ job.id }}_tr1" class="info"> <td>{{ job.jname }}  -  {{ job.staged }}</td> </tr>
+            <tr id="{{ job.id }}_tr1" class="info"> <td id="{{ job.id }}_SGEstatus">{{ job.jname }}  -  {{ job.staged }}</td> </tr>
             <tr id="{{ job.id }}_tr2" class="info"> 
                 <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" style="width: {{ job.progress }}%" /></div></td> 
             </tr>
@@ -296,7 +296,8 @@ function updateJobs(jid) {
         success: function (msg) {
             var arg = "width: " + msg.progress.toString() + "%";
             $("#" + jid.toString() + "_bar").attr('style', arg);
-            $("#" + jid.toString() + "_list_td").text(msg.progress.toString() + "%");
+            $("#" + jid.toString() + "_SGEstatus").text(msg.sge.toString());
+            $("#" + jid.toString() + "_list_td").text(msg.sge.toString());
             
             if (msg.status != "active") {
                 var jstatus = ''

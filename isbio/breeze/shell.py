@@ -184,12 +184,13 @@ def run_job(job, script):
     """
     loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
     config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
-    job.status = "active"
-    job.progress = 30
-    job.save()
 
     default_dir = os.getcwd()
     os.chdir(loc)
+
+    job.status = "active"
+    job.progress = 15
+    job.save()
 
     s = drmaa.Session()
     s.initialize()
@@ -203,22 +204,22 @@ def run_job(job, script):
     jt.remoteCommand = config
     jt.joinFiles = True
 
-    sgeid = s.runJob(jt)
-    job.progress = 50
+    job.sgeid = s.runJob(jt)
+    job.progress = 30
     job.save()
 
     # waiting for the job to end
-    retval = s.wait(sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+    retval = s.wait(job.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
 
     if retval.hasExited and retval.exitStatus == 0:
         job.status = "succeed"
-        job.progress = 100
 
         # clean up the folder
 
     else:
         job.status = 'failed'
 
+    job.progress = 100
     job.save()
 
     os.chdir(default_dir)
@@ -268,8 +269,36 @@ def run_report(report):
     os.chdir(default_dir)
     return True
 
-def track_sge_job():
+def track_sge_job(job):
     status = ''
+    #    decodestatus = {
+    #        drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
+    #        drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
+    #        drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
+    #        drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
+    #        drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
+    #        drmaa.JobState.RUNNING: 'job is running',
+    #        drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
+    #        drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
+    #        drmaa.JobState.DONE: 'job finished normally',
+    #        drmaa.JobState.FAILED: 'job finished, but failed',
+    #        }
+
+    s = drmaa.Session()
+    s.initialize()
+
+    status = str(s.jobStatus(job.id))
+    s.exit()
+
+    if status == 'queued_active':
+        job.progress = 35
+    elif status == 'running':
+        job.progress = 55
+    elif status == 'done' or status == 'failed':
+        job.progress = 100
+
+    job.save()
+
     return status
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
