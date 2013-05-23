@@ -140,7 +140,7 @@ def scripts(request, layout="list"):
 
 @login_required(login_url='/')
 def reports(request):
-    all_reports = Report.objects.filter(status="ready")
+    all_reports = Report.objects.filter(status="ready").order_by('-created')
     report_type_lst = ReportType.objects.all()
     return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'reports': all_reports, 'rtypes': report_type_lst }))
 
@@ -204,7 +204,6 @@ def search(request, what=None):
         # search for ENTITIES (right bar)
         if what == 'entity':
             overview['report_type'] = request.POST['type']
-            print overview['report_type']
             query_val = str(request.POST['query'])
 
             output = rshell.report_search(ds, overview['report_type'], query_val)
@@ -814,11 +813,9 @@ def new_rtype_dialog(request):
     """
         This view provides a dialog to create a new report type in DB.
     """
-    print request.POST
     form = breezeForms.NewRepTypeDialog(request.POST or None)
 
     if form.is_valid():
-        print "valid"
         form.save()
         return HttpResponse(True)
 
