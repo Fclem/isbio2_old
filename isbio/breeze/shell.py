@@ -443,9 +443,11 @@ def gen_params_string(docxml, data, dir, files):
             seq = seq[:-1] + ')'
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
         elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
-            add_file_to_report(dir, files[item.attrib['comment']])
-            print data
-            params = params + str(item.attrib['rvarname']) + ' <- "' + str(files[item.attrib['comment']].name) + '"\n'
+            if files:
+                add_file_to_report(dir, files[item.attrib['comment']])
+                params = params + str(item.attrib['rvarname']) + ' <- "' + str(files[item.attrib['comment']].name) + '"\n'
+            else:
+                params = params + str(item.attrib['rvarname']) + ' <- ""\n'
         elif item.attrib['type'] == 'DTS':
             path_to_datasets = str(settings.MEDIA_ROOT) + "datasets/"
             slug = slugify(data.get(item.attrib['comment'], "NA")) + '.RData'
