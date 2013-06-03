@@ -1,4 +1,4 @@
-import os, shutil, re, stat, fnmatch
+import os, shutil, re, stat, fnmatch, copy
 from datetime import datetime
 from multiprocessing import Process
 import xml.etree.ElementTree as xml
@@ -208,18 +208,20 @@ def run_job(job, script):
     job.progress = 30
     job.save()
 
+    SGEID = copy.deepcopy(job.sgeid)
     # waiting for the job to end
-    retval = s.wait(job.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+    retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+    job.progress = 100
+    job.save()
 
     if retval.hasExited and retval.exitStatus == 0:
-        job.status = "succeed"
+        job.status = 'succeed'
 
         # clean up the folder
 
     else:
         job.status = 'failed'
 
-    job.progress = 100
     job.save()
 
     os.chdir(default_dir)
@@ -270,7 +272,7 @@ def run_report(report):
     return True
 
 def track_sge_job(job):
-    status = ''
+    status = 'RUNNING'
     #    decodestatus = {
     #        drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
     #        drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
@@ -284,11 +286,11 @@ def track_sge_job(job):
     #        drmaa.JobState.FAILED: 'job finished, but failed',
     #        }
 
-    s = drmaa.Session()
-    s.initialize()
+    # s = drmaa.Session()
+    # s.initialize()
 
-    status = str(s.jobStatus(job.id))
-    s.exit()
+    # status = str(s.jobStatus(job.id))
+    # s.exit()
 
     if status == 'queued_active':
         job.progress = 35

@@ -296,7 +296,7 @@ function updateJobs(jid) {
         success: function (msg) {
             var arg = "width: " + msg.progress.toString() + "%";
             $("#" + jid.toString() + "_bar").attr('style', arg);
-            $("#" + jid.toString() + "_SGEstatus").text(msg.sge.toString());
+            $("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
             $("#" + jid.toString() + "_list_td").text(msg.sge.toString());
             
             if (msg.status != "active") {
