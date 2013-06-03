@@ -14,6 +14,7 @@ CATEGORY_OPT = (
 class ReportType(models.Model):
     type = models.CharField(max_length=17)
     description = models.CharField(max_length=350, blank=True)
+    search = models.BooleanField(default=True)
     # tags = models.ManyToManyField(Rscripts, blank=True)
 
     def __unicode__(self):
