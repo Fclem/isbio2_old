@@ -379,6 +379,14 @@ def build_header(data):
     header.close()
     return header
 
+def add_file_to_report(directory, f):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(directory + "/" + f.name, 'wb+') as destination:
+        for chunk in f.chunks():
+            destination.write(chunk)
+
 def add_file_to_job(job_name, user_name, f):
     directory = get_job_folder(job_name, user_name)
 
@@ -413,6 +421,49 @@ def get_dataset_info(path):
 #        lst.append(dict(name=str(pill), db="Sanger.RData"))
 
     return lst
+
+def gen_params_string(docxml, data, dir, files):
+    """
+        Iterates over script's/tag's parameters to bind param names and user input;
+        Produces a (R-specific) string with one parameter definition per lines, 
+        so the string can be pushed directly to R file.
+    """
+    params = str()
+    for item in docxml.getroot().iter('inputItem'):
+        if item.attrib['type'] == 'CHB':
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(data.get(item.attrib['comment'], "NA")).upper() + '\n'
+        elif item.attrib['type'] == 'NUM':
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(data.get(item.attrib['comment'], "NA")) + '\n'
+        elif item.attrib['type'] == 'TAR':
+            lst = re.split(', |,|\n|\r| ', str(data.get(item.attrib['comment'], "NA")))
+            seq = 'c('
+            for itm in lst:
+                if itm != "":
+                    seq = seq + '\"%s\",' % itm
+            seq = seq[:-1] + ')'
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+        elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
+            add_file_to_report(dir, files[item.attrib['comment']])
+            print data
+            params = params + str(item.attrib['rvarname']) + ' <- "' + str(files[item.attrib['comment']].name) + '"\n'
+        elif item.attrib['type'] == 'DTS':
+            path_to_datasets = str(settings.MEDIA_ROOT) + "datasets/"
+            slug = slugify(data.get(item.attrib['comment'], "NA")) + '.RData'
+            params = params + str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
+        elif item.attrib['type'] == 'MLT':
+            res = ''
+            seq = 'c('
+            for itm in data.get(item.attrib['comment'], "NA"):
+                if itm != "":
+                    res += str(itm) + ','
+                    seq = seq + '\"%s\",' % itm
+            seq = seq[:-1] + ')'
+            item.set('val', res[:-1])
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+        else:  # for text, text_are, drop_down, radio
+            params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.get(item.attrib['comment'], "NA")) + '"\n'
+
+    return params
 
 def report_search(data_set, report_type, query):
     """ 
@@ -470,7 +521,7 @@ def get_report_overview(report_type, instance_name, instance_id):
 
     return summary_srting
 
-def build_report(report_type, instance_name, instance_id, author, taglist):
+def build_report(report_type, instance_name, instance_id, author, taglist, files):
     """
         taglist: corresponds to list of input fields from TagList form
         in reports.html. Contains tag IDs and enabled/disabled-value
@@ -510,13 +561,18 @@ def build_report(report_type, instance_name, instance_id, author, taglist):
             if int(val) == 1:  # if tag enabled
                 # get db instance (which is a script)
                 tag = breeze.models.Rscripts.objects.get(id=int(key))
-                script_string += '##### TAG: %s #####\n\n' % tag.name
+                tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
+
+                script_string += '##### TAG: %s #####\n' % tag.name
 
                 # source main code segment
                 code_path = str(settings.MEDIA_ROOT) + str(tag.code)
                 script_string += '# <----------  body  ----------> \n' + open(code_path, 'r').read() + '\n'
                 script_string += '# <------- end of body --------> \n'
                 # input parameters definition
+                script_string += '# <----------  parameters  ----------> \n'
+                script_string += gen_params_string(tree, taglist, str(settings.MEDIA_ROOT) + dbitem.home, files)
+                script_string += '# <------- parameters --------> \n'
                 # final step - fire header
                 header_path = str(settings.MEDIA_ROOT) + str(tag.header)
                 script_string += '# <----------  header  ----------> \n' + open(header_path, 'r').read() + '\n\n'

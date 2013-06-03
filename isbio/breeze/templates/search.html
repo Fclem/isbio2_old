@@ -149,7 +149,7 @@
     </div>
       
     <div class="span6">
-      <form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full" method="post">
+      <form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full" method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <div class="controls">
       <table class="table  table-condensed">
@@ -178,13 +178,12 @@
               <!-- tag options form (collapse) -->  
               <td>
                 <div id="{{ item.id }}_options" class="collapse options"> 
-                  <p>{{ item.inline }}</p>
-                  <!--
-                  <form class="form-inline">
-                    {{ item.form|as_bootstrap:'inline' }}
-                    <a type="button" href="#" class="btn">Configure</a>
-                  </form> 
-                  --> 
+                  <!-- <p>{{ item.inline }}</p> -->
+                  <!-- form --> 
+                  <!-- <form class="form-inline"> -->
+                    {{ item.form|as_bootstrap:'horizontal' }}
+                    <!-- <a type="button" href="#" class="btn">Configure</a> -->
+                  <!-- </form> --> 
                 </div>
               </td>
               <td></td><td></td>
@@ -235,7 +234,19 @@ $(document).ready(function() {
     ev.preventDefault();
     setTimeout("$('#sub_bar').attr('style', 'width: 45%;');", 300)
     var url = '/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full'
-    $.post(url, $('#TagList').serialize());
+    var formData = new FormData($('#TagList')[0]);
+    $.ajax({
+      type: "POST",
+      enctype: 'multipart/form-data',
+      url: url,
+      data: formData,
+      success:function(response, textStatus, jqXHR){ },
+      error: function (request, status, error) { },
+      cache: false,
+      contentType: false,
+      processData: false
+    });
+    // $.post(url, $('#TagList').serialize());
     setTimeout("$('#sub_bar').attr('style', 'width: 85%;');", 450)
     setTimeout("$('#sub_bar').attr('style', 'width: 100%;');", 500)
   });
