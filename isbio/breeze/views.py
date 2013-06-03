@@ -190,7 +190,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
 @login_required(login_url='/')
 def search(request, what=None):
-    report_type_lst = ReportType.objects.all()
+    report_type_lst = ReportType.objects.filter(search=True)
     ds = DataSet.objects.all()
     ds_count = len(ds)
 
