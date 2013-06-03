@@ -32,6 +32,7 @@ class Rscripts(models.Model):
     creation_date = models.DateField(auto_now_add=True)
     draft = models.BooleanField(default=True)
     istag = models.BooleanField(default=False)
+    must = models.BooleanField(default=False)  # defines wheather the tag is enabled by default
     report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
 
     def file_name(self, filename):
