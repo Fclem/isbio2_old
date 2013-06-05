@@ -583,7 +583,7 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
                 script_string += 'REPORT <- addTo( REPORT, tag_section )\n'
                 script_string += '# <------- end of header --------> \n'
                 script_string += '##### END OF TAG #####\n\n\n'
-                script_string = 'setwd(\"%s\")\n' % loc
+                script_string += 'setwd(\"%s\")\n' % loc
 
             else:  # if tag disabled - do nothing
                 pass
