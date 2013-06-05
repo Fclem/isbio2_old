@@ -612,6 +612,7 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
 
     # grant all permissions to the folder
     alt_path = str(settings.MEDIA_ROOT) + str(dbitem.home)
+    logger.info(alt_path)
     if (os.path.exists(alt_path)):
         os.chmod("%s", 0777) % alt_path  # don't forget the 0
 
