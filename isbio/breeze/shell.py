@@ -611,7 +611,9 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
     p.start()
 
     # grant all permissions to the folder
-    os.chmod("%s", 0777) % dbitem.home  # don't forget the 0
+    alt_path = str(settings.MEDIA_ROOT) + str(dbitem.home)
+    if (os.path.exists(alt_path)):
+        os.chmod("%s", 0777) % alt_path  # don't forget the 0
 
     html_path = str("reports/rfail.html")
     return html_path
