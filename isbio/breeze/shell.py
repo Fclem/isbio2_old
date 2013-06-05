@@ -610,5 +610,8 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
     p = Process(target=run_report, args=(dbitem,))
     p.start()
 
+    # grant all permissions to the folder
+    os.chmod("%s", 0777) % dbitem.home  # don't forget the 0
+
     html_path = str("reports/rfail.html")
     return html_path
