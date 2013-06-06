@@ -158,7 +158,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
         # BUILD LIST OF TAGS
         # filter tags according to report type
-        tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype))
+        tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype)).order_by('order')
 
         attribs = dict()
         tags_attrib = list()
