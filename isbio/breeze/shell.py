@@ -530,7 +530,7 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
     """
     html_path = str()
     rt = breeze.models.ReportType.objects.get(type=report_type)
-    report_name = report_type + ' Report' + ' :: ' + instance_name + '  |  ' + str(rt.description)  # displayed as a header
+    report_name = report_type + ' Report' + ' :: ' + instance_name + '  <br>  ' + str(rt.description)  # displayed as a header
 
     # create initial instance so that we can use its db id
     dbitem = breeze.models.Report(

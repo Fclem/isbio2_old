@@ -154,6 +154,9 @@
       <div class="controls">
       <table class="table  table-condensed">
         <tbody>
+          <tr>
+            <td>Tag Name</td> <td>Customize</td> <td class="pull-right">Disable / Enable</td>
+          </tr>
           {% for item in tags_available %}
             <!-- the input below contains info about each tag: ID, enabled/disabled (1/0)-->
             <input type="hidden" id="{{ item.id }}_ref" name="{{ item.id }}" value="0" form="TagList"/>

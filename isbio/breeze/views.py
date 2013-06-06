@@ -214,6 +214,8 @@ def search(request, what=None):
                 output = rshell.report_search(ds, overview['report_type'], query_val)
             else:
                 # if not searchable - redirects directly to overview
+                if (len(query_val) == 0):
+                    query_val = "Noname"
                 res = '/reports/overview/%s-%s-00000' % (report_type, query_val)
                 return HttpResponseRedirect(res)
 
