@@ -122,7 +122,7 @@ $(document).ready(function() {
       </div>\
       <div class="control-group">\
         <div class="controls">\
-          <input id="popover_search" name="query" type="text" class="search-query input-medium" placeholder="Search... " value=""></br>\
+          <input id="popover_search" name="query" type="text" class="search-query input-medium" placeholder="Item Search... " value=""></br>\
         </div>\
       </div>\
       <div class="control-group">\
@@ -153,10 +153,10 @@ $(document).ready(function() {
   $('#new_popover').click(function(){
     $('#type_selector').change(function(){
       if ($('#type_selector').find(':selected').data('search') == "True"){
-        $('#popover_search').removeAttr('disabled');
+        $('#popover_search').attr('placeholder', 'Item Search... ');
       }
       else {
-        $('#popover_search').attr('disabled', 'disabled');
+        $('#popover_search').attr('placeholder', 'Report Name ');
       }
     });
   });

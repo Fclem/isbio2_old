@@ -204,15 +204,17 @@ def search(request, what=None):
 
         # search for ENTITIES (right bar)
         if what == 'entity':
-            report_type = ReportType.objects.get(type=request.POST['type'])
-            if report_type.search:
+            report_type = request.POST['type']
+            query_val = str(request.POST['query'])
+            rtype = ReportType.objects.get(type=report_type)
+
+            if rtype.search:
                 # if searchable
-                overview['report_type'] = request.POST['type']
-                query_val = str(request.POST['query'])
+                overview['report_type'] = report_type
                 output = rshell.report_search(ds, overview['report_type'], query_val)
             else:
                 # if not searchable - redirects directly to overview
-                res = '/reports/overview/%s- -00000' % request.POST['type']
+                res = '/reports/overview/%s-%s-00000' % (report_type, query_val)
                 return HttpResponseRedirect(res)
 
         # search for DATASETS (left bar)
