@@ -126,7 +126,7 @@ class Report(models.Model):
     name = models.CharField(max_length=55)
     description = models.CharField(max_length=350, blank=True)
     author = ForeignKey(User)
-    created = models.DateField(auto_now_add=True)
+    created = models.DateTimeField(auto_now_add=True)
     home = models.CharField(max_length=155, blank=True)
     status = models.CharField(max_length=15, blank=True)
     sgeid = models.CharField(max_length=15)
