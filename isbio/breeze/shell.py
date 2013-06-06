@@ -529,7 +529,8 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
         in reports.html. Contains tag IDs and enabled/disabled-value
     """
     html_path = str()
-    report_name = report_type + ' Report' + ' :: ' + instance_name  # displayed as a header
+    rt = breeze.models.ReportType.objects.get(type=report_type)
+    report_name = report_type + ' Report' + ' :: ' + instance_name + '  |  ' + str(rt.description)  # displayed as a header
 
     # create initial instance so that we can use its db id
     dbitem = breeze.models.Report(
