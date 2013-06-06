@@ -35,7 +35,7 @@ class Rscripts(models.Model):
     # tag related
     istag = models.BooleanField(default=False)
     must = models.BooleanField(default=False)  # defines wheather the tag is enabled by default
-    order = models.DecimalField(max_digits=3, decimal_places=1, blank=True, default=None)
+    order = models.DecimalField(max_digits=3, decimal_places=1, blank=True, default=0)
     report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
 
     def file_name(self, filename):
