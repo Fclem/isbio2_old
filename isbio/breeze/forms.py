@@ -332,6 +332,7 @@ def form_from_xml(xml, req=None, init=False):
         for input_item in input_array:
             if input_item.tag == "inputItem":
                 if  input_item.attrib["type"] == "NUM":  # numeric input
+                    # protect empty MAX and MIN limits
                     if input_item.attrib["max"]:
                         max_decimal = Decimal(input_item.attrib["max"])
                     else:
@@ -342,7 +343,6 @@ def form_from_xml(xml, req=None, init=False):
                     else:
                         min_decimal = None
 
-                    min_decimal = Decimal(input_item.attrib["min"])
                     custom_form.fields[input_item.attrib["comment"]] = forms.DecimalField(
                             initial=input_item.attrib["val"],
                             max_value=max_decimal,
