@@ -72,9 +72,15 @@
               </a>
             </td>
             <td>
+              {% if report.author == user %}
               <a href="#" data-toggle="modal" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('{{ report.name }}');" >
                 <i class="icon-trash"></i>
               </a>
+              {% else %}
+              <a href="#" >
+                <i class="icon-minus-sign"></i>
+              </a>
+              {% endif %}
             </td>
           </tr>
         {% empty %}
