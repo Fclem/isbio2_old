@@ -9,6 +9,7 @@ admin.autodiscover()
 urlpatterns = patterns('',
     url(r'^$', 'django_cas.views.login'),  # views.breeze),
     url(r'^breeze/$', views.breeze),
+    url(r'^test/$', views.dochelp),
     # url(r'^base/$', views.base),
     # url(r'^register/$', views.register_user),
     url(r'^logout/$', 'django_cas.views.logout'),  # views.logout),

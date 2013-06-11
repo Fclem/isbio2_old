@@ -151,11 +151,12 @@
       var fieldVar = $(this).find('[data-valtype="r_inline"]').val();
       switch ($(this).attr("breeze-control")){
         case "numeric_input":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"NUM\" val=\"\" ';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"NUM\" ';
+          docxml += 'val=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('def') + '\" ';
           docxml += 'max=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('max') + '\" min=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('min') + '\"/> \n';
           break;
         case "text_input":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TEX\" val=\"\" />' + '\n';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TEX\" val=\"' + $(this).find('[data-valtype="text_default"]').val() + '\" />' + '\n';
           break;
         case "text_area":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TAR\" val=\"\" />' + '\n';
@@ -263,9 +264,14 @@
       } else if (valID==="#r_inline"){
           val = $(e).val();  
           $(".popover " + valID).val(val);
+      } else if (valID==="#text_default"){
+          console.log(valID)
+          val = $(e).val();  
+          $(".popover " + valID).val(val);
       } else if (valID==="#numeric_limits"){
           $(".popover #max_limit").val($(e).attr('max'));
           $(".popover #min_limit").val($(e).attr('min'));
+          $(".popover #def_val").val($(e).attr('def'));
       } else if (valID==="#checkbox_def"){
           if ($(e).prop("checked")) $(".popover " + valID).prop('checked', true);
           else $(".popover " + valID).prop('checked', false);
@@ -365,10 +371,14 @@
           $(value).find("button").text($(e).val()).attr("class", "btn "+type);
         } else if (vartype === "r_inline"){
           $(value).val($(e).val());  
+        } else if (vartype === "text_default"){
+          $(value).val($(e).val()); 
         } else if (vartype === "max_limit"){
           $active_component.find('[data-valtype="numeric_limits"]').attr('max', $(e).val()); 
         } else if (vartype === "min_limit"){
           $active_component.find('[data-valtype="numeric_limits"]').attr('min', $(e).val());  
+        } else if (vartype === "def_val"){
+          $active_component.find('[data-valtype="numeric_limits"]').attr('def', $(e).val());  
         } else if (vartype === "checkbox_def"){
           $(value).prop("checked", $(e).prop("checked"));  
         } else if (vartype === "db_list"){

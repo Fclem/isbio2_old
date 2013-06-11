@@ -3,6 +3,8 @@ from django.conf import settings
 import xml.etree.ElementTree as xml
 import breeze.models, re
 from django.contrib.auth.models import User
+from django.template.defaultfilters import default
+from decimal import Decimal
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
 
@@ -330,10 +332,10 @@ def form_from_xml(xml, req=None, init=False):
         for input_item in input_array:
             if input_item.tag == "inputItem":
                 if  input_item.attrib["type"] == "NUM":  # numeric input
-                    custom_form.fields[input_item.attrib["comment"]] = forms.FloatField(
-                            initial=input_item.attrib["val"]
-                            # max_value=input_item.attrib["max"],
-                            # min_value=input_item.attrib["min"]
+                    custom_form.fields[input_item.attrib["comment"]] = forms.DecimalField(
+                            initial=input_item.attrib["val"],
+                            max_value=Decimal(input_item.attrib["max"]),
+                            min_value=Decimal(input_item.attrib["min"])
                     )
 
                 elif input_item.attrib["type"] == "TEX":  # text box
