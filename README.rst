@@ -20,14 +20,13 @@ What it IS?
 What it IS NOT?
 ---------
 - It is not a place to store your data. 
-- It does not perform any computation itself. All computations submited to DRMAA cluster.
 - It is not a framework to develop R scripts.
+- It does not perform any computation itself.
 
 Why would you use BREEZE?
 ---------
-- If you are a biologist and you DO NOT want to bother with R code and poke bioinformaticians every time you get 
-new data, you are very welcome to BREEZE.
-- If you are a bioinformatician and create R scripts and want to make them available to FIMM researchers, go 
+If you are a biologist and you DO NOT want to bother with R code and poke bioinformaticians every time you get 
+new data, you are very welcome to BREEZE. If you are a bioinformatician and create R scripts and want to make them available to FIMM researchers, go 
 ahead to push them to BREEZE.
 
 
