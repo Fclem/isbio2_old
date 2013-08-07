@@ -213,7 +213,7 @@ function submitItemModalFormBind(url){
                              var which = $("input:file").filter('.TPL').attr('which');
                              $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');
                          }
-                         $("input:file").customFileInput({ });
+                         // $("input:file").customFileInput({ });
                          $("#Apply").modal('show');
                       }
                       //form is not returned if form submission succeeded
