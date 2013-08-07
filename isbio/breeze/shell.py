@@ -47,9 +47,9 @@ def init_script(name, inline, person):
     return False
 
 def update_script_dasics(script, form):
-    """ 
+    """
         Update script name and its inline description. In case of a new name it
-        careates a new folder for script and makes file copies but preserves db istance id 
+        careates a new folder for script and makes file copies but preserves db istance id
     """
 
     if str(script.name) != str(form.cleaned_data['name']):
@@ -304,7 +304,7 @@ def track_sge_job(job):
     return status
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
-    """ 
+    """
         Builds (singe) R-exacutable file: puts together sources, header
         and input parameters from user
     """
@@ -425,7 +425,7 @@ def get_dataset_info(path):
 def gen_params_string(docxml, data, dir, files):
     """
         Iterates over script's/tag's parameters to bind param names and user input;
-        Produces a (R-specific) string with one parameter definition per lines, 
+        Produces a (R-specific) string with one parameter definition per lines,
         so the string can be pushed directly to R file.
     """
     params = str()
@@ -468,7 +468,7 @@ def gen_params_string(docxml, data, dir, files):
     return params
 
 def report_search(data_set, report_type, query):
-    """ 
+    """
         Each report type assumes its own search implementation;
         RPy2 could be a good option (use local installation on VM):
             - each report is assosiated with an r-script for searching;
@@ -500,9 +500,9 @@ def report_search(data_set, report_type, query):
     return lst
 
 def get_report_overview(report_type, instance_name, instance_id):
-    """ 
-        Most likely will call rCode to generate overview in order 
-        to separate BREEZE and report content. 
+    """
+        Most likely will call rCode to generate overview in order
+        to separate BREEZE and report content.
     """
     summary_srting = str()
 
@@ -614,8 +614,8 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
     # grant all permissions to the folder
     alt_path = str(settings.MEDIA_ROOT) + str(dbitem.home)
     logger.info(alt_path)
-    if (os.path.exists(alt_path)):
-        os.chmod("%s", 0777) % alt_path  # don't forget the 0
+    #if (os.path.exists(alt_path)):
+    #   os.chmod("%s", 0777) % alt_path  # don't forget the 0
 
     html_path = str("reports/rfail.html")
     return html_path
