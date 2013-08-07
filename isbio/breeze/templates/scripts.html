@@ -2,16 +2,16 @@
 
 {% load bootstrap_toolkit %}
 
-{% block title %}Scripts{% endblock %} 
+{% block title %}Scripts{% endblock %}
 
 {% block extra_head %}
 <style>
   .thumbnails .span4:nth-child(3n+1) {
-    
+
     margin-left:0;
   }
   .thumbnail {
-      border-style: groove; 
+      border-style: groove;
       border-radius: 7px;
       background: url('/static/nail.png');
   }
@@ -20,15 +20,15 @@
     font-size: 79%;
    }
 
-</style>  
+</style>
 {% endblock %}
 
 {% block content %}
-   
+
   <div class="row-fluid">
-  
+
     <div class="span2 offset1">
-    <!-- Tabs' Header --> 
+    <!-- Tabs' Header -->
       <div data-spy="affix" >
         <ul class="nav nav-pills nav-stacked" id="scriptTabs" style="margin-top: 55px;">
           <li class="nav-header"><strong>CATEGORIES:</strong></li>
@@ -40,16 +40,16 @@
         </ul>
       </div>
     </div>
-  
+
     <div class="span8">
       <div class="row">
         <ul class="breadcrumb pull-right" style="background-color: transparent;">
-          <li> <a href="/scripts/">List</a> <span class="divider">/</span> </li> 
+          <li> <a href="/scripts/">List</a> <span class="divider">/</span> </li>
           <li> <a href="/scripts/nails"> Nails</a></li>
         </ul>
       </div>
-    
-      <!-- Tabs' Content --> 
+
+      <!-- Tabs' Content -->
       <!-- SHOW ALL list goes separately in markup -->
       <div class="tab-content">
         <div class="tab-pane active" id="all">
@@ -65,10 +65,10 @@
                   <p align="center"><i>{{ scr.inln }};</i></p>
                   <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
                   <p align="right">
-                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a> 
+                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a>
                     <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}/">Apply</a></p>
                 </div>
-              </div>  
+              </div>
             </li>
           {% empty %}
             <p>No resources available!</p>
@@ -102,17 +102,17 @@
                 </td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
-                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
+                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong>
                   </a>
                 </td>
               </tr>
               {% endfor %}
             </tbody>
-          </table>   
+          </table>
         {% endif %}
         </div>
-        
-        
+
+
         <!-- By categories -->
         {% for cat, scr_list in cat_list %}
         <div class="tab-pane" id="{{ cat }}">
@@ -128,10 +128,10 @@
                   <p align="center"><i>{{ scr.inln }};</i></p>
                   <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
                   <p align="right">
-                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a> 
+                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a>
                     <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></p>
                 </div>
-              </div>  
+              </div>
             </li>
           {% empty %}
             <p>No resources available!</p>
@@ -159,19 +159,19 @@
                 </td>
                 <td style="vertical-align: middle">
                   <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
-                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong> 
+                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong>
                   </a>
                 </td>
               </tr>
               {% endfor %}
             </tbody>
-          </table>  
-        {% endif %} 
+          </table>
+        {% endif %}
         </div>
         {% endfor %}
       </div>
     </div>
-    
+
   </div>
 
 <div class="row-fluid">&nbsp;</div>
@@ -183,11 +183,11 @@
     $(document).ready(function() {
         modalConnect();
     });
-    $(".describe").click(function(ev) { 
+    $(".describe").click(function(ev) {
         ev.preventDefault(); // prevent navigation
-        var par = $(this).data("param"); 
-        $("#Describe").load("/scripts/read-descr/"+par, function() { 
-            $(this).modal('show'); 
+        var par = $(this).data("param");
+        $("#Describe").load("/scripts/read-descr/"+par, function() {
+            $(this).modal('show');
         });
         return false; // prevent the click propagation
     });
@@ -207,17 +207,17 @@ function submitItemModalFormBind(url){
                      //change this "if" to check for a specific return code which should be set in the view
                      if (form.html()) {
                         //update modal div
-                        
+
                          $('#form_modal_apply_div').html(form);
                          if ($("input:file").hasClass('TPL')){
                              var which = $("input:file").filter('.TPL').attr('which');
-                             $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                             $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');
                          }
                          $("input:file").customFileInput({ });
                          $("#Apply").modal('show');
                       }
                       //form is not returned if form submission succeeded
-                      else{                          
+                      else{
                         //update the entire document with the response received since we received a entire success page and we want to reload the entire page
                         document.open();
                         document.write(response);
@@ -248,12 +248,12 @@ function modalConnect()
                 $.get(par.toString(), function(results){
                   //update the dom with the received form
                   $('#Apply').html(results);
-                  
+
                   if ($("input:file").hasClass('TPL')){
                       var which = $("input:file").filter('.TPL').attr('which');
-                      $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                      $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');
                   }
-                  $("input:file").customFileInput({ });
+                  // $("input:file").customFileInput({ });
                   $("#Apply").modal('show');
                   $(document).ready(function () {
                      //bind the form to an ajax call. ajax call will be set to the received update url
