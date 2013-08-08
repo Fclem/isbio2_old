@@ -5,6 +5,7 @@ from collections import OrderedDict
 from django.contrib import auth
 from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.template.context import RequestContext
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
@@ -142,7 +143,28 @@ def scripts(request, layout="list"):
 def reports(request):
     all_reports = Report.objects.filter(status="ready").order_by('-created')
     report_type_lst = ReportType.objects.all()
-    return render_to_response('reports.html', RequestContext(request, {'reports_status': 'active', 'reports': all_reports, 'rtypes': report_type_lst }))
+    paginator = Paginator(all_reports,30)  # show 3 items per page
+
+    # If AJAX - check page from the request
+    # Otherwise ruturn the first page
+    if request.is_ajax() and request.method == 'GET':
+        page = request.GET.get('page')
+        try:
+            reports = paginator.page(page)
+        except PageNotAnInteger:  # if page isn't an integer
+            reports = paginator.page(1)
+        except EmptyPage:  # if page out of bounds
+            reports = paginator.page(paginator.num_pages)
+
+        return render_to_response('reports-paginator.html', RequestContext(request, { 'reports': reports }))
+    else:
+        reports = paginator.page(1)
+        return render_to_response('reports.html', RequestContext(request, {
+            'reports_status': 'active',
+            'reports': reports,
+            'rtypes': report_type_lst,
+            'pagination_number': paginator.num_pages
+        }))
 
 @login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):

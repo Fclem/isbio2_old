@@ -1,0 +1,30 @@
+{% for report in reports %}
+  <tr>
+    <td> {{ report.created }} </td>
+    <td> {{ report.type }} </td> <!-- Implement TYPE in colors depending on report type =) -->
+    <td> {{ report.name }} </td>
+    <td> {{ report.author }} </td>
+    <td>
+      <a class="Glyph" data-toggle="tooltip" title="View the Report" href="/media/{{ report.home }}/report.html" target="_blank">
+        <i class="icon-eye-open"></i>
+      </a>
+      &nbsp;&nbsp;&nbsp;&nbsp;
+      <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="/get/report-{{ report.id }}">
+        <i class="icon-download-alt"></i>
+      </a>
+    </td>
+    <td>
+    {% if report.author == user %}
+      <a href="#" data-toggle="modal" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('{{ report.name }}');" >
+        <i class="icon-trash"></i>
+      </a>
+    {% else %}
+      <a href="#" >
+        <i class="icon-minus-sign"></i>
+      </a>
+    {% endif %}
+    </td>
+  </tr>
+{% empty %}
+  <tr> <td></td> <td> No reports in the data base... </td> </tr>
+{% endfor %}

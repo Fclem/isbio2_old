@@ -2,13 +2,14 @@
 
 {% load bootstrap_toolkit %}
 
-{% block title %}Reports{% endblock %} 
+{% block title %}Reports{% endblock %}
 
 {% block extra_head %}
 
   <link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
   <script src="/static/js/bootstrapSwitch.js"></script>
-  
+  <script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
+
 <style>
 #main_table td {text-align:center; vertical-align:middle;}
 #main_table th {text-align:center; vertical-align:middle;}
@@ -16,12 +17,12 @@
 
 {% endblock %}
 
-{% block content %}  
-  
-  
+{% block content %}
+
+
   <!-- SIMPLE SEARCH FIELD -->
   <div class="row-fluid">
-    <p><br>&nbsp;<br></p>  
+    <p><br>&nbsp;<br></p>
     <div class="span8 offset2">
       <form class="navbar-search pull-right" action="#" method="post">
         {% csrf_token %}
@@ -29,11 +30,11 @@
       </form>
     </div>
   </div>
-  
+
   <!-- FILTER & CREATE BUTTONS ROW -->
   <div class="row-fluid">
     <div class="span10 offset1">
-      <p><br>&nbsp;<br></p>  
+      <p><br>&nbsp;<br></p>
       <a href="#" id="new_popover" class="btn btn-primary input-medium pull-left" rel="popover">
         <strong><i class="icon-plus icon-white"></i> &nbsp;New Report </strong>
       </a>
@@ -55,42 +56,15 @@
           </tr>
         </thead>
         {% endif %}
-        <tbody>       
-        {% for report in reports %}
-          <tr>
-            <td> {{ report.created }} </td>
-            <td> {{ report.type }} </td> <!-- Implement TYPE in colors depending on report type =) -->
-            <td> {{ report.name }} </td>
-            <td> {{ report.author }} </td>
-            <td>
-              <a class="Glyph" data-toggle="tooltip" title="View the Report" href="/media/{{ report.home }}/report.html" target="_blank">
-                <i class="icon-eye-open"></i>
-              </a>
-              &nbsp;&nbsp;&nbsp;&nbsp;
-              <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="/get/report-{{ report.id }}">
-                <i class="icon-download-alt"></i>
-              </a>
-            </td>
-            <td>
-              {% if report.author == user %}
-              <a href="#" data-toggle="modal" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('{{ report.name }}');" >
-                <i class="icon-trash"></i>
-              </a>
-              {% else %}
-              <a href="#" >
-                <i class="icon-minus-sign"></i>
-              </a>
-              {% endif %}
-            </td>
-          </tr>
-        {% empty %}
-          <tr> <td></td> <td> No reports in the data base... </td> </tr>
-        {% endfor %}
+        <tbody id="pagination-content">
+          {% include "reports-paginator.html" %}
         </tbody>
-      </table>   
+      </table>
+      <p><br>&nbsp;<br></p>
+      <div id="paginator_control"></div>
     </div>
   </div>
-  
+
   <div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -107,13 +81,29 @@
 
 <script>
 $(document).ready(function() {
+  // paginator setup
+  var pagOptions = {
+    currentPage: 1,
+    numberOfPages:5,
+    totalPages: "{{ pagination_number }}",
+    alignment:'center',
+    onPageChanged: function(e,oldPage,newPage){
+      //console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
+      $.get("/reports/", { page: newPage }, function(data){
+        $('#pagination-content').html(data);
+      });
+    }
+  }
+
+  $('#paginator_control').bootstrapPaginator(pagOptions);
+
   $('.Glyph').tooltip()
-  
+
   $('#new_popover').popover({
     title: "New Report Query",
-    trigger: "click", 
+    trigger: "click",
     placement: "right",
-    html: true,     
+    html: true,
     content: '\
     <form class="navbar-search" action="/search/entity" method="post">\
     <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"/>\
@@ -140,12 +130,12 @@ $(document).ready(function() {
     </br>\
     '
   });
-  
+
   $('#filter_popover').popover({
     title: "Reports Filtering",
-    trigger: "click", 
+    trigger: "click",
     placement: "left",
-    html: true,     
+    html: true,
     content: '\
     <form class="navbar-search" action="#" method="post">\
       <div class="control-group">\
@@ -155,7 +145,7 @@ $(document).ready(function() {
     </br>\
     '
   });
-  
+
   $('#new_popover').click(function(){
     $('#type_selector').change(function(){
       if ($('#type_selector').find(':selected').data('search') == "True"){
@@ -166,8 +156,8 @@ $(document).ready(function() {
       }
     });
   });
-    
+
 });
 </script>
-  
+
 {% endblock %}
