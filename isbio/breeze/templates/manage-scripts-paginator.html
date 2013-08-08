@@ -1,0 +1,21 @@
+{% for scr in script_list %}
+  <tr>
+    <td style="vertical-align: middle">{{ scr.id }}</td>
+    <td style="vertical-align: middle">{{ scr.name }}</td>
+    <td style="vertical-align: middle">{{ scr.author.username }}</td>
+    <td style="vertical-align: middle">{{ scr.creation_date }}</td>
+    <td style="vertical-align: middle">{{ scr.category }}</td>
+    <td style="vertical-align: middle">{% if scr.draft %} <span class="badge badge-warning">DRAFT</span> {% endif %}</td>
+    <td style="vertical-align: middle">{% if scr.istag %} <span class="badge badge-info">TAG</span> {% endif %}</td>
+    <td style="vertical-align: middle">
+    {% if perms.breeze.change_rscripts %}
+      <a href="script-editor/{{ scr.id }}" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
+    {% endif %}
+    </td>
+    <td style="vertical-align: middle">
+    {% if perms.breeze.delete_rscripts %}
+      <a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/scripts/delete/{{ scr.id }}'); $('#del_title').text('{{ scr.name }}');" class="btn btn-danger" ><i class="icon-trash"></i></a><br />
+    {% endif %}
+    </td>
+  </tr>
+{% endfor %}

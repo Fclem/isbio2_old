@@ -2,15 +2,17 @@
 
 {% load bootstrap_toolkit %}
 
-{% block title %}Manage Resources{% endblock %} 
+{% block title %}Manage Resources{% endblock %}
 
 {% block extra_head %}
+
+  <script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
 
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">    
-  
+<div class="container-fluid">
+
   <div class="row-fluid">
     <div class="span10 offset1">
       <ul class="breadcrumb pull-left" style="background-color: transparent;">
@@ -19,7 +21,7 @@
       </ul>
     </div>
   </div>
-  
+
   <div class="row-fluid">
     <div class="span10 offset1">
     {% if perms.breeze.add_rscripts %}
@@ -31,40 +33,22 @@
   </div>
   <div class="row-fluid">
     <div class="span10 offset1">
-    <table class="table table-striped">
-      <head>
-        <tr>
-          <th>id</th><th>Name</th><th>Author</th><th>Last Modified</th><th>Category</th><th>Draft</th><th>Is Tag</th><th>Edit</th><th>Remove</th>
-        </tr>
-      </head>
-      <tbody>
-      {% for scr in script_list %}
-        <tr>
-          <td style="vertical-align: middle">{{ scr.id }}</td>
-          <td style="vertical-align: middle">{{ scr.name }}</td>
-          <td style="vertical-align: middle">{{ scr.author.username }}</td>
-          <td style="vertical-align: middle">{{ scr.creation_date }}</td>
-          <td style="vertical-align: middle">{{ scr.category }}</td>
-          <td style="vertical-align: middle">{% if scr.draft %} <span class="badge badge-warning">DRAFT</span> {% endif %}</td>
-          <td style="vertical-align: middle">{% if scr.istag %} <span class="badge badge-info">TAG</span> {% endif %}</td>
-          <td style="vertical-align: middle">
-            {% if perms.breeze.change_rscripts %}
-              <a href="script-editor/{{ scr.id }}" class="btn btn-inverse" ><i class="icon-edit icon-white"></i></a>
-            {% endif %}
-          </td>         
-          <td style="vertical-align: middle">
-            {% if perms.breeze.delete_rscripts %}
-              <a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/scripts/delete/{{ scr.id }}'); $('#del_title').text('{{ scr.name }}');" class="btn btn-danger" ><i class="icon-trash"></i></a><br />
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>   
+      <table class="table table-striped">
+        <head>
+          <tr>
+            <th>id</th><th>Name</th><th>Author</th><th>Last Modified</th><th>Category</th><th>Draft</th><th>Is Tag</th><th>Edit</th><th>Remove</th>
+          </tr>
+        </head>
+        <tbody id="pagination-content">
+          {% include "manage-scripts-paginator.html" %}
+        </tbody>
+      </table>
+      <p><br>&nbsp;<br></p>
+      <div id="paginator_control"></div>
     </div>
   </div>
 </div>
-      
+
 <div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
 <div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
     <div class="modal-header">
@@ -83,10 +67,26 @@
 
 <script type="text/javascript">
     $(document).ready(function() {
-        modalConnect();
+      // paginator setup
+      var pagOptions = {
+        currentPage: 1,
+        numberOfPages:5,
+        totalPages: "{{ pagination_number }}",
+        alignment:'center',
+        onPageChanged: function(e,oldPage,newPage){
+          //console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
+          $.get("/resources/scripts/", { page: newPage }, function(data){
+            $('#pagination-content').html(data);
+          });
+        }
+      }
+
+      $('#paginator_control').bootstrapPaginator(pagOptions);
+
+      modalConnect();
     });
 </script>
-<script type="text/javascript">    
+<script type="text/javascript">
 function submitItemModalFormBind(url){
          $('#form_modal_apply').submit(function(ev){
              var formData = new FormData($('form')[0]);
@@ -101,17 +101,17 @@ function submitItemModalFormBind(url){
                      //change this "if" to check for a specific return code which should be set in the view
                      if (form.html()) {
                         //update modal div
-                        
+
                          $('#form_modal_apply_div').html(form);
                          if ($("input:file").hasClass('TPL')){
                              var which = $("input:file").filter('.TPL').attr('which');
-                             $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');    
+                             $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');
                          }
                          $("input:file").customFileInput({ });
                          $("#Apply").modal('show');
                       }
                       //form is not returned if form submission succeeded
-                      else{                          
+                      else{
                         //update the entire document with the response received since we received a entire success page and we want to reload the entire page
                         document.open();
                         document.write(response);
@@ -142,7 +142,7 @@ function modalConnect()
                 $.get(par.toString(), function(results){
                   //update the dom with the received form
                   $('#Apply').html(results);
-                  
+
                   $("#Apply").modal('show');
                   $(document).ready(function () {
                      //bind the form to an ajax call. ajax call will be set to the received update url

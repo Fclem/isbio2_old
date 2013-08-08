@@ -269,10 +269,27 @@ def resources(request):
 @login_required(login_url='/')
 def manage_scripts(request):
     all_scripts = Rscripts.objects.all()
-    return render_to_response('manage-scripts.html', RequestContext(request, {
-        'script_list': all_scripts,
-        'resources_status': 'active',
-    }))
+    paginator = Paginator(all_scripts, 25)
+
+    # If AJAX - check page from the request
+    # Otherwise ruturn the first page
+    if request.is_ajax() and request.method == 'GET':
+        page = request.GET.get('page')
+        try:
+            scripts = paginator.page(page)
+        except PageNotAnInteger:  # if page isn't an integer
+            scripts = paginator.page(1)
+        except EmptyPage:  # if page out of bounds
+            scripts = paginator.page(paginator.num_pages)
+
+        return render_to_response('manage-scripts-paginator.html', RequestContext(request, { 'script_list': scripts }))
+    else:
+        scripts = paginator.page(1)
+        return render_to_response('manage-scripts.html', RequestContext(request, {
+            'resources_status': 'active',
+            'script_list': scripts,
+            'pagination_number': paginator.num_pages
+        }))
 
 @login_required(login_url='/')
 def manage_reports(request):
