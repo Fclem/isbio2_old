@@ -23,6 +23,6 @@ isbio/breeze/static/logos/
 isbio/breeze/mould/
 .gitignore~
 .ropeproject/
-breeze.sublime-project
-breeze.sublime-workspace
+*.sublime-project
+*.sublime-workspace
 
