@@ -209,11 +209,15 @@ function submitItemModalFormBind(url){
                         //update modal div
 
                          $('#form_modal_apply_div').html(form);
-                         if ($("input:file").hasClass('TPL')){
-                             var which = $("input:file").filter('.TPL').attr('which');
-                             $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');
-                         }
-                         // $("input:file").customFileInput({ });
+
+                         $("input:file").each(function(){
+                           if ( $(this).hasClass('TPL') ){
+                             var which = $(this).attr('which');
+                             $(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
+                             $(this).customFileInput({ });
+                           }
+                         });
+
                          $("#Apply").modal('show');
                       }
                       //form is not returned if form submission succeeded
@@ -223,7 +227,7 @@ function submitItemModalFormBind(url){
                         document.write(response);
                         document.close();
                         $("#Apply").modal('hide');
-                        }
+                      }
                 },
                 error: function (request, status, error) {
                             //implement proper error handling
@@ -249,12 +253,17 @@ function modalConnect()
                   //update the dom with the received form
                   $('#Apply').html(results);
 
-                  if ($("input:file").hasClass('TPL')){
-                      var which = $("input:file").filter('.TPL').attr('which');
-                      $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');
-                  }
+                  $("input:file").each(function(){
+                    if ( $(this).hasClass('TPL') ){
+                      var which = $(this).attr('which');
+                      $(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
+                      $(this).customFileInput({ });
+                    }
+                  });
+
                   // $("input:file").customFileInput({ });
                   $("#Apply").modal('show');
+
                   $(document).ready(function () {
                      //bind the form to an ajax call. ajax call will be set to the received update url
                      submitItemModalFormBind(par.toString());

@@ -1,4 +1,4 @@
-import os, shutil, re, stat, fnmatch, copy
+import os, shutil, re, stat, copy
 from datetime import datetime
 from multiprocessing import Process
 import xml.etree.ElementTree as xml

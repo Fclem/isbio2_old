@@ -17,6 +17,7 @@ from django.utils import simplejson
 
 import xml.etree.ElementTree as xml
 import shell as rshell
+import auxiliary as aux
 
 import forms as breezeForms
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType
@@ -166,6 +167,20 @@ def reports(request):
             'pagination_number': paginator.num_pages
         }))
 
+def reports_search(request):
+    query_string = ''
+    found_entries = None
+    if ('q' in request.GET) and request.GET['q'].strip():
+        query_string = request.GET['q']
+
+        entry_query = aux.get_query(query_string, ['title', 'body',])
+
+        # found_entries = Entry.objects.filter(entry_query).order_by('-pub_date')
+
+    return render_to_response('search/search_results.html',
+                          { 'query_string': query_string, 'found_entries': found_entries },
+                          context_instance=RequestContext(request))
+
 @login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):
     if mod is None:
@@ -305,6 +320,7 @@ def dochelp(request):
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###
 ######################################
+
 @login_required(login_url='/')
 def script_editor(request, sid=None, tab=None):
     script = Rscripts.objects.get(id=sid)
