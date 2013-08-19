@@ -33,11 +33,11 @@
     <!-- Reschesule Button -->
     <td>
       {% if job.instance == 'script' %}
-      <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ reschedhref }}" >
+      <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.reschedhref }}" >
         <i class="icon-white icon-repeat"></i>
       </a>
       {% else %}
-      <a href="#" class="btn btn-inverse disabled" data-param="{{ reschedhref }}" >
+      <a href="#" class="btn btn-inverse disabled" data-param="{{ job.reschedhref }}" >
         <i class="icon-white icon-repeat"></i>
       </a>
       {% endif %}
