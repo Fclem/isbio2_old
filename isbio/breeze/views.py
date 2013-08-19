@@ -103,7 +103,7 @@ def jobs(request, state="scheduled"):
     history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
 
-    paginator = Paginator(history_jobs,2)  # show 15 items per page
+    paginator = Paginator(history_jobs,15)  # show 15 items per page
 
     # If AJAX - check page from the request
     # Otherwise ruturn the first page
