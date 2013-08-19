@@ -544,7 +544,7 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
                 type=breeze.models.ReportType.objects.get(type=report_type),
                 name=str(instance_name),
                 author=author,
-                progress=0
+                progress=0,
             )
     dbitem.save()
 
