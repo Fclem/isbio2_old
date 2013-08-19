@@ -92,12 +92,13 @@ def home(request):
 
 @login_required(login_url='/')
 def jobs(request, state="scheduled"):
-    if state == "history":
-        tab = "history_tab"
-        show_tab = "show_hist"
-    else:
+    if state == "scheduled":
         tab = "scheduled_tab"
         show_tab = "show_sched"
+    else:
+        tab = "history_tab"
+        show_tab = "show_hist"
+
 
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
     history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
