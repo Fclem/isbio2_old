@@ -96,17 +96,17 @@ def jobs(request, state="scheduled"):
         tab = "history_tab"
         show_tab = "show_hist"
     else:
-        tab = "scheduled_tab"
-        show_tab = "show_sched"
+        tab = "history_tab"
+        show_tab = "show_hist"
 
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
     history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
 
     ready_reports = Report.objects.filter(status="succeed").filter(author__exact=request.user).order_by('-created')
-    tmp = aux.merge_job_history(history_jobs, ready_reports)
+    merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
-    paginator = Paginator(history_jobs,15)  # show 15 items per page
+    paginator = Paginator(merged_history,5)  # show 15 items per page
 
     # If AJAX - check page from the request
     # Otherwise ruturn the first page
@@ -128,7 +128,7 @@ def jobs(request, state="scheduled"):
             'jobs_status': 'active',
             'dash_history': history_jobs[0:3],
             'scheduled': scheduled_jobs,
-            'history': tmp,
+            'history': hist_jobs,
             'current': active_jobs,
             'pagination_number': paginator.num_pages
         }))

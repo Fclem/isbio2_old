@@ -2,7 +2,7 @@
 
 {% load bootstrap_toolkit %}
 
-{% block title %}Jobs{% endblock %}
+{% block title %}Dash{% endblock %}
 
 {% block extra_head %}
 
@@ -56,13 +56,34 @@
     <div class="tabbable">
       <!-- Tabs' Header -->
       <ul class="nav nav-tabs" id="jobTabs">
-        <li class="{{ scheduled_tab }}" ><a href="#scheduled" data-toggle="tab">Scheduled</a></li>
         <li class="{{ history_tab }}"><a href="#history" data-toggle="tab">History</a></li>
+        <li class="{{ scheduled_tab }}" ><a href="#scheduled" data-toggle="tab">Scheduled</a></li>
         <li class="{{ current_tab }}"><a href="#current" data-toggle="tab">In Progress</a></li>
       </ul>
       <!-- Tabs' Content -->
-      <!-- SCHEDULED -->
       <div class="tab-content">
+        <!-- HISTORY -->
+        <div class="tab-pane {{ show_hist }}" id="history" style="padding-bottom: 250px">
+          <table class="table table-striped">
+            <head>
+              <tr>
+                <th>Finished</th>
+                <th>Job Name</th>
+                <th></th>
+                <th>Status</th>
+                <th>Download:</th>
+                <th>Reschedule</th>
+                <th>Delete</th>
+              </tr>
+            </head>
+            <tbody id="history_top">
+              {% include "jobs-hist-paginator.html" %}
+            </tbody>
+          </table>
+          <p><br>&nbsp;<br></p>
+          <div id="paginator_control"></div>
+        </div>
+        <!-- SCHEDULED -->
         <div class="tab-pane {{ show_sched }}" id="scheduled" style="padding-bottom: 250px">
           <table class="table table-striped">
             <head>
@@ -95,27 +116,6 @@
               {% endfor %}
             </tbody>
           </table>
-        </div>
-        <!-- HISTORY -->
-        <div class="tab-pane {{ show_hist }}" id="history" style="padding-bottom: 250px">
-          <table class="table table-striped">
-            <head>
-              <tr>
-                <th>Finished</th>
-                <th>Job Name</th>
-                <th></th>
-                <th>Status</th>
-                <th>Download:</th>
-                <th>Reschedule</th>
-                <th>Delete</th>
-              </tr>
-            </head>
-            <tbody id="history_top">
-              {% include "jobs-hist-paginator.html" %}
-            </tbody>
-          </table>
-          <p><br>&nbsp;<br></p>
-          <div id="paginator_control"></div>
         </div>
         <!-- CURRENT -->
         <div class="tab-pane {{ show_curr }}" id="current" style="padding-bottom: 250px">
