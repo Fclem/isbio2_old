@@ -24,7 +24,7 @@
           {% for job in current %}
             <tr id="{{ job.id }}_tr1" class="info"> <td id="{{ job.id }}_SGEstatus">{{ job.jname }}  -  {{ job.staged }}</td> </tr>
             <tr id="{{ job.id }}_tr2" class="info">
-                <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" style="width: {{ job.progress }}%" /></div></td>
+                <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" data-inst="{{ job.instance }}" style="width: {{ job.progress }}%" /></div></td>
             </tr>
           {% empty %}
             <tr class="info"><td> <div align="center"> Nothing is running at the moment. </div> </td></tr>
@@ -194,7 +194,8 @@
 
     $(".jbar").each(function(){
       var par = $(this).data("param");
-      updateJobs(par);
+      var itm = $(this).data("inst");
+      updateJobs(par, itm);
     });
 
     });
@@ -289,10 +290,10 @@ function modalConnect()
             });
         }
 
-function updateJobs(jid) {
+function updateJobs(jid, item) {
     $.ajax({
         type: "GET",
-        url: "/update-jobs/"+jid,
+        url: "/update-jobs/"+jid+"-"+item,
         dataType : 'json',
         success: function (msg) {
             var arg = "width: " + msg.progress.toString() + "%";
@@ -330,7 +331,8 @@ function updateJobs(jid) {
                 $("#" + jid.toString() + "_list_tr").remove();
             }
             else {
-                window.setTimeout(updateJobs, 300, jid);
+              console.log(item);
+                window.setTimeout(updateJobs, 300, jid, item);
             }
         }
     });
@@ -349,7 +351,7 @@ function appendToHistory(job){
     new_row += '<li align="right"><a href="/jobs/download/' + job.id + '-code">R-Debug Info <i class="icon-list-alt"></i></a></li>'
     new_row += '<li class="divider"></li>'
     new_row += '<li align="right"><a href="/jobs/download/' + job.id + '">Full Job Set <i class="icon-folder-open"></i></a></li></ul></div></td>'
-    new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-file"></i></a></td>'
+    new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-repeat"></i></a></td>'
     new_row += '<td><a id="new_' + job.id + '_del" href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" ><i class="icon-remove-circle"></i></a></td>  </tr>'
     return new_row;
 } ;
