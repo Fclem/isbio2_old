@@ -240,6 +240,10 @@ def run_report(report):
     default_dir = os.getcwd()
     os.chdir(loc)
 
+    report.status = "active"
+    report.progress = 15
+    report.save()
+
     s = drmaa.Session()
     s.initialize()
 
@@ -253,11 +257,13 @@ def run_report(report):
     jt.joinFiles = True
 
     report.sgeid = s.runJob(jt)
-    report.status = 'submitted'
+    report.progress = 30
     report.save()
 
     # waiting for the job to end
     retval = s.wait(report.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+    report.progress = 100
+    report.save()
 
     if retval.hasExited and retval.exitStatus == 0:
         report.status = 'succeed'
@@ -273,7 +279,7 @@ def run_report(report):
     return True
 
 def track_sge_job(job):
-    status = 'RUNNING'
+    status = str(job.status)
     #    decodestatus = {
     #        drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
     #        drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',

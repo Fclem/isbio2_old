@@ -59,6 +59,8 @@ def merge_job_history(jobs, reports):
 
             el['delhref'] = '/jobs/delete/%s' % str(item.id)
 
+            el['progress'] = item.progress
+
         else:                             # report
             el['instance'] = 'report'
             el['id'] = item.id

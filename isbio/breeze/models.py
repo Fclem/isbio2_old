@@ -129,6 +129,7 @@ class Report(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     home = models.CharField(max_length=155, blank=True)
     status = models.CharField(max_length=15, blank=True)
+    progress = models.IntegerField()
     sgeid = models.CharField(max_length=15)
 
     def file_name(self, filename):

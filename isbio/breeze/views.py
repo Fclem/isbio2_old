@@ -102,6 +102,8 @@ def jobs(request, state="scheduled"):
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
     history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
+    active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
+    merged_active = aux.merge_job_history(active_jobs, active_reports)
 
     ready_reports = Report.objects.filter(status="succeed").filter(author__exact=request.user).order_by('-created')
     merged_history = aux.merge_job_history(history_jobs, ready_reports)
@@ -126,10 +128,10 @@ def jobs(request, state="scheduled"):
             str(tab): 'active',
             str(show_tab): 'active',
             'jobs_status': 'active',
-            'dash_history': history_jobs[0:3],
+            'dash_history': hist_jobs[0:3],
             'scheduled': scheduled_jobs,
             'history': hist_jobs,
-            'current': active_jobs,
+            'current': merged_active,
             'pagination_number': paginator.num_pages
         }))
 
