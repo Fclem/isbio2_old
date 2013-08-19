@@ -95,7 +95,7 @@ def jobs(request, state="scheduled"):
     if state == "history":
         tab = "history_tab"
         show_tab = "show_hist"
-    if state == "scheduled":
+    else:
         tab = "scheduled_tab"
         show_tab = "show_sched"
 
