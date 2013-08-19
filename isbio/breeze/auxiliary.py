@@ -76,6 +76,8 @@ def merge_job_history(jobs, reports):
 
             el['delhref'] = '/reports/delete/%s-dash' % str(item.id)
 
+            el['progress'] = item.progress
+
         merged.append( copy.deepcopy(el) )
 
     # sort list according to creation datenad time

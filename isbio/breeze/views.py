@@ -95,9 +95,9 @@ def jobs(request, state="scheduled"):
     if state == "history":
         tab = "history_tab"
         show_tab = "show_hist"
-    else:
-        tab = "history_tab"
-        show_tab = "show_hist"
+    if state == "scheduled":
+        tab = "scheduled_tab"
+        show_tab = "show_sched"
 
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
     history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
@@ -598,7 +598,7 @@ def create_job(request, sid=None):
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
-            return HttpResponseRedirect('/jobs/')
+            return HttpResponseRedirect('/jobs/scheduled')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
         custom_form = breezeForms.form_from_xml(xml=tree)
