@@ -102,15 +102,33 @@ def jobs(request, state="scheduled"):
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
     history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
-    return render_to_response('jobs.html', RequestContext(request, {
-        str(tab): 'active',
-        str(show_tab): 'active',
-        'jobs_status': 'active',
-        'dash_history': history_jobs[0:3],
-        'scheduled': scheduled_jobs,
-        'history': history_jobs,
-        'current': active_jobs,
-    }))
+
+    paginator = Paginator(history_jobs,2)  # show 15 items per page
+
+    # If AJAX - check page from the request
+    # Otherwise ruturn the first page
+    if request.is_ajax() and request.method == 'GET':
+        page = request.GET.get('page')
+        try:
+            hist_jobs = paginator.page(page)
+        except PageNotAnInteger:  # if page isn't an integer
+            hist_jobs = paginator.page(1)
+        except EmptyPage:  # if page out of bounds
+            hist_jobs = paginator.page(paginator.num_pages)
+
+        return render_to_response('jobs-hist-paginator.html', RequestContext(request, { 'history': hist_jobs }))
+    else:
+        hist_jobs = paginator.page(1)
+        return render_to_response('jobs.html', RequestContext(request, {
+            str(tab): 'active',
+            str(show_tab): 'active',
+            'jobs_status': 'active',
+            'dash_history': history_jobs[0:3],
+            'scheduled': scheduled_jobs,
+            'history': hist_jobs,
+            'current': active_jobs,
+            'pagination_number': paginator.num_pages
+        }))
 
 @login_required(login_url='/')
 def scripts(request, layout="list"):

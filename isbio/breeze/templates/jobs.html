@@ -4,6 +4,12 @@
 
 {% block title %}Jobs{% endblock %}
 
+{% block extra_head %}
+
+  <script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
+
+{% endblock %}
+
 {% block content %}
 <div class="row-fluid">
   &nbsp;
@@ -106,42 +112,11 @@
               </tr>
             </head>
             <tbody id="history_top">
-              {% for job in history %}
-              <tr>
-                <td>{{ job.staged }}</td>
-                <td>{{ job.jname }}</td>
-                <td></td>
-                <td>
-                  {% if job.status == "succeed" %}
-                    <span class="label label-success">{{ job.status.upper }}</span>
-                  {% elif job.status == "failed" %}
-                    <span class="label label-important">{{ job.status.upper }}</span>
-                  {% elif job.status == "aborted" %}
-                    <span class="label label-warning">{{ job.status.upper }}</span>
-                  {% endif %}
-                </td>
-                <td>
-                  <div class="btn-group">
-                    <a class="btn btn-inverse" href="/jobs/download/{{ job.id }}-result"><i class="icon-white icon-download-alt"></i> Results</a>
-                    <button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button>
-                    <ul class="dropdown-menu">
-                      <li align="right"><a href="/jobs/download/{{ job.id }}-result">Results <i class="icon-picture"></i></a></li>
-                      <li align="right"><a href="/jobs/download/{{ job.id }}-code">R-Debug Info <i class="icon-list-alt"></i></a></li>
-                      <li class="divider"></li>
-                      <li align="right"><a href="/jobs/download/{{ job.id }}">Full Job Set <i class="icon-folder-open"></i></a></li>
-                    </ul>
-                  </div>
-                </td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-file"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.id }}-repl" ><i class="icon-white icon-repeat"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
-                      <i class="icon-trash"></i>
-                    </a>
-                </td>
-              </tr>
-              {% endfor %}
+              {% include "jobs-hist-paginator.html" %}
             </tbody>
           </table>
+          <p><br>&nbsp;<br></p>
+          <div id="paginator_control"></div>
         </div>
         <!-- CURRENT -->
         <div class="tab-pane {{ show_curr }}" id="current" style="padding-bottom: 250px">
@@ -200,12 +175,28 @@
 
 <script>
     $(document).ready(function() {
-        modalConnect();
+        // paginator setup
+        var pagOptions = {
+        currentPage: 1,
+        numberOfPages:5,
+        totalPages: "{{ pagination_number }}",
+        alignment:'center',
+        onPageChanged: function(e,oldPage,newPage){
+          //console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
+          $.get("/jobs/", { page: newPage }, function(data){
+            $('#history_top').html(data);
+          });
+        }
+      }
 
-        $(".jbar").each(function(){
-            var par = $(this).data("param");
-            updateJobs(par);
-        });
+    $('#paginator_control').bootstrapPaginator(pagOptions);
+
+    modalConnect();
+
+    $(".jbar").each(function(){
+      var par = $(this).data("param");
+      updateJobs(par);
+    });
 
     });
     $(".rtext").click(function(ev) {
