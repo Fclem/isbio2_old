@@ -106,7 +106,7 @@ def jobs(request, state="scheduled"):
     ready_reports = Report.objects.filter(status="succeed").filter(author__exact=request.user).order_by('-created')
     merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
-    paginator = Paginator(merged_history,5)  # show 15 items per page
+    paginator = Paginator(merged_history,15)  # show 15 items per page
 
     # If AJAX - check page from the request
     # Otherwise ruturn the first page
