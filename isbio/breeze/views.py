@@ -103,6 +103,9 @@ def jobs(request, state="scheduled"):
     history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
 
+    ready_reports = Report.objects.filter(status="succeed").filter(author__exact=request.user).order_by('-created')
+    tmp = aux.merge_job_history(history_jobs, ready_reports)
+
     paginator = Paginator(history_jobs,15)  # show 15 items per page
 
     # If AJAX - check page from the request
@@ -125,7 +128,7 @@ def jobs(request, state="scheduled"):
             'jobs_status': 'active',
             'dash_history': history_jobs[0:3],
             'scheduled': scheduled_jobs,
-            'history': hist_jobs,
+            'history': tmp,
             'current': active_jobs,
             'pagination_number': paginator.num_pages
         }))
@@ -160,7 +163,7 @@ def scripts(request, layout="list"):
 
 @login_required(login_url='/')
 def reports(request):
-    all_reports = Report.objects.filter(status="ready").order_by('-created')
+    all_reports = Report.objects.filter(status="succeed").order_by('-created')
     report_type_lst = ReportType.objects.all()
     paginator = Paginator(all_reports,30)  # show 3 items per page
 
@@ -479,10 +482,18 @@ def delete_script(request, sid):
     return HttpResponseRedirect('/resources/scripts/')
 
 @login_required(login_url='/')
-def delete_report(request, rid):
+def delete_report(request, rid, redir):
+
+    if redir == '-dash':
+        redir = '/jobs/history'
+    else:
+        redir = '/reports/'
+
+    print redir
+
     report = Report.objects.get(id=rid)
     rshell.del_report(report)
-    return HttpResponseRedirect('/reports/')
+    return HttpResponseRedirect(redir)
 
 @login_required(login_url='/')
 def read_descr(request, sid=None):

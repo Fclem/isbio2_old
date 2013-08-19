@@ -1,4 +1,4 @@
-import re
+import re, copy
 from django.db.models import Q
 
 
@@ -33,3 +33,51 @@ def get_query(query_string, search_fields):
         else:
             query = query & or_query
     return query
+
+def merge_job_history(jobs, reports):
+    ''' Merge reports and jobs in a unified object (list)
+        So that repors and jobs can be processed similatly on the client side
+    '''
+    merged = list()
+    pool = list(jobs) + list(reports)
+
+    for item in pool:
+        el = dict()
+
+        if 'script_id' in item.__dict__:  # job
+            el['instance'] = 'script'
+            el['id'] = item.id
+            el['jname'] = item.jname
+            el['status'] = item.status
+            el['staged'] = item.staged
+
+            el['rdownhref'] = '/jobs/download/%s-result' % str(item.id)  # results
+            el['ddownhref'] = '/jobs/download/%s-code' % str(item.id)  # debug
+            el['fdownhref'] = '/jobs/download/%s' % str(item.id)  # full folder
+
+            el['reschedhref'] = '%s-repl' % str(item.id)
+
+            el['delhref'] = '/jobs/delete/%s' % str(item.id)
+
+        else:                             # report
+            el['instance'] = 'report'
+            el['id'] = item.id
+            el['jname'] = item.name
+            el['status'] = item.status
+            el['staged'] = item.created
+
+            el['rdownhref'] = '/get/report-%s' % str(item.id)  # results
+            el['ddownhref'] = ''  # debug
+            el['fdownhref'] = ''  # full folder
+
+            el['reschedhref'] = ''
+
+            el['delhref'] = '/reports/delete/%s-dash' % str(item.id)
+
+        merged.append( copy.deepcopy(el) )
+
+    # sort list according to creation datenad time
+    merged.sort(key=lambda r: r['staged'])
+    merged.reverse()
+
+    return merged

@@ -145,14 +145,15 @@ def del_report(report):
 
     if os.path.isdir(path):
         shutil.rmtree(path)
-        report.delete()
-        return True
+    report.delete()
 
-    return False
+    return True
 
 def del_job(job):
     docxml_path = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
-    shutil.rmtree(docxml_path)
+
+    if os.path.isdir(docxml_path):
+        shutil.rmtree(docxml_path)
     job.delete()
     return True
 
@@ -259,7 +260,7 @@ def run_report(report):
     retval = s.wait(report.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
 
     if retval.hasExited and retval.exitStatus == 0:
-        report.status = 'ready'
+        report.status = 'succeed'
 
         # clean up the folder
 

@@ -62,7 +62,7 @@ class Jobs(models.Model):
     script = ForeignKey(Rscripts)
     # status may be changed to NUMVER later
     status = models.CharField(max_length=15)
-    staged = models.DateField(auto_now_add=True)
+    staged = models.DateTimeField(auto_now_add=True)
     progress = models.IntegerField()
     sgeid = models.CharField(max_length=15, blank=True)
 
