@@ -608,12 +608,17 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
     config_path = loc + '/sgeconfig.sh'
     config = open(config_path, 'w')
 
-    st = os.stat(config_path)  # config should be executble
+    # config should be executble
+    st = os.stat(config_path)
     os.chmod(config_path, st.st_mode | stat.S_IEXEC)
 
     command = '#!/bin/bash \n' + str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(dbitem.rexec)
     config.write(command)
     config.close()
+
+    # open report's folder for others
+    st = os.stat(loc)
+    os.chmod(loc, st.st_mode | stat.S_IRWXO)
 
     # submit r-code
     p = Process(target=run_report, args=(dbitem,))
