@@ -1,6 +1,25 @@
-import re, copy
+import re, copy, os
 from django.db.models import Q
 
+def open_folder_permissions(path, permit=0770):
+    """ Traverses a directory recursively and set permissions.
+
+    Arguments:
+    path        -- a path string ( default '' )
+    permit      -- permissions to be set in oct
+                ( default 0770 ) - '?rwxrwx---'
+    """
+
+    for dirname, dirnames, filenames in os.walk(path):
+        for subdirname in dirnames:
+            full_dir_path = os.path.join(dirname, subdirname)
+            os.chmod(full_dir_path, permit)
+
+        for filename in filenames:
+            full_file_path = os.path.join(dirname, filename)
+            os.chmod(full_file_path, permit)
+
+    return True
 
 def normalize_query(query_string,
                     findterms=re.compile(r'"([^"]+)"|(\S+)').findall,

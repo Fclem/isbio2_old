@@ -7,6 +7,7 @@ from django.template.defaultfilters import slugify
 from django.conf import settings
 from django.core.files import File, base
 import breeze.models
+import auxiliary as aux
 import logging
 
 import socket
@@ -274,6 +275,8 @@ def run_report(report):
         report.status = 'failed'
 
     report.save()
+
+    aux.open_folder_permissions(loc, 0770)
 
     os.chdir(default_dir)
     return True
