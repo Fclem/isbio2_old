@@ -139,6 +139,14 @@
         <h5> {{ overview_info.report_type }} Report </h5>
         <h3> {{ overview_info.instance_name }} </h3>
         <p> {{ overview_info.details }} </p>
+
+        <!-- Report Properties-->
+        <form id="TagList" action="#" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          {{ props_form|as_bootstrap:"horizontal" }}
+        </form>
+
+
       </div>
       <div class="row-fluid">&nbsp;</div>
       <div class="row-fluid" align="center">

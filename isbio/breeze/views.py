@@ -216,6 +216,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         overview['instance_name'] = iname
         overview['instance_id'] = iid
         overview['details'] = rshell.get_report_overview(rtype, iname, iid)
+        props_form = breezeForms.ReportPropsForm()
 
         # BUILD LIST OF TAGS
         # filter tags according to report type
@@ -231,7 +232,13 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
             attribs['form'] = breezeForms.form_from_xml(xml=tree)
             tags_attrib.append(copy.deepcopy(attribs))
 
-        return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'overview': True, 'tags_available': tags_attrib, 'overview_info': overview }))
+        return render_to_response('search.html', RequestContext(request, {
+                'reports_status': 'active',
+                'overview': True,
+                'tags_available': tags_attrib,
+                'overview_info': overview,
+                'props_form': props_form
+            }))
 
     elif mod == '-full':
         #### renders Full Report (should create a new tab/window for that) ####

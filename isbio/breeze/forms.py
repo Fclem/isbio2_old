@@ -7,6 +7,10 @@ from django.template.defaultfilters import default
 from decimal import Decimal
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
+class ReportPropsForm(forms.ModelForm):
+    class Meta:
+        model = breeze.models.Report
+        fields = ('shared',)
 
 class RegistrationForm(forms.ModelForm):
     def __init__(self, *args, **kw):
@@ -250,9 +254,9 @@ class AddDatasetSelect(forms.Form):
 
 
 class AddTemplateInput(forms.Form):
-    """ 
+    """
         This control is for uploading template
-        inpit file which can be downloaded from BREEZE beforehand 
+        inpit file which can be downloaded from BREEZE beforehand
     """
     options = forms.ModelChoiceField(queryset=breeze.models.InputTemplate.objects.all())
 
