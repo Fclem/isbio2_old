@@ -134,6 +134,9 @@
 
 
   <div class="row-fluid">
+    <form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
     <div class="span4 offset1">
       <div class="row-fluid thumbnail">
         <h5> {{ overview_info.report_type }} Report </h5>
@@ -141,11 +144,7 @@
         <p> {{ overview_info.details }} </p>
 
         <!-- Report Properties-->
-        <form id="TagList" action="#" method="post" enctype="multipart/form-data">
-          {% csrf_token %}
-          {{ props_form|as_bootstrap:"horizontal" }}
-        </form>
-
+        {{ props_form|as_bootstrap:"horizontal" }}
 
       </div>
       <div class="row-fluid">&nbsp;</div>
@@ -157,8 +156,6 @@
     </div>
 
     <div class="span6">
-      <form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full" method="post" enctype="multipart/form-data">
-      {% csrf_token %}
       <div class="controls">
       <table class="table  table-condensed">
         <tbody>
@@ -205,8 +202,8 @@
         </tbody>
       </table>
       <div>
-      </form>
     </div>
+    </form>
   </div>
   {% endif %}
 

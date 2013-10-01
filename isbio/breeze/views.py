@@ -219,7 +219,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         props_form = breezeForms.ReportPropsForm()
 
         # BUILD LIST OF TAGS
-        # filter tags according to report type
+        # filter tags according to report type (here we pick non-draft tags)
         tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype)).order_by('order')
 
         attribs = dict()
@@ -244,7 +244,10 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         #### renders Full Report (should create a new tab/window for that) ####
 
         if request.method == 'POST':
-            html = rshell.build_report(rtype, iname, iid, request.user, copy.deepcopy(request.POST), request.FILES)
+            print request.POST
+            if breezeForms.validate_report(copy.deepcopy(request.POST)):
+                pass
+                # html = rshell.build_report(rtype, iname, iid, request.user, copy.deepcopy(request.POST), request.FILES)
             return HttpResponse(True)
             # return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
         else:

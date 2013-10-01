@@ -436,5 +436,15 @@ def form_from_xml(xml, req=None, init=False):
 
     return custom_form
 
+def validate_report(post):
+    """ Validate only checked (marked) report sections.
+
+    Arguments:
+    post        -- a copy of request.POST
+
+    """
+
+    return True
+
 def job_summary(xml):
     pass
