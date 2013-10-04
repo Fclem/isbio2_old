@@ -533,13 +533,14 @@ def get_report_overview(report_type, instance_name, instance_id):
 
     return summary_srting
 
-def build_report(report_data, request_data, sections):
+def build_report(report_data, request_data, report_property, sections):
     """ Assembles report home folder, configures DRMAA and R related files
         and spawns a new process for reports DRMAA job on cluster.
 
     Arguments:
     report_data      -- report info dictionary
     request_data     -- a copy of request object
+    report_property  -- report property form
     sections         -- a list of 'Rscripts' db objects
 
     """
@@ -547,6 +548,13 @@ def build_report(report_data, request_data, sections):
     rt = breeze.models.ReportType.objects.get(type=report_data['report_type'])
     report_name = report_data['report_type'] + ' Report' + ' :: ' + report_data['instance_name'] + '  <br>  ' + str(rt.description)
 
+    # This trick is to extract users's names from the form
+    buddies = list()
+    for e in list(report_property.cleaned_data['shared']):
+        buddies.append( str(e) )
+
+    shared_users = breeze.models.User.objects.filter(username__in=buddies)
+    print shared_users
     # create initial instance so that we can use its db id
     dbitem = breeze.models.Report(
                 type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
@@ -555,6 +563,8 @@ def build_report(report_data, request_data, sections):
                 progress=0,
             )
     dbitem.save()
+
+    dbitem.shared = shared_users
 
     # define location: that is report's folder name
     path = slugify(str(dbitem.id) + '_' + dbitem.name + '_' + dbitem.author.username)

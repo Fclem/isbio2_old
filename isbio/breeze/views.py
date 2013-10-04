@@ -226,7 +226,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         sections_valid = breezeForms.check_validity(tags_data_list)
 
         if property_form.is_valid() and sections_valid:
-            rshell.build_report(overview, request, tags)
+            rshell.build_report(overview, request, property_form, tags)
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
@@ -484,8 +484,6 @@ def delete_report(request, rid, redir):
         redir = '/jobs/history'
     else:
         redir = '/reports/'
-
-    print redir
 
     report = Report.objects.get(id=rid)
     rshell.del_report(report)
@@ -841,7 +839,6 @@ def send_file(request, ftype, fname):
 
 @login_required(login_url='/')
 def update_jobs(request, jid, item):
-    print item
     if item == 'script':
         sge_status = rshell.track_sge_job(Jobs.objects.get(id=jid))
         # request job instance again to be sure that the data is updated
