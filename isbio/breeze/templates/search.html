@@ -134,7 +134,8 @@
 
 
   <div class="row-fluid">
-    <form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full" method="post" enctype="multipart/form-data">
+
+    <form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}" method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
     <div class="span4 offset1">
@@ -149,7 +150,7 @@
       </div>
       <div class="row-fluid">&nbsp;</div>
       <div class="row-fluid" align="center">
-        <a id="gen_report" href="#" data-toggle="modal" data-target="#Submit" class="input-medium btn-large btn-primary" >
+        <a id="gen_report" href="#"  class="input-medium btn-large btn-primary" > <!-- data-toggle="modal" data-target="#Submit" -->
           <strong>Generate Report</strong>
         </a>
       </div>
@@ -164,7 +165,7 @@
           </tr>
           {% for item in tags_available %}
             <!-- the input below contains info about each tag: ID, enabled/disabled (1/0)-->
-            <input type="hidden" id="{{ item.id }}_ref" name="{{ item.id }}" value="0" form="TagList"/>
+            <input type="hidden" id="{{ item.id }}_ref" name="Section_dbID_{{ item.id }}" value="0" form="TagList"/>
 
             <tr class="info">
               <!-- tag title -->
@@ -172,12 +173,12 @@
               <!-- tag options button -->
               <td>
                 <button id="{{ item.id }}_optbtn" disabled="disabled" type="button" class="btn btn btn-info pull-right" data-toggle="collapse" data-target="#{{ item.id }}_options">
-                  <i class="icon-tags icon-white"></i>
+                  <i class="icon-wrench icon-white"></i>
                 </button>
               </td>
               <!-- tag trigger -->
               <td>
-                <div class="switch switch-small pull-right trigger" data-which="{{ item.id }}" data-on="primary" data-off="info" data-on-label="<i class='icon-ok icon-white'></i>" data-off-label="<i class='icon-remove icon-white'></i>">
+                <div id="{{ item.id }}_switcher" class="switch switch-small pull-right trigger" data-which="{{ item.id }}" data-on="primary" data-off="info" data-on-label="<i class='icon-ok icon-white'></i>" data-off-label="<i class='icon-remove icon-white'></i>">
                   <input type="checkbox">
                 </div>
               </td>
@@ -204,6 +205,7 @@
       <div>
     </div>
     </form>
+
   </div>
   {% endif %}
 
@@ -223,13 +225,14 @@
   <div id="Submit" class="modal hide fade" role="dialog"  aria-hidden="true">
     <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-hidden="true" onclick="$('#sub_bar').attr('style', 'width: 0%;');">×</button>
-      <h3 id="sub_title"> Submitted </h3>
+      <h3 id="sub_title"> Submission </h3>
     </div>
     <div class="modal-body">
       <div class="progress">
         <div id="sub_bar" class="bar" style="width: 0%;"></div>
       </div>
-      <p> Report submitted and will be compiled soon. </p>
+      <p id="sub_text">  </p>
+      <!-- Report submitted and will be compiled soon. -->
     </div>
     <div class="modal-footer">
       <a id="done_btn" href="/jobs" class="btn btn-primary" onclick="$('#sub_bar').attr('style', 'width: 0%;');"> Done </a>
@@ -240,23 +243,61 @@
 $(document).ready(function() {
   $('#gen_report').click(function(ev){
     ev.preventDefault();
-    setTimeout("$('#sub_bar').attr('style', 'width: 45%;');", 300)
-    var url = '/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}-full'
+    // setTimeout("$('#sub_bar').attr('style', 'width: 45%;');", 300);
+    // $('#sub_text').text('Validation...');
+
+    // Collect ticked switchers
+    var section_ticks = new Array()
+    $('.switch').each(function( i ){
+        section_ticks.push( $(this).bootstrapSwitch('status') );
+    });
+
+    var url = '/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}'
     var formData = new FormData($('#TagList')[0]);
     $.ajax({
       type: "POST",
       enctype: 'multipart/form-data',
       url: url,
       data: formData,
-      success:function(response, textStatus, jqXHR){ },
+      success:function(response, textStatus, jqXHR){
+          setTimeout("$('#sub_bar').attr('style', 'width: 85%;');", 450)
+          if (response == 'True'){
+              // Clear
+              //$('#sub_text').text('Report submitted and will be compiled soon.');
+              window.location = '/jobs';
+
+          } else{
+              // Not Valid
+
+              document.open();
+              document.write(response);
+              document.close();
+
+              // Restore ticked switchers
+              var tmp;
+              $('.switch').each(function( i ){
+                  tmp = section_ticks.shift();  // get switcher status
+                  $(this).bootstrapSwitch('setState', tmp);
+
+                  if (tmp){
+                    tmp = $(this).attr('id');
+                    tmp = tmp.replace('_switcher','')
+
+                    $('#' + tmp + '_options').collapse('show');
+                  }
+              });
+
+
+              //$("#Submit").modal('hide');
+          }
+      },
       error: function (request, status, error) { },
       cache: false,
       contentType: false,
       processData: false
     });
-    // $.post(url, $('#TagList').serialize());
-    setTimeout("$('#sub_bar').attr('style', 'width: 85%;');", 450)
-    setTimeout("$('#sub_bar').attr('style', 'width: 100%;');", 500)
+
+    //setTimeout("$('#sub_bar').attr('style', 'width: 100%;');", 500)
   });
 
   if ($("input:file").hasClass('TPL')){

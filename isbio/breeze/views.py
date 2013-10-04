@@ -207,57 +207,40 @@ def reports_search(request):
 
 @login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):
-    if mod is None:
-        ### renders an Overview with available Tags ###
+    tags_data_list = list()  # a list of 'tag_data' dictionaries
 
-        # BUILD OVERVIEW SECTION
-        overview = dict()
-        overview['report_type'] = rtype
-        overview['instance_name'] = iname
-        overview['instance_id'] = iid
-        overview['details'] = rshell.get_report_overview(rtype, iname, iid)
-        props_form = breezeForms.ReportPropsForm()
+    # filter tags according to report type (here we pick non-draft tags):
+    tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype)).order_by('order')
 
-        # BUILD LIST OF TAGS
-        # filter tags according to report type (here we pick non-draft tags)
-        tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype)).order_by('order')
+    overview = dict()
+    overview['report_type'] = rtype
+    overview['instance_name'] = iname
+    overview['instance_id'] = iid
+    overview['details'] = rshell.get_report_overview(rtype, iname, iid)
 
-        attribs = dict()
-        tags_attrib = list()
-        for item in tags:
-            tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
-            attribs['id'] = item.id
-            attribs['inline'] = str(item.inln)
-            attribs['name'] = str(item.name)
-            attribs['form'] = breezeForms.form_from_xml(xml=tree)
-            tags_attrib.append(copy.deepcopy(attribs))
+    if request.method == 'POST':
+        # Validates input info and creates (submits) a report
+        property_form = breezeForms.ReportPropsForm(request.POST)
+        tags_data_list = breezeForms.validate_report_sections(tags, request)
 
-        return render_to_response('search.html', RequestContext(request, {
-                'reports_status': 'active',
-                'overview': True,
-                'tags_available': tags_attrib,
-                'overview_info': overview,
-                'props_form': props_form
-            }))
+        sections_valid = breezeForms.check_validity(tags_data_list)
 
-    elif mod == '-full':
-        #### renders Full Report (should create a new tab/window for that) ####
-
-        if request.method == 'POST':
-            print request.POST
-            if breezeForms.validate_report(copy.deepcopy(request.POST)):
-                pass
-                # html = rshell.build_report(rtype, iname, iid, request.user, copy.deepcopy(request.POST), request.FILES)
+        if property_form.is_valid() and sections_valid:
+            rshell.build_report(overview, request, tags)
             return HttpResponse(True)
-            # return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
-        else:
-            tags = None
-            html = rshell.build_report(rtype, iname, iid, request.user, tags)
-            return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'full_report': True, 'report_html': html }))
-
     else:
-        ### if smth stupid came as a mod ###
-        return render_to_response('search.html', RequestContext(request, {'reports_status': 'active', 'search_bars': True }))
+        # Renders report overview and available tags
+        property_form = breezeForms.ReportPropsForm()
+        tags_data_list = breezeForms.create_report_sections(tags)
+
+    return render_to_response('search.html', RequestContext(request, {
+        'overview': True,
+        'reports_status': 'active',
+        'overview_info': overview,
+        'props_form': property_form,
+        'tags_available': tags_data_list
+    }))
+
 
 @login_required(login_url='/')
 def search(request, what=None):

@@ -1,3 +1,4 @@
+import copy
 from django import forms
 from django.conf import settings
 import xml.etree.ElementTree as xml
@@ -436,13 +437,67 @@ def form_from_xml(xml, req=None, init=False):
 
     return custom_form
 
-def validate_report(post):
+def create_report_sections(sections):
+    """ Creates a list of sections content for report overview page.
+
+    Arguments:
+    sections      -- list of 'Rscripts' db objects
+
+    """
+    sdata = dict()
+    section_lst = list()
+
+    for item in sections:
+        tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
+        sdata['id'] = item.id
+        sdata['inline'] = str(item.inln)
+        sdata['name'] = str(item.name)
+        sdata['form'] = form_from_xml(xml=tree)
+        section_lst.append( dict(sdata) )
+
+    return section_lst
+
+def validate_report_sections(sections, req):
     """ Validate only checked (marked) report sections.
 
     Arguments:
-    post        -- a copy of request.POST
+    sections    -- list of 'Rscripts' db objects
+    req         -- a copy of request
 
     """
+    sdata = dict()
+    section_lst = list()
+
+    for item in sections:
+        tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
+        sdata['id'] = item.id
+        sdata['inline'] = str(item.inln)
+        sdata['name'] = str(item.name)
+
+        # we want to validate only those sections
+        # that have been enabled by user
+        secID = 'Section_dbID_' + str(item.id)
+        if secID in req.POST and req.POST[secID] == '1':
+            sdata['form'] = form_from_xml(xml=tree, req=req)
+            sdata['isvalid'] = sdata['form'].is_valid()
+        else:
+            sdata['form'] = form_from_xml(xml=tree)
+            sdata['isvalid'] = True
+
+        section_lst.append( dict(sdata) )
+
+    return section_lst
+
+def check_validity(sections):
+    """ Reports whether all sections are valid or not
+
+    Arguments:
+    sections    -- a list of dict()
+
+    """
+    for item in sections:
+        if not item['isvalid']:
+            return False
 
     return True
 

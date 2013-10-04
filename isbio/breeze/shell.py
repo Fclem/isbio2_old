@@ -533,32 +533,37 @@ def get_report_overview(report_type, instance_name, instance_id):
 
     return summary_srting
 
-def build_report(report_type, instance_name, instance_id, author, taglist, files):
+def build_report(report_data, request_data, sections):
+    """ Assembles report home folder, configures DRMAA and R related files
+        and spawns a new process for reports DRMAA job on cluster.
+
+    Arguments:
+    report_data      -- report info dictionary
+    request_data     -- a copy of request object
+    sections         -- a list of 'Rscripts' db objects
+
     """
-        taglist: corresponds to list of input fields from TagList form
-        in reports.html. Contains tag IDs and enabled/disabled-value
-    """
-    html_path = str()
-    rt = breeze.models.ReportType.objects.get(type=report_type)
-    report_name = report_type + ' Report' + ' :: ' + instance_name + '  <br>  ' + str(rt.description)  # displayed as a header
+    # 'report_name' - report's headline
+    rt = breeze.models.ReportType.objects.get(type=report_data['report_type'])
+    report_name = report_data['report_type'] + ' Report' + ' :: ' + report_data['instance_name'] + '  <br>  ' + str(rt.description)
 
     # create initial instance so that we can use its db id
     dbitem = breeze.models.Report(
-                type=breeze.models.ReportType.objects.get(type=report_type),
-                name=str(instance_name),
-                author=author,
+                type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
+                name=str(report_data['instance_name']),
+                author=request_data.user,
                 progress=0,
             )
     dbitem.save()
 
-    # define location
-    path = slugify(str(dbitem.id) + '_' + dbitem.name + '_' + dbitem.author.username)  # that is report's folder name
+    # define location: that is report's folder name
+    path = slugify(str(dbitem.id) + '_' + dbitem.name + '_' + dbitem.author.username)
     loc = str(settings.MEDIA_ROOT) + str("reports/") + path
     dochtml = loc + '/report'
     dbitem.home = str("reports/") + path
     dbitem.save()
 
-    # build r-file
+    # BUILD R-File
     script_string = 'setwd(\"%s\")\n' % loc
     script_string += 'require( Nozzle.R1 )\n\n'
     script_string += 'path <- \"%s\"\n' % loc
@@ -570,35 +575,33 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
 
     script_string += 'REPORT <- newCustomReport(report_name)\n'
 
-    for key, val in sorted(taglist.items()):
-        if len(val) == 1:
-            if int(val) == 1:  # if tag enabled
-                # get db instance (which is a script)
-                tag = breeze.models.Rscripts.objects.get(id=int(key))
-                tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
+    for tag in sections:
+        secID = 'Section_dbID_' + str(tag.id)
+        if secID in request_data.POST and request_data.POST[secID] == '1':
+            tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
 
-                script_string += '##### TAG: %s #####\n' % tag.name
+            script_string += '##### TAG: %s #####\n' % tag.name
 
-                # source main code segment
-                code_path = str(settings.MEDIA_ROOT) + str(tag.code)
-                script_string += '# <----------  body  ----------> \n' + open(code_path, 'r').read() + '\n'
-                script_string += '# <------- end of body --------> \n'
-                # input parameters definition
-                script_string += '# <----------  parameters  ----------> \n'
-                script_string += gen_params_string(tree, taglist, str(settings.MEDIA_ROOT) + dbitem.home, files)
-                script_string += '# <------- parameters --------> \n'
-                # final step - fire header
-                header_path = str(settings.MEDIA_ROOT) + str(tag.header)
-                script_string += '# <----------  header  ----------> \n' + open(header_path, 'r').read() + '\n\n'
-                script_string += 'new_section <- newSection( section_name )\n'
-                script_string += 'tag_section <- tryCatch({section_body(new_section)}, error = function(e){ failed_fun_print(new_section) })\n'
-                script_string += 'REPORT <- addTo( REPORT, tag_section )\n'
-                script_string += '# <------- end of header --------> \n'
-                script_string += '##### END OF TAG #####\n\n\n'
-                script_string += 'setwd(\"%s\")\n' % loc
+            # source main code segment
+            code_path = str(settings.MEDIA_ROOT) + str(tag.code)
+            script_string += '# <----------  body  ----------> \n' + open(code_path, 'r').read() + '\n'
+            script_string += '# <------- end of body --------> \n'
+            # input parameters definition
+            script_string += '# <----------  parameters  ----------> \n'
+            script_string += gen_params_string(tree, request_data.POST, str(settings.MEDIA_ROOT) + dbitem.home, request_data.FILES)
+            script_string += '# <------- parameters --------> \n'
+            # final step - fire header
+            header_path = str(settings.MEDIA_ROOT) + str(tag.header)
+            script_string += '# <----------  header  ----------> \n' + open(header_path, 'r').read() + '\n\n'
+            script_string += 'new_section <- newSection( section_name )\n'
+            script_string += 'tag_section <- tryCatch({section_body(new_section)}, error = function(e){ failed_fun_print(new_section) })\n'
+            script_string += 'REPORT <- addTo( REPORT, tag_section )\n'
+            script_string += '# <------- end of header --------> \n'
+            script_string += '##### END OF TAG #####\n\n\n'
+            script_string += 'setwd(\"%s\")\n' % loc
 
-            else:  # if tag disabled - do nothing
-                pass
+        else:  # if tag disabled - do nothing
+            pass
 
     # render report to file
     script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))' % dochtml
@@ -619,19 +622,8 @@ def build_report(report_type, instance_name, instance_id, author, taglist, files
     config.write(command)
     config.close()
 
-    # open report's folder for others
-    st = os.stat(loc)
-    os.chmod(loc, st.st_mode | stat.S_IRWXO)
-
     # submit r-code
     p = Process(target=run_report, args=(dbitem,))
     p.start()
 
-    # grant all permissions to the folder
-    alt_path = str(settings.MEDIA_ROOT) + str(dbitem.home)
-    logger.info(alt_path)
-    #if (os.path.exists(alt_path)):
-    #   os.chmod("%s", 0777) % alt_path  # don't forget the 0
-
-    html_path = str("reports/rfail.html")
-    return html_path
+    return True
