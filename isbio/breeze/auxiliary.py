@@ -74,6 +74,7 @@ def merge_job_history(jobs, reports):
             el['ddownhref'] = '/jobs/download/%s-code' % str(item.id)  # debug
             el['fdownhref'] = '/jobs/download/%s' % str(item.id)  # full folder
 
+            el['home'] = ''
             el['reschedhref'] = '%s-repl' % str(item.id)
 
             el['delhref'] = '/jobs/delete/%s' % str(item.id)
@@ -91,6 +92,7 @@ def merge_job_history(jobs, reports):
             el['ddownhref'] = ''  # debug
             el['fdownhref'] = ''  # full folder
 
+            el['home'] = item.home
             el['reschedhref'] = ''
 
             el['delhref'] = '/reports/delete/%s-dash' % str(item.id)
