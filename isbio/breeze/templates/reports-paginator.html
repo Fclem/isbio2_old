@@ -5,7 +5,7 @@
     <td> {{ report.name }} </td>
     <td> {{ report.author }} </td>
     <td>
-      {% if user in report.shared.all %}
+      {% if user in report.shared.all or report.author == user %}
         <a class="Glyph" data-toggle="tooltip" title="View the Report" href="/media/{{ report.home }}/report.html" target="_blank">
           <i class="icon-eye-open"></i>
         </a>
@@ -16,7 +16,7 @@
       {% endif %}
 
       &nbsp;&nbsp;&nbsp;&nbsp;
-      {% if user in report.shared.all %}
+      {% if user in report.shared.all or report.author == user %}
         <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="/get/report-{{ report.id }}">
           <i class="icon-download-alt"></i>
         </a>
