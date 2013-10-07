@@ -223,10 +223,11 @@ function submitItemModalFormBind(url){
                       //form is not returned if form submission succeeded
                       else{
                         //update the entire document with the response received since we received a entire success page and we want to reload the entire page
-                        document.open();
-                        document.write(response);
-                        document.close();
-                        $("#Apply").modal('hide');
+                        //document.open();
+                        //document.write(response);
+                        //document.close();
+                        //$("#Apply").modal('hide');
+                        window.location.href = '/jobs/';
                       }
                 },
                 error: function (request, status, error) {

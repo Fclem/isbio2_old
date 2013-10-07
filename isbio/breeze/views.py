@@ -590,7 +590,7 @@ def create_job(request, sid=None):
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
-            return HttpResponseRedirect('/jobs')
+            return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
         custom_form = breezeForms.form_from_xml(xml=tree)
