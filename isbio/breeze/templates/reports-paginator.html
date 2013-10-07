@@ -5,13 +5,27 @@
     <td> {{ report.name }} </td>
     <td> {{ report.author }} </td>
     <td>
-      <a class="Glyph" data-toggle="tooltip" title="View the Report" href="/media/{{ report.home }}/report.html" target="_blank">
-        <i class="icon-eye-open"></i>
-      </a>
+      {% if user in report.shared.all %}
+        <a class="Glyph" data-toggle="tooltip" title="View the Report" href="/media/{{ report.home }}/report.html" target="_blank">
+          <i class="icon-eye-open"></i>
+        </a>
+      {% else %}
+        <a href="#" >
+          <i class="icon-minus-sign"></i>
+        </a>
+      {% endif %}
+
       &nbsp;&nbsp;&nbsp;&nbsp;
-      <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="/get/report-{{ report.id }}">
-        <i class="icon-download-alt"></i>
-      </a>
+      {% if user in report.shared.all %}
+        <a class="Glyph" data-toggle="tooltip" title="Download HTML" href="/get/report-{{ report.id }}">
+          <i class="icon-download-alt"></i>
+        </a>
+      {% else %}
+        <a href="#" >
+          <i class="icon-minus-sign"></i>
+        </a>
+      {% endif %}
+
     </td>
     <td>
     {% if report.author == user %}
