@@ -178,7 +178,7 @@ def schedule_job(job, mailing):
     return 1
 
 
-def run_job(job, script):
+def run_job(job, script=None):
     """
         Submits scripts as an R-job to cluster with qsub (SGE);
         This submission implements SCRIPTS concept in BREEZE

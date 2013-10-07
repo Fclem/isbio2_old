@@ -590,6 +590,11 @@ def create_job(request, sid=None):
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
+
+            if 'run_job' in request.POST:
+                p = Process( target=rshell.run_job, args=(new_job,) )
+                p.start()
+
             return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
@@ -613,7 +618,6 @@ def run_script(request, jid):
     p = Process(target=rshell.run_job, args=(job, script))
     p.start()
 
-    # rshell.run_job(job, script)
     return HttpResponseRedirect('/jobs/')
 
 @login_required(login_url='/')
