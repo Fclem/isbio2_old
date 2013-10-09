@@ -632,6 +632,10 @@ def build_report(report_data, request_data, report_property, sections):
     config.write(command)
     config.close()
 
+    # open report's folder for others
+    st = os.stat(loc)
+    os.chmod(loc, st.st_mode | stat.S_IRWXO)
+
     # submit r-code
     p = Process(target=run_report, args=(dbitem,))
     p.start()
