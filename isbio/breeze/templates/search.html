@@ -145,7 +145,17 @@
         <p> {{ overview_info.details }} </p>
 
         <!-- Report Properties-->
-        {{ props_form|as_bootstrap:"horizontal" }}
+        {% for field in props_form %}
+          {% if field.name == 'shared' %}
+            <p>Grant report access rights to:</p>
+            {{ field }}
+          {% else %}
+            {{ field|as_bootstrap:"horizontal" }}
+          {% endif %}
+
+
+        {% endfor %}
+        <!-- {{ props_form|as_bootstrap:"horizontal" }} -->
 
       </div>
       <div class="row-fluid">&nbsp;</div>
