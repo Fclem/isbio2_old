@@ -348,21 +348,39 @@ def form_from_xml(xml, req=None, init=False):
                     else:
                         min_decimal = None
 
+                    if input_item.attrib["optional"] == '1':
+                        opt_decimal = False
+                    else:
+                        opt_decimal = True
+
                     custom_form.fields[input_item.attrib["comment"]] = forms.DecimalField(
                             initial=input_item.attrib["val"],
                             max_value=max_decimal,
-                            min_value=min_decimal
+                            min_value=min_decimal,
+                            required=opt_decimal
                     )
 
                 elif input_item.attrib["type"] == "TEX":  # text box
+                    if input_item.attrib["optional"] == '1':
+                        opt_tex = False
+                    else:
+                        opt_tex = True
+
                     custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
                             initial=input_item.attrib["val"],
                             max_length=100,
+                            required=opt_tex,
                             widget=forms.TextInput(attrs={'type': 'text', })
                     )
                 elif input_item.attrib["type"] == "TAR":  # text area
+                    if input_item.attrib["optional"] == '1':
+                        opt_tar = False
+                    else:
+                        opt_tar = True
+
                     custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
                             initial=input_item.attrib["val"],
+                            required=opt_tar,
                             widget=forms.Textarea(
                                 attrs={
                                     'cols': 15,
@@ -405,8 +423,14 @@ def form_from_xml(xml, req=None, init=False):
                             choices=radio_options, help_text=u'',
                                                                        )
                 elif input_item.attrib["type"] == "FIL" or input_item.attrib["type"] == "TPL":  # file upload field
+                    if input_item.attrib["optional"] == '1':
+                        opt_file = False
+                    else:
+                        opt_file = True
+
                     custom_form.fields[input_item.attrib["comment"]] = forms.FileField(
                             # initial=input_item.attrib["val"],
+                            required=opt_file,
                             widget=forms.ClearableFileInput(
                                 attrs={
                                        'class': input_item.attrib["type"],

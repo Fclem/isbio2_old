@@ -1,21 +1,21 @@
       <!-- Builder =================== -->
-        
+
           <div class="row-fluid">
-            
-            <!-- Form Viewer + Rebuild Button -->  
+
+            <!-- Form Viewer + Rebuild Button -->
             <div class="span4">
               <button class="btn btn-primary btn-block" type="submit" form="components"><strong>Rebuild Form</strong></button>
               <div class="clearfix">
                 <div id="build">
                   <form id="target" class="form-inline">
                     <fieldset>
-                      
+
                     </fieldset>
                   </form>
                 </div>
               </div>
-            </div> 
-            
+            </div>
+
             <!-- CONTROLS -->
             <div class="span5">
               <div class="tabbable">
@@ -30,10 +30,10 @@
                   <fieldset>
                     <input type="hidden" name="form_name" value="xml_data">
                     <div class="tab-content">
-    
+
                       <div class="tab-pane active" id="tab1">
-    
-                        <div class="control-group component" breeze-control="numeric_input" data-type="text" rel="popover" title="Numeric Input" trigger="manual" 
+
+                        <div class="control-group component" breeze-control="numeric_input" data-type="text" rel="popover" title="Numeric Input" trigger="manual"
                           data-content="
                           <form class='form'>
                             <div class='controls' style='margin-left: 0px'>
@@ -42,101 +42,109 @@
                               <label class='control-label'>Max Limit</label> <input class='input-medium' type='number' name='max_limit' id='max_limit' >
                               <label class='control-label'>Min Limit</label> <input class='input-medium' type='number' name='min_limit' id='min_limit' >
                               <label class='control-label'>Default Value</label> <input class='input-medium' type='number' name='def_val' id='def_val' >
+                              <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
                             </div>
                           </form>"
                           >
-    
+
                           <!-- Numeric input-->
                           <label class="control-label valtype" for="input01" data-valtype='label'>Numercic input</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_num_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input type="number" placeholder="" class="input valtype" data-valtype="numeric_limits" min="" max="" def="">
                           </div>
                         </div>
 
-                        <div class="control-group component" breeze-control="text_input" data-type="text" rel="popover" title="Text Input" trigger="manual" 
+                        <div class="control-group component" breeze-control="text_input" data-type="text" rel="popover" title="Text Input" trigger="manual"
                           data-content="
                           <form class='form'>
                             <div class='controls' style='margin-left: 0px'>
                               <label class='control-label'>Comment</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
                               <label class='control-label'>Default Value</label> <input class='input-medium' type='text' name='text_default' id='text_default' >
+                              <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
                             </div>
                           </form>"
                           >
-    
+
                           <!-- Text input-->
                           <label class="control-label valtype" for="input01" data-valtype='label'>Text input</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_text_var">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="text_default" value="">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input type="text" placeholder="" class="input valtype" data-valtype="placeholder">
                           </div>
                         </div>
-    
+
                         <div class="control-group component" breeze-control="text_area" rel="popover" title="Text Area" trigger="manual"
                           data-content="
                           <form class='form'>
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
                             </div>
                           </form>"
                           >
-    
+
                           <!-- Textarea -->
                           <label class="control-label valtype" data-valtype="label">Textarea</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_textarea_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <div class="textarea">
                                   <textarea type="" > </textarea>
                             </div>
                           </div>
                         </div>
-                        
+
                         <div class="control-group component" breeze-control="file_upload" rel="popover" title="File Upload" trigger="manual"
                           data-content="
                           <form class='form'>
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
                             </div>
                           </form>"
                           >
-                          
+
                           <!-- File Upload -->
                           <label class="control-label valtype" data-valtype="label">File Upload</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_fileup_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input class="input-file" id="fileInput" type="file">
                           </div>
                         </div>
-    
+
                       </div>
-    
+
                       <div class="tab-pane" id="tab2">
-                          
+
                         <div class="control-group component" breeze-control="check_box" rel="popover" title="Boolean Input" trigger="manual"
                           data-content="
                           <form class='form'>
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
-                              <label class='checkbox inline control-label'>Default Value <input type='checkbox' name='checkbox_def' id='checkbox_def'> </label> 
+                              <label class='checkbox inline control-label'>Default Value <input type='checkbox' name='checkbox_def' id='checkbox_def'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
                             </div>
                           </form>"
                           >
-                              
+
                           <!-- Single  Checkbox -->
                           <label class="control-label valtype" data-valtype="label">Checkbox</label>
                           <div class="controls valtype" data-valtype="single-checkbox">
@@ -145,9 +153,9 @@
                               <input class="valtype" data-valtype="checkbox_def" type="checkbox" value="1">
                             </label>
                           </div>
-    
+
                         </div>
-    
+
                         <div class="control-group component" breeze-control="drop_down" rel="popover" title="Drop Down Menu" trigger="manual"
                           data-content="
                           <form class='form'>
@@ -161,7 +169,7 @@
                             </div>
                           </form>"
                           >
-    
+
                           <!-- Drop Down -->
                           <label class="control-label valtype" data-valtype="label">Dropdown</label>
                           <div class="controls">
@@ -172,9 +180,9 @@
                               <option>Options</option>
                             </select>
                           </div>
-    
+
                         </div>
-    
+
                         <div class="control-group component" breeze-control="mult_select" rel="popover" title="Multiple Choice" trigger="manual"
                           data-content="
                           <form class='form'>
@@ -188,7 +196,7 @@
                             </div>
                           </form>"
                           >
-    
+
                           <!-- Select Multiple -->
                           <label class="control-label valtype" data-valtype="label">Select - Multiple</label>
                           <div class="controls">
@@ -200,9 +208,9 @@
                             </select>
                           </div>
                         </div>
-    
+
                       </div>
-                      
+
                       <div class="tab-pane" id="tab3">
                         <div class="control-group component" breeze-control="dataset_selector" rel="popover" title="Data Set Selector" trigger="manual"
                           data-content="
@@ -218,7 +226,7 @@
                             </div>
                           </form>"
                           >
-    
+
                           <!-- DataSet Selector -->
                           <label class="control-label valtype" data-valtype="label">Data Set</label>
                           <div class="controls">
@@ -226,7 +234,7 @@
                             <select class="input valtype" data-valtype="db_list">
                             </select>
                           </div>
-    
+
                         </div>
 
                         <div class="control-group component" breeze-control="template_upload" rel="popover" title="Template Upload" trigger="manual"
@@ -238,16 +246,18 @@
                               <label class='control-label'>Available Templates: </label>
                               <select class='input-medium' name='tmpl_list' id='tmpl_list'>
                               </select>
+                              <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
                             </div>
                           </form>"
                           >
-                          
+
                           <!-- Template File Upload -->
                           <label class="control-label valtype" data-valtype="label">Template Upload</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_template_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="tmpl_list" value="">
                             <input class="input-file" id="templateInput" type="file">
                           </div>
@@ -257,15 +267,14 @@
                       <div class="tab-pane" id="xmlsource">
                         <textarea id="source" class="input-xxlarge" name="xml_data"></textarea>
                       </div>
-                    
+
                     </div>
-                    
+
                   </fieldset>
                 </form>
               </div> <!-- tabbable -->
             </div> <!-- span 6(2) -->
-          
-          </div> <!-- row -->
-     
 
-     
+          </div> <!-- row -->
+
+

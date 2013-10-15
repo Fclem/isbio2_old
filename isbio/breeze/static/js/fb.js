@@ -14,7 +14,7 @@
       form: 120
     }
     var type;
-    
+
     if($this.parent().parent().parent().parent().attr("id") === "components"){
       type = "main";
     } else {
@@ -140,7 +140,7 @@
     $("#source").val( constructXML() );
     //$("#source").val($temptxt.html().replace(/\n\ \ \ \ \ \ \ \ \ \ \ \ /g,"\n"));
   }
-  
+
   var constructXML = function(){
     // create root element; script ID should better be obtained here
     var docxml = "<rScript name=\"undefined\">\n<inputArray>\n";
@@ -149,57 +149,63 @@
       var tmp = '';
       var fieldLabel = $(this).find('[data-valtype="label"]').text();
       var fieldVar = $(this).find('[data-valtype="r_inline"]').val();
+
       switch ($(this).attr("breeze-control")){
         case "numeric_input":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"NUM\" ';
           docxml += 'val=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('def') + '\" ';
-          docxml += 'max=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('max') + '\" min=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('min') + '\"/> \n';
+          docxml += 'max=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('max') + '\" min=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('min') + '\" ';
+          docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "text_input":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TEX\" val=\"' + $(this).find('[data-valtype="text_default"]').val() + '\" />' + '\n';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TEX\" val=\"' + $(this).find('[data-valtype="text_default"]').val() + '\" ';
+          docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "text_area":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TAR\" val=\"\" />' + '\n';
-          break;    
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TAR\" val=\"\" ';
+          docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
+          break;
         case "check_box":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"CHB\" val=\"' + $(this).find('[data-valtype="checkbox_def"]').prop('checked') + '\" />' + '\n';
-          break;  
+          break;
         case "file_upload":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"FIL\" val=\"\" />' + '\n';
-          break; 
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"FIL\" val=\"\" ';
+          docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
+          break;
         case "template_upload":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"' + $(this).find('[data-valtype="tmpl_list"]').val() + '\" rvarname=\"' + fieldVar + '\" type=\"TPL\" val=\"\" />' + '\n';
-          break; 
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"' + $(this).find('[data-valtype="tmpl_list"]').val() + '\" rvarname=\"' + fieldVar + '\" type=\"TPL\" val=\"\" ';
+          docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
+          break;
         case "dataset_selector":
           tmp = '';
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DTS\" val=\"\">' + '\n';
           docxml += '<altArray>' + '\n';
           tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
-          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";         
+          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";
           docxml += '</altArray>\n</inputItem>\n';
-          break;  
+          break;
         case "drop_down":
           tmp = '';
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DRP\" val=\"\">' + '\n';
           docxml += '<altArray>' + '\n';
           tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
-          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";         
+          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";
           docxml += '</altArray>\n</inputItem>\n';
-          break;  
+          break;
         case "mult_select":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"MLT\" val=\"\">' + '\n';
           docxml += '<altArray>' + '\n';
           tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
-          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";         
+          docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";
           docxml += '</altArray>\n</inputItem>\n';
-          break;  
+          break;
       }
     });
-    
+
     docxml += "</inputArray>\n"
     // escape builder form html and incorporate it into xml; (xml parsing fails if not escaped!)
     var builder_form = $("#target").html().replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    docxml += '<builder representation=\"\">' + builder_form + '</builder>' + '\n'; 
+    docxml += '<builder representation=\"\">' + builder_form + '</builder>' + '\n';
     docxml += "</rScript>";
     return docxml;
   }
@@ -213,14 +219,14 @@
     // $active_component is .valtype - content of .component div tag
     var $active_component = $(this);
     $active_component.popover("show");
-    
+
     var valtypes = $active_component.find(".valtype");
-    // iterate over all the elements of the component 
+    // iterate over all the elements of the component
     $.each(valtypes, function(i,e){
-      // fill out the form on popover 
+      // fill out the form on popover
       // by extracting data tha is stored on the form
       // valID - input ID on the popover form
-      var valID ="#" + $(e).attr("data-valtype"); 
+      var valID ="#" + $(e).attr("data-valtype");
       var val;
       if(valID ==="#placeholder"){
           val = $(e).attr("placeholder");
@@ -262,12 +268,16 @@
           val = $(e).find(".btn").text();
           $(".popover #button").val(val);
       } else if (valID==="#r_inline"){
-          val = $(e).val();  
+          val = $(e).val();
           $(".popover " + valID).val(val);
       } else if (valID==="#text_default"){
-          console.log(valID)
-          val = $(e).val();  
+          val = $(e).val();
           $(".popover " + valID).val(val);
+      } else if (valID==="#flag_optional"){
+          tmp = $(e).val();
+          if (tmp == '1') val = true;
+          else val = false;
+          $(".popover " + valID).prop('checked', val);
       } else if (valID==="#numeric_limits"){
           $(".popover #max_limit").val($(e).attr('max'));
           $(".popover #min_limit").val($(e).attr('min'));
@@ -282,8 +292,8 @@
             $.each(data, function(key, val) { options.push('<option>' + key + '</option>'); });
             $(valID).append(options);
             // mark previously selected
-            $.each(existing, function(i,e){ 
-              $(valID).find("option:contains(" + $(e).text() + ")").prop('selected', true); 
+            $.each(existing, function(i,e){
+              $(valID).find("option:contains(" + $(e).text() + ")").prop('selected', true);
             });
           });
       } else if (valID==="#tmpl_list"){
@@ -293,11 +303,11 @@
             $.each(data, function(key, val) { options.push('<option>' + key + '</option>'); });
             $(valID).append(options);
             // mark previously selected
-            $(valID).find("option:contains(" + existing + ")").prop('selected', true); 
+            $(valID).find("option:contains(" + existing + ")").prop('selected', true);
           });
       } else { // apparently 'label' goes to ELSE
         val = $(e).text();
-        $(".popover " + valID).val(val); 
+        $(".popover " + valID).val(val);
       }
     });
 
@@ -370,17 +380,20 @@
           var type =  $(".popover #color option:selected").attr("id");
           $(value).find("button").text($(e).val()).attr("class", "btn "+type);
         } else if (vartype === "r_inline"){
-          $(value).val($(e).val());  
+          $(value).val($(e).val());
         } else if (vartype === "text_default"){
-          $(value).val($(e).val()); 
+          $(value).val($(e).val());
+        } else if (vartype === "flag_optional"){
+          if ( $(e).prop("checked") ) $(value).val(1);
+          else $(value).val(0);
         } else if (vartype === "max_limit"){
-          $active_component.find('[data-valtype="numeric_limits"]').attr('max', $(e).val()); 
+          $active_component.find('[data-valtype="numeric_limits"]').attr('max', $(e).val());
         } else if (vartype === "min_limit"){
-          $active_component.find('[data-valtype="numeric_limits"]').attr('min', $(e).val());  
+          $active_component.find('[data-valtype="numeric_limits"]').attr('min', $(e).val());
         } else if (vartype === "def_val"){
-          $active_component.find('[data-valtype="numeric_limits"]').attr('def', $(e).val());  
+          $active_component.find('[data-valtype="numeric_limits"]').attr('def', $(e).val());
         } else if (vartype === "checkbox_def"){
-          $(value).prop("checked", $(e).prop("checked"));  
+          $(value).prop("checked", $(e).prop("checked"));
         } else if (vartype === "db_list"){
           $(value).find("option").remove();
           $(e).find("option:selected").clone().appendTo(value);
