@@ -155,30 +155,37 @@
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"NUM\" ';
           docxml += 'val=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('def') + '\" ';
           docxml += 'max=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('max') + '\" min=\"' + $(this).find('[data-valtype="numeric_limits"]').attr('min') + '\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
           docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "text_input":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TEX\" val=\"' + $(this).find('[data-valtype="text_default"]').val() + '\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
           docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "text_area":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"TAR\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
           docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "check_box":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"CHB\" val=\"' + $(this).find('[data-valtype="checkbox_def"]').prop('checked') + '\" />' + '\n';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"CHB\" val=\"' + $(this).find('[data-valtype="checkbox_def"]').prop('checked') + '\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" /> \n';
           break;
         case "file_upload":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"FIL\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
           docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "template_upload":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"' + $(this).find('[data-valtype="tmpl_list"]').val() + '\" rvarname=\"' + fieldVar + '\" type=\"TPL\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
           docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "dataset_selector":
           tmp = '';
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DTS\" val=\"\">' + '\n';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DTS\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" > \n';
           docxml += '<altArray>' + '\n';
           tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
           docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";
@@ -186,14 +193,16 @@
           break;
         case "drop_down":
           tmp = '';
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DRP\" val=\"\">' + '\n';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DRP\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" > \n';
           docxml += '<altArray>' + '\n';
           tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
           docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";
           docxml += '</altArray>\n</inputItem>\n';
           break;
         case "mult_select":
-          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"MLT\" val=\"\">' + '\n';
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"MLT\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" > \n';
           docxml += '<altArray>' + '\n';
           tmp = $.map($(this).find("option"), function(e,i){return $(e).text()}).join("\n");
           docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";
@@ -268,6 +277,9 @@
           val = $(e).find(".btn").text();
           $(".popover #button").val(val);
       } else if (valID==="#r_inline"){
+          val = $(e).val();
+          $(".popover " + valID).val(val);
+      } else if (valID==="#help_text"){
           val = $(e).val();
           $(".popover " + valID).val(val);
       } else if (valID==="#text_default"){
@@ -380,6 +392,8 @@
           var type =  $(".popover #color option:selected").attr("id");
           $(value).find("button").text($(e).val()).attr("class", "btn "+type);
         } else if (vartype === "r_inline"){
+          $(value).val($(e).val());
+        } else if (vartype === "help_text"){
           $(value).val($(e).val());
         } else if (vartype === "text_default"){
           $(value).val($(e).val());

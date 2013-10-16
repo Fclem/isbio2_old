@@ -345,6 +345,11 @@ def form_from_xml(xml, req=None, init=False):
                 except:
                     optional_prop = True
 
+                try:
+                    help_line = input_item.attrib["help"]
+                except:
+                    help_line = ''
+
                 if  input_item.attrib["type"] == "NUM":  # numeric input
                     # protect empty MAX and MIN limits
                     if input_item.attrib["max"]:
@@ -361,7 +366,8 @@ def form_from_xml(xml, req=None, init=False):
                             initial=input_item.attrib["val"],
                             max_value=max_decimal,
                             min_value=min_decimal,
-                            required=optional_prop
+                            required=optional_prop,
+                            help_text=help_line
                     )
 
                 elif input_item.attrib["type"] == "TEX":  # text box
@@ -369,12 +375,14 @@ def form_from_xml(xml, req=None, init=False):
                             initial=input_item.attrib["val"],
                             max_length=100,
                             required=optional_prop,
+                            help_text=help_line,
                             widget=forms.TextInput(attrs={'type': 'text', })
                     )
                 elif input_item.attrib["type"] == "TAR":  # text area
                     custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
                             initial=input_item.attrib["val"],
                             required=optional_prop,
+                            help_text=help_line,
                             widget=forms.Textarea(
                                 attrs={
                                     'cols': 15,
@@ -387,7 +395,11 @@ def form_from_xml(xml, req=None, init=False):
                     checked = False
                     if input_item.attrib["val"] == "true":
                         checked = True
-                    custom_form.fields[input_item.attrib["comment"]] = forms.BooleanField(required=False, initial=checked)
+                    custom_form.fields[input_item.attrib["comment"]] = forms.BooleanField(
+                            required=False,
+                            initial=checked,
+                            help_text=help_line
+                    )
 
                 elif input_item.attrib["type"] == "DRP":  # drop down list
                     drop_options = tuple()
@@ -395,7 +407,11 @@ def form_from_xml(xml, req=None, init=False):
                     for alt in input_item.find('altArray').findall('altItem'):
                         drop_options = drop_options + ((alt.text, alt.text),)
 
-                    custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(choices=drop_options, initial=input_item.attrib["val"])
+                    custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(
+                            choices=drop_options,
+                            initial=input_item.attrib["val"],
+                            help_text=help_line
+                    )
 
                 elif input_item.attrib["type"] == "DTS":  # custom dataset (drop down list control)
                     drop_options = tuple()
@@ -403,7 +419,11 @@ def form_from_xml(xml, req=None, init=False):
                     for alt in input_item.find('altArray').findall('altItem'):
                         drop_options = drop_options + ((alt.text, alt.text),)
 
-                    custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(choices=drop_options, initial=input_item.attrib["val"])
+                    custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(
+                            choices=drop_options,
+                            initial=input_item.attrib["val"],
+                            help_text=help_line
+                    )
 
                 elif input_item.attrib["type"] == "RAD":  # radio buttons
                     radio_options = tuple()
@@ -414,12 +434,15 @@ def form_from_xml(xml, req=None, init=False):
                     custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(
                             initial=input_item.attrib["val"],
                             widget=forms.RadioSelect(attrs={'value': input_item.attrib["default"]}),
-                            choices=radio_options, help_text=u'',
-                                                                       )
+                            choices=radio_options,
+                            help_text=help_line
+                    )
+
                 elif input_item.attrib["type"] == "FIL" or input_item.attrib["type"] == "TPL":  # file upload field
                     custom_form.fields[input_item.attrib["comment"]] = forms.FileField(
                             # initial=input_item.attrib["val"],
                             required=optional_prop,
+                            help_text=help_line,
                             widget=forms.ClearableFileInput(
                                 attrs={
                                        'class': input_item.attrib["type"],
@@ -435,6 +458,7 @@ def form_from_xml(xml, req=None, init=False):
 
                     custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
                             initial=re.split(',', input_item.attrib["val"]),
+                            help_text=help_line,
                             choices=mult_options
                     )
 

@@ -37,8 +37,10 @@
                           data-content="
                           <form class='form'>
                             <div class='controls' style='margin-left: 0px'>
-                              <label class='control-label'>Comment</label> <input class='input-medium' type='text' name='label' id='label'>
+                              <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='control-label'>Max Limit</label> <input class='input-medium' type='number' name='max_limit' id='max_limit' >
                               <label class='control-label'>Min Limit</label> <input class='input-medium' type='number' name='min_limit' id='min_limit' >
                               <label class='control-label'>Default Value</label> <input class='input-medium' type='number' name='def_val' id='def_val' >
@@ -53,6 +55,7 @@
                           <label class="control-label valtype" for="input01" data-valtype='label'>Numercic input</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_num_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input type="number" placeholder="" class="input valtype" data-valtype="numeric_limits" min="" max="" def="">
                           </div>
@@ -62,8 +65,10 @@
                           data-content="
                           <form class='form'>
                             <div class='controls' style='margin-left: 0px'>
-                              <label class='control-label'>Comment</label> <input class='input-medium' type='text' name='label' id='label'>
+                              <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='control-label'>Default Value</label> <input class='input-medium' type='text' name='text_default' id='text_default' >
                               <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
@@ -76,6 +81,7 @@
                           <label class="control-label valtype" for="input01" data-valtype='label'>Text input</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_text_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="text_default" value="">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input type="text" placeholder="" class="input valtype" data-valtype="placeholder">
@@ -88,6 +94,8 @@
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
@@ -99,6 +107,7 @@
                           <label class="control-label valtype" data-valtype="label">Textarea</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_textarea_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <div class="textarea">
                                   <textarea type="" > </textarea>
@@ -112,6 +121,8 @@
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='checkbox inline control-label'>Optional<input type='checkbox' name='flag_optional' id='flag_optional'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
@@ -123,6 +134,7 @@
                           <label class="control-label valtype" data-valtype="label">File Upload</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_fileup_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input class="input-file" id="fileInput" type="file">
                           </div>
@@ -138,6 +150,8 @@
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='checkbox inline control-label'>Default Value <input type='checkbox' name='checkbox_def' id='checkbox_def'> </label>
                               <hr/>
                               <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
@@ -149,6 +163,7 @@
                           <label class="control-label valtype" data-valtype="label">Checkbox</label>
                           <div class="controls valtype" data-valtype="single-checkbox">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_bool_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <label class="checkbox inline">
                               <input class="valtype" data-valtype="checkbox_def" type="checkbox" value="1">
                             </label>
@@ -162,6 +177,8 @@
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='control-label'>Options: </label>
                               <textarea class='input-medium' style='min-height: 135px' id='option'> </textarea>
                               <hr/>
@@ -174,6 +191,7 @@
                           <label class="control-label valtype" data-valtype="label">Dropdown</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_drop_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <select class="input valtype" data-valtype="option">
                               <option>Enter</option>
                               <option>Your</option>
@@ -189,6 +207,8 @@
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='control-label'>Options: </label>
                               <textarea class='input-medium' style='min-height: 135px' id='option'></textarea>
                               <hr/>
@@ -201,6 +221,7 @@
                           <label class="control-label valtype" data-valtype="label">Select - Multiple</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_mult_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <select class="input valtype" multiple="multiple" data-valtype="option">
                               <option>Enter</option>
                               <option>Your</option>
@@ -218,6 +239,8 @@
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='control-label'>Available Data Sets: </label>
                               <select class='input-medium' multiple='multiple' name='db_list' id='db_list'>
                               </select>
@@ -231,6 +254,7 @@
                           <label class="control-label valtype" data-valtype="label">Data Set</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_dataset_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <select class="input valtype" data-valtype="db_list">
                             </select>
                           </div>
@@ -243,6 +267,8 @@
                             <div class='controls' style='margin-left: 10px'>
                               <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
                               <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
                               <label class='control-label'>Available Templates: </label>
                               <select class='input-medium' name='tmpl_list' id='tmpl_list'>
                               </select>
@@ -257,6 +283,7 @@
                           <label class="control-label valtype" data-valtype="label">Template Upload</label>
                           <div class="controls">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_template_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="flag_optional" value="0">
                             <input type="hidden" placeholder="" class="input valtype" data-valtype="tmpl_list" value="">
                             <input class="input-file" id="templateInput" type="file">
