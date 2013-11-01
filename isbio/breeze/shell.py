@@ -390,6 +390,7 @@ def build_header(data):
     return header
 
 def add_file_to_report(directory, f):
+    print "Directory exist:  ", os.path.exists(directory)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -450,12 +451,20 @@ def gen_params_string(docxml, data, dir, files):
             for itm in lst:
                 if itm != "":
                     seq = seq + '\"%s\",' % itm
-            seq = seq[:-1] + ')'
+
+            if lst == ['']:
+                seq = seq + ')'
+            else:
+                seq = seq[:-1] + ')'
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
         elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
+
             if files:
-                add_file_to_report(dir, files[item.attrib['comment']])
-                params = params + str(item.attrib['rvarname']) + ' <- "' + str(files[item.attrib['comment']].name) + '"\n'
+                try:
+                    add_file_to_report(dir, files[item.attrib['comment']])
+                    params = params + str(item.attrib['rvarname']) + ' <- "' + str(files[item.attrib['comment']].name) + '"\n'
+                except:
+                    pass
             else:
                 params = params + str(item.attrib['rvarname']) + ' <- ""\n'
         elif item.attrib['type'] == 'DTS':
@@ -554,7 +563,6 @@ def build_report(report_data, request_data, report_property, sections):
         buddies.append( str(e) )
 
     shared_users = breeze.models.User.objects.filter(username__in=buddies)
-    print shared_users
     # create initial instance so that we can use its db id
     dbitem = breeze.models.Report(
                 type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
@@ -563,6 +571,7 @@ def build_report(report_data, request_data, report_property, sections):
                 progress=0,
             )
     dbitem.save()
+
 
     dbitem.shared = shared_users
 
@@ -589,7 +598,7 @@ def build_report(report_data, request_data, report_property, sections):
         secID = 'Section_dbID_' + str(tag.id)
         if secID in request_data.POST and request_data.POST[secID] == '1':
             tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
-
+            print tag
             script_string += '##### TAG: %s #####\n' % tag.name
 
             # source main code segment
@@ -616,6 +625,7 @@ def build_report(report_data, request_data, report_property, sections):
     # render report to file
     script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))' % dochtml
 
+    print 'Script is READY!'
     # save r-file
     dbitem.rexec.save('script.r', base.ContentFile(script_string))
     dbitem.save()
