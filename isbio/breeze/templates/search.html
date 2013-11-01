@@ -310,10 +310,14 @@ $(document).ready(function() {
     //setTimeout("$('#sub_bar').attr('style', 'width: 100%;');", 500)
   });
 
-  if ($("input:file").hasClass('TPL')){
-    var which = $("input:file").filter('.TPL').attr('which');
-    $("input:file").filter('.TPL').after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Use a Template File for this field please<a/>');
-  }
+
+  $("input:file").each(function(){
+    if ( $(this).hasClass('TPL') ){
+      var which = $(this).attr('which');
+      $(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
+      // $(this).customFileInput({ });
+    }
+  });
 
   //$("input:file").customFileInput({ });
 
