@@ -334,11 +334,18 @@
       e.preventDefault();
       var inputs = $(".popover input,.popover select");
       // why textarea is pushed here?
-      inputs.push($(".popover textarea")[0]);
+      // inputs.push($(".popover textarea")[0]);
+
+      // Now we iterate over each textarea on the form
+      // I have no idea why the author used to pick only
+      // [0] element before (see comment above).
+      $.each($(".popover textarea"), function(i,e){ inputs.push(e); });
+
       // for each input on the popover
       $.each(inputs, function(i,e){
         var vartype = $(e).attr("id");
         var value = $active_component.find('[data-valtype="'+vartype+'"]')
+        // console.log(vartype); // this is for debugging
         if(vartype==="placeholder"){
           $(value).attr("placeholder", $(e).val());
         } else if (vartype==="option"){
