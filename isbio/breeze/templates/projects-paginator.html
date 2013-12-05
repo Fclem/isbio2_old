@@ -1,0 +1,52 @@
+{% for project in projects %}
+  <tr>
+    <td>
+      {% if project.collaborative %}
+
+          <i class="icon-ok-circle"></i>
+      {% endif %}
+    </td>
+    <td> {{ project.name }} </td>
+    <td> {{ project.manager }} </td>
+    <td> <!-- View -->
+      <a href="#" class="pinfo" data-toggle="modal" data-target="#ProjectInfo" data-param={{ project.id }}>
+          <i class="icon-info-sign"></i>
+      </a>
+    </td>
+    <td> <!-- Edit -->
+      {% if project.author == user %}
+        <a href="#" class="hcalls" data-toggle="modal" data-target="#EditProject" data-param="/projects/edit/{{ project.id }}" >
+          <i class="icon-edit"></i>
+        </a>
+      {% else %}
+        <a href="#" >
+          <i class="icon-minus-sign"></i>
+        </a>
+      {% endif %}
+    </td>
+    <td></td>
+    <td> <!-- Delete -->
+      {% if project.author == user %}
+        <a href="#" data-toggle="modal" data-target="#DeleteItem" onclick="$('#del_item_btn').attr('href', '/projects/delete/{{ project.id }}'); $('#del_title').text('{{ project.name }}');" >
+          <i class="icon-trash"></i>
+        </a>
+      {% else %}
+        <a href="#" >
+          <i class="icon-minus-sign"></i>
+        </a>
+      {% endif %}
+    </td>
+
+    <!--
+    <td> {{ project.pi }} </td>
+    <td> {{ project.wbs }} </td>
+    <td> {{ project.external_id }} </td>
+    <td> {{ project.description }} </td>
+    -->
+
+  </tr>
+{% empty %}
+  <tr>
+    <td></td> <td>No Projects found in the data base...</td><td></td><td></td><td></td><td></td><td></td>
+  </tr>
+{% endfor %}

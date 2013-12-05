@@ -1,0 +1,31 @@
+{% load bootstrap_toolkit %}
+
+<div class="modal-header">
+  <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+  <h3 id="myModalLabel">{{ project.name }}</h3>
+</div>
+<div class="modal-body">
+  <blockquote>
+    <p class="text-info">
+      {% if project.collaborative %}
+        <b>Collaborative Project</b>
+      {% else %}
+        <b>Private Project</b>
+      {% endif %}
+    </p>
+  </blockquote>
+  <dl>
+    <dt class="text-info"> Author: </dt>  <dd> {{ project.author }} </dd>
+    <dt class="text-info"> Manager: </dt>  <dd> {{ project.manager }} </dd>
+    <dt class="text-info"> Principal Investigator: </dt>  <dd> {{ project.pi }} </dd>
+    <dt class="text-info"> Description: </dt>  <dd> {{ project.description }} </dd>
+    <dt class="text-info"> Misc: </dt>
+    <dd>
+      WBS: <p class="muted"> {{ project.wbs|default:"None" }}; </p>
+      External ID: <p class="muted"> {{ project.external_id|default:"None"}}. </p>
+    </dd>
+  </dl>
+</div>
+<div class="modal-footer">
+  <button class="btn btn-inverse" data-dismiss="modal">Close</button>
+</div>

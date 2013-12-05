@@ -1,5 +1,52 @@
 import re, copy, os
 from django.db.models import Q
+import breeze.models
+
+def save_new_project(form, author):
+    """ Saves New Project data from a valid form to DB model.
+
+    Arguments:
+    form        -- instance of NewProjectForm
+    author      -- user name
+    """
+    dbitem = breeze.models.Project(
+                name=str(form.cleaned_data.get('project_name', None)),
+                manager=str(form.cleaned_data.get('project_manager', None)),
+                pi=str(form.cleaned_data.get('principal_investigator', None)),
+                author=author,
+                collaborative=form.cleaned_data.get('collaborative', None),
+                wbs=str(form.cleaned_data.get('wbs', None)),
+                external_id=str(form.cleaned_data.get('eid', None)),
+                description=str(form.cleaned_data.get('description', None))
+        )
+
+    dbitem.save()
+
+    return True
+
+def edit_project(form, project):
+    """ Edit Project data.
+
+    Arguments:
+    form        -- instance of NewProjectForm
+    project     -- db instance of Project
+    """
+    project.wbs = str( form.cleaned_data.get('wbs', None) )
+    project.external_id = str( form.cleaned_data.get('eid', None) )
+    project.description = str( form.cleaned_data.get('description', None) )
+    project.save()
+
+    return True
+
+def delete_project(project):
+    """ Remove a project from a DB model.
+
+    Arguments:
+    project     -- db instance of Project
+    """
+    project.delete()
+
+    return True
 
 def open_folder_permissions(path, permit=0770):
     """ Traverses a directory recursively and set permissions.

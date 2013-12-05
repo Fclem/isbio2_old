@@ -11,6 +11,21 @@ CATEGORY_OPT = (
         (u'sequencing', u'Sequencing'),
     )
 
+class Project(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    manager = models.CharField(max_length=50)
+    pi = models.CharField(max_length=50)
+    author = ForeignKey(User)
+
+    collaborative = models.BooleanField(default=False)
+
+    wbs = models.CharField(max_length=50, blank=True)
+    external_id = models.CharField(max_length=50, blank=True)
+    description = models.CharField(max_length=1100, blank=True)
+
+    def __unicode__(self):
+        return self.name
+
 class ReportType(models.Model):
     type = models.CharField(max_length=17)
     description = models.CharField(max_length=350, blank=True)

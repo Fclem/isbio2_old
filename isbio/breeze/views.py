@@ -2,6 +2,7 @@
 import os, copy, tempfile, zipfile, shutil, fnmatch
 from datetime import datetime
 from collections import OrderedDict
+from django.db.models import Q
 from django.contrib import auth
 from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
@@ -20,7 +21,7 @@ import shell as rshell
 import auxiliary as aux
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -78,8 +79,20 @@ def base(request):
     return render_to_response('base.html')
 
 @login_required(login_url='/')
-def home(request):
+def home(request, state="statistics"):
     occurrences = dict()
+
+    if state == 'statistics' or state == None:
+        tab = 's_tab'
+        show_tab = 'show_statistics'
+    elif state == 'projects':
+        tab = 'p_tab'
+        show_tab = 'show_projects'
+    elif state == 'groups':
+        tab = "g_tab"
+        show_tab = "show_groups"
+
+    projects = Project.objects.exclude(~Q(author__exact=request.user) & Q(collaborative=False)).order_by("name")
 
     occurrences['jobs_running'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").count()
     occurrences['jobs_scheduled'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").count()
@@ -88,7 +101,13 @@ def home(request):
     occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
     occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
 
-    return render_to_response('home.html', RequestContext(request, {'home_status': 'active', 'dbStat': occurrences }))
+    return render_to_response('home.html', RequestContext(request, {
+        'home_status': 'active',
+        str(tab): 'active',
+        str(show_tab): 'active',
+        'dbStat': occurrences,
+        'projects': projects
+    }))
 
 @login_required(login_url='/')
 def jobs(request, state="scheduled"):
@@ -490,6 +509,13 @@ def delete_report(request, rid, redir):
     return HttpResponseRedirect(redir)
 
 @login_required(login_url='/')
+def delete_project(request, pid):
+    project = Project.objects.get(id=pid)
+    aux.delete_project(project)
+
+    return HttpResponseRedirect('/home/projects')
+
+@login_required(login_url='/')
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
@@ -776,6 +802,12 @@ def show_rcode(request, jid):
         'input': parameters,
     }))
 
+def veiw_project(request, pid):
+    project = Project.objects.get(id=pid)
+    context = { 'project': project }
+
+    return render_to_response('forms/project_info.html', RequestContext(request, context))
+
 @login_required(login_url='/')
 def send_zipfile(request, jid, mod=None):
     job = Jobs.objects.get(id=jid)
@@ -929,6 +961,51 @@ def new_rtype_dialog(request):
         'submit': 'Add'
     }))
 
+@login_required(login_url='/')
+def new_project_dialog(request):
+    """
+        This view provides a dialog to create a new Project in DB.
+    """
+    project_form = breezeForms.NewProjectForm(request.POST or None)
+
+    if project_form.is_valid():
+        aux.save_new_project(project_form, request.user)
+        return HttpResponseRedirect('/home/projects')
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': project_form,
+        'action': '/projects/create',
+        'header': 'Create New Project',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+
+@login_required(login_url='/')
+def edit_project_dialog(request, pid):
+    """
+        This view provides a dialog to create a new Project in DB.
+    """
+    project_data = Project.objects.get(id=pid)
+    form_action = '/projects/edit/' + str(pid)
+    form_title = 'Edit Project: ' + str(project_data.name)
+
+    if request.method == 'POST':
+        project_form = breezeForms.EditProjectForm(request.POST)
+        if project_form.is_valid():
+            aux.edit_project(project_form, project_data)
+            return HttpResponseRedirect('/home/projects')
+    else:
+        project_form = breezeForms.EditProjectForm(
+            initial={'eid': project_data.external_id, 'wbs': project_data.wbs, 'description': project_data.description}
+        )
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': project_form,
+        'action': form_action,
+        'header': form_title,
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
 
 @login_required(login_url='/')
 def update_user_info_dialog(request):
@@ -942,15 +1019,14 @@ def update_user_info_dialog(request):
             user_info.email = personal_form.cleaned_data.get('email', None)
             user_info.save()
             return HttpResponseRedirect('/home/')
-        else:
-            return render_to_response('forms/user_info.html', RequestContext(request, {
-                'form': personal_form,
-                'action': '/update-user-info/'
-            }))
+
     else:
         personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email })
 
-    return render_to_response('forms/user_info.html', RequestContext(request, {
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': personal_form,
-        'action': '/update-user-info/'
+        'action': '/update-user-info/',
+        'header': 'Update Personal Info',
+        'layout': 'horizontal',
+        'submit': 'Save'
     }))

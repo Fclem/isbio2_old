@@ -8,6 +8,78 @@ from django.template.defaultfilters import default
 from decimal import Decimal
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
+class NewProjectForm(forms.Form):
+    project_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={'placeholder': ' Project Name ', })
+    )
+
+    project_manager = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={'placeholder': ' Project Manager ', })
+    )
+
+    principal_investigator = forms.CharField(
+        label=(u'PI'),
+        max_length=50,
+        widget=forms.TextInput(attrs={'placeholder': ' Principal Investigator ', })
+    )
+
+    collaborative = forms.BooleanField(
+        required=False,
+        help_text="Visible by the other users"
+    )
+
+    eid = forms.CharField(
+        label=(u'External ID'),
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': ' optional ', })
+    )
+
+    wbs = forms.CharField(
+        label=(u'WBS'),
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': ' optional ', })
+    )
+
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'optional'}),
+        required=False
+    )
+
+
+    def clean_project_name(self):
+        project_name = self.cleaned_data.get('project_name')
+        try:
+            breeze.models.Project.objects.get(name=project_name)
+        except breeze.models.Project.DoesNotExist:
+            return project_name
+        else:
+            raise forms.ValidationError("That project name already exists.")
+
+class EditProjectForm(forms.Form):
+    eid = forms.CharField(
+        label=(u'External ID'),
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': ' optional ', })
+    )
+
+    wbs = forms.CharField(
+        label=(u'WBS'),
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': ' optional ', })
+    )
+
+    description = forms.CharField(
+        widget=forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'optional'}),
+        required=False
+    )
+
+
 class ReportPropsForm(forms.ModelForm):
     class Meta:
         model = breeze.models.Report
