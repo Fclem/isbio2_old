@@ -147,6 +147,8 @@ class Report(models.Model):
     status = models.CharField(max_length=15, blank=True)
     progress = models.IntegerField()
     sgeid = models.CharField(max_length=15)
+
+    project = models.ForeignKey(Project, null=True, blank=True, default=None)
     shared = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='report_shares')  # share list
 
     def file_name(self, filename):

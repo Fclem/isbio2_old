@@ -4,6 +4,7 @@
     <td> {{ report.type }} </td> <!-- Implement TYPE in colors depending on report type =) -->
     <td> {{ report.name }} </td>
     <td> {{ report.author }} </td>
+    <td> {{ report.project }} </td>
     <td>
       {% if user in report.shared.all or report.author == user %}
         <a class="Glyph" data-toggle="tooltip" title="View the Report" href="/media/{{ report.home }}/report.html" target="_blank">

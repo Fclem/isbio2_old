@@ -564,11 +564,14 @@ def build_report(report_data, request_data, report_property, sections):
 
     shared_users = breeze.models.User.objects.filter(username__in=buddies)
     # create initial instance so that we can use its db id
+
+    print report_data
     dbitem = breeze.models.Report(
                 type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
                 name=str(report_data['instance_name']),
                 author=request_data.user,
                 progress=0,
+                project=breeze.models.Project.objects.get(name=report_property.cleaned_data['project'])
             )
     dbitem.save()
 

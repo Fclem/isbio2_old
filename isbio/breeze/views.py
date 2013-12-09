@@ -239,7 +239,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
     if request.method == 'POST':
         # Validates input info and creates (submits) a report
-        property_form = breezeForms.ReportPropsForm(request.POST)
+        property_form = breezeForms.ReportPropsForm(request.POST, request=request)
         tags_data_list = breezeForms.validate_report_sections(tags, request)
 
         sections_valid = breezeForms.check_validity(tags_data_list)
@@ -249,7 +249,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
-        property_form = breezeForms.ReportPropsForm()
+        property_form = breezeForms.ReportPropsForm(request=request)
         tags_data_list = breezeForms.create_report_sections(tags)
 
     return render_to_response('search.html', RequestContext(request, {

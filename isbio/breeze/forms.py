@@ -3,6 +3,7 @@ from django import forms
 from django.conf import settings
 import xml.etree.ElementTree as xml
 import breeze.models, re
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.template.defaultfilters import default
 from decimal import Decimal
@@ -81,9 +82,17 @@ class EditProjectForm(forms.Form):
 
 
 class ReportPropsForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop("request")
+        super(ReportPropsForm, self).__init__(*args, **kwargs)
+        self.fields["project"] = forms.ModelChoiceField(
+            queryset=breeze.models.Project.objects.exclude(~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
+        )
+
     class Meta:
         model = breeze.models.Report
         fields = ('shared',)
+
 
 class RegistrationForm(forms.ModelForm):
     def __init__(self, *args, **kw):
