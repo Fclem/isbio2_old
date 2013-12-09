@@ -125,7 +125,9 @@ def jobs(request, state="scheduled"):
     active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
     merged_active = aux.merge_job_history(active_jobs, active_reports)
 
-    ready_reports = Report.objects.filter(status="succeed").filter(author__exact=request.user).order_by('-created')
+    # ready_reports = Report.objects.filter(status="succeed").filter(author__exact=request.user).order_by('-created')
+    ready_reports = Report.objects.exclude(status="active").filter(author__exact=request.user).order_by('-created')
+
     merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
     paginator = Paginator(merged_history,15)  # show 15 items per page
