@@ -11,6 +11,15 @@ CATEGORY_OPT = (
         (u'sequencing', u'Sequencing'),
     )
 
+class Post(models.Model):
+    author = ForeignKey(User)
+    title = models.CharField(max_length=150)
+    body = models.CharField(max_length=3500)
+    time = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return self.title
+
 class Project(models.Model):
     name = models.CharField(max_length=50, unique=True)
     manager = models.CharField(max_length=50)

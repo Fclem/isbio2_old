@@ -9,6 +9,15 @@
   .thumbnails .span4:nth-child(3n+1) {
 margin-left:0;
 }
+
+.widget .panel-body { padding: 0px; }
+.widget .list-group { margin-bottom: 0; }
+.widget .panel-title { display:inline }
+.widget ul { list-style-type: none; }
+.widget li.list-group-item {border-radius: 0;border: 0;border-top: 1px solid #ddd; margin-bottom: 15px; }
+.widget li.list-group-item:hover { background-color: rgba(86,61,124,.1); }
+.widget .mic-info { color: #666666;font-size: 11px; }
+.widget .comment-text { font-size: 12px; }
 </style>
 
 {% endblock %}
@@ -60,20 +69,49 @@ margin-left:0;
 
   <div class="span7">
 
+
+
+    <!-- STATISTICS / PROJECTS / GROUPS -->
     <div class="row-fluid">
       <div class="span 12">
         <div class="tabbable">
           <!-- Tabs' Header -->
           <ul class="nav nav-tabs">
+            <li class="{{ f_tab }}"><a href="#feed_tab" data-toggle="tab">Feed</a></li>
             <li class="{{ s_tab }}"><a href="#statistics_tab" data-toggle="tab">Statistics</a></li>
             <li class="{{ p_tab }}"><a href="#projects_tab" data-toggle="tab">Projects</a></li>
             <li class="{{ g_tab }}"><a href="#groups_tab" data-toggle="tab">Groups</a></li>
           </ul>
           <!-- Tabs' Content -->
           <div class="tab-content">
-            <!-- STATISTICS -->
+            <!-- FEED -->
+            <div id="feed_tab" class="tab-pane {{ show_feed }}">
+              <div class="row-fluid">
+                <div class="span 12">
+                  <div class="panel panel-default widget">
+                    <div class="panel-body">
+                      <ul class="list-group">
+                        {% for post in posts %}
+                        <li class="list-group-item">
+                          <i class="icon-comment"></i>&nbsp;
+                          <a href="http://www.jquery2dotnet.com/2013/10/google-style-login-page-desing-usign.html">
+                            {{ post.title }}
+                          </a>
+                          <div class="mic-info">
+                            By: <a href="#">{{ post.author }}</a> {{ post.time }}
+                          </div>
+                          <div class="comment-text">{{ post.body }}</div>
+                        </li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+            <!-- DB STATISTICS -->
             <div id="statistics_tab" class="tab-pane {{ show_statistics }}">
-              <!-- DB STATISTICS -->
               <div class="row-fluid">
                 <div class="span 12">
                   <table class="table table-bordered table-condensed">
@@ -160,7 +198,7 @@ margin-left:0;
     <h3 id="del_title"> </h3>
   </div>
   <div class="modal-body">
-    <p> Are you sure ?! </p>
+    <p> All related jobs and reports will be deleted as well! <br>Do you want to delete this project ?! </p>
   </div>
   <div class="modal-footer">
     <a id="del_item_btn" href="#" class="btn btn-danger" > Delete </a>

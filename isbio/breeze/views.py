@@ -21,7 +21,7 @@ import shell as rshell
 import auxiliary as aux
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -79,10 +79,13 @@ def base(request):
     return render_to_response('base.html')
 
 @login_required(login_url='/')
-def home(request, state="statistics"):
+def home(request, state="feed"):
     occurrences = dict()
 
-    if state == 'statistics' or state == None:
+    if state == 'feed' or state == None:
+        tab = 'f_tab'
+        show_tab = 'show_feed'
+    if state == 'statistics':
         tab = 's_tab'
         show_tab = 'show_statistics'
     elif state == 'projects':
@@ -101,12 +104,14 @@ def home(request, state="statistics"):
     occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
     occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
 
+    posts = Post.objects.all().order_by("-time")
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
         str(tab): 'active',
         str(show_tab): 'active',
         'dbStat': occurrences,
-        'projects': projects
+        'projects': projects,
+        'posts': posts
     }))
 
 @login_required(login_url='/')
