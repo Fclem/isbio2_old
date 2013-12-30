@@ -627,6 +627,7 @@ def build_report(report_data, request_data, report_property, sections):
 
     # render report to file
     script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))' % dochtml
+    script_string += 'system("chmod -R 770 .")'
 
     print 'Script is READY!'
     # save r-file
