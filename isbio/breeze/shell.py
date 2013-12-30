@@ -276,7 +276,7 @@ def run_report(report):
 
     report.save()
 
-    aux.open_folder_permissions(loc, 0770)
+    aux.open_folder_permissions(loc, 0777)
 
     os.chdir(default_dir)
     return True
