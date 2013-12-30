@@ -276,7 +276,7 @@ def run_report(report):
 
     report.save()
 
-    aux.open_folder_permissions(loc, 0777)
+    # aux.open_folder_permissions(loc, 0777)
 
     os.chdir(default_dir)
     return True
@@ -626,7 +626,7 @@ def build_report(report_data, request_data, report_property, sections):
             pass
 
     # render report to file
-    script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))' % dochtml
+    script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))\n' % dochtml
     script_string += 'system("chmod -R 770 .")'
 
     print 'Script is READY!'
@@ -648,7 +648,7 @@ def build_report(report_data, request_data, report_property, sections):
 
     # open report's folder for others
     st = os.stat(loc)
-    os.chmod(loc, st.st_mode | stat.S_IRWXO)
+    os.chmod(loc, st.st_mode | stat.S_IRWXG)
 
     # submit r-code
     p = Process(target=run_report, args=(dbitem,))
