@@ -66,6 +66,8 @@ def open_folder_permissions(path, permit=0770):
             full_file_path = os.path.join(dirname, filename)
             os.chmod(full_file_path, permit)
 
+    os.chmod(path, permit)
+
     return True
 
 def normalize_query(query_string,
