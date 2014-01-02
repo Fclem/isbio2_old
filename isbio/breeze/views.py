@@ -171,6 +171,7 @@ def scripts(request, layout="list"):
 
     # all_scripts = Rscripts.objects.all()
     all_scripts = Rscripts.objects.filter(draft="0").filter(istag="0")
+    report_types = ReportType.objects.all()
 
     cat_list = dict()
     categories = list()
@@ -187,6 +188,7 @@ def scripts(request, layout="list"):
         'script_list': all_scripts,
         'scripts_status': 'active',
         'cat_list': sorted(cat_list.iteritems()),
+        'reports': report_types,
         'thumbnails': nails
     }))
 

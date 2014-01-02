@@ -2,7 +2,7 @@
 
 {% load bootstrap_toolkit %}
 
-{% block title %}Scripts{% endblock %}
+{% block title %}Script Book{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -30,146 +30,197 @@
     <div class="span2 offset1">
     <!-- Tabs' Header -->
       <div data-spy="affix" >
-        <ul class="nav nav-pills nav-stacked" id="scriptTabs" style="margin-top: 55px;">
+        <ul class="nav nav-list" id="scriptTabs" style="margin-top: 55px;">
           <li class="nav-header"><strong>CATEGORIES:</strong></li>
           <li class="active"><a href="#all" data-toggle="tab"><strong>Show All</strong></a></li>
-          <li class="divider"></li>
           {% for cat, key in cat_list %}
             <li ><a href="#{{ cat }}" data-toggle="tab"><strong>{{ cat }}</strong></a></li>
           {% endfor %}
+          <li class="divider"></li>
+          <li ><a href="#reports" data-toggle="tab"><strong>Reports</strong></a></li>
         </ul>
       </div>
     </div>
 
     <div class="span8">
+      <div class="row-fluid">
+        <div class="span12">
+          <p><br>&nbsp;<br></p>
+          <div class="span8 offset2">
+            <form class="navbar-search pull-right" action="#" method="post">
+            {% csrf_token %}
+              <input name="query" type="text" class="search-query" placeholder="Quick Search... " value="{{ search_query }}">
+            </form>
+          </div>
+          <p><br>&nbsp;<br></p>
+        </div>
+      </div>
+      <!--
       <div class="row">
         <ul class="breadcrumb pull-right" style="background-color: transparent;">
           <li> <a href="/scripts/">List</a> <span class="divider">/</span> </li>
           <li> <a href="/scripts/nails"> Nails</a></li>
         </ul>
       </div>
+      -->
 
-      <!-- Tabs' Content -->
-      <!-- SHOW ALL list goes separately in markup -->
-      <div class="tab-content">
-        <div class="tab-pane active" id="all">
-        {% if thumbnails %}
-        <div>
-          <ul class="thumbnails">
-          {% for scr in script_list %}
-            <li class="span4">
-              <div class="thumbnail">
-                <img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="95" height="95" class="img-rounded">
-                <div class="caption">
-                  <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
-                  <p align="center"><i>{{ scr.inln }};</i></p>
-                  <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
-                  <p align="right">
-                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a>
-                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}/">Apply</a></p>
-                </div>
+      <div class="row-fluid">
+        <div class="span12">
+          <!-- Tabs' Content -->
+          <!-- SHOW ALL list goes separately in markup -->
+          <div class="tab-content">
+            <div class="tab-pane active" id="all">
+            {% if thumbnails %}
+              <div>
+                <ul class="thumbnails">
+                {% for scr in script_list %}
+                  <li class="span4">
+                    <div class="thumbnail">
+                      <img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="95" height="95" class="img-rounded">
+                      <div class="caption">
+                        <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
+                        <p align="center"><i>{{ scr.inln }};</i></p>
+                        <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
+                        <p align="right">
+                          <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a>
+                          <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}/">Apply</a></p>
+                      </div>
+                    </div>
+                  </li>
+                {% empty %}
+                  <p>No resources available!</p>
+                {% endfor %}
+                </ul>
               </div>
-            </li>
-          {% empty %}
-            <p>No resources available!</p>
-          {% endfor %}
-          </ul>
-        </div>
-        {% else %}
-          <table class="table table-striped">
-            <head>
-              <tr>
-                <th>Logo</th> <th>Name</th> <th>Inline Description</th>
-                <th>
-                  {% if perms.breeze.add_rscripts %}
-                  <a href="/resources/scripts/" class="btn btn-mini btn-primary">
-                    <i class="icon-plus"></i> Add Script
-                  </a>
-                  {% endif %}
-                </th><th></th>
-              </tr>
-            </head>
-            <tbody>
-              {% for scr in script_list %}
-              <tr>
-                <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
-                <td style="vertical-align: middle"><strong>{{ scr.name }} <br /> <span class="subscript"> (author: {{ scr.author }}) </span> </strong></td>
-                <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
-                <td style="vertical-align: middle">
-                  <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
-                    <i class="icon-info-sign icon-white"></i>
-                  </a>
-                </td>
-                <td style="vertical-align: middle">
-                  <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
-                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong>
-                  </a>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        {% endif %}
-        </div>
+            {% else %}
+              <table class="table table-striped">
+                <head>
+                  <tr>
+                    <th>Logo</th> <th>Name</th> <th>Inline Description</th>
+                    <th>
+                      {% if perms.breeze.add_rscripts %}
+                      <a href="/resources/scripts/" class="btn btn-mini btn-primary">
+                        <i class="icon-plus"></i> Add Script
+                      </a>
+                      {% endif %}
+                    </th><th></th>
+                  </tr>
+                </head>
+                <tbody>
+                  {% for scr in script_list %}
+                  <tr>
+                    <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
+                    <td style="vertical-align: middle"><strong>{{ scr.name }} <br /> <span class="subscript"> (author: {{ scr.author }}) </span> </strong></td>
+                    <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
+                    <td style="vertical-align: middle">
+                      <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
+                        <i class="icon-info-sign icon-white"></i>
+                      </a>
+                    </td>
+                    <td style="vertical-align: middle">
+                      <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
+                        <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong>
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% endif %}
+            </div>
 
 
-        <!-- By categories -->
-        {% for cat, scr_list in cat_list %}
-        <div class="tab-pane" id="{{ cat }}">
-        {% if thumbnails %}
-        <div>
-          <ul class="thumbnails">
-          {% for scr in scr_list %}
-            <li class="span4">
-              <div class="thumbnail well">
-                <img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="95" height="95" class="img-rounded">
-                <div class="caption">
-                  <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
-                  <p align="center"><i>{{ scr.inln }};</i></p>
-                  <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
-                  <p align="right">
-                    <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a>
-                    <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></p>
-                </div>
+            <!-- By categories -->
+            {% for cat, scr_list in cat_list %}
+            <div class="tab-pane" id="{{ cat }}">
+            {% if thumbnails %}
+              <div>
+                <ul class="thumbnails">
+                {% for scr in scr_list %}
+                  <li class="span4">
+                    <div class="thumbnail well">
+                      <img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="95" height="95" class="img-rounded">
+                      <div class="caption">
+                        <h4 class="text-info" align="center"><strong>{{ scr.name }}</strong></h4>
+                        <p align="center"><i>{{ scr.inln }};</i></p>
+                        <p style="height: 81px; overflow: hidden" align="justify">{{ scr.details }}</p>
+                        <p align="right">
+                          <a href="#" data-toggle="modal" class="btn btn-inverse describe" data-target="#Describe" data-param={{ scr.id }}>View More >></a>
+                          <a a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">Apply</a></p>
+                      </div>
+                    </div>
+                  </li>
+                {% empty %}
+                  <p>No resources available!</p>
+                {% endfor %}
+                </ul>
               </div>
-            </li>
-          {% empty %}
-            <p>No resources available!</p>
-          {% endfor %}
-          </ul>
+            {% else %}
+              <table class="table table-striped">
+                <head>
+                  <tr>
+                    <th>Logo</th> <th>Name</th> <th>Inline Description</th>
+                    <th></th><th></th>
+                  </tr>
+                </head>
+                <tbody>
+                  {% for scr in scr_list %}
+                  <tr>
+                    <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
+                    <td style="vertical-align: middle"><strong>{{ scr.name }} <br /> <span class="subscript"> (author: {{ scr.author }}) </span> </strong></td>
+                    <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
+                    <td style="vertical-align: middle">
+                      <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
+                        <i class="icon-info-sign icon-white"></i>
+                      </a>
+                    </td>
+                    <td style="vertical-align: middle">
+                      <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
+                        <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong>
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% endif %}
+            </div>
+            {% endfor %}
+
+            <!-- Reports -->
+            <div class="tab-pane" id="reports">
+              <table class="table table-striped">
+                <tbody>
+                  {% for report in reports %}
+                  <tr>
+                    <form id="report_form_{{ report.id }}" class="form-inline pull-left" action="/search/entity" method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="type" value="{{ report.type }}"/>
+                      <td style="vertical-align: middle"><strong>{{ report.type }} :: </strong></td>
+                      <td style="vertical-align: middle;">
+                          <input id="report_name_{{ report.id }}" name="query" type="text" placeholder="">
+                      </td>
+                      <td style="vertical-align: middle">
+                        <a href="#" data-toggle="modal" class="btn btn-primary" data-target="#RepTypeInfo" onclick="$('#info_title').text('{{ report.type }}'); $('#info_body').text('{{ report.description|default:"None" }}');">
+                          <i class="icon-info-sign icon-white"></i>
+                        </a>
+                      </td>
+                      <td style="vertical-align: middle">
+                        <button type="submit" class="btn btn-inverse">
+                          <strong>Create&nbsp;Report&nbsp;&nbsp;<i class="icon-th"></i></i></strong>
+                        </button>
+                      </td>
+                    </form>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
         </div>
-        {% else %}
-          <table class="table table-striped">
-            <head>
-              <tr>
-                <th>Logo</th> <th>Name</th> <th>Inline Description</th>
-                <th></th><th></th>
-              </tr>
-            </head>
-            <tbody>
-              {% for scr in scr_list %}
-              <tr>
-                <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
-                <td style="vertical-align: middle"><strong>{{ scr.name }} <br /> <span class="subscript"> (author: {{ scr.author }}) </span> </strong></td>
-                <td style="vertical-align: middle"><i>{{ scr.inln|truncatewords:9|default:"No Inline" }}</i></td>
-                <td style="vertical-align: middle">
-                  <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
-                    <i class="icon-info-sign icon-white"></i>
-                  </a>
-                </td>
-                <td style="vertical-align: middle">
-                  <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param="/scripts/apply-script/{{ scr.id }}">
-                    <strong>Create&nbsp;Job&nbsp;&nbsp;<i class="icon-tasks icon-white"></i></strong>
-                  </a>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        {% endif %}
-        </div>
-        {% endfor %}
-      </div>
+      </div> <!-- end of tab content row-->
+
     </div>
 
   </div>
@@ -178,6 +229,19 @@
 
 <div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
 <div id="Describe" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+
+<div id="RepTypeInfo" class="modal hide fade" role="dialog"  aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="info_title"> </h3>
+  </div>
+  <div class="modal-body">
+    <p id="info_body"></p>
+  </div>
+  <div class="modal-footer">
+    <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+  </div>
+</div>
 
 <script>
     $(document).ready(function() {
