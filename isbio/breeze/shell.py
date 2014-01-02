@@ -542,6 +542,19 @@ def get_report_overview(report_type, instance_name, instance_id):
 
     return summary_srting
 
+def dump_project_parameters(project):
+    dump = '# <----------  Project Details  ----------> \n'
+    dump += 'project.name <- \"%s\"\n' % project.name
+    dump += 'project.manager <- \"%s\"\n' % project.manager
+    dump += 'project.pi <- \"%s\"\n' % project.pi
+    dump += 'project.author <- \"%s\"\n' % project.author
+    dump += 'project.collaborative <- \"%s\"\n' % project.collaborative
+    dump += 'project.wbs <- \"%s\"\n' % project.wbs
+    dump += 'project.external.id <- \"%s\"\n' % project.external_id
+    dump += '# <----------  end of Project Details  ----------> \n\n'
+
+    return copy.copy(dump)
+
 def build_report(report_data, request_data, report_property, sections):
     """ Assembles report home folder, configures DRMAA and R related files
         and spawns a new process for reports DRMAA job on cluster.
@@ -594,6 +607,8 @@ def build_report(report_data, request_data, report_property, sections):
     script_string += 'failed_fun_print <- function(section_name){\n'
     script_string += '  section_name <- addTo( section_name, newParagraph( "This section FAILED! Contact the development team... " ) )\n'
     script_string += '  return (section_name)\n}\n\n'
+
+    script_string += dump_project_parameters(dbitem.project)
 
     script_string += 'REPORT <- newCustomReport(report_name)\n'
 
