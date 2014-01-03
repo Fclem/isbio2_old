@@ -13,6 +13,10 @@
 <style>
 #main_table td {text-align:center; vertical-align:middle;}
 #main_table th {text-align:center; vertical-align:middle;}
+.popover .left {
+    max-width: 1050px;
+    width: auto;
+}
 </style>
 
 {% endblock %}
@@ -137,7 +141,7 @@ $(document).ready(function() {
     placement: "left",
     html: true,
     content: '\
-    <form class="navbar-search" action="#" method="post">\
+    <form class="form-inline" action="/reports/search" method="post">\
       <div class="control-group">\
       <p>Coming soon..</p>\
       </div>\

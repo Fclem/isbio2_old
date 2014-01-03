@@ -1039,3 +1039,23 @@ def update_user_info_dialog(request):
         'layout': 'horizontal',
         'submit': 'Save'
     }))
+
+@login_required(login_url='/')
+def report_search(request):
+    query_string = ''
+    found_entries = None
+    report_type_lst = ReportType.objects.all()
+
+    if ('q' in request.GET) and request.GET['q'].strip():
+        query_string = request.GET['q']
+
+        entry_query = aux.get_query(query_string, ['title', 'body',])
+
+        found_entries = Report.objects.filter(entry_query).order_by('created')
+
+    return render_to_response('reports.html', RequestContext(request, {
+        'query_string': query_string,
+        'reports': found_entries,
+        'rtypes': report_type_lst,
+        'pagination_number': 1
+    }))

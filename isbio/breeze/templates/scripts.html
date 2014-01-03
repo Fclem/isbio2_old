@@ -47,10 +47,12 @@
         <div class="span12">
           <p><br>&nbsp;<br></p>
           <div class="span8 offset2">
+            <!--
             <form class="navbar-search pull-right" action="#" method="post">
             {% csrf_token %}
               <input name="query" type="text" class="search-query" placeholder="Quick Search... " value="{{ search_query }}">
             </form>
+            -->
           </div>
           <p><br>&nbsp;<br></p>
         </div>
@@ -259,7 +261,7 @@
 <script type="text/javascript">
 function submitItemModalFormBind(url){
          $('#form_modal_apply').submit(function(ev){
-             var formData = new FormData($('form')[0]);
+             var formData = new FormData($('.script-form')[0]);
              $.ajax({
                 type: "POST",
                 url: url,
