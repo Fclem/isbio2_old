@@ -196,7 +196,7 @@ def scripts(request, layout="list"):
 def reports(request):
     all_reports = Report.objects.filter(status="succeed").order_by('-created')
     report_type_lst = ReportType.objects.all()
-    paginator = Paginator(all_reports,3)  # show 3 items per page
+    paginator = Paginator(all_reports,30)  # show 3 items per page
 
     # If AJAX - check page from the request
     # Otherwise ruturn the first page
@@ -1048,7 +1048,7 @@ def report_search(request):
 
     if 'reset' in request.POST:
         all_reports = Report.objects.filter(status="succeed").order_by('-created')
-        paginator = Paginator(all_reports,3)
+        paginator = Paginator(all_reports,30)
         found_entries = paginator.page(1)
 
     if ('filt_name' in request.POST) and request.POST['filt_name'].strip():
