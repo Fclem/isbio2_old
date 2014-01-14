@@ -196,7 +196,7 @@ def scripts(request, layout="list"):
 def reports(request):
     all_reports = Report.objects.filter(status="succeed").order_by('-created')
     report_type_lst = ReportType.objects.all()
-    paginator = Paginator(all_reports,30)  # show 3 items per page
+    paginator = Paginator(all_reports,3)  # show 3 items per page
 
     # If AJAX - check page from the request
     # Otherwise ruturn the first page
@@ -1044,18 +1044,19 @@ def update_user_info_dialog(request):
 def report_search(request):
     query_string = ''
     found_entries = None
-    report_type_lst = ReportType.objects.all()
+    # report_type_lst = ReportType.objects.all()
 
-    if ('q' in request.GET) and request.GET['q'].strip():
-        query_string = request.GET['q']
+    if 'reset' in request.POST:
+        all_reports = Report.objects.filter(status="succeed").order_by('-created')
+        paginator = Paginator(all_reports,3)
+        found_entries = paginator.page(1)
 
-        entry_query = aux.get_query(query_string, ['title', 'body',])
+    if ('filt_name' in request.POST) and request.POST['filt_name'].strip():
+        query_string = request.POST['filt_name']
 
-        found_entries = Report.objects.filter(entry_query).order_by('created')
+        entry_query = aux.get_query(query_string, ['name'])
+        found_entries = Report.objects.filter(entry_query).filter(status="succeed").order_by('-created')
 
-    return render_to_response('reports.html', RequestContext(request, {
-        'query_string': query_string,
-        'reports': found_entries,
-        'rtypes': report_type_lst,
-        'pagination_number': 1
+    return render_to_response('reports-paginator.html', RequestContext(request, {
+        'reports': found_entries
     }))

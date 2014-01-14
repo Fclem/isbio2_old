@@ -30,7 +30,7 @@
     <div class="span8 offset2">
       <form class="navbar-search pull-right" action="#" method="post">
         {% csrf_token %}
-        <input name="query" type="text" class="search-query" placeholder="Quick Search... " value="{{ search_query }}">
+        <input name="query" type="text" class="search-query" placeholder="Quick Search... " value="{{ search_query }}" disabled>
       </form>
     </div>
   </div>
@@ -42,9 +42,31 @@
       <a href="#" id="new_popover" class="btn btn-primary input-medium pull-left" rel="popover">
         <strong><i class="icon-plus icon-white"></i> &nbsp;New Report </strong>
       </a>
-      <a href="#" id="filter_popover" class="btn btn-primary input-medium pull-right" rel="popover">
+      <a href="#" id="filter_popover" class="btn btn-primary input-medium pull-right" data-toggle="collapse" data-target="#demo">
         <strong><i class="icon-filter icon-white"></i> &nbsp;Filters </strong>
       </a>
+    </div>
+  </div>
+
+  <!-- FILTERS Collapse -->
+  <div class="row-fluid">
+    <div class="span8 offset4">
+      <p><br>&nbsp;<br></p>
+      <div id="demo" class="collapse">
+        <form id="filter_form" class="form-inline" action="/reports/search" method="post">
+          {% csrf_token %}
+          <select id="filt_type" name="filt_type" class="input-medium" disabled>
+            <option id="" value="All Types" >All Types</option>
+            {% for item in rtypes %}
+              <option id="{{ item.id }}" value="{{ item.type }}" >{{ item.type }}</option>
+            {% endfor %}
+          </select>
+          <input id="filt_name" name="filt_name" type="text" class="input" placeholder="Report Name">
+
+          <button type="submit" class="btn">Search</button>
+          <button id="filt_clean" class="btn" type="reset">Clean</button>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -135,7 +157,7 @@ $(document).ready(function() {
     '
   });
 
-  $('#filter_popover').popover({
+  /*$('#filter_popover').popover({
     title: "Reports Filtering",
     trigger: "click",
     placement: "left",
@@ -148,7 +170,7 @@ $(document).ready(function() {
     </form>\
     </br>\
     '
-  });
+  });*/
 
   $('#new_popover').click(function(){
     $('#type_selector').change(function(){
@@ -159,6 +181,39 @@ $(document).ready(function() {
         $('#popover_search').attr('placeholder', 'Report Name ');
       }
     });
+  });
+
+  // FILTERING: Submit filter form
+  $('#filter_form').submit(function(ev){
+    var formData = $(this).serialize();
+    $.ajax({
+      type: 'POST',
+      url: '/reports/search',
+      data: formData,
+      success: function(response, textStatus, jqXHR){
+        var options = {
+          currentPage: 1,
+          totalPages: 1
+        }
+
+        $('#paginator_control').bootstrapPaginator(options);
+
+        $("#pagination-content").html(response);
+      },
+      error: function (request, status, error){ console.log(error); },
+    });
+
+    return false;
+  });
+
+  // FILTERING: Clean filter form
+  $('#filt_clean').click(function(){
+    //$('#filter_form').reset();
+    $("#pagination-content").load('/reports/search', {
+      reset: 1,
+      csrfmiddlewaretoken: '{{ csrf_token }}'
+    });
+    $('#paginator_control').bootstrapPaginator(pagOptions);
   });
 
 });
