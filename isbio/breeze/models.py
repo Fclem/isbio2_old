@@ -37,8 +37,9 @@ class Project(models.Model):
 
 class ReportType(models.Model):
     type = models.CharField(max_length=17)
-    description = models.CharField(max_length=350, blank=True)
+    description = models.CharField(max_length=5500, blank=True)
     search = models.BooleanField(default=True)
+    access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='pipeline_access')  # share list
     # tags = models.ManyToManyField(Rscripts, blank=True)
 
     def __unicode__(self):

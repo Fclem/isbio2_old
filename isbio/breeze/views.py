@@ -171,7 +171,7 @@ def scripts(request, layout="list"):
 
     # all_scripts = Rscripts.objects.all()
     all_scripts = Rscripts.objects.filter(draft="0").filter(istag="0")
-    report_types = ReportType.objects.all()
+    report_types = ReportType.objects.filter(access=request.user)
 
     cat_list = dict()
     categories = list()
