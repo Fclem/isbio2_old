@@ -55,7 +55,7 @@
       <div id="demo" class="collapse in">
         <form id="filter_form" class="form-inline" action="/reports/search" method="post">
           {% csrf_token %}
-          <select id="filt_type" name="filt_type" class="input-medium" disabled>
+          <select id="filt_type" name="filt_type" class="input-medium" >
             <option id="" value="All Types" >All Types</option>
             {% for item in rtypes %}
               <option id="{{ item.id }}" value="{{ item.type }}" >{{ item.type }}</option>

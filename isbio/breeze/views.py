@@ -195,7 +195,7 @@ def scripts(request, layout="list"):
 @login_required(login_url='/')
 def reports(request):
     all_reports = Report.objects.filter(status="succeed").order_by('-created')
-    report_type_lst = ReportType.objects.all()
+    report_type_lst = ReportType.objects.filter(access=request.user)
     paginator = Paginator(all_reports,30)  # show 3 items per page
 
     # If AJAX - check page from the request
