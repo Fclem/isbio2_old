@@ -35,6 +35,14 @@ class Project(models.Model):
     def __unicode__(self):
         return self.name
 
+class Group(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    author = ForeignKey(User)
+    team = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='group_content')
+
+    def __unicode__(self):
+        return self.name
+
 class ReportType(models.Model):
     type = models.CharField(max_length=17)
     description = models.CharField(max_length=5500, blank=True)

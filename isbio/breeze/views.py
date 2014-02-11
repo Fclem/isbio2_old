@@ -21,7 +21,7 @@ import shell as rshell
 import auxiliary as aux
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -96,6 +96,7 @@ def home(request, state="feed"):
         show_tab = "show_groups"
 
     projects = Project.objects.exclude(~Q(author__exact=request.user) & Q(collaborative=False)).order_by("name")
+    groups = Group.objects.filter(author__exact=request.user).order_by("name")
 
     occurrences['jobs_running'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").count()
     occurrences['jobs_scheduled'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").count()
@@ -111,6 +112,7 @@ def home(request, state="feed"):
         str(show_tab): 'active',
         'dbStat': occurrences,
         'projects': projects,
+        'groups': groups,
         'posts': posts
     }))
 
@@ -525,6 +527,13 @@ def delete_project(request, pid):
     return HttpResponseRedirect('/home/projects')
 
 @login_required(login_url='/')
+def delete_group(request, gid):
+    group = Group.objects.get(id=gid)
+    aux.delete_group(group)
+
+    return HttpResponseRedirect('/home/groups')
+
+@login_required(login_url='/')
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
     return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
@@ -817,6 +826,12 @@ def veiw_project(request, pid):
 
     return render_to_response('forms/project_info.html', RequestContext(request, context))
 
+def view_group(request, gid):
+    group = Group.objects.get(id=gid)
+    context = { 'group': group }
+
+    return render_to_response('forms/group_info.html', RequestContext(request, context))
+
 @login_required(login_url='/')
 def send_zipfile(request, jid, mod=None):
     job = Jobs.objects.get(id=jid)
@@ -990,6 +1005,25 @@ def new_project_dialog(request):
     }))
 
 @login_required(login_url='/')
+def new_group_dialog(request):
+    """
+        This view provides a dialog to create a new Group in DB.
+    """
+    group_form = breezeForms.GroupForm(request.POST or None)
+
+    if group_form.is_valid():
+        aux.save_new_group(group_form, request.user, request.POST)
+        return HttpResponseRedirect('/home/groups')
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': group_form,
+        'action': '/groups/create',
+        'header': 'Create New Group',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+
+@login_required(login_url='/')
 def edit_project_dialog(request, pid):
     """
         This view provides a dialog to create a new Project in DB.
@@ -1010,6 +1044,35 @@ def edit_project_dialog(request, pid):
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': project_form,
+        'action': form_action,
+        'header': form_title,
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+
+@login_required(login_url='/')
+def edit_group_dialog(request, gid):
+    """
+        This view provides a dialog to edit an existing Group in DB.
+    """
+    group_data = Group.objects.get(id=gid)
+    form_action = '/groups/edit/' + str(gid)
+    form_title = 'Edit Group: ' + str(group_data.name)
+
+    if request.method == 'POST':
+        group_form = breezeForms.EditGroupForm(request.POST)
+        if group_form.is_valid():
+            aux.edit_group(group_form, group_data, request.POST)
+            return HttpResponseRedirect('/home/groups')
+    else:
+        team = {}
+        for arr in group_data.team.all():
+            team[arr.id] = True
+
+        group_form = breezeForms.EditGroupForm(initial={'group_team': team})
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form':   group_form,
         'action': form_action,
         'header': form_title,
         'layout': 'horizontal',

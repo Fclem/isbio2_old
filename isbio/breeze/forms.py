@@ -80,8 +80,71 @@ class EditProjectForm(forms.Form):
         required=False
     )
 
+class GroupForm(forms.Form):
+    group_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={'placeholder': ' Group Name ', })
+    )
 
-class ReportPropsForm(forms.ModelForm):
+    group_team = forms.ModelMultipleChoiceField(
+        required=False,
+        queryset=breeze.models.User.objects.all(),
+        widget=forms.SelectMultiple(
+            attrs={'class': 'multiselect', }
+        )
+    )
+
+    def clean_group_name(self):
+        group_name = self.cleaned_data.get('group_name')
+        try:
+            breeze.models.Group.objects.get(name=group_name)
+        except breeze.models.Group.DoesNotExist:
+            return group_name
+        else:
+            raise forms.ValidationError("Group names should be unique")
+
+class EditGroupForm(forms.Form):
+    group_team = forms.ModelMultipleChoiceField(
+        required=False,
+        queryset=breeze.models.User.objects.all(),
+        widget=forms.SelectMultiple(
+            attrs={'class': 'multiselect', }
+        )
+    )
+
+class ReportPropsForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop("request")
+        super(ReportPropsForm, self).__init__(*args, **kwargs)
+
+        group_list_of_tuples = list()
+        users_list_of_tuples = list()
+
+        for ur in breeze.models.User.objects.all():
+            users_list_of_tuples.append( tuple((ur.id, ur.username)) )
+
+        for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
+            group_list_of_tuples.append( tuple((gr.id, gr.name)) )
+
+        share_options = list()
+        share_options.append( tuple(( 'Groups', tuple(group_list_of_tuples) )) )
+        share_options.append( tuple(( 'Individual Users', tuple(users_list_of_tuples) )) )
+
+        self.fields["project"] = forms.ModelChoiceField(
+            queryset=breeze.models.Project.objects.exclude(~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
+        )
+
+        self.fields["Share"] = forms.MultipleChoiceField(
+            required=False,
+            choices=share_options,
+            #queryset=breeze.models.User.objects.all(),
+            widget=forms.SelectMultiple(
+                attrs={'class': 'multiselect', }
+            )
+        )
+
+
+class ReportPropsFormOld(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")
         super(ReportPropsForm, self).__init__(*args, **kwargs)

@@ -390,7 +390,6 @@ def build_header(data):
     return header
 
 def add_file_to_report(directory, f):
-    print "Directory exist:  ", os.path.exists(directory)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -573,25 +572,27 @@ def build_report(report_data, request_data, report_property, sections):
     report_name = report_data['report_type'] + ' Report' + ' :: ' + report_data['instance_name'] + '  <br>  ' + str(rt.description)
 
     # This trick is to extract users's names from the form
-    buddies = list()
-    for e in list(report_property.cleaned_data['shared']):
-        buddies.append( str(e) )
+    # buddies = list()
+    # for e in list(report_property.cleaned_data['share']):
+    #     buddies.append( str(e) )
 
-    shared_users = breeze.models.User.objects.filter(username__in=buddies)
+    # shared_users = breeze.models.User.objects.filter(username__in=buddies)
+
+    shared_users = aux.extract_users(request_data.POST.get('Groups'), request_data.POST.get('Individuals'))
+
     # create initial instance so that we can use its db id
-
-    print report_data
     dbitem = breeze.models.Report(
                 type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
                 name=str(report_data['instance_name']),
                 author=request_data.user,
                 progress=0,
-                project=breeze.models.Project.objects.get(name=report_property.cleaned_data['project'])
+                project=breeze.models.Project.objects.get(id=request_data.POST.get('project'))
+                # project=breeze.models.Project.objects.get(name=report_property.cleaned_data['Project'])
             )
     dbitem.save()
 
-
-    dbitem.shared = shared_users
+    if shared_users:
+        dbitem.shared = shared_users
 
     # define location: that is report's folder name
     path = slugify(str(dbitem.id) + '_' + dbitem.name + '_' + dbitem.author.username)
@@ -618,7 +619,6 @@ def build_report(report_data, request_data, report_property, sections):
         secID = 'Section_dbID_' + str(tag.id)
         if secID in request_data.POST and request_data.POST[secID] == '1':
             tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
-            print tag
             script_string += '##### TAG: %s #####\n' % tag.name
 
             # source main code segment
@@ -646,7 +646,6 @@ def build_report(report_data, request_data, report_property, sections):
     script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))\n' % dochtml
     script_string += 'system("chmod -R 770 .")'
 
-    print 'Script is READY!'
     # save r-file
     dbitem.rexec.save('script.r', base.ContentFile(script_string))
     dbitem.save()

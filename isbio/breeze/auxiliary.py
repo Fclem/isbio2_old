@@ -18,7 +18,31 @@ def save_new_project(form, author):
                 wbs=str(form.cleaned_data.get('wbs', None)),
                 external_id=str(form.cleaned_data.get('eid', None)),
                 description=str(form.cleaned_data.get('description', None))
-        )
+            )
+
+    dbitem.save()
+
+    return True
+
+def save_new_group(form, author, post):
+    """ Saves New Group data from a valid form to DB model.
+
+    Arguments:
+    form        -- instance of GroupForm
+    author      -- user name
+    """
+
+    dbitem = breeze.models.Group(
+                name=str(form.cleaned_data.get('group_name', None)),
+                author=author
+            )
+
+    # Important:
+    # Before using ManyToMany we should first save the model!!!
+    dbitem.save()
+
+    for chel in post.getlist('group_team'):
+        dbitem.team.add( breeze.models.User.objects.get(id=chel) )
 
     dbitem.save()
 
@@ -28,8 +52,8 @@ def edit_project(form, project):
     """ Edit Project data.
 
     Arguments:
-    form        -- instance of NewProjectForm
-    project     -- db instance of Project
+    form        -- instance of EditProjectForm
+    project     -- db instance of existing Project
     """
     project.wbs = str( form.cleaned_data.get('wbs', None) )
     project.external_id = str( form.cleaned_data.get('eid', None) )
@@ -38,6 +62,25 @@ def edit_project(form, project):
 
     return True
 
+def edit_group(form, group, post):
+    """ Edit Group data.
+
+    Arguments:
+    form        -- instance of EditGroupForm
+    group       -- db instance of existing Group
+    """
+    # clean up first
+    group.team.clear()
+    group.save()
+
+    for chel in post.getlist('group_team'):
+        group.team.add( breeze.models.User.objects.get(id=chel) )
+
+    group.save()
+
+    return True
+
+
 def delete_project(project):
     """ Remove a project from a DB model.
 
@@ -45,6 +88,16 @@ def delete_project(project):
     project     -- db instance of Project
     """
     project.delete()
+
+    return True
+
+def delete_group(group):
+    """ Remove a group from a DB model.
+
+    Arguments:
+    group     -- db instance of Group
+    """
+    group.delete()
 
     return True
 
@@ -101,6 +154,28 @@ def get_query(query_string, search_fields):
         else:
             query = query & or_query
     return query
+
+def extract_users(groups, users):
+    ''' Produce a unique list of users from 2 lists.
+        Merge users from each group and set of individual users
+        and extracts a union of those people.
+    '''
+    people = list()
+
+    # Process Groups
+    if groups:
+        for group_id in map(int, groups.split(',')):
+            dbitem = breeze.models.Group.objects.get(id=group_id)
+            ref = dbitem.team.all()
+            people = list(set(people) | set(ref))
+
+    # Process Individual Users
+    if users:
+        users_ids = map(int, users.split(','))
+        ref = breeze.models.User.objects.filter(id__in=users_ids)
+        people = list(set(people) | set(ref))
+
+    return people
 
 def merge_job_history(jobs, reports):
     ''' Merge reports and jobs in a unified object (list)

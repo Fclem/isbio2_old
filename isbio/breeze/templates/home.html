@@ -5,20 +5,27 @@
 {% block title %}Home{% endblock %}
 
 {% block extra_head %}
-<style>
-  .thumbnails .span4:nth-child(3n+1) {
-margin-left:0;
-}
 
-.widget .panel-body { padding: 0px; }
-.widget .list-group { margin-bottom: 0; }
-.widget .panel-title { display:inline }
-.widget ul { list-style-type: none; }
-.widget li.list-group-item {border-radius: 0;border: 0;border-top: 1px solid #ddd; margin-bottom: 15px; }
-.widget li.list-group-item:hover { background-color: rgba(86,61,124,.1); }
-.widget .mic-info { color: #666666;font-size: 11px; }
-.widget .comment-text { font-size: 12px; }
-</style>
+  <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
+  <link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
+
+  <style>
+    .thumbnails .span4:nth-child(3n+1) {
+  margin-left:0;
+  }
+
+  .widget .panel-body { padding: 0px; }
+  .widget .list-group { margin-bottom: 0; }
+  .widget .panel-title { display:inline }
+  .widget ul { list-style-type: none; }
+  .widget li.list-group-item {border-radius: 0;border: 0;border-top: 1px solid #ddd; margin-bottom: 15px; }
+  .widget li.list-group-item:hover { background-color: rgba(86,61,124,.1); }
+  .widget .mic-info { color: #666666;font-size: 11px; }
+  .widget .comment-text { font-size: 12px; }
+
+  .modal { overflow: visible; }
+  .modal-body { overflow-y: visible; }
+  </style>
 
 {% endblock %}
 
@@ -47,7 +54,7 @@ margin-left:0;
         <a id="new_project_btn" href="#" class="btn btn-block hcalls" type="button" data-toggle="modal"  data-target="#NewProject"  data-param="/projects/create">
           <strong>&nbsp;Create Project</strong>
         </a>
-        <a href="" class="btn btn-block" type="button">
+        <a id="new_group_btn" href="#" class="btn btn-block hcalls" type="button" data-toggle="modal"  data-target="#NewGroup"  data-param="/groups/create">
           <strong>&nbsp;Create Group</strong>
         </a>
       </div>
@@ -68,7 +75,6 @@ margin-left:0;
   </div>
 
   <div class="span7">
-
 
 
     <!-- STATISTICS / PROJECTS / GROUPS -->
@@ -139,7 +145,7 @@ margin-left:0;
                         <th>Public</th> <th>Name</th> <th>Manager</th> <th>View</th> <th>Edit</th> <th></th><th>Delete</th>
                       </tr>
                     </thead>
-                    <tbody id="padination-content">
+                    <tbody id="padination-projects">
                       {% include "projects-paginator.html" %}
                     </tbody>
                   </table>
@@ -149,7 +155,21 @@ margin-left:0;
 
             <!-- GROUPS -->
             <div id="groups_tab" class="tab-pane {{ show_groups }}">
-              Groups
+              <div class="row-fluid">
+                <div class="span12">
+                  <!-- PROJECTS: List -->
+                  <table class="table table-striped table-hover" id="main_table">
+                    <thead>
+                      <tr>
+                        <th>Name</th> <th>View</th> <th>Edit</th> <th></th><th>Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody id="padination-groups">
+                      {% include "groups-paginator.html" %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               <p><br>&nbsp;<br></p>
             </div>
           </div>
@@ -189,8 +209,11 @@ margin-left:0;
 <div id="NewProject" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
 <div id="EditProject" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
 <div id="ProjectInfo" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
-<div id="UpdateInfo" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
+<div id="NewGroup" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
+<div id="EditGroup" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
+<div id="GroupInfo" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
 
+<div id="UpdateInfo" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
 
 <div id="DeleteItem" class="modal hide fade" role="dialog"  aria-hidden="true">
   <div class="modal-header">
@@ -198,7 +221,7 @@ margin-left:0;
     <h3 id="del_title"> </h3>
   </div>
   <div class="modal-body">
-    <p> All related jobs and reports will be deleted as well! <br>Do you want to delete this project ?! </p>
+    <p id="del_body"> </p>
   </div>
   <div class="modal-footer">
     <a id="del_item_btn" href="#" class="btn btn-danger" > Delete </a>
@@ -210,6 +233,14 @@ margin-left:0;
   $(document).ready(function(){
     modalConnect();
 
+    // initialize Multiselect plugin
+    var multiConfigurationSet = {
+      includeSelectAllOption: true,
+      enableFiltering: true,
+      maxHeight: 450
+    };
+    $('.multiselect').multiselect(multiConfigurationSet);
+
     // Load Project Info into a modal via AJAX
     $(".pinfo").click(function(ev) {
       ev.preventDefault();
@@ -220,73 +251,89 @@ margin-left:0;
       return false;
     });
 
-  });
-</script>
-
-<script type="text/javascript">
-function submitItemModalFormBind(url, modalID){
-  $('#form_modal_apply').submit(function(ev){
-    var formData = new FormData($('form')[0]);
-    $.ajax({
-      type: "POST",
-      url: url,
-      enctype: 'multipart/form-data',
-      data: formData,
-      success:function(response, textStatus, jqXHR){
-        var form = $("#form_modal_apply_div", response);
-        // form is returned if it is not valid. update modal with returned form
-        // change this "if" to check for a specific return code which should be set in the view
-        if ( form.html() ){  //update modal div
-          $('#form_modal_apply_div').html(form);
-          $(modalID).modal('show');
-        }
-        else{  // form is not returned if form submission succeeded
-        // update the entire doc with the response, since we received a entire success page and we want to reload the entire page
-          document.open();
-          document.write(response);
-          document.close();
-          $(modalID).modal('hide');
-        }
-      },
-      error: function (request, status, error) {
-        // implement proper error handling
-        // console.log(request.responseText);
-      },
-      cache: false,
-      contentType: false,
-      processData: false
-    });  // end of $.ajax()
-
-    return false;
-  }); // submitItemModalFormBind(url, modalID)
-}
-
-function modalConnect(){
-  // 'hcalls' Class - goes for home ajax callable elements
-  var controls = $('.hcalls')  // [ "#update_btn", "#new_project_btn" ]
-
-  $.each(controls, function(i,element){
-    $(element).unbind('click');
-
-    $(element).click(function(ev){
+    // Load Group Info into a modal via AJAX
+    $(".ginfo").click(function(ev) {
       ev.preventDefault();
-
       var par = $(this).data("param");
-      var tar = $(this).data("target");
-      $.get(par.toString(), function(results){
-        $(tar).html(results);
-        $(tar).modal('show');
-        $(document).ready(function(){
-          submitItemModalFormBind(url=par.toString(), modalID=tar);
-        });
-
-      }, "html");
-
+      $("#GroupInfo").load("/groups/view/"+par, function() {
+        $(this).modal('show');
+      });
       return false;
     });
 
-  });
+  function submitItemModalFormBind(url, modalID){
+    $('#form_modal_apply').submit(function(ev){
+      // exclude 'multiselect-all' if it was a plugin widget
+      $(".multiselect option[value='multiselect-all']").remove();
 
-}
+      var formData = new FormData($('form')[0]);
+      $.ajax({
+        type: "POST",
+        url: url,
+        enctype: 'multipart/form-data',
+        data: formData,
+        success:function(response, textStatus, jqXHR){
+          var form = $("#form_modal_apply_div", response);
+          // form is returned if it is not valid. update modal with returned form
+          // change this "if" to check for a specific return code which should be set in the view
+          if ( form.html() ){  //update modal div
+            $('#form_modal_apply_div').html(form);
+
+            $('.multiselect').multiselect(multiConfigurationSet);
+
+            $(modalID).modal('show');
+          }
+          else{  // form is not returned if form submission succeeded
+          // update the entire doc with the response, since we received a entire success page and we want to reload the entire page
+            document.open();
+            document.write(response);
+            document.close();
+            $(modalID).modal('hide');
+          }
+        },
+        error: function (request, status, error) {
+          // implement proper error handling
+          // console.log(request.responseText);
+        },
+        cache: false,
+        contentType: false,
+        processData: false
+      });  // end of $.ajax()
+
+      return false;
+    }); // submitItemModalFormBind(url, modalID)
+  }
+
+  function modalConnect(){
+    // 'hcalls' Class - goes for home ajax callable elements
+    var controls = $('.hcalls')  // [ "#update_btn", "#new_project_btn" ]
+
+    $.each(controls, function(i,element){
+      $(element).unbind('click');
+
+      $(element).click(function(ev){
+        ev.preventDefault();
+
+        var par = $(this).data("param");
+        var tar = $(this).data("target");
+        $.get(par.toString(), function(results){
+          $(tar).html(results);
+
+          $('.multiselect').multiselect(multiConfigurationSet);
+
+          $(tar).modal('show');
+          $(document).ready(function(){
+            submitItemModalFormBind(url=par.toString(), modalID=tar);
+          });
+
+        }, "html");
+
+        return false;
+      });
+
+    });
+
+  }
+});
 </script>
 {% endblock %}
