@@ -156,6 +156,17 @@ def del_script(script):
 
     return False
 
+def del_pipe(pipe):
+    slug = slugify(str(pipe.id) + '_' + pipe.type)
+    folder = str(settings.MEDIA_ROOT) + 'pipelines/%s/' % (slug)
+
+    if os.path.isdir(folder):
+        shutil.rmtree(folder)
+        pipe.delete()
+        return True
+
+    return False
+
 def del_report(report):
     path = str(settings.MEDIA_ROOT) + report.home
 

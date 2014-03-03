@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+
+{% block title %}Manage Resources{% endblock %}
+
+{% block extra_head %}
+
+  <script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
+
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <div class="row-fluid">
+    <div class="span10 offset1">
+      <ul class="breadcrumb pull-left" style="background-color: transparent;">
+        <li><a href="/resources/">Manage Resources</a> <span class="divider">/</span></li>
+        <li class="active"> Manage Reports </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="row-fluid">
+    <div class="span8 offset2">
+      <a href="#" data-toggle="modal" class="btn btn-small btn-primary apply btn-block" data-target="#Apply"  data-param="/new-rtype/">
+        <i class="icon-plus"></i> &nbsp; &nbsp; <strong>Create New Pipeline</strong> &nbsp; &nbsp; <i class="icon-plus"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="row-fluid">
+    <div class="span8 offset2">
+      <table class="table table-striped">
+        <!--
+        <head>
+          <tr>
+            <th>id</th><th>Name</th><th>Edit</th><th>Remove</th>
+          </tr>
+        </head>
+        -->
+        <tbody id="pagination-content">
+          {% include "manage-pipelines-paginator.html" %}
+        </tbody>
+      </table>
+      <p><br>&nbsp;<br></p>
+      <div id="paginator_control"></div>
+    </div>
+  </div>
+</div>
+
+<div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+<div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <h3 id="del_title">Delete PIPELINE from Breeze db</h3>
+    </div>
+    <div class="modal-body">
+      <p>After this operation the pipeline will be permanently deleted from Breeze DB, thus you will not be able to recover any information related to this pipeline.</p>
+      <p><strong>Are you sure you DO NOT need this pipeline any more?! </strong></p>
+    </div>
+    <div class="modal-footer">
+      <a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
+      <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+    </div>
+</div>
+
+
+<script type="text/javascript">
+    $(document).ready(function() {
+      // paginator setup
+      var pagOptions = {
+        currentPage: 1,
+        numberOfPages:5,
+        totalPages: "{{ pagination_number }}",
+        alignment:'center',
+        onPageChanged: function(e,oldPage,newPage){
+          //console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
+          $.get("/resources/pipes/", { page: newPage }, function(data){
+            $('#pagination-content').html(data);
+          });
+        }
+      }
+
+      $('#paginator_control').bootstrapPaginator(pagOptions);
+
+      modalConnect();
+    });
+</script>
+<script type="text/javascript">
+function submitItemModalFormBind(url){
+  $('#form_modal_apply').submit(function(ev){
+    var formData = new FormData($('form')[0]);
+    $.ajax({
+      type: "POST",
+      url: url,
+      enctype: 'multipart/form-data',
+      data: formData,
+      success:function(response, textStatus, jqXHR){
+        var form = $("#form_modal_apply_div", response);
+        //form is returned if it is not valid. update modal with returned form
+        //change this "if" to check for a specific return code which should be set in the view
+        if (form.html()) {
+          //update modal div
+          $('#form_modal_apply_div').html(form);
+          $("#Apply").modal('show');
+        }
+        //form is not returned if form submission succeeded
+        else{
+          //update the entire document with the response received since we received a entire success page and we want to reload the entire page
+          if (response == 'True'){
+            $("#Apply").modal('hide');
+            document.location.reload(true)
+          }
+        }
+      },
+      error: function (request, status, error) {
+        //implement proper error handling
+        console.log("failure");
+        console.log(request.responseText);
+      },
+      cache: false,
+      contentType: false,
+      processData: false
+    }); // ajax()
+
+    return false;
+  });
+}
+function modalConnect(){
+  //unbind the click event. If not done we will end up with multiple click event bindings, since binding is done after each ajax call.
+  $(".apply").unbind('click');
+  //bind the click event
+  $(".apply").click(function(ev) {
+    ev.preventDefault(); // prevent navigation
+    var par = $(this).data("param");
+    $.get(par.toString(), function(results){
+      //update the dom with the received form
+      $('#Apply').html(results);
+
+      $("#Apply").modal('show');
+      $(document).ready(function () {
+      //bind the form to an ajax call. ajax call will be set to the received update url
+        submitItemModalFormBind(par.toString());
+      });
+
+    }, "html");
+    return false; // prevent the click propagation
+  })
+}
+</script>
+
+{% endblock %}

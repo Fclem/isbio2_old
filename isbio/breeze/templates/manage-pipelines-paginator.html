@@ -1,0 +1,12 @@
+{% for pipe in pipe_list %}
+  <tr>
+    <!-- <td style="vertical-align: middle"><b>{{ pipe.id }}</td> -->
+    <td style="vertical-align: middle"> &nbsp; <b>{{ pipe.type }}</b></td>
+    <td style="vertical-align: middle">
+      <a href="pipe-editor/{{ pipe.id }}" class="btn btn-inverse pull-right" > <b>Pipe Editor</b>&nbsp; <i class="icon-edit icon-white"></i></a>
+    </td>
+    <td style="vertical-align: middle">
+      <a href="#" data-toggle="modal" class="btn btn-danger pull-right" data-target="#Del" onclick="$('#del_btn').attr('href', '/resources/pipes/delete/{{ pipe.id }}'); $('#del_title').text('{{ pipe.type }}');" class="btn btn-danger" ><b>Remove</b>&nbsp; <i class="icon-trash"></i></a><br />
+    </td>
+  </tr>
+{% endfor %}

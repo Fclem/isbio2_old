@@ -354,10 +354,29 @@ def manage_scripts(request):
         }))
 
 @login_required(login_url='/')
-def manage_reports(request):
-    return render_to_response('manage-reports.html', RequestContext(request, {
-        'resources_status': 'active',
-    }))
+def manage_pipes(request):
+    all_pipelines = ReportType.objects.all()
+    paginator = Paginator(all_pipelines, 10)
+
+    # If AJAX - check page from the request
+    # Otherwise ruturn the first page
+    if request.is_ajax() and request.method == 'GET':
+        page = request.GET.get('page')
+        try:
+            pipes = paginator.page(page)
+        except PageNotAnInteger:  # if page isn't an integer
+            pipes = paginator.page(1)
+        except EmptyPage:  # if page out of bounds
+            pipes = paginator.page(paginator.num_pages)
+
+        return render_to_response('manage-pipelines-paginator.html', RequestContext(request, {'pipe_list': pipes}))
+    else:
+        pipes = paginator.page(1)
+        return render_to_response('manage-pipes.html', RequestContext(request, {
+            'resources_status': 'active',
+            'pipe_list': pipes,
+            'pagination_number': paginator.num_pages
+        }))
 
 @login_required(login_url='/')
 def dochelp(request):
@@ -506,6 +525,12 @@ def delete_script(request, sid):
     script = Rscripts.objects.get(id=sid)
     rshell.del_script(script)
     return HttpResponseRedirect('/resources/scripts/')
+
+@login_required(login_url='/')
+def delete_pipe(request, pid):
+    pipe = ReportType.objects.get(id=pid)
+    rshell.del_pipe(pipe)
+    return HttpResponseRedirect('/resources/pipes/')
 
 @login_required(login_url='/')
 def delete_report(request, rid, redir):
