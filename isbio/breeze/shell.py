@@ -24,8 +24,8 @@ def init_script(name, inline, person):
         dbitem = breeze.models.Rscripts(name=name, inln=inline, author=person, details="empty", order=0)
 
         # create empty files for header, code and xml
-        dbitem.header.save('name.txt', base.ContentFile('write your header here...'))
-        dbitem.code.save('name.r', base.ContentFile('copy and paste main code here...'))
+        dbitem.header.save('name.txt', base.ContentFile('# write your header here...'))
+        dbitem.code.save('name.r', base.ContentFile('# copy and paste main code here...'))
         dbitem.save()
 
         root = xml.Element('rScript')
@@ -46,6 +46,21 @@ def init_script(name, inline, person):
         return spath
 
     return False
+
+def init_pipeline(form):
+    """
+        Initiates a new RetortType item in the DB.
+        Creates a folder for initial pipeline data.
+    """
+    # First Save the data that comes with a form:
+    # 'type', 'description', 'search', 'access'
+    new_pipeline = form.save()
+
+    # Add configuration file
+    new_pipeline.config.save('config.txt', base.ContentFile('#          Configuration Module  \n'))
+    new_pipeline.save()
+
+    return True
 
 def update_script_dasics(script, form):
     """
@@ -556,6 +571,15 @@ def dump_project_parameters(project, report):
 
     return copy.copy(dump)
 
+def dump_pipeline_config(report_type):
+    dump = ''
+
+    config_path = str(settings.MEDIA_ROOT) + str(report_type.config)
+    dump += '# <----------  Pipeline Config  ----------> \n' + open(config_path, 'r').read() + '\n'
+    dump += '# <------- end of Pipeline Config --------> \n\n\n'
+
+    return copy.copy(dump)
+
 def build_report(report_data, request_data, report_property, sections):
     """ Assembles report home folder, configures DRMAA and R related files
         and spawns a new process for reports DRMAA job on cluster.
@@ -612,6 +636,7 @@ def build_report(report_data, request_data, report_property, sections):
     script_string += '  return (section_name)\n}\n\n'
 
     script_string += dump_project_parameters(dbitem.project, dbitem)
+    script_string += dump_pipeline_config(rt)
 
     script_string += 'REPORT <- newCustomReport(report_name)\n'
 
@@ -628,7 +653,7 @@ def build_report(report_data, request_data, report_property, sections):
             # input parameters definition
             script_string += '# <----------  parameters  ----------> \n'
             script_string += gen_params_string(tree, request_data.POST, str(settings.MEDIA_ROOT) + dbitem.home, request_data.FILES)
-            script_string += '# <------- parameters --------> \n'
+            script_string += '# <------- end of parameters --------> \n'
             # final step - fire header
             header_path = str(settings.MEDIA_ROOT) + str(tag.header)
             script_string += '# <----------  header  ----------> \n' + open(header_path, 'r').read() + '\n\n'

@@ -44,11 +44,18 @@ class Group(models.Model):
         return self.name
 
 class ReportType(models.Model):
-    type = models.CharField(max_length=17)
+    type = models.CharField(max_length=17, unique=True)
     description = models.CharField(max_length=5500, blank=True)
     search = models.BooleanField(default=True)
     access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='pipeline_access')  # share list
     # tags = models.ManyToManyField(Rscripts, blank=True)
+
+    def file_name(self, filename):
+        fname, dot, extension = filename.rpartition('.')
+        slug = slugify(str(self.id) + '_' + self.type)
+        return 'pipelines/%s/%s' % (slug, filename)
+
+    config = models.FileField(upload_to=file_name, blank=True, null=True)
 
     def __unicode__(self):
         return self.type
