@@ -5,6 +5,10 @@
 {% block title %}Script Book{% endblock %}
 
 {% block extra_head %}
+
+  <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
+  <link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
+
 <style>
   .thumbnails .span4:nth-child(3n+1) {
 
@@ -245,20 +249,29 @@
   </div>
 </div>
 
-<script>
-    $(document).ready(function() {
-        modalConnect();
-    });
-    $(".describe").click(function(ev) {
-        ev.preventDefault(); // prevent navigation
-        var par = $(this).data("param");
-        $("#Describe").load("/scripts/read-descr/"+par, function() {
-            $(this).modal('show');
-        });
-        return false; // prevent the click propagation
-    });
-</script>
 <script type="text/javascript">
+$(document).ready(function() {
+  modalConnect();
+
+  // initialize Multiselect plugin for Dotmatix Samples
+  var multiConfigurationSet = {
+    includeSelectAllOption: true,
+    enableFiltering: true,
+    maxHeight: 450
+  };
+  $('.dotmatix_samples').multiselect(multiConfigurationSet);
+
+
+
+  $(".describe").click(function(ev) {
+    ev.preventDefault(); // prevent navigation
+    var par = $(this).data("param");
+    $("#Describe").load("/scripts/read-descr/"+par, function() {
+      $(this).modal('show');
+    });
+    return false; // prevent the click propagation
+  });
+
 function submitItemModalFormBind(url){
          $('#form_modal_apply').submit(function(ev){
              var formData = new FormData($('.script-form')[0]);
@@ -275,6 +288,9 @@ function submitItemModalFormBind(url){
                         //update modal div
 
                          $('#form_modal_apply_div').html(form);
+
+                         // activate Multiselect plugin
+                         $('.dotmatix_samples').multiselect(multiConfigurationSet);
 
                          $("input:file").each(function(){
                            if ( $(this).hasClass('TPL') ){
@@ -320,6 +336,9 @@ function modalConnect()
                   //update the dom with the received form
                   $('#Apply').html(results);
 
+                  // activate Multiselect plugin
+                  $('.dotmatix_samples').multiselect(multiConfigurationSet);
+
                   $("input:file").each(function(){
                     if ( $(this).hasClass('TPL') ){
                       var which = $(this).attr('which');
@@ -340,5 +359,7 @@ function modalConnect()
                 return false; // prevent the click propagation
             })
         }
+
+});
 </script>
 {% endblock %}

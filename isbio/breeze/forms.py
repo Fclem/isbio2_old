@@ -608,6 +608,31 @@ def form_from_xml(xml, req=None, init=False):
                             choices=mult_options
                     )
 
+                # Dotmatix samples control
+                elif input_item.attrib["type"] == "DTM_SAMPLES":  # custom dataset (multiple select)
+
+                    group_list_of_tuples = list()
+                    sample_list_of_tuples = list()
+
+                    # push r-code here to populate dtm_samples
+                    group_list_of_tuples.append( tuple(('GR1', 'Group1')) )
+                    group_list_of_tuples.append( tuple(('GR2', 'Group2')) )
+                    sample_list_of_tuples.append( tuple(('SM1', 'Sample1') ) )
+                    sample_list_of_tuples.append( tuple(('SM2', 'Sample2') ) )
+                    sample_list_of_tuples.append( tuple(('SM3', 'Sample3') ) )
+
+                    dtm_options = list()
+                    dtm_options.append( tuple(( 'Groups', tuple(group_list_of_tuples) )) )
+                    dtm_options.append( tuple(( 'Individual Samples', tuple(sample_list_of_tuples) )) )
+
+
+                    custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
+                            choices=dtm_options,
+                            initial=input_item.attrib["val"],
+                            help_text=help_line,
+                            widget=forms.SelectMultiple(attrs={'class':'dotmatix_samples'})
+                    )
+
                 elif input_item.attrib["type"] == "HED":  # section header
                     pass
                 else:

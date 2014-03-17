@@ -19,7 +19,7 @@
       background: url('/static/nail1.png');
   }
 
-</style>
+.collapse.in[style="height: auto;"] {overflow: visible;}</style>
 
 {% endblock %}
 
@@ -261,7 +261,10 @@ $(document).ready(function() {
     maxHeight: 450
   };
   $('.multiselect').multiselect(multiConfigurationSet);
+  $('.dotmatix_samples').multiselect(multiConfigurationSet);
 
+
+  // OnClick Generate Report
   $('#gen_report').click(function(ev){
     ev.preventDefault();
     // setTimeout("$('#sub_bar').attr('style', 'width: 45%;');", 300);
@@ -273,7 +276,10 @@ $(document).ready(function() {
       section_ticks.push( $(this).bootstrapSwitch('status') );
     });
 
+    // We dont need to submit 'multiselect-all' value
     $(".multiselect option[value='multiselect-all']").remove();
+    $(".dotmatix_samples option[value='multiselect-all']").remove();
+
     // Collects Groups and Individual Users
     var groupShare = [];
     var usersShare = [];
