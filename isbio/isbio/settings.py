@@ -63,6 +63,7 @@ class BreezeSettings(Settings):
     # Absolute filesystem path to the directory that will hold user-uploaded files.
     # Example: "/home/media/media.lawrence.com/media/"
     MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
+    RORA_LIB = '/home/comrade/Projects/fimm/RORALib/'
 
     # URL that handles the media served from MEDIA_ROOT. Make sure to use a
     # trailing slash.
@@ -219,6 +220,8 @@ class DevSettings(BreezeSettings):
     R_ENGINE_PATH = '/projects/breeze/R/bin/R '
     TEMP_FOLDER = '/homes/dbychkov/dev/isbio/tmp/'
     MEDIA_ROOT = '/projects/breeze/db/'  # '/homes/dbychkov/dev/isbio/db/'
+    RORA_LIB = '/projects/breeze/RORALib/'
+
     MEDIA_URL = '/media/'
 
     STATIC_ROOT = '/homes/dbychkov/dev/isbio/static/'
