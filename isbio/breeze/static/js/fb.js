@@ -191,6 +191,10 @@
           docxml += "<altItem>" + tmp.split("\n").join("</altItem>\n<altItem>") + "</altItem>\n";
           docxml += '</altArray>\n</inputItem>\n';
           break;
+        case "dtm_samples_selector":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DTM_SAMPLES\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" /> \n';
+          break;
         case "drop_down":
           tmp = '';
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DRP\" val=\"\" ';

@@ -233,6 +233,30 @@
                       </div>
 
                       <div class="tab-pane" id="tab3">
+                        <div class="control-group component" breeze-control="dtm_samples_selector" rel="popover" title="Dotmatix Samples Selector" trigger="manual"
+                          data-content="
+                          <form class='form'>
+                            <div class='controls' style='margin-left: 10px'>
+                              <label class='control-label'>Label Text</label> <input class='input-medium' type='text' name='label' id='label'>
+                              <label class='control-label'>Inline Variable Name</label> <input class='input-medium' type='text' name='r_inline' id='r_inline'>
+                              <label class='control-label'>Help Text: </label>
+                              <textarea class='input-medium' style='min-height: 135px' name='help_text' id='help_text'> </textarea>
+                              <hr/>
+                              <button class='btn btn-primary'>Save</button><button class='btn btn-danger'>Cancel</button>
+                            </div>
+                          </form>"
+                          >
+
+                          <!-- Dotmatix Samples Selector -->
+                          <label class="control-label valtype" data-valtype="label">DTM Samples</label>
+                          <div class="controls">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="r_inline" value="def_dtmsamples_var">
+                            <input type="hidden" placeholder="" class="input valtype" data-valtype="help_text" value="">
+                            <select></select>
+                          </div>
+
+                        </div>
+
                         <div class="control-group component" breeze-control="dataset_selector" rel="popover" title="Data Set Selector" trigger="manual"
                           data-content="
                           <form class='form'>
