@@ -714,7 +714,7 @@ def build_report(report_data, request_data, report_property, sections):
     os.chmod(loc, st.st_mode | stat.S_IRWXG)
 
     # submit r-code
-    #p = Process(target=run_report, args=(dbitem,))
-    #p.start()
+    p = Process(target=run_report, args=(dbitem,))
+    p.start()
 
     return True
