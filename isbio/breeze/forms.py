@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.template.defaultfilters import default
 from decimal import Decimal
+import rora as rora
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
 class NewProjectForm(forms.Form):
@@ -615,11 +616,8 @@ def form_from_xml(xml, req=None, init=False):
                     sample_list_of_tuples = list()
 
                     # push r-code here to populate dtm_samples
-                    group_list_of_tuples.append( tuple(('GR1', 'Group1')) )
-                    group_list_of_tuples.append( tuple(('GR2', 'Group2')) )
-                    sample_list_of_tuples.append( tuple(('SM1', 'Sample1') ) )
-                    sample_list_of_tuples.append( tuple(('SM2', 'Sample2') ) )
-                    sample_list_of_tuples.append( tuple(('SM3', 'Sample3') ) )
+                    group_list_of_tuples = rora.get_dtm_sample_groups('dbychkov')
+                    sample_list_of_tuples = rora.get_dtm_samples()
 
                     dtm_options = list()
                     dtm_options.append( tuple(( 'Groups', tuple(group_list_of_tuples) )) )
