@@ -499,7 +499,7 @@ def gen_params_string(docxml, data, dir, files):
         elif item.attrib['type'] == 'MLT':
             res = ''
             seq = 'c('
-            for itm in data.get(item.attrib['comment'], "NA"):
+            for itm in data.getlist(item.attrib['comment'], "NA"):
                 if itm != "":
                     res += str(itm) + ','
                     seq = seq + '\"%s\",' % itm
