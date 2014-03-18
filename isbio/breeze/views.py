@@ -580,7 +580,7 @@ def edit_job(request, jid=None, mod=None):
 
     if request.method == 'POST':
         head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
-        custom_form = breezeForms.form_from_xml(xml=tree, req=request)
+        custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
         if head_form.is_valid() and custom_form.is_valid():
 
             if mode == 'replicate':
@@ -613,7 +613,7 @@ def edit_job(request, jid=None, mod=None):
             return HttpResponseRedirect('/jobs')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname), initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
-        custom_form = breezeForms.form_from_xml(xml=tree)
+        custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
         'url': "/jobs/edit/" + str(jid),
@@ -637,7 +637,7 @@ def create_job(request, sid=None):
 
     if request.method == 'POST':
         head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
-        custom_form = breezeForms.form_from_xml(xml=tree, req=request)
+        custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
 
         if head_form.is_valid() and custom_form.is_valid():
             rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
@@ -667,7 +667,7 @@ def create_job(request, sid=None):
             return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
-        custom_form = breezeForms.form_from_xml(xml=tree)
+        custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
         'url': "/scripts/apply-script/" + str(sid),
