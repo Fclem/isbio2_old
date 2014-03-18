@@ -261,7 +261,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
     else:
         # Renders report overview and available tags
         property_form = breezeForms.ReportPropsForm(request=request)
-        tags_data_list = breezeForms.create_report_sections(tags)
+        tags_data_list = breezeForms.create_report_sections(tags, request)
 
     return render_to_response('search.html', RequestContext(request, {
         'overview': True,

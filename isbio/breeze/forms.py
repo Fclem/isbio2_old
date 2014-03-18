@@ -469,7 +469,7 @@ def xml_from_form(form_g, form_d, form_s):
     newxml.close()
     return newxml
 
-def form_from_xml(xml, req=None, init=False):
+def form_from_xml(xml, req=None, init=False, usr=None):
     input_array = xml.getroot().find('inputArray')
 
     if req:
@@ -616,7 +616,9 @@ def form_from_xml(xml, req=None, init=False):
                     sample_list_of_tuples = list()
 
                     # push r-code here to populate dtm_samples
-                    group_list_of_tuples = rora.get_dtm_sample_groups('dbychkov')
+                    if usr.username:
+                        group_list_of_tuples = rora.get_dtm_sample_groups(usr.username)
+
                     sample_list_of_tuples = rora.get_dtm_samples()
 
                     dtm_options = list()
@@ -643,7 +645,7 @@ def form_from_xml(xml, req=None, init=False):
 
     return custom_form
 
-def create_report_sections(sections):
+def create_report_sections(sections, req=None):
     """ Creates a list of sections content for report overview page.
 
     Arguments:
@@ -658,7 +660,7 @@ def create_report_sections(sections):
         sdata['id'] = item.id
         sdata['inline'] = str(item.inln)
         sdata['name'] = str(item.name)
-        sdata['form'] = form_from_xml(xml=tree)
+        sdata['form'] = form_from_xml(xml=tree, usr=req.user)
         section_lst.append( dict(sdata) )
 
     return section_lst
@@ -684,10 +686,10 @@ def validate_report_sections(sections, req):
         # that have been enabled by user
         secID = 'Section_dbID_' + str(item.id)
         if secID in req.POST and req.POST[secID] == '1':
-            sdata['form'] = form_from_xml(xml=tree, req=req)
+            sdata['form'] = form_from_xml(xml=tree, req=req, usr=req.user)
             sdata['isvalid'] = sdata['form'].is_valid()
         else:
-            sdata['form'] = form_from_xml(xml=tree)
+            sdata['form'] = form_from_xml(xml=tree, usr=req.user)
             sdata['isvalid'] = True
 
         section_lst.append( dict(sdata) )
