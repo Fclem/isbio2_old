@@ -83,17 +83,26 @@ def home(request, state="feed"):
     occurrences = dict()
 
     if state == 'feed' or state == None:
-        tab = 'f_tab'
-        show_tab = 'show_feed'
-    if state == 'statistics':
-        tab = 's_tab'
-        show_tab = 'show_statistics'
+        menu = 'feed_menu'
+        show_menu = 'show_feed'
+        explorer_tab = 'datasets_tab'
+        explorer_pane = 'show_datasets'
+        pref_tab = 'projects_tab'
+        pref_pane = 'show_projects'
     elif state == 'projects':
-        tab = 'p_tab'
-        show_tab = 'show_projects'
+        menu = 'preferences_menu'
+        show_menu = 'show_preferences'
+        explorer_tab = 'datasets_tab'
+        explorer_pane = 'show_datasets'
+        pref_tab = 'projects_tab'
+        pref_pane = 'show_projects'
     elif state == 'groups':
-        tab = "g_tab"
-        show_tab = "show_groups"
+        menu = 'preferences_menu'
+        show_menu = 'show_preferences'
+        explorer_tab = 'datasets_tab'
+        explorer_pane = 'show_datasets'
+        pref_tab = 'usergroups_tab'
+        pref_pane = 'show_usergroups'
 
     projects = Project.objects.exclude(~Q(author__exact=request.user) & Q(collaborative=False)).order_by("name")
     groups = Group.objects.filter(author__exact=request.user).order_by("name")
@@ -108,8 +117,12 @@ def home(request, state="feed"):
     posts = Post.objects.all().order_by("-time")
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
-        str(tab): 'active',
-        str(show_tab): 'active',
+        str(menu): 'active',
+        str(show_menu): 'active',
+        str(explorer_tab): 'active',
+        str(explorer_pane): 'active',
+        str(pref_tab): 'active',
+        str(pref_pane): 'active',
         'dbStat': occurrences,
         'projects': projects,
         'groups': groups,
