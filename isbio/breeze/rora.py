@@ -18,7 +18,8 @@ def get_dtm_samples():
     if len(res) == 2:
         for row in range(1,len(res[0])+1):
             rn = res.rx(row, True)
-            samples.append( tuple((rn[0][0], rn[1][0])) )
+            gid = 'S' + rn[0][0]
+            samples.append( tuple((gid, rn[1][0])) )
 
     return samples
 
@@ -42,6 +43,7 @@ def get_dtm_sample_groups(author):
     if len(res) == 2:
         for row in range(1,len(res[0])+1):
             rn = res.rx(row, True)
-            groups.append( tuple((rn[0][0], rn[1][0])) )
+            sid = 'G' + rn[0][0]
+            groups.append( tuple((sid, rn[1][0])) )
 
     return groups

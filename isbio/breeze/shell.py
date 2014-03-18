@@ -506,6 +506,17 @@ def gen_params_string(docxml, data, dir, files):
             seq = seq[:-1] + ')'
             item.set('val', res[:-1])
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+        elif item.attrib['type'] == 'DTM_SAMPLES':
+            res = ''
+            seq = 'c('
+            for itm in data.getlist(item.attrib['comment'], "NA"):
+                if itm != "":
+                    res += str(itm) + ','
+                    seq = seq + '\"%s\",' % itm
+            seq = seq[:-1] + ')'
+            item.set('val', res[:-1])
+            params = params + '# First character of each element in the vector below\n# serves to distinguish Group (G) and Sample (S) Ids;\n# ! You have to trim each element to get original Id !\n'
+            params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
         else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.get(item.attrib['comment'], "NA")) + '"\n'
 
@@ -703,7 +714,7 @@ def build_report(report_data, request_data, report_property, sections):
     os.chmod(loc, st.st_mode | stat.S_IRWXG)
 
     # submit r-code
-    p = Process(target=run_report, args=(dbitem,))
-    p.start()
+    #p = Process(target=run_report, args=(dbitem,))
+    #p.start()
 
     return True
