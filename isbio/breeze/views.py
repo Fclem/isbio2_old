@@ -19,6 +19,7 @@ from django.utils import simplejson
 import xml.etree.ElementTree as xml
 import shell as rshell
 import auxiliary as aux
+import rora as rora
 
 import forms as breezeForms
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group
@@ -114,6 +115,10 @@ def home(request, state="feed"):
     occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
     occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
 
+    # Get Screens
+    screens = rora.get_screens_info()
+    screens_paginator = Paginator(screens,15)
+
     posts = Post.objects.all().order_by("-time")
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
@@ -126,7 +131,9 @@ def home(request, state="feed"):
         'dbStat': occurrences,
         'projects': projects,
         'groups': groups,
-        'posts': posts
+        'posts': posts,
+        'screens': screens_paginator.page(1),
+        'pag_total_screens': screens_paginator.num_pages
     }))
 
 @login_required(login_url='/')
@@ -1161,3 +1168,33 @@ def report_search(request):
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': found_entries
     }))
+
+@login_required(login_url='/')
+def home_paginate(request):
+    if request.is_ajax() and request.method == 'GET':
+        page = request.GET.get('page')
+        table = request.GET.get('table')
+
+        if table == 'screens':
+            tag_symbol = 'screens'
+            paginator = Paginator(rora.get_screens_info(),15)
+            template = 'screens-paginator.html'
+        elif table == 'datasets':
+            tag_symbol = 'datasets'
+            paginator = Paginator(rora.get_screens_info(),15)
+            template = 'datasets-paginator.html'
+        elif table == 'screen_groups':
+            tag_symbol = 'screen_groups'
+            paginator = Paginator(rora.get_screens_info(),15)
+            template = 'screen-groups-paginator.html'
+
+        try:
+            items = paginator.page(page)
+        except PageNotAnInteger:  # if page isn't an integer
+            items = paginator.page(1)
+        except EmptyPage:  # if page out of bounds
+            items = paginator.page(paginator.num_pages)
+
+        return render_to_response(template, RequestContext(request, { tag_symbol: items }))
+    else:
+        return False

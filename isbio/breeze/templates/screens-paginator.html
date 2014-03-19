@@ -1,0 +1,14 @@
+{% for screen in screens %}
+  <tr>
+    <td> {{ screen.id }} </td>
+    <td> {{ screen.sample_name }} </td>
+    <td> {{ screen.screen_name }} </td>
+    <td> {{ screen.tissue }} </td>
+    <td> {{ screen.experiment }} </td>
+    <td> {{ screen.source }} </td>
+  </tr>
+{% empty %}
+  <tr>
+    <td></td> <td>No Screens found in the data base...</td><td></td><td></td><td>
+  </tr>
+{% endfor %}
