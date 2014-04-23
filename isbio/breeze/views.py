@@ -251,6 +251,31 @@ def dbviewer(request):
         'dbviewer_status': 'active',
     }))
 
+def ajax_patients_data(request):
+    response_data = {}
+    response_data['sEcho'] = 1
+    response_data['iTotalRecords'] = 3
+    response_data['iTotalDisplayRecords'] = 3
+
+    row = list()
+    row.append(1)
+    row.append("Alias")
+
+    aadata = list()
+    aadata.append(copy.copy(row))
+
+    row = list()
+    row.append(2)
+    row.append("Alias 2")
+
+    aadata.append(copy.copy(row))
+
+    response_data['aaData'] = aadata
+
+    print response_data
+    return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+
+
 def reports_search(request):
     query_string = ''
     found_entries = None
