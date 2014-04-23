@@ -1,4 +1,6 @@
-RORALib
+Oracle_12_1
+Roracle_jar
+roralib
 fimm_venv
 venv
 pids
@@ -26,4 +28,4 @@ isbio/breeze/mould/
 .ropeproject/
 *.sublime-project
 *.sublime-workspace
-
+*.gz

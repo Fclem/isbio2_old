@@ -1,0 +1,12 @@
+{% for patient in patients %}
+  <tr>
+    <td> {{ patient.id }} </td>
+    <td> {{ patient.identifier }} </td>
+    <td> {{ patient.source }} </td>
+    <td> {{ patient.organizm }} </td>
+  </tr>
+{% empty %}
+  <tr>
+    <td></td> <td>No Patients found in the data base...</td><td></td><td>
+  </tr>
+{% endfor %}

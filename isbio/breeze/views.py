@@ -119,6 +119,9 @@ def home(request, state="feed"):
     screens = rora.get_screens_info()
     screens_paginator = Paginator(screens,15)
 
+    # Patients
+    patients = dict()
+
     posts = Post.objects.all().order_by("-time")
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
@@ -133,6 +136,7 @@ def home(request, state="feed"):
         'groups': groups,
         'posts': posts,
         'screens': screens_paginator.page(1),
+        'patients': patients,
         'pag_total_screens': screens_paginator.num_pages
     }))
 
