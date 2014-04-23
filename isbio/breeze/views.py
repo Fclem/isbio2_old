@@ -245,6 +245,12 @@ def reports(request):
             'pagination_number': paginator.num_pages
         }))
 
+@login_required(login_url='/')
+def dbviewer(request):
+    return render_to_response('dbviewer.html', RequestContext(request, {
+        'dbviewer_status': 'active',
+    }))
+
 def reports_search(request):
     query_string = ''
     found_entries = None
