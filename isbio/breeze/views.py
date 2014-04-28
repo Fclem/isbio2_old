@@ -252,27 +252,23 @@ def dbviewer(request):
     }))
 
 def ajax_patients_data(request):
-    response_data = {}
-    response_data['sEcho'] = 1
-    response_data['iTotalRecords'] = 3
-    response_data['iTotalDisplayRecords'] = 3
+    # copy parameters
+    params = request.GET
 
-    row = list()
-    row.append(1)
-    row.append("Alias")
+    patients_info = rora.get_patients_info(params)
 
-    aadata = list()
-    aadata.append(copy.copy(row))
+    aadata = patients_info['aaData']
 
-    row = list()
-    row.append(2)
-    row.append("Alias 2")
+    iTotalRecords = patients_info['iTotalRecords']
+    iTotalDisplayRecords = patients_info['iTotalRecords']
 
-    aadata.append(copy.copy(row))
+    response_data = {
+        'aaData' : aadata,
+        'iTotalRecords': iTotalRecords,
+        'iTotalDisplayRecords': iTotalDisplayRecords,
+        'sEcho': params.get('sEcho',1)
+    }
 
-    response_data['aaData'] = aadata
-
-    print response_data
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
 

@@ -74,35 +74,58 @@ def get_screens_info():
                 cell_name = headers[col]
                 row_dict[cell_name] = cell_data
 
-            screen_table.append( copy.deepcopy(row_dict) )
+            screen_table.append( copy.copy(row_dict) )
 
     return screen_table
 
-def get_patients_info():
+def get_patients_info(params):
     """
         Exports information about patients
     """
     patient_table = list()
 
+    # Source & export R code
     rcode = 'source("%s%s")' %(settings.RORA_LIB,'basic.R')
     ro.r( rcode )
 
+    # Export a function to call
     r_getPatientsInfo = ro.globalenv['getPatientsInfo']
 
-    exported_data = r_getPatientsInfo()
+    # Prepare parameters for R
+    start = int(params.get('iDisplayStart',0))
+    span = int(params.get('iDisplayLength',25))
+    search_text = params.get('sSearch', '').lower()
+    sort_dir = params.get('sSortDir_0', 'asc')
 
-    # Convert exported_data to a list of dict()
-    if len(exported_data) == 6:
+    # R Call:
+    patients_info = r_getPatientsInfo(start, span)
+
+    # Data table as such
+    exported_data = patients_info[2]
+
+
+    if len(exported_data) == 9:
+        # Convert exported_data to a list of dict()
         for row in range(1,len(exported_data[0])+1):
-            headers = ["id","sample_name","screen_name","tissue","experiment","source"]
             values = exported_data.rx(row,True)
 
-            row_dict = dict()
-            for col in range(0,6):
+            row_dict = list()
+            for col in range(0,9):
                 cell_data = values[col][0]
-                cell_name = headers[col]
-                row_dict[cell_name] = cell_data
+                row_dict.append( cell_data )
 
-            patient_table.append( copy.deepcopy(row_dict) )
+            patient_table.append( copy.copy(row_dict) )
 
-    return patient_table
+        response = {
+            'iTotalDisplayRecords': int(patients_info[0][0]),
+            'iTotalRecords': int(patients_info[1][0]),
+            'aaData': patient_table
+        }
+    else:
+        response = {
+            'iTotalDisplayRecords': 0,
+            'iTotalRecords': 0,
+            'aaData': patient_table
+        }
+
+    return response
