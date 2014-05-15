@@ -250,38 +250,21 @@ def dbviewer(request):
     }))
 
 def ajax_patients_data(request, which):
+    """
+        Generic function to extract data from RORA tables;
+        Aimed to serve: Patients (ENTITY), Screens and Samples
+        in json format for DataTables
+    """
     # copy parameters
     params = request.GET
 
-    if str(which) == "patient":
-        data_tbl = rora.get_patients_info(params)
-    if str(which) == "screen":
-        data_tbl = rora.get_screens_info(params)
+    # Call corresponding rora (R) function
+    data_tbl = rora.get_patients_info(params, str(which))
 
     aadata = data_tbl['aaData']
 
     iTotalRecords = data_tbl['iTotalRecords']
     iTotalDisplayRecords = data_tbl['iTotalRecords']
-
-    response_data = {
-        'aaData' : aadata,
-        'iTotalRecords': iTotalRecords,
-        'iTotalDisplayRecords': iTotalDisplayRecords,
-        'sEcho': params.get('sEcho',1)
-    }
-
-    return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
-
-def ajax_screens_data(request):
-    # copy parameters
-    params = request.GET
-
-    screens_info = rora.get_screens_info(params)
-
-    aadata = screens_info['aaData']
-
-    iTotalRecords = screens_info['iTotalRecords']
-    iTotalDisplayRecords = screens_info['iTotalRecords']
 
     response_data = {
         'aaData' : aadata,

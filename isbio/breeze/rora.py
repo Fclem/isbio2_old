@@ -48,6 +48,57 @@ def get_dtm_sample_groups(author):
             groups.append( tuple((sid, rn[1][0])) )
 
     return groups
+def get_samples_info(params):
+    """
+        Exports information about samples
+    """
+    screens_table = list()
+
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'basic.R')
+    ro.r( rcode )
+
+    # Export a function to call
+    r_getScreensInfo = ro.globalenv['getScreensInfo']
+
+    # Prepare parameters for R
+    start = int(params.get('iDisplayStart',0))
+    span = int(params.get('iDisplayLength',25))
+    search_text = params.get('sSearch', '').lower()
+    sort_dir = params.get('sSortDir_0', 'asc')
+
+    # R Call:
+    screens_info = r_getScreensInfo(start, span)
+
+    # Data table as such
+    exported_data = screens_info[2]
+
+
+    if len(exported_data) == 8:
+        # Convert exported_data to a list of dict()
+        for row in range(1,len(exported_data[0])+1):
+            values = exported_data.rx(row,True)
+
+            row_dict = list()
+            for col in range(0,8):
+                cell_data = values[col][0]
+                row_dict.append( cell_data )
+
+            screens_table.append( copy.copy(row_dict) )
+
+        response = {
+            'iTotalDisplayRecords': int(screens_info[0][0]),
+            'iTotalRecords': int(screens_info[1][0]),
+            'aaData': screens_table
+        }
+    else:
+        response = {
+            'iTotalDisplayRecords': 0,
+            'iTotalRecords': 0,
+            'aaData': screens_table
+        }
+
+    return response
 
 def get_screens_info(params):
     """
@@ -101,18 +152,26 @@ def get_screens_info(params):
 
     return response
 
-def get_patients_info(params):
+def get_patients_info(params, subject):
     """
-        Exports information about patients
+        Exports information about patients.
+
+        Arguments:
+        params     -- request dictionary
+        subject    -- can be: "patient", "screen","sample"
     """
-    patient_table = list()
 
     # Source & export R code
     rcode = 'source("%s%s")' %(settings.RORA_LIB,'basic.R')
     ro.r( rcode )
 
     # Export a function to call
-    r_getPatientsInfo = ro.globalenv['getPatientsInfo']
+    if subject == "patient":
+        r_getterFunc = ro.globalenv['getPatientsInfo']
+    if subject == "screen":
+        r_getterFunc = ro.globalenv['getScreensInfo']
+    if subject == "sample":
+        r_getterFunc = ro.globalenv['getSamplesInfo']
 
     # Prepare parameters for R
     start = int(params.get('iDisplayStart',0))
@@ -121,34 +180,34 @@ def get_patients_info(params):
     sort_dir = params.get('sSortDir_0', 'asc')
 
     # R Call:
-    patients_info = r_getPatientsInfo(start, span)
+    r_getter_output = r_getterFunc(start, span)
 
     # Data table as such
-    exported_data = patients_info[2]
+    exported_data = r_getter_output[2]
 
+    # count number of cols & rows in exported table
+    exported_col_num = len(exported_data)
+    exported_row_num = len(exported_data[0])
 
-    if len(exported_data) == 9:
-        # Convert exported_data to a list of dict()
-        for row in range(1,len(exported_data[0])+1):
-            values = exported_data.rx(row,True)
+    # Convert exported_data to a list ( of lists )
+    subject_table = list()
+    row_dict = list()
+    for row in range(1,exported_row_num+1):
+        values = exported_data.rx(row,True)
 
-            row_dict = list()
-            for col in range(0,9):
-                cell_data = values[col][0]
-                row_dict.append( cell_data )
+        row_dict = list()
+        for col in range(0,exported_col_num):
+            cell_data = values[col][0]
+            # append to cols
+            row_dict.append( cell_data )
 
-            patient_table.append( copy.copy(row_dict) )
+        # append to rows
+        subject_table.append( copy.copy(row_dict) )
 
-        response = {
-            'iTotalDisplayRecords': int(patients_info[0][0]),
-            'iTotalRecords': int(patients_info[1][0]),
-            'aaData': patient_table
-        }
-    else:
-        response = {
-            'iTotalDisplayRecords': 0,
-            'iTotalRecords': 0,
-            'aaData': patient_table
-        }
+    response = {
+        'iTotalDisplayRecords': int(r_getter_output[0][0]),
+        'iTotalRecords': int(r_getter_output[1][0]),
+        'aaData': subject_table
+    }
 
     return response
