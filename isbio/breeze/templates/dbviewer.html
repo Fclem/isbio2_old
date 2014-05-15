@@ -81,7 +81,23 @@
       <div class="tab-pane" id="samplesPane">
         <div class="well">
           <p></p>
-          samplesPane
+          <!-- Sample Table -->
+            <table class="table table-striped table-hover table-bordered dataTable" id="sample_table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>IDENTIFIER</th>
+                  <th>DESCRIPTION</th>
+                  <th>SCREEN</th>
+                  <th>DOSAGE</th>
+                  <th>USER_STAMP</th>
+                  <th>TIME_STAMP</th>
+                </tr>
+              </thead>
+              <tbody id="patients-pagination-content">
+              </tbody>
+            </table>
+            <!-- END OF Sample Table -->
         </div>
       </div>
       <div class="tab-pane" id="sampleGroupsPane">
@@ -119,6 +135,14 @@ $(document).ready(function() {
         "bProcessing": true,
         "bServerSide": true,
         "sAjaxSource": "/ajax-rora-patients/screen"
+  });
+
+  $('#sample_table').dataTable({
+        "sDom":  "<'row'<'span5 offset1'l><'span6'f>r>t<'row'<'span5 offset1'i><'span6'p>>",
+        "sPaginationType": "bootstrap",
+        "bProcessing": true,
+        "bServerSide": true,
+        "sAjaxSource": "/ajax-rora-patients/sample"
   });
 
 });
