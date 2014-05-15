@@ -26,7 +26,7 @@
       <li class="active"><a href="#patientsPane" data-toggle="tab">Patients</a></li>
       <li><a href="#screensPane" data-toggle="tab">Screens</a></li>
       <li><a href="#samplesPane" data-toggle="tab">Samples</a></li>
-      <li><a href="#sampleGroupsPane" data-toggle="tab">Sample Groups</a></li>
+      <li><a href="#sampleGroupsPane" data-toggle="tab">Screen Groups</a></li>
     </ul>
 
     <!-- Tab Content: -->
@@ -34,6 +34,7 @@
       <div class="tab-pane active" id="patientsPane">
         <div class="well">
           <p></p>
+            <!-- Patients Table -->
             <table class="table table-striped table-hover table-bordered dataTable" id="patients_table">
               <thead>
                 <tr>
@@ -51,12 +52,30 @@
               <tbody id="patients-pagination-content">
               </tbody>
             </table>
+            <!-- END OF Patients Table -->
         </div>
       </div>
       <div class="tab-pane" id="screensPane">
         <div class="well">
           <p></p>
-          screensPane
+          <!-- Screen Table -->
+            <table class="table table-striped table-hover table-bordered dataTable" id="screen_table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>IDENTIFIER</th>
+                  <th>DESCRIPTION</th>
+                  <th>BREEZE_ALIAS</th>
+                  <th>SOURCE</th>
+                  <th>PATIENT</th>
+                  <th>USER_STAMP</th>
+                  <th>TIME_STAMP</th>
+                </tr>
+              </thead>
+              <tbody id="patients-pagination-content">
+              </tbody>
+            </table>
+            <!-- END OF Screen Table -->
         </div>
       </div>
       <div class="tab-pane" id="samplesPane">
@@ -86,13 +105,22 @@ $(document).ready(function() {
   });
 
   /* Table initialisation */
-  $('.dataTable').dataTable({
+  $('#patients_table').dataTable({
         "sDom":  "<'row'<'span5 offset1'l><'span6'f>r>t<'row'<'span5 offset1'i><'span6'p>>",
         "sPaginationType": "bootstrap",
         "bProcessing": true,
         "bServerSide": true,
         "sAjaxSource": "/ajax-patients-data/"
-    });
+  });
+
+  $('#screen_table').dataTable({
+        "sDom":  "<'row'<'span5 offset1'l><'span6'f>r>t<'row'<'span5 offset1'i><'span6'p>>",
+        "sPaginationType": "bootstrap",
+        "bProcessing": true,
+        "bServerSide": true,
+        "sAjaxSource": "/ajax-screens-data/"
+  });
+
 });
 </script>
 

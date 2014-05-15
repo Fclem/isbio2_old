@@ -271,6 +271,26 @@ def ajax_patients_data(request):
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
+def ajax_screens_data(request):
+    # copy parameters
+    params = request.GET
+
+    screens_info = rora.get_screens_info(params)
+
+    aadata = screens_info['aaData']
+
+    iTotalRecords = screens_info['iTotalRecords']
+    iTotalDisplayRecords = screens_info['iTotalRecords']
+
+    response_data = {
+        'aaData' : aadata,
+        'iTotalRecords': iTotalRecords,
+        'iTotalDisplayRecords': iTotalDisplayRecords,
+        'sEcho': params.get('sEcho',1)
+    }
+
+    return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+
 
 def reports_search(request):
     query_string = ''
