@@ -81,7 +81,7 @@ def get_screens_info(params):
             values = exported_data.rx(row,True)
 
             row_dict = list()
-            for col in range(0,9):
+            for col in range(0,8):
                 cell_data = values[col][0]
                 row_dict.append( cell_data )
 
