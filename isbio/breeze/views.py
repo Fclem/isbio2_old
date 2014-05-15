@@ -116,7 +116,7 @@ def home(request, state="feed"):
     occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
 
     # Get Screens
-    screens = rora.get_screens_info()
+    screens = dict() #rora.get_screens_info()
     screens_paginator = Paginator(screens,15)
 
     # Patients
