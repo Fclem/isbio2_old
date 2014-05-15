@@ -249,16 +249,19 @@ def dbviewer(request):
         'dbviewer_status': 'active',
     }))
 
-def ajax_patients_data(request):
+def ajax_patients_data(request, which):
     # copy parameters
     params = request.GET
 
-    patients_info = rora.get_patients_info(params)
+    if str(which) == "patient":
+        data_tbl = rora.get_patients_info(params)
+    if str(which) == "screen":
+        data_tbl = rora.get_screens_info(params)
 
-    aadata = patients_info['aaData']
+    aadata = data_tbl['aaData']
 
-    iTotalRecords = patients_info['iTotalRecords']
-    iTotalDisplayRecords = patients_info['iTotalRecords']
+    iTotalRecords = data_tbl['iTotalRecords']
+    iTotalDisplayRecords = data_tbl['iTotalRecords']
 
     response_data = {
         'aaData' : aadata,
