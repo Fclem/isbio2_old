@@ -117,7 +117,6 @@ def home(request, state="feed"):
 
     # Get Screens
     screens = dict() #rora.get_screens_info()
-    screens_paginator = Paginator(screens,15)
 
     # Patients
     patients = dict()
@@ -135,9 +134,8 @@ def home(request, state="feed"):
         'projects': projects,
         'groups': groups,
         'posts': posts,
-        'screens': screens_paginator.page(1),
-        'patients': patients,
-        'pag_total_screens': screens_paginator.num_pages
+        'screens': screens,
+        'patients': patients
     }))
 
 @login_required(login_url='/')
