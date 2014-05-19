@@ -267,14 +267,17 @@ def ajax_patients_data(request, which):
     iTotalDisplayRecords = data_tbl['iTotalRecords']
 
     response_data = {
-        'aaData' : aadata,
-        'iTotalRecords': iTotalRecords,
-        'iTotalDisplayRecords': iTotalDisplayRecords,
-        'sEcho': params.get('sEcho',1)
+        'draw': int(params.get('draw')),
+        'data' : aadata,
+        'recordsTotal': iTotalRecords,
+        'recordsFiltered': iTotalDisplayRecords
     }
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
+def ajax_new_patient(request):
+    print request
+    return True
 
 def reports_search(request):
     query_string = ''

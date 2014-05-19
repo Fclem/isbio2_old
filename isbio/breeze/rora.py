@@ -71,16 +71,17 @@ def get_patients_info(params, subject):
         r_getterFunc = ro.globalenv['getSamplesInfo']
 
     # Prepare parameters for R
-    start = int(params.get('iDisplayStart',0))
-    span = int(params.get('iDisplayLength',25))
-    search_text = params.get('sSearch', '').lower()
-    sort_dir = params.get('sSortDir_0', 'asc')
+    start = int(params.get('start',0))
+    span = int(params.get('length',25))
+    search_text = params.get('search', '').lower()
+    sort_dir = params.get('sortDir_0', 'asc')
 
     # R Call:
     r_getter_output = r_getterFunc(start, span)
 
     # Data table as such
     exported_data = r_getter_output[2]
+
 
     # count number of cols & rows in exported table
     exported_col_num = len(exported_data)
