@@ -43,7 +43,7 @@
         <div class="well">
           <p></p>
             <!-- Patients Table -->
-            <table class="table table-striped table-hover table-bordered display" id="patients_table">
+            <table class="table table-hover table-bordered roraTable" id="patients_table" data-editor="" data-subject="patient">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -66,8 +66,8 @@
       <div class="tab-pane" id="screensPane">
         <div class="well">
           <p></p>
-          <!-- Screen Table -->
-            <table class="table table-striped table-hover table-bordered dataTable" id="screen_table">
+            <!-- Screen Table -->
+            <table class="table table-hover table-bordered roraTable" id="screen_table" data-editor="" data-subject="screen">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -89,8 +89,8 @@
       <div class="tab-pane" id="samplesPane">
         <div class="well">
           <p></p>
-          <!-- Sample Table -->
-            <table class="table table-striped table-hover table-bordered dataTable" id="sample_table">
+            <!-- Sample Table -->
+            <table class="table table-hover table-bordered roraTable" id="sample_table" data-editor="" data-subject="sample">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -111,7 +111,21 @@
       <div class="tab-pane" id="sampleGroupsPane">
         <div class="well">
           <p></p>
-          sampleGroupsPane
+          <!-- ScreenGrops Table -->
+            <table class="table table-hover table-bordered roraTable" id="screenGroup_table" data-editor="" data-subject="group">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>USERNAME</th>
+                  <th>GROUPNAME</th>
+                  <th>USER_STAMP</th>
+                  <th>TIME_STAMP</th>
+                </tr>
+              </thead>
+              <tbody id="patients-pagination-content">
+              </tbody>
+            </table>
+            <!-- END OF ScreenGrops Table -->
         </div>
       </div>
     </div>
@@ -144,11 +158,14 @@ $(document).ready(function() {
         ]
     } );
 
-  $('#patients_table').DataTable( {
+  $('table.roraTable').each(function(index){
+    console.log( $(this).data('subject') );
+
+    $(this).DataTable( {
       dom: "Tlfrtip",
-      "bDestroy": true,
+      //"bDestroy": true,
       ajax: {
-        url: "/ajax-rora-patients/patient",
+        url: "/ajax-rora-patients/" + $(this).data('subject'),
         type: "GET"
       },
       serverSide: true,
@@ -160,7 +177,9 @@ $(document).ready(function() {
               { sExtends: "editor_remove", editor: editor }
           ]
       }
-  } );
+    } );  // DataTable()
+
+  });  // each()
 
 
   // We also need to set a new class on the DataTables wrapper element in order to make the form elements appear inline rather than as a block.
