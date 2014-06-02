@@ -43,7 +43,7 @@
         <div class="well">
           <p></p>
             <!-- Patients Table -->
-            <table class="table table-hover table-bordered roraTable" id="patients_table" data-editor="" data-subject="patient">
+            <table class="table table-hover table-bordered roraTable" id="patients_table" data-editor="patientEditor" data-subject="patient">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -67,7 +67,7 @@
         <div class="well">
           <p></p>
             <!-- Screen Table -->
-            <table class="table table-hover table-bordered roraTable" id="screen_table" data-editor="" data-subject="screen">
+            <table class="table table-hover table-bordered roraTable" id="screen_table" data-editor="screenEditor" data-subject="screen">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -90,7 +90,7 @@
         <div class="well">
           <p></p>
             <!-- Sample Table -->
-            <table class="table table-hover table-bordered roraTable" id="sample_table" data-editor="" data-subject="sample">
+            <table class="table table-hover table-bordered roraTable" id="sample_table" data-editor="sampleEditor" data-subject="sample">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -112,7 +112,7 @@
         <div class="well">
           <p></p>
           <!-- ScreenGrops Table -->
-            <table class="table table-hover table-bordered roraTable" id="screenGroup_table" data-editor="" data-subject="group">
+            <table class="table table-hover table-bordered roraTable" id="screenGroup_table" data-editor="groupEditor" data-subject="group">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -135,86 +135,124 @@
 </div>
 
 <script>
-var editor;
 
 $(document).ready(function() {
+  // using jQuery
+  /*function getCookie(name) {
+      var cookieValue = null;
+      if (document.cookie && document.cookie != '') {
+          var cookies = document.cookie.split(';');
+          for (var i = 0; i < cookies.length; i++) {
+              var cookie = jQuery.trim(cookies[i]);
+              // Does this cookie string begin with the name we want?
+              if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+          }
+      }
+      return cookieValue;
+  }
+  var csrftoken = getCookie('csrftoken');
+  var username = "{{ user.username|default:"undefined" }}"
 
-  editor = new $.fn.dataTable.Editor( {
-        ajax: "/ajax-rora/new-patient",
-        table: "#patients_table",
+  // --- SCREEN GROUPS Set Up ---
+  // ----------------------------
+  groupEditor = new $.fn.dataTable.Editor( {
+        ajax: "/ajax-rora/action/group",
+        table: "#screenGroup_table",
         "fields": [ {
-                "label": "First name:",
-                "name": "first_name"
-            }, {
-                "label": "Last name:",
-                "name": "last_name"
-            }, {
-                "label": "Position:",
-                "name": "position"
-            }, {
-                "label": "Office:",
-                "name": "office"
+                "label": "Group Name",
+                "name": "group_name"
             }
         ]
     } );
 
-  $('table.roraTable').each(function(index){
-    console.log( $(this).data('subject') );
+  groupEditor.on( 'preSubmit', function ( e, data, action ) {
+                data.csrfmiddlewaretoken = csrftoken;
+                data.group_author = username;
+        } );*/
 
-    $(this).DataTable( {
-      dom: "Tlfrtip",
-      //"bDestroy": true,
-      ajax: {
-        url: "/ajax-rora-patients/" + $(this).data('subject'),
-        type: "GET"
-      },
-      serverSide: true,
-      tableTools: {
-          sRowSelect: "os",
-          aButtons: [
-              { sExtends: "editor_create", editor: editor },
-              { sExtends: "editor_edit",   editor: editor },
-              { sExtends: "editor_remove", editor: editor }
-          ]
-      }
-    } );  // DataTable()
+  $('#screenGroup_table').DataTable( {
+    dom: "Tlfrtip",
+    retrieve: true,
+    //"bDestroy": true,
+    ajax: {
+      url: "/ajax-rora-patients/" + $('#screenGroup_table').data('subject'),
+      type: "GET"
+    },
+    serverSide: true
+    /*tableTools: {
+        sRowSelect: "multi",
+        aButtons: [
+            { sExtends: "editor_create", editor: groupEditor },
+            { sExtends: "editor_edit",   editor: groupEditor },
+            { sExtends: "editor_remove", editor: groupEditor }
+        ]
+    }*/
+  } );  // #screenGroup_table
 
-  });  // each()
+  // --- SAMPLES Set Up       ---
+  // ----------------------------
+  $('#sample_table').DataTable( {
+    dom: "lfrtip",
+    retrieve: true,
+    //"bDestroy": true,
+    ajax: {
+      url: "/ajax-rora-patients/" + $('#sample_table').data('subject'),
+      type: "GET"
+    },
+    serverSide: true,
+  } );  // #sample_table
+
+  // --- SCREENS Set Up       ---
+  // ----------------------------
+  $('#screen_table').DataTable( {
+    dom: "lfrtip",
+    retrieve: true,
+    //"bDestroy": true,
+    ajax: {
+      url: "/ajax-rora-patients/" + $('#screen_table').data('subject'),
+      type: "GET"
+    },
+    serverSide: true,
+  } );  // #screen_table
 
 
-  // We also need to set a new class on the DataTables wrapper element in order to make the form elements appear inline rather than as a block.
-  // The table filtering input and length selector are effected by this. We extend the "sWrapper" class option for the DataTable:
-  // $.extend( $.fn.dataTableExt.oStdClasses, {
-  //   "sWrapper": "dataTables_wrapper form-inline"
-  // });
+  // --- PATIENTS Set Up ---
+  // ----------------------------
+  /*patientEditor = new $.fn.dataTable.Editor( {
+        ajax: "/ajax-rora/new/patient",
+        table: "#patient_table",
+        "fields": [ {
+                "label": "Group Name",
+                "name": "group_name"
+            }, {
+                "label": "User Name:",
+                "name": "user_name"
+            }
+        ]
+    } );*/
 
-  // /* Table initialisation */
-  // $('#patients_table').dataTable({
-  //       "bJQueryUI": true,
-  //       "sDom":  "<'row'<'span5 offset1'l><'span6'f>r>t<'row'<'span5 offset1'i><'span6'p>>",
-  //       "sPaginationType": "bootstrap",
-  //       "bProcessing": true,
-  //       "bServerSide": true,
-  //       "sAjaxSource": "/ajax-rora-patients/patient"
-  // });
+  $('#patients_table').DataTable( {
+    dom: "Tlfrtip",
+    retrieve: true,
+    //"bDestroy": true,
+    ajax: {
+      url: "/ajax-rora-patients/" + $('#patients_table').data('subject'),
+      type: "GET"
+    },
+    serverSide: true
+   /* tableTools: {
+        sRowSelect: "multi",
+        aButtons: [
+            { sExtends: "editor_create", editor: patientEditor },
+            { sExtends: "editor_edit",   editor: patientEditor },
+            { sExtends: "editor_remove", editor: patientEditor }
+        ]
+    }*/
+  } );  // #patients_table
 
-  // $('#screen_table').dataTable({
-  //       "bJQueryUI": true,
-  //       "sDom":  "<'row'<'span5 offset1'l><'span6'f>r>t<'row'<'span5 offset1'i><'span6'p>>",
-  //       "sPaginationType": "bootstrap",
-  //       "bProcessing": true,
-  //       "bServerSide": true,
-  //       "sAjaxSource": "/ajax-rora-patients/screen"
-  // });
-
-  // $('#sample_table').dataTable({
-  //       "bJQueryUI": true,
-  //       "sDom":  "<'row'<'span5 offset1'l><'span6'f>r>t<'row'<'span5 offset1'i><'span6'p>>",
-  //       "sPaginationType": "bootstrap",
-  //       "bProcessing": true,
-  //       "bServerSide": true,
-  //       "sAjaxSource": "/ajax-rora-patients/sample"
-  // });
 
 });
 </script>

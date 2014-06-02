@@ -70,7 +70,7 @@ def get_patients_info(params, subject):
     if subject == "sample":
         r_getterFunc = ro.globalenv['getSamplesInfo']
     if subject == "group":
-        r_getterFunc = ro.globalenv['getSampleGroups']
+        r_getterFunc = ro.globalenv['getScreenGroups']
 
     # Prepare parameters for R
     start = int(params.get('start',1))
@@ -88,20 +88,22 @@ def get_patients_info(params, subject):
 
 
     # count number of cols & rows in exported table
-    exported_col_num = len(exported_data)
+    headers = list(exported_data.colnames)
+
+    exported_col_num = len(headers)
     exported_row_num = len(exported_data[0])
 
-    # Convert exported_data to a list ( of lists )
+    # Convert exported_data to a list ( of dicts )
     subject_table = list()
-    row_dict = list()
-    for row in range(1,exported_row_num+1):
-        values = exported_data.rx(row,True)
+    row_dict = dict()
+    for row in range(1, exported_row_num+1):
+        row_values = exported_data.rx(row,True)
 
-        row_dict = list()
-        for col in range(0,exported_col_num):
-            cell_data = values[col][0]
+        row_dict = dict()
+        for col in range(0, exported_col_num):
+            cell_data = row_values[col][0]
             # append to cols
-            row_dict.append( cell_data )
+            row_dict[ str(headers[col]) ] = cell_data
 
         # append to rows
         subject_table.append( copy.copy(row_dict) )
@@ -113,3 +115,41 @@ def get_patients_info(params, subject):
     }
 
     return response
+
+def insert_row(table, data):
+    """
+        Adds a new record to one of the tables in RORA
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+
+    # Prepare for R call
+    if table == "group":
+        # export R function
+        r_getterFunc = ro.globalenv['createScreenGroup']
+
+
+        r_getter_output = r_getterFunc(data['group_user'], data['group_name'])
+
+
+    return True
+
+def remove_row(table, ids):
+    """
+        Adds a new record to one of the tables in RORA
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+
+    # Prepare for R call
+    if table == "group":
+        # export R function
+        r_getterFunc = ro.globalenv['deleteSampleGroup']
+
+
+        r_getter_output = r_getterFunc(ids)
+
+
+    return True
