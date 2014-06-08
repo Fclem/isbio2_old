@@ -125,10 +125,9 @@ def insert_row(table, data):
     ro.r( rcode )
 
     # Prepare for R call
-    if table == "group":
+    if table == "groups":
         # export R function
         r_getterFunc = ro.globalenv['createScreenGroup']
-
 
         r_getter_output = r_getterFunc(data['group_user'], data['group_name'])
 

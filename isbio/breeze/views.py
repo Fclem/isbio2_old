@@ -290,7 +290,13 @@ def ajax_rora_action(request):
             feedback = rora.remove_row(table=table, ids=ids)
 
     elif action == 'create':
-        pass
+        print params
+        data = dict()
+        data['group_name'] = params.get('data[group_name]', '')
+        data['group_user'] = params.get('group_author', 'unknown')
+
+        if len(data['group_name']):
+            feedback = rora.insert_row(table=table, data=data)
 
     response_data = {}
 
