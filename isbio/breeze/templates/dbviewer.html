@@ -15,9 +15,11 @@
   <link rel="stylesheet" href="/static/css/dataTables.tableTools.min.css" type="text/css"/>
   <link rel="stylesheet" href="/static/css/dataTables.editor.min.css" type="text/css"/>
 
+
   <script type="text/javascript" src="/static/js/jquery.dataTables.min.js"></script>
   <script type="text/javascript" src="/static/js/dataTables.tableTools.min.js"></script>
-  <script type="text/javascript" src="/static/js/dataTables.editor.min.js"></script>
+  <script type="text/javascript" src="/static/js/dataTables.editor.js"></script>
+  <!-- <script type="text/javascript" src="/static/js/dataTables.editor.min.js"></script> -->
 
 {% endblock %}
 
@@ -43,7 +45,7 @@
         <div class="well">
           <p></p>
             <!-- Patients Table -->
-            <table class="table table-hover table-bordered roraTable" id="patients_table" data-editor="patientEditor" data-subject="patient">
+            <table class="table table-hover table-bordered roraTable display" id="patients_table" data-editor="patientEditor" data-subject="patient" cellspacing="0" width="100%">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -57,8 +59,21 @@
                   <th>TIME_STAMP</th>
                 </tr>
               </thead>
-              <tbody id="patients-pagination-content">
-              </tbody>
+
+              <tfoot>
+                <tr>
+                  <th>ID</th>
+                  <th>IDENTIFIER</th>
+                  <th>SOURCE</th>
+                  <th>DESCRIPTION</th>
+                  <th>ORGANIZM</th>
+                  <th>SEX</th>
+                  <th>BIRTHDATE</th>
+                  <th>USER_STAMP</th>
+                  <th>TIME_STAMP</th>
+                </tr>
+              </tfoot>
+
             </table>
             <!-- END OF Patients Table -->
         </div>
@@ -67,7 +82,7 @@
         <div class="well">
           <p></p>
             <!-- Screen Table -->
-            <table class="table table-hover table-bordered roraTable" id="screen_table" data-editor="screenEditor" data-subject="screen">
+            <table class="table table-hover table-bordered roraTable display" id="screen_table" data-editor="screenEditor" data-subject="screen" cellspacing="0" width="100%">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -80,8 +95,20 @@
                   <th>TIME_STAMP</th>
                 </tr>
               </thead>
-              <tbody id="patients-pagination-content">
-              </tbody>
+
+              <tfoot>
+                <tr>
+                  <th>ID</th>
+                  <th>IDENTIFIER</th>
+                  <th>DESCRIPTION</th>
+                  <th>SOURCE</th>
+                  <th>PATIENT</th>
+                  <th>BREEZE_ALIAS</th>
+                  <th>USER_STAMP</th>
+                  <th>TIME_STAMP</th>
+                </tr>
+              </tfoot>
+
             </table>
             <!-- END OF Screen Table -->
         </div>
@@ -90,7 +117,7 @@
         <div class="well">
           <p></p>
             <!-- Sample Table -->
-            <table class="table table-hover table-bordered roraTable" id="sample_table" data-editor="sampleEditor" data-subject="sample">
+            <table class="table table-hover table-bordered roraTable display" id="sample_table" data-editor="sampleEditor" data-subject="sample" cellspacing="0" width="100%">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -102,8 +129,19 @@
                   <th>TIME_STAMP</th>
                 </tr>
               </thead>
-              <tbody id="patients-pagination-content">
-              </tbody>
+
+              <tfoot>
+                <tr>
+                  <th>ID</th>
+                  <th>IDENTIFIER</th>
+                  <th>DESCRIPTION</th>
+                  <th>SCREEN</th>
+                  <th>DOSAGE</th>
+                  <th>USER_STAMP</th>
+                  <th>TIME_STAMP</th>
+                </tr>
+              </tfoot>
+
             </table>
             <!-- END OF Sample Table -->
         </div>
@@ -112,7 +150,7 @@
         <div class="well">
           <p></p>
           <!-- ScreenGrops Table -->
-            <table class="table table-hover table-bordered roraTable" id="screenGroup_table" data-editor="groupEditor" data-subject="group">
+            <table class="table table-hover table-bordered roraTable display" id="screenGroup_table" data-editor="groupEditor" data-subject="group" cellspacing="0" width="100%">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -122,8 +160,17 @@
                   <th>TIME_STAMP</th>
                 </tr>
               </thead>
-              <tbody id="patients-pagination-content">
-              </tbody>
+
+              <tfoot>
+                <tr>
+                  <th>ID</th>
+                  <th>USERNAME</th>
+                  <th>GROUPNAME</th>
+                  <th>USER_STAMP</th>
+                  <th>TIME_STAMP</th>
+                </tr>
+              </tfoot>
+
             </table>
             <!-- END OF ScreenGrops Table -->
         </div>
@@ -138,7 +185,7 @@
 
 $(document).ready(function() {
   // using jQuery
-  /*function getCookie(name) {
+  function getCookie(name) {
       var cookieValue = null;
       if (document.cookie && document.cookie != '') {
           var cookies = document.cookie.split(';');
@@ -158,7 +205,7 @@ $(document).ready(function() {
 
   // --- SCREEN GROUPS Set Up ---
   // ----------------------------
-  groupEditor = new $.fn.dataTable.Editor( {
+/*  groupEditor = new $.fn.dataTable.Editor( {
         ajax: "/ajax-rora/action/group",
         table: "#screenGroup_table",
         "fields": [ {
@@ -171,7 +218,7 @@ $(document).ready(function() {
   groupEditor.on( 'preSubmit', function ( e, data, action ) {
                 data.csrfmiddlewaretoken = csrftoken;
                 data.group_author = username;
-        } );*/
+        } );
 
   $('#screenGroup_table').DataTable( {
     dom: "Tlfrtip",
@@ -181,15 +228,15 @@ $(document).ready(function() {
       url: "/ajax-rora-patients/" + $('#screenGroup_table').data('subject'),
       type: "GET"
     },
-    serverSide: true
-    /*tableTools: {
+    serverSide: true,
+    tableTools: {
         sRowSelect: "multi",
         aButtons: [
             { sExtends: "editor_create", editor: groupEditor },
             { sExtends: "editor_edit",   editor: groupEditor },
             { sExtends: "editor_remove", editor: groupEditor }
         ]
-    }*/
+    }
   } );  // #screenGroup_table
 
   // --- SAMPLES Set Up       ---
@@ -217,24 +264,36 @@ $(document).ready(function() {
     },
     serverSide: true,
   } );  // #screen_table
-
+*/
 
   // --- PATIENTS Set Up ---
   // ----------------------------
-  /*patientEditor = new $.fn.dataTable.Editor( {
-        ajax: "/ajax-rora/new/patient",
+  patientEditor = new $.fn.dataTable.Editor( {
+        ajax: "/ajax-rora/action/",
         table: "#patient_table",
-        "fields": [ {
-                "label": "Group Name",
-                "name": "group_name"
-            }, {
-                "label": "User Name:",
-                "name": "user_name"
-            }
+        //idSrc: "id",
+        "fields": [
+            { "label": "Identifier:",   "name": "IDENTIFIER",         "type": "text", "attr": { "required": true } },
+            { "label": "Source:",       "name": "SOURCE_IDENTIFIER",  "type": "text", "def": "FIMM" },
+            { "label": "Description:",  "name": "DESCRIPTION",        "type": "textarea" },
+            { "label": "Organism:",     "name": "ORGANISM_ID",        "type": "select" },
+            { "label": "Sex:",          "name": "SEX_ID",             "type": "select" },
+            { "label": "Birth date:",   "name": "BIRTHDATE",          "type": "date",  "dateFormat": "yy-mm-dd", "opts": { "changeMonth": true, "changeYear": true }  }
         ]
-    } );*/
+    } );
 
-  $('#patients_table').DataTable( {
+  // Set field options:
+  patientEditor.field('ORGANISM_ID').update( [ 'Homosapiens', 'Mouse'  ] );
+  patientEditor.field('SEX_ID').update( [ 'Male', 'Female'  ] );
+
+  // Supply additional parameters before Submit:
+  patientEditor.on( 'preSubmit', function ( e, data, action ) {
+                data.csrfmiddlewaretoken = csrftoken;
+                data.group_author = username;
+        } );
+
+
+  var patientTable = $('#patients_table').DataTable( {
     dom: "Tlfrtip",
     retrieve: true,
     //"bDestroy": true,
@@ -242,16 +301,28 @@ $(document).ready(function() {
       url: "/ajax-rora-patients/" + $('#patients_table').data('subject'),
       type: "GET"
     },
-    serverSide: true
-   /* tableTools: {
+    serverSide: true,
+    columns: [
+            { data: "PK_ENTITY_ID" },
+            { data: "IDENTIFIER" },
+            { data: "SOURCE_IDENTIFIER" },
+            { data: "DESCRIPTION" },
+            { data: "ORGANISM_ID" },
+            { data: "SEX_ID" },
+            { data: "BIRTHDATE" },
+            { data: "USER_STAMP" },
+            { data: "TIME_STAMP" }
+        ],
+    tableTools: {
         sRowSelect: "multi",
         aButtons: [
             { sExtends: "editor_create", editor: patientEditor },
             { sExtends: "editor_edit",   editor: patientEditor },
             { sExtends: "editor_remove", editor: patientEditor }
         ]
-    }*/
+    }
   } );  // #patients_table
+
 
 
 });

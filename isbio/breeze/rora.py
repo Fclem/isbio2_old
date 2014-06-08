@@ -73,9 +73,9 @@ def get_patients_info(params, subject):
         r_getterFunc = ro.globalenv['getScreenGroups']
 
     # Prepare parameters for R
-    start = int(params.get('start',1))
-    if start == 0:
-        start = 1
+    start = int(params.get('start',0))
+    start = start + 1
+
     span = int(params.get('length',10))
     search_text = params.get('search', '').lower()
     sort_dir = params.get('sortDir_0', 'asc')

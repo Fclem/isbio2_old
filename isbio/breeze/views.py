@@ -276,14 +276,11 @@ def ajax_patients_data(request, which):
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
 def ajax_rora_action(request):
-    params = request.GET
 
-    response_data = {
-        'draw': int(params.get('draw')),
-        'data' : [],
-        'recordsTotal': 0,
-        'recordsFiltered': 0
-    }
+    print request.POST
+
+    response_data = {}
+
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
 
