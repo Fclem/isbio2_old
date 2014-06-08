@@ -21,6 +21,16 @@
   <script type="text/javascript" src="/static/js/dataTables.editor.js"></script>
   <!-- <script type="text/javascript" src="/static/js/dataTables.editor.min.js"></script> -->
 
+  <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
+  <link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
+
+  <style>
+
+  div.DTE { overflow: visible; }
+  div.DTE_Body { overflow-y: visible; height: 270px; }
+  div.DTE_Body_Content { overflow-y: visible; height: 270px; }
+  div.DTE_Footer { overflow: visible; }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -214,8 +224,11 @@ $(document).ready(function() {
         // Create the elements to use for the input
         conf._input = $(
             '<div>'+
-                '<button class="inputButton" value="0">To do</button>'+
-                '<button class="inputButton" value="1">Done</button>'+
+                '<select id="group_editor_list" class="multiselect" multiple="multiple">'+
+                '<option value="cheese">Cheese</option>'+
+                '<option value="tomatoes">Tomatoes</option>'+
+                '<option value="mozarella">Mozzarella</option>'+
+                '</select>'+
             '</div>')[0];
 
         // Use the fact that we are called in the Editor instance's scope to call
@@ -281,6 +294,14 @@ $(document).ready(function() {
         ]
     } );
 
+  // initialize Multiselect plugin
+  var multiConfigurationSet = {
+    includeSelectAllOption: true,
+    enableFiltering: true,
+    maxHeight: 205
+  };
+
+
   groupEditor.on( 'preSubmit', function ( e, data, action ) {
                 data.csrfmiddlewaretoken = csrftoken;
                 data.group_author = username;
@@ -315,11 +336,33 @@ $(document).ready(function() {
               sButtonText: 'Alter group content',
               fnClick: function () {
                         if ( screenGroupTable.row( '.selected' ).length !== 0 ) {
+                            var opts = '';
+
                             // Show the salary submit form
                             groupEditor
                                 .title( 'Choose required screens...' )
                                 .buttons( { label: 'Save', fn: function() { this.submit(); } } )
                                 .edit( screenGroupTable.row( '.selected' ).node() );
+
+                            // Clean up option content if any
+                            $('#group_editor_list option').remove();
+
+                            // Obtain options for this group
+                            $.getJSON('/ajax-rora-plain-screens/1', function( data ){
+                                $.each( data, function( key, val ) {
+                                  if (val.selected) {
+                                    opts += '<option value="' + key + '" selected="selected">' + val.name + '</option>';
+                                  }
+                                  else {
+                                    opts += '<option value="' + key + '">' + val.name + '</option>';
+                                  }
+                                });
+
+                                $('#group_editor_list').append(opts);
+
+                                // Initialize multiselect plugin
+                                $('.multiselect').multiselect(multiConfigurationSet);
+                            });
                         }
                     } // function()
             }
