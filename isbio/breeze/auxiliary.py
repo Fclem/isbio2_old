@@ -2,6 +2,16 @@ import re, copy, os
 from django.db.models import Q
 import breeze.models
 
+def clean_up_dt_id(lst):
+    """ Cleans up row ids that come from the DataTable plugin.
+
+    Arguments:
+    lst      -- list of ids
+    """
+    cleaned = map(lambda line: int(line[4:]), lst)  # (trim firs 4 chars)
+
+    return cleaned
+
 def save_new_project(form, author):
     """ Saves New Project data from a valid form to DB model.
 

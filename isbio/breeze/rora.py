@@ -144,14 +144,13 @@ def remove_row(table, ids):
     ro.r( rcode )
 
     # Prepare for R call
-    if table == "group":
+    if table == "groups":
         # export R function
         r_removerFunc = ro.globalenv['deleteSampleGroup']
 
     if table == "patients":
         # export R function
         r_removerFunc = ro.globalenv['deletePatient']
-
 
     r_remover_output = r_removerFunc(ids)
 

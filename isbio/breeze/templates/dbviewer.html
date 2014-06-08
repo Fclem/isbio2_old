@@ -206,7 +206,7 @@ $(document).ready(function() {
   // --- SCREEN GROUPS Set Up ---
   // ----------------------------
   groupEditor = new $.fn.dataTable.Editor( {
-        ajax: "/ajax-rora/action/group",
+        ajax: "/ajax-rora/action/",
         table: "#screenGroup_table",
         "fields": [ {
                 "label": "Group Name",
@@ -218,6 +218,7 @@ $(document).ready(function() {
   groupEditor.on( 'preSubmit', function ( e, data, action ) {
                 data.csrfmiddlewaretoken = csrftoken;
                 data.group_author = username;
+                data.table = 'groups';
         } );
 
   $('#screenGroup_table').DataTable( {

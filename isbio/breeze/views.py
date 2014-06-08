@@ -278,24 +278,21 @@ def ajax_patients_data(request, which):
 def ajax_rora_action(request):
 
     params = request.POST
-    print params
 
     action = params.get('action', '')
     table = params.get('table', '')
 
     if action == 'remove':
-        if table == 'patients':
-            id_to_clean = params.getlist('id[]', '')
+        # Clean up row IDs:
+        ids = aux.clean_up_dt_id( params.getlist('id[]', '') )
 
-            if id_to_clean:
-                id_to_delete = map(lambda line: line[4:], id_to_clean)  # clean up IDs (trim firs 4 chars)
-                feedback = rora.remove_row(table=table, ids=id_to_delete)
-                print feedback
+        if ids and table in ['patients', 'groups']:
+            feedback = rora.remove_row(table=table, ids=ids)
 
     elif action == 'create':
         pass
 
-    response_data = []
+    response_data = {}
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
