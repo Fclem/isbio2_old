@@ -137,7 +137,7 @@ def insert_row(table, data):
 
 def remove_row(table, ids):
     """
-        Adds a new record to one of the tables in RORA
+        Removes data from one of the tables in RORA
     """
     # Source & export R code
     rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
@@ -146,10 +146,13 @@ def remove_row(table, ids):
     # Prepare for R call
     if table == "group":
         # export R function
-        r_getterFunc = ro.globalenv['deleteSampleGroup']
+        r_removerFunc = ro.globalenv['deleteSampleGroup']
+
+    if table == "patients":
+        # export R function
+        r_removerFunc = ro.globalenv['deletePatient']
 
 
-        r_getter_output = r_getterFunc(ids)
+    r_remover_output = r_removerFunc(ids)
 
-
-    return True
+    return r_remover_output

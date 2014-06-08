@@ -290,6 +290,7 @@ $(document).ready(function() {
   patientEditor.on( 'preSubmit', function ( e, data, action ) {
                 data.csrfmiddlewaretoken = csrftoken;
                 data.group_author = username;
+                data.table = 'patients';
         } );
 
 
