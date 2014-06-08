@@ -251,11 +251,11 @@ $(document).ready(function() {
     },
     serverSide: true,
   } );  // #sample_table
-
+*/
   // --- SCREENS Set Up       ---
   // ----------------------------
   $('#screen_table').DataTable( {
-    dom: "lfrtip",
+    // dom: "lfrtip",
     retrieve: true,
     //"bDestroy": true,
     ajax: {
@@ -263,8 +263,18 @@ $(document).ready(function() {
       type: "GET"
     },
     serverSide: true,
+    columns: [
+            { data: "PK_SCREEN_ID" },
+            { data: "IDENTIFIER" },
+            { data: "DESCRIPTION" },
+            { data: "SOURCE_IDENTIFIER" },
+            { data: "ENTITY_ID" },
+            { data: "BREEZE_ALIAS" },
+            { data: "USER_STAMP" },
+            { data: "TIME_STAMP" }
+        ]
   } );  // #screen_table
-*/
+
 
   // --- PATIENTS Set Up ---
   // ----------------------------
@@ -294,7 +304,7 @@ $(document).ready(function() {
         } );
 
 
-  var patientTable = $('#patients_table').DataTable( {
+  $('#patients_table').DataTable( {
     dom: "Tlfrtip",
     retrieve: true,
     //"bDestroy": true,
