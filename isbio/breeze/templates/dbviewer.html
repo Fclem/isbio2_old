@@ -203,14 +203,80 @@ $(document).ready(function() {
   var csrftoken = getCookie('csrftoken');
   var username = "{{ user.username|default:"undefined" }}"
 
+  // --- OUR CUSTOM FILED TYPE ---
+  // ----------------------------
+  $.fn.dataTable.Editor.fieldTypes.multidrop = $.extend( true, {}, $.fn.dataTable.Editor.models.fieldType, {
+    "create": function ( conf ) {
+        var that = this;
+
+        conf._enabled = true;
+
+        // Create the elements to use for the input
+        conf._input = $(
+            '<div>'+
+                '<button class="inputButton" value="0">To do</button>'+
+                '<button class="inputButton" value="1">Done</button>'+
+            '</div>')[0];
+
+        // Use the fact that we are called in the Editor instance's scope to call
+        // the API method for setting the value when needed
+        $('button.inputButton', conf._input).click( function () {
+            if ( ! conf._enabled ) {
+                that.set( conf.name, $(this).attr('value') );
+            }
+
+            return false;
+        } );
+
+        return conf._input;
+    },
+
+    "get": function ( conf ) {
+        return $('button.selected', conf._input).attr('value');
+    },
+
+    "set": function ( conf, val ) {
+        $('button.selected', conf._input).removeClass( 'selected' );
+        $('button.inputButton[value='+val+']', conf._input).addClass('selected');
+    },
+
+    "enable": function ( conf ) {
+        conf._enabled = true;
+        $(conf._input).removeClass( 'disabled' );
+    },
+
+    "disable": function ( conf ) {
+        conf._enabled = false;
+        $(conf._input).addClass( 'disabled' );
+    }
+} );
+
+
   // --- SCREEN GROUPS Set Up ---
   // ----------------------------
-  groupEditor = new $.fn.dataTable.Editor( {
+  groupCreator = new $.fn.dataTable.Editor( {
         ajax: "/ajax-rora/action/",
         table: "#screenGroup_table",
         "fields": [ {
                 "label": "Group Name",
                 "name": "group_name"
+            }
+        ]
+    } );
+
+  groupCreator.on( 'preSubmit', function ( e, data, action ) {
+                data.csrfmiddlewaretoken = csrftoken;
+                data.group_author = username;
+                data.table = 'groups';
+        } );
+
+  groupEditor = new $.fn.dataTable.Editor( {
+        ajax: "/ajax-rora/action/",
+        table: "#screenGroup_table",
+        "fields": [ {
+                "label": "Group content:",
+                "name": "Content",
+                "type": "multidrop"
             }
         ]
     } );
@@ -221,7 +287,7 @@ $(document).ready(function() {
                 data.table = 'groups';
         } );
 
-  $('#screenGroup_table').DataTable( {
+  var screenGroupTable = $('#screenGroup_table').DataTable( {
     dom: "Tlfrtip",
     retrieve: true,
     //"bDestroy": true,
@@ -240,9 +306,23 @@ $(document).ready(function() {
     tableTools: {
         sRowSelect: "multi",
         aButtons: [
-            { sExtends: "editor_create", editor: groupEditor },
-            { sExtends: "editor_edit",   editor: groupEditor },
-            { sExtends: "editor_remove", editor: groupEditor }
+            { sExtends: "editor_create", editor: groupCreator },
+            //{ sExtends: "editor_edit",   editor: groupEditor },
+            { sExtends: "editor_remove", editor: groupCreator },
+            {
+              sExtends: 'select_single',
+              sButtonClass: 'marginLeft',
+              sButtonText: 'Alter group content',
+              fnClick: function () {
+                        if ( screenGroupTable.row( '.selected' ).length !== 0 ) {
+                            // Show the salary submit form
+                            groupEditor
+                                .title( 'Choose required screens...' )
+                                .buttons( { label: 'Save', fn: function() { this.submit(); } } )
+                                .edit( screenGroupTable.row( '.selected' ).node() );
+                        }
+                    } // function()
+            }
         ]
     }
   } );  // #screenGroup_table

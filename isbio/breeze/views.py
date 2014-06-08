@@ -278,6 +278,7 @@ def ajax_patients_data(request, which):
 def ajax_rora_action(request):
 
     params = request.POST
+    print params
 
     action = params.get('action', '')
     table = params.get('table', '')
@@ -290,13 +291,15 @@ def ajax_rora_action(request):
             feedback = rora.remove_row(table=table, ids=ids)
 
     elif action == 'create':
-        print params
         data = dict()
         data['group_name'] = params.get('data[group_name]', '')
         data['group_user'] = params.get('group_author', 'unknown')
 
         if len(data['group_name']):
             feedback = rora.insert_row(table=table, data=data)
+
+    elif action == 'edit':
+        print "we want to edit now:"
 
     response_data = {}
 
