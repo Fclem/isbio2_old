@@ -205,7 +205,7 @@ $(document).ready(function() {
 
   // --- SCREEN GROUPS Set Up ---
   // ----------------------------
-/*  groupEditor = new $.fn.dataTable.Editor( {
+  groupEditor = new $.fn.dataTable.Editor( {
         ajax: "/ajax-rora/action/group",
         table: "#screenGroup_table",
         "fields": [ {
@@ -229,6 +229,13 @@ $(document).ready(function() {
       type: "GET"
     },
     serverSide: true,
+    columns: [
+            { data: "PK_SCREEN_GROUP_ID" },
+            { data: "FIMM_USERNAME" },
+            { data: "SCREEN_GROUP_NAME" },
+            { data: "USER_STAMP" },
+            { data: "TIME_STAMP" }
+        ],
     tableTools: {
         sRowSelect: "multi",
         aButtons: [
@@ -250,8 +257,17 @@ $(document).ready(function() {
       type: "GET"
     },
     serverSide: true,
+    columns: [
+            { data: "PK_SCREEN_SAMPLE_ID" },
+            { data: "IDENTIFIER" },
+            { data: "DESCRIPTION" },
+            { data: "SCREEN_ID" },
+            { data: "ORDER_NO" },
+            { data: "USER_STAMP" },
+            { data: "TIME_STAMP" }
+        ]
   } );  // #sample_table
-*/
+
   // --- SCREENS Set Up       ---
   // ----------------------------
   $('#screen_table').DataTable( {
