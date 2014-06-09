@@ -157,10 +157,22 @@ def getScreenGroupContent(groupID):
     rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
     ro.r( rcode )
 
-    content = {
-        "Screen Id_1": { "name": "Screen Name1", "selected": 1 },
-        "Screen Id_2": { "name": "Screen Name2", "selected": 0 },
-        "Screen Id_3": { "name": "Screen Name3", "selected": 1 }
-    }
+    r_getterFunc = ro.globalenv['listGroupScreens']
+    exported_data = r_getterFunc(groupID)
 
-    return content
+    screens = dict()
+    exported_row_num = len(exported_data[0])
+    # Convert exported_data to a dict() of dict()
+    for row in range(1, exported_row_num+1):
+        inner = dict()
+        row_values = exported_data.rx(row,True)
+
+        #cell_data = row_values[col][0]
+        inner[ 'selected' ] = int( row_values[2][0] )
+        inner[ 'name' ] = str( row_values[1][0] )
+
+
+        screens[ str( int(row_values[0][0]) ) ] = inner
+
+
+    return screens
