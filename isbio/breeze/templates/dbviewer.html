@@ -329,8 +329,12 @@ $(document).ready(function() {
                             // Clean up option content if any
                             $('#group_editor_list option').remove();
 
-                            // Obtain options for this group
-                            $.getJSON('/ajax-rora-plain-screens/1', function( data ){
+                            // Get group ID
+                            var rowID = screenGroupTable.row( '.selected' ).node().id;
+                            groupID = rowID.slice(4);   // trim 'row_' from rowID
+
+                            // Obtain <option />s for this group
+                            $.getJSON('/ajax-rora-plain-screens/' + groupID, function( data ){
                                 $.each( data, function( key, val ) {
                                   if (val.selected) {
                                     opts += '<option value="' + key + '" selected="selected">' + val.name + '</option>';

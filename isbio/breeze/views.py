@@ -278,7 +278,6 @@ def ajax_patients_data(request, which):
 def ajax_rora_action(request):
 
     params = request.POST
-    print params
 
     action = params.get('action', '')
     table = params.get('table', '')
@@ -306,11 +305,8 @@ def ajax_rora_action(request):
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
 def ajax_rora_screens(request, gid):
-    response_data = {
-        "Group Id_1": { "name": "Group Name1", "selected": 1 },
-        "Group Id_2": { "name": "Group Name2", "selected": 0 },
-        "Group Id_3": { "name": "Group Name3", "selected": 1 }
-    }
+
+    response_data = rora.getScreenGroupContent(groupID=gid)
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 

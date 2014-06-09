@@ -147,3 +147,20 @@ def remove_row(table, ids):
     r_remover_output = r_removerFunc(ids)
 
     return r_remover_output
+
+def getScreenGroupContent(groupID):
+    """
+        Returns Screen Group content for a given group in json format;
+        In particular: Screen ID, Screen Name, status -- if in the group or not.
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+
+    content = {
+        "Screen Id_1": { "name": "Screen Name1", "selected": 1 },
+        "Screen Id_2": { "name": "Screen Name2", "selected": 0 },
+        "Screen Id_3": { "name": "Screen Name3", "selected": 1 }
+    }
+
+    return content
