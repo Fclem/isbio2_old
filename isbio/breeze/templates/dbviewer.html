@@ -65,8 +65,6 @@
                   <th>ORGANIZM</th>
                   <th>SEX</th>
                   <th>BIRTHDATE</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </thead>
 
@@ -79,8 +77,6 @@
                   <th>ORGANIZM</th>
                   <th>SEX</th>
                   <th>BIRTHDATE</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </tfoot>
 
@@ -101,8 +97,6 @@
                   <th>SOURCE</th>
                   <th>PATIENT</th>
                   <th>BREEZE_ALIAS</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </thead>
 
@@ -114,8 +108,6 @@
                   <th>SOURCE</th>
                   <th>PATIENT</th>
                   <th>BREEZE_ALIAS</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </tfoot>
 
@@ -135,8 +127,6 @@
                   <th>DESCRIPTION</th>
                   <th>SCREEN</th>
                   <th>DOSAGE</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </thead>
 
@@ -147,8 +137,6 @@
                   <th>DESCRIPTION</th>
                   <th>SCREEN</th>
                   <th>DOSAGE</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </tfoot>
 
@@ -166,8 +154,6 @@
                   <th>ID</th>
                   <th>USERNAME</th>
                   <th>GROUPNAME</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </thead>
 
@@ -176,8 +162,6 @@
                   <th>ID</th>
                   <th>USERNAME</th>
                   <th>GROUPNAME</th>
-                  <th>USER_STAMP</th>
-                  <th>TIME_STAMP</th>
                 </tr>
               </tfoot>
 
@@ -320,9 +304,7 @@ $(document).ready(function() {
     columns: [
             { data: "PK_SCREEN_GROUP_ID" },
             { data: "FIMM_USERNAME" },
-            { data: "SCREEN_GROUP_NAME" },
-            { data: "USER_STAMP" },
-            { data: "TIME_STAMP" }
+            { data: "SCREEN_GROUP_NAME" }
         ],
     tableTools: {
         sRowSelect: "multi",
@@ -386,9 +368,7 @@ $(document).ready(function() {
             { data: "IDENTIFIER" },
             { data: "DESCRIPTION" },
             { data: "SCREEN_ID" },
-            { data: "ORDER_NO" },
-            { data: "USER_STAMP" },
-            { data: "TIME_STAMP" }
+            { data: "ORDER_NO" }
         ]
   } );  // #sample_table
 
@@ -409,9 +389,7 @@ $(document).ready(function() {
             { data: "DESCRIPTION" },
             { data: "SOURCE_IDENTIFIER" },
             { data: "ENTITY_ID" },
-            { data: "BREEZE_ALIAS" },
-            { data: "USER_STAMP" },
-            { data: "TIME_STAMP" }
+            { data: "BREEZE_ALIAS" }
         ]
   } );  // #screen_table
 
@@ -460,9 +438,7 @@ $(document).ready(function() {
             { data: "DESCRIPTION" },
             { data: "ORGANISM_ID" },
             { data: "SEX_ID" },
-            { data: "BIRTHDATE" },
-            { data: "USER_STAMP" },
-            { data: "TIME_STAMP" }
+            { data: "BIRTHDATE" }
         ],
     tableTools: {
         sRowSelect: "multi",

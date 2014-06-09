@@ -63,14 +63,7 @@ def get_patients_info(params, subject):
     ro.r( rcode )
 
     # Export a function to call
-    if subject == "patient":
-        r_getterFunc = ro.globalenv['getPatientsInfo']
-    if subject == "screen":
-        r_getterFunc = ro.globalenv['getScreensInfo']
-    if subject == "sample":
-        r_getterFunc = ro.globalenv['getSamplesInfo']
-    if subject == "group":
-        r_getterFunc = ro.globalenv['getScreenGroups']
+    r_getterFunc = ro.globalenv['getPSSData']
 
     # Prepare parameters for R
     start = int(params.get('start',0))
@@ -81,7 +74,7 @@ def get_patients_info(params, subject):
     sort_dir = params.get('sortDir_0', 'asc')
 
     # R Call:
-    r_getter_output = r_getterFunc(start, span)
+    r_getter_output = r_getterFunc(subject, start, span)
 
     # Data table as such
     exported_data = r_getter_output[2]
