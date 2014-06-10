@@ -235,16 +235,6 @@ $(document).ready(function() {
     "set": function ( conf, val ) {
         $('button.selected', conf._input).removeClass( 'selected' );
         $('button.inputButton[value='+val+']', conf._input).addClass('selected');
-    },
-
-    "enable": function ( conf ) {
-        conf._enabled = true;
-        $(conf._input).removeClass( 'disabled' );
-    },
-
-    "disable": function ( conf ) {
-        conf._enabled = false;
-        $(conf._input).addClass( 'disabled' );
     }
 } );
 
@@ -323,7 +313,20 @@ $(document).ready(function() {
                             // Show the salary submit form
                             groupEditor
                                 .title( 'Choose required screens...' )
-                                .buttons( { label: 'Save', fn: function() { this.submit(); } } )
+                                .buttons( { label: 'Save', fn: function() {
+                                  var control= $(this.dom.form).find('.multiselect-container li[class=active]').find('input');
+
+                                  var content = [];
+                                  $(control).each(function(){
+                                    var id = this.value
+                                    if ( id != 'multiselect-all') { content.push( id ); }
+                                  });
+
+                                  this.submit( null, null, function (data) {
+                                    data.screens = content;
+                                  });
+
+                                } } )
                                 .edit( screenGroupTable.row( '.selected' ).node() );
 
                             // Clean up option content if any

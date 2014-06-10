@@ -299,6 +299,7 @@ def ajax_rora_action(request):
 
     elif action == 'edit':
         print "we want to edit now:"
+        print params
 
     response_data = {}
 

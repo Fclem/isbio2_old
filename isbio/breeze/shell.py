@@ -112,6 +112,7 @@ def update_script_description(script, post_data):
 
 def update_script_xml(script, xml_data):
     file_path = str(settings.MEDIA_ROOT) + str(script.docxml)
+
     if os.path.isfile(file_path):
         handle = open(file_path, 'w')
         handle.write(str(xml_data))
