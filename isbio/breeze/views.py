@@ -298,8 +298,12 @@ def ajax_rora_action(request):
             feedback = rora.insert_row(table=table, data=data)
 
     elif action == 'edit':
-        print "we want to edit now:"
-        print params
+        par = [ params.get('id', '') ]
+        group = aux.clean_up_dt_id( par )
+        screens = params.getlist('screens[]', '')
+
+        if table in ['patients', 'groups']:
+            feedback = rora.update_row(table=table, content=screens, iid=group)
 
     response_data = {}
 

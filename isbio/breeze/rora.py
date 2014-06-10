@@ -148,6 +148,28 @@ def remove_row(table, ids):
 
     return r_remover_output
 
+def update_row(table, content, iid):
+    """
+        UPdaTE
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+
+    # Prepare for R call
+    if table == "groups":
+        content = map(int, content)
+        # export R function
+        r_updateFunc = ro.globalenv['updateSampleGroups']
+
+    if table == "patients":
+        pass
+
+    r_output = r_updateFunc(content, iid)
+
+
+    return r_output
+
 def getScreenGroupContent(groupID):
     """
         Returns Screen Group content for a given group in json format;
