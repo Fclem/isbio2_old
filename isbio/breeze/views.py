@@ -730,6 +730,7 @@ def create_job(request, sid=None):
     user_info = User.objects.get(username=request.user)
 
     if request.method == 'POST':
+        print request.POST
         head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
 

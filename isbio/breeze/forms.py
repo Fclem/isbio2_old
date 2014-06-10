@@ -616,10 +616,8 @@ def form_from_xml(xml, req=None, init=False, usr=None):
                     sample_list_of_tuples = list()
 
                     # push r-code here to populate dtm_samples
-                    if usr.username:
-                        group_list_of_tuples = rora.get_dtm_sample_groups(usr.username)
-
-                    sample_list_of_tuples = rora.get_dtm_samples()
+                    group_list_of_tuples = rora.get_dtm_screen_groups()
+                    sample_list_of_tuples = rora.get_dtm_screens()
 
                     dtm_options = list()
                     dtm_options.append( tuple(( 'Groups', tuple(group_list_of_tuples) )) )

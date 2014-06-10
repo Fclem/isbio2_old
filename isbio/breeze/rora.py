@@ -2,16 +2,16 @@ import rpy2.robjects as ro
 import copy
 from django.conf import settings
 
-def get_dtm_samples():
+def get_dtm_screens():
     """
         Exports Samples from Dotmatix
     """
     samples = list()
 
-    rcode = 'source("%s%s")' %(settings.RORA_LIB,'basic.R')
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
     ro.r( rcode )
 
-    r_dotmatixSamples = ro.globalenv['dotmatixSamples']
+    r_dotmatixSamples = ro.globalenv['getDTMScreens']
 
     res = r_dotmatixSamples()
 
@@ -24,21 +24,18 @@ def get_dtm_samples():
 
     return samples
 
-def get_dtm_sample_groups(author):
+def get_dtm_screen_groups():
     """
         Exports Sample Groups from Dotmatix
     """
     groups = list()
 
-    # Check if author is not empty:
-    # here...
-
-    rcode = 'source("%s%s")' %(settings.RORA_LIB,'basic.R')
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
     ro.r( rcode )
 
-    r_dotmatixSampleGroups = ro.globalenv['dotmatixSampleGroups']
+    r_dotmatixSampleGroups = ro.globalenv['getDTMScreenGroups']
 
-    res = r_dotmatixSampleGroups(author)
+    res = r_dotmatixSampleGroups()
 
     # If the data frame is of appropriate format
     if len(res) == 2:
