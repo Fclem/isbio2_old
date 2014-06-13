@@ -286,7 +286,7 @@ def ajax_rora_action(request):
         # Clean up row IDs:
         ids = aux.clean_up_dt_id( params.getlist('id[]', '') )
 
-        if ids and table in ['patients', 'groups']:
+        if ids and table in ['patients', 'groups', 'content', 'screen']:
             feedback = rora.remove_row(table=table, ids=ids)
 
     elif action == 'create':
@@ -730,7 +730,7 @@ def create_job(request, sid=None):
     user_info = User.objects.get(username=request.user)
 
     if request.method == 'POST':
-        print request.POST
+
         head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
 

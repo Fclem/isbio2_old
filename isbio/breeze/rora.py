@@ -19,7 +19,7 @@ def get_dtm_screens():
     if len(res) == 2:
         for row in range(1,len(res[0])+1):
             rn = res.rx(row, True)
-            gid = 'S' + rn[0][0]
+            gid = 'ScreenID_' + rn[0][0]
             samples.append( tuple((gid, rn[1][0])) )
 
     return samples
@@ -41,7 +41,7 @@ def get_dtm_screen_groups():
     if len(res) == 2:
         for row in range(1,len(res[0])+1):
             rn = res.rx(row, True)
-            sid = 'G' + rn[0][0]
+            sid = 'GroupID_' + rn[0][0]
             groups.append( tuple((sid, rn[1][0])) )
 
     return groups
@@ -52,7 +52,7 @@ def get_patients_info(params, subject):
 
         Arguments:
         params     -- request dictionary
-        subject    -- can be: "patient", "screen", "sample", "group"
+        subject    -- can be: "patient", "screen", "sample", "group", "content"
     """
 
     # Source & export R code
@@ -67,15 +67,22 @@ def get_patients_info(params, subject):
     start = start + 1
 
     span = int(params.get('length',10))
-    search_text = params.get('search', '').lower()
-    sort_dir = params.get('sortDir_0', 'asc')
+    #search_text = params.get('search', '').lower()
+
+    # sorting
+    sort_ind = params.get('order[0][column]','')
+    post_key = ('columns[%s][data]' % sort_ind)
+    sort_col = params.get(post_key,'')
+    sort_dir = str(params.get('order[0][dir]','')).upper()
+
+    # General Search
+    search_value = params.get('search[value]','')
 
     # R Call:
-    r_getter_output = r_getterFunc(subject, start, span)
+    r_getter_output = r_getterFunc(subject, start, span, sort_col, sort_dir, search_value)
 
     # Data table as such
     exported_data = r_getter_output[2]
-
 
     # count number of cols & rows in exported table
     headers = list(exported_data.colnames)
@@ -140,6 +147,15 @@ def remove_row(table, ids):
     if table == "patients":
         # export R function
         r_removerFunc = ro.globalenv['deletePatient']
+
+    if table == "content":
+        # export R function
+        r_removerFunc = ro.globalenv['deleteGroupContent']
+
+    if table == "screen":
+        # export R function
+        r_removerFunc = ro.globalenv['deleteScreen']
+
 
     r_remover_output = r_removerFunc(ids)
 

@@ -47,6 +47,7 @@
       <li><a href="#screensPane" data-toggle="tab">Screens</a></li>
       <li><a href="#samplesPane" data-toggle="tab">Samples</a></li>
       <li><a href="#sampleGroupsPane" data-toggle="tab">Screen Groups</a></li>
+      <li><a href="#ScreenInGroupPane" data-toggle="tab">Screen Groups Content</a></li>
     </ul>
 
     <!-- Tab Content: -->
@@ -97,6 +98,7 @@
                   <th>SOURCE</th>
                   <th>PATIENT</th>
                   <th>BREEZE_ALIAS</th>
+                  <th>TIME_STAMP</th>
                 </tr>
               </thead>
 
@@ -108,6 +110,7 @@
                   <th>SOURCE</th>
                   <th>PATIENT</th>
                   <th>BREEZE_ALIAS</th>
+                  <th>TIME_STAMP</th>
                 </tr>
               </tfoot>
 
@@ -167,6 +170,33 @@
 
             </table>
             <!-- END OF ScreenGrops Table -->
+        </div>
+      </div>
+      <div class="tab-pane" id="ScreenInGroupPane">
+        <div class="well">
+          <p></p>
+          <!-- ScreenGrops Table -->
+            <table class="table table-hover table-bordered roraTable display" id="screenInGroup_table" data-editor="groupEditor" data-subject="content" cellspacing="0" width="100%">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>SCREENNAME</th>
+                  <th>GROUPNAME</th>
+                  <th>DOTMATICS ID</th>
+                </tr>
+              </thead>
+
+              <tfoot>
+                <tr>
+                  <th>ID</th>
+                  <th>SCREENNAME</th>
+                  <th>GROUPNAME</th>
+                  <th>DOTMATICS ID</th>
+                </tr>
+              </tfoot>
+
+            </table>
+            <!-- END OF ScreenInGrop Table -->
         </div>
       </div>
     </div>
@@ -238,6 +268,46 @@ $(document).ready(function() {
     }
 } );
 
+  // --- SCREEN IN GROUP Set Up       ---
+  // ----------------------------
+  contentCreator = new $.fn.dataTable.Editor( {
+        ajax: "/ajax-rora/action/",
+        table: "#screenInGroup_table",
+        "fields": [ {
+                "label": "Group Name",
+                "name": "group_name"
+            }
+        ]
+    } );
+
+  contentCreator.on( 'preSubmit', function ( e, data, action ) {
+                data.csrfmiddlewaretoken = csrftoken;
+                data.group_author = username;
+                data.table = 'content';
+        } );
+
+  $('#screenInGroup_table').DataTable( {
+    dom: "Tlfrtip",
+    retrieve: true,
+    //"bDestroy": true,
+    ajax: {
+      url: "/ajax-rora-patients/" + $('#screenInGroup_table').data('subject'),
+      type: "GET"
+    },
+    serverSide: true,
+    columns: [
+            { data: "PK_SCREEN_IN_GROUP_ID" },
+            { data: "IDENTIFIER" },
+            { data: "SCREEN_GROUP_NAME" },
+            { data: "DOTM_SOURCE_ID" }
+        ],
+    tableTools: {
+        sRowSelect: "multi",
+        aButtons: [
+            { sExtends: "editor_remove", editor: contentCreator }
+        ]
+    }
+  } );  // #sample_table
 
   // --- SCREEN GROUPS Set Up ---
   // ----------------------------
@@ -382,8 +452,24 @@ $(document).ready(function() {
 
   // --- SCREENS Set Up       ---
   // ----------------------------
+  screenCreator = new $.fn.dataTable.Editor( {
+        ajax: "/ajax-rora/action/",
+        table: "#screen_table",
+        "fields": [ {
+                "label": "Group Name",
+                "name": "group_name"
+            }
+        ]
+    } );
+
+  screenCreator.on( 'preSubmit', function ( e, data, action ) {
+                data.csrfmiddlewaretoken = csrftoken;
+                data.group_author = username;
+                data.table = 'screen';
+        } );
+
   $('#screen_table').DataTable( {
-    // dom: "lfrtip",
+    dom: "Tlfrtip",
     retrieve: true,
     //"bDestroy": true,
     ajax: {
@@ -397,8 +483,15 @@ $(document).ready(function() {
             { data: "DESCRIPTION" },
             { data: "SOURCE_IDENTIFIER" },
             { data: "ENTITY_ID" },
-            { data: "BREEZE_ALIAS" }
+            { data: "BREEZE_ALIAS" },
+            { data: "TIME_STAMP" }
+        ],
+    tableTools: {
+        sRowSelect: "multi",
+        aButtons: [
+            { sExtends: "editor_remove", editor: screenCreator }
         ]
+    }
   } );  // #screen_table
 
 

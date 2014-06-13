@@ -621,7 +621,7 @@ def form_from_xml(xml, req=None, init=False, usr=None):
 
                     dtm_options = list()
                     dtm_options.append( tuple(( 'Groups', tuple(group_list_of_tuples) )) )
-                    dtm_options.append( tuple(( 'Individual Samples', tuple(sample_list_of_tuples) )) )
+                    dtm_options.append( tuple(( 'Individual Screens', tuple(sample_list_of_tuples) )) )
 
 
                     custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
