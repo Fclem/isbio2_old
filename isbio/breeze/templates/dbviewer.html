@@ -38,170 +38,226 @@
   &nbsp;
 </div>
 
+<!-- DB Modules -->
 <div class="row-fluid">
   <div class="span10 offset1">
-
-    <!-- Tab Headers: -->
-    <ul class="nav nav-tabs" id="tabHeaders">
-      <li class="active"><a href="#patientsPane" data-toggle="tab">Patients</a></li>
-      <li><a href="#screensPane" data-toggle="tab">Screens</a></li>
-      <li><a href="#samplesPane" data-toggle="tab">Samples</a></li>
-      <li><a href="#sampleGroupsPane" data-toggle="tab">Screen Groups</a></li>
-      <li><a href="#ScreenInGroupPane" data-toggle="tab">Screen Groups Content</a></li>
+    <ul class="nav nav-pills" id="scriptTabs">
+      <li class="active"><a href="#patientsOuter" data-toggle="tab"><strong>Patients &amp; Screens</strong></a></li>
+      <li ><a href="#drugsOuter" data-toggle="tab"><strong>Drug Collection</strong></a></li>
     </ul>
+  </div>
+</div>
 
-    <!-- Tab Content: -->
+<div class="row-fluid">
+  <div class="span10 offset1">
+    <!-- Outer tab content-->
     <div class="tab-content">
-      <div class="tab-pane active" id="patientsPane">
-        <div class="well">
-          <p></p>
-            <!-- Patients Table -->
-            <table class="table table-hover table-bordered roraTable display" id="patients_table" data-editor="patientEditor" data-subject="patient" cellspacing="0" width="100%">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>IDENTIFIER</th>
-                  <th>SOURCE</th>
-                  <th>DESCRIPTION</th>
-                  <th>ORGANIZM</th>
-                  <th>SEX</th>
-                  <th>BIRTHDATE</th>
-                </tr>
-              </thead>
 
-              <tfoot>
-                <tr>
-                  <th>ID</th>
-                  <th>IDENTIFIER</th>
-                  <th>SOURCE</th>
-                  <th>DESCRIPTION</th>
-                  <th>ORGANIZM</th>
-                  <th>SEX</th>
-                  <th>BIRTHDATE</th>
-                </tr>
-              </tfoot>
+      <!-- Patients-Screens Outer Section -->
+      <div class="tab-pane active" id="patientsOuter">
+        <!-- Inner Tab Headers: -->
+        <ul class="nav nav-tabs" id="tabHeaders">
+          <li class="active"><a href="#patientsPane" data-toggle="tab">Patients</a></li>
+          <li><a href="#screensPane" data-toggle="tab">Screens</a></li>
+          <li><a href="#samplesPane" data-toggle="tab">Samples</a></li>
+          <li><a href="#sampleGroupsPane" data-toggle="tab">Screen Groups</a></li>
+          <li><a href="#ScreenInGroupPane" data-toggle="tab">Screen Groups Content</a></li>
+        </ul>
 
-            </table>
-            <!-- END OF Patients Table -->
-        </div>
+        <!-- Tab Content: -->
+        <div class="tab-content">
+          <div class="tab-pane active" id="patientsPane">
+            <div class="well">
+              <p></p>
+                <!-- Patients Table -->
+                <table class="table table-hover table-bordered roraTable display" id="patients_table" data-editor="patientEditor" data-subject="patient" cellspacing="0" width="100%">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>IDENTIFIER</th>
+                      <th>SOURCE</th>
+                      <th>DESCRIPTION</th>
+                      <th>ORGANIZM</th>
+                      <th>SEX</th>
+                      <th>BIRTHDATE</th>
+                    </tr>
+                  </thead>
+
+                  <tfoot>
+                    <tr>
+                      <th>ID</th>
+                      <th>IDENTIFIER</th>
+                      <th>SOURCE</th>
+                      <th>DESCRIPTION</th>
+                      <th>ORGANIZM</th>
+                      <th>SEX</th>
+                      <th>BIRTHDATE</th>
+                    </tr>
+                  </tfoot>
+
+                </table>
+                <!-- END OF Patients Table -->
+            </div>
+          </div>
+          <div class="tab-pane" id="screensPane">
+            <div class="well">
+              <p></p>
+                <!-- Screen Table -->
+                <table class="table table-hover table-bordered roraTable display" id="screen_table" data-editor="screenEditor" data-subject="screen" cellspacing="0" width="100%">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>IDENTIFIER</th>
+                      <th>DESCRIPTION</th>
+                      <th>SOURCE</th>
+                      <th>PATIENT</th>
+                      <th>BREEZE_ALIAS</th>
+                      <th>TIME_STAMP</th>
+                    </tr>
+                  </thead>
+
+                  <tfoot>
+                    <tr>
+                      <th>ID</th>
+                      <th>IDENTIFIER</th>
+                      <th>DESCRIPTION</th>
+                      <th>SOURCE</th>
+                      <th>PATIENT</th>
+                      <th>BREEZE_ALIAS</th>
+                      <th>TIME_STAMP</th>
+                    </tr>
+                  </tfoot>
+
+                </table>
+                <!-- END OF Screen Table -->
+            </div>
+          </div>
+          <div class="tab-pane" id="samplesPane">
+            <div class="well">
+              <p></p>
+                <!-- Sample Table -->
+                <table class="table table-hover table-bordered roraTable display" id="sample_table" data-editor="sampleEditor" data-subject="sample" cellspacing="0" width="100%">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>IDENTIFIER</th>
+                      <th>DESCRIPTION</th>
+                      <th>SCREEN</th>
+                      <th>DOSAGE</th>
+                    </tr>
+                  </thead>
+
+                  <tfoot>
+                    <tr>
+                      <th>ID</th>
+                      <th>IDENTIFIER</th>
+                      <th>DESCRIPTION</th>
+                      <th>SCREEN</th>
+                      <th>DOSAGE</th>
+                    </tr>
+                  </tfoot>
+
+                </table>
+                <!-- END OF Sample Table -->
+            </div>
+          </div>
+          <div class="tab-pane" id="sampleGroupsPane">
+            <div class="well">
+              <p></p>
+              <!-- ScreenGrops Table -->
+                <table class="table table-hover table-bordered roraTable display" id="screenGroup_table" data-editor="groupEditor" data-subject="group" cellspacing="0" width="100%">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>USERNAME</th>
+                      <th>GROUPNAME</th>
+                    </tr>
+                  </thead>
+
+                  <tfoot>
+                    <tr>
+                      <th>ID</th>
+                      <th>USERNAME</th>
+                      <th>GROUPNAME</th>
+                    </tr>
+                  </tfoot>
+
+                </table>
+                <!-- END OF ScreenGrops Table -->
+            </div>
+          </div>
+          <div class="tab-pane" id="ScreenInGroupPane">
+            <div class="well">
+              <p></p>
+              <!-- ScreenGrops Table -->
+                <table class="table table-hover table-bordered roraTable display" id="screenInGroup_table" data-editor="groupEditor" data-subject="content" cellspacing="0" width="100%">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>SCREENNAME</th>
+                      <th>GROUPNAME</th>
+                      <th>DOTMATICS ID</th>
+                    </tr>
+                  </thead>
+
+                  <tfoot>
+                    <tr>
+                      <th>ID</th>
+                      <th>SCREENNAME</th>
+                      <th>GROUPNAME</th>
+                      <th>DOTMATICS ID</th>
+                    </tr>
+                  </tfoot>
+
+                </table>
+                <!-- END OF ScreenInGrop Table -->
+            </div>
+          </div>
+        </div>    <!-- END OF INNER Tab Content: -->
       </div>
-      <div class="tab-pane" id="screensPane">
-        <div class="well">
-          <p></p>
-            <!-- Screen Table -->
-            <table class="table table-hover table-bordered roraTable display" id="screen_table" data-editor="screenEditor" data-subject="screen" cellspacing="0" width="100%">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>IDENTIFIER</th>
-                  <th>DESCRIPTION</th>
-                  <th>SOURCE</th>
-                  <th>PATIENT</th>
-                  <th>BREEZE_ALIAS</th>
-                  <th>TIME_STAMP</th>
-                </tr>
-              </thead>
 
-              <tfoot>
-                <tr>
-                  <th>ID</th>
-                  <th>IDENTIFIER</th>
-                  <th>DESCRIPTION</th>
-                  <th>SOURCE</th>
-                  <th>PATIENT</th>
-                  <th>BREEZE_ALIAS</th>
-                  <th>TIME_STAMP</th>
-                </tr>
-              </tfoot>
+      <!-- Drug Annotations Outer Section -->
+      <div class="tab-pane" id="drugsOuter">
+        <!-- Inner Tab Headers: -->
+        <ul class="nav nav-tabs" id="tabHeaders">
+          <li class="active"><a href="#patientsPane" data-toggle="tab">Compounds</a></li>
+        </ul>
 
-            </table>
-            <!-- END OF Screen Table -->
-        </div>
+        <!-- Tab Content: -->
+        <div class="tab-content">
+          <div class="tab-pane active" id="Drugs">
+            <div class="well">
+              <p></p>
+                <!-- Compounds Table -->
+                <table class="table table-hover table-bordered roraTable display" id="compounds_table" data-editor="patientEditor" data-subject="compound" cellspacing="0" width="100%">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>FIMM ID</th>
+                      <th>SUPPLIER</th>
+                      <th>NAME</th>
+                      <th>FIMM PRODUCT</th>
+                    </tr>
+                  </thead>
+
+                  <tfoot>
+                    <tr>
+                      <th>ID</th>
+                      <th>FIMM ID</th>
+                      <th>SUPPLIER</th>
+                      <th>NAME</th>
+                      <th>FIMM PRODUCT</th>
+                    </tr>
+                  </tfoot>
+
+                </table>
+                <!-- END OF Patients Table -->
+            </div>
+          </div>
+        </div>    <!-- END OF INNER Tab Content: -->
       </div>
-      <div class="tab-pane" id="samplesPane">
-        <div class="well">
-          <p></p>
-            <!-- Sample Table -->
-            <table class="table table-hover table-bordered roraTable display" id="sample_table" data-editor="sampleEditor" data-subject="sample" cellspacing="0" width="100%">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>IDENTIFIER</th>
-                  <th>DESCRIPTION</th>
-                  <th>SCREEN</th>
-                  <th>DOSAGE</th>
-                </tr>
-              </thead>
 
-              <tfoot>
-                <tr>
-                  <th>ID</th>
-                  <th>IDENTIFIER</th>
-                  <th>DESCRIPTION</th>
-                  <th>SCREEN</th>
-                  <th>DOSAGE</th>
-                </tr>
-              </tfoot>
-
-            </table>
-            <!-- END OF Sample Table -->
-        </div>
-      </div>
-      <div class="tab-pane" id="sampleGroupsPane">
-        <div class="well">
-          <p></p>
-          <!-- ScreenGrops Table -->
-            <table class="table table-hover table-bordered roraTable display" id="screenGroup_table" data-editor="groupEditor" data-subject="group" cellspacing="0" width="100%">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>USERNAME</th>
-                  <th>GROUPNAME</th>
-                </tr>
-              </thead>
-
-              <tfoot>
-                <tr>
-                  <th>ID</th>
-                  <th>USERNAME</th>
-                  <th>GROUPNAME</th>
-                </tr>
-              </tfoot>
-
-            </table>
-            <!-- END OF ScreenGrops Table -->
-        </div>
-      </div>
-      <div class="tab-pane" id="ScreenInGroupPane">
-        <div class="well">
-          <p></p>
-          <!-- ScreenGrops Table -->
-            <table class="table table-hover table-bordered roraTable display" id="screenInGroup_table" data-editor="groupEditor" data-subject="content" cellspacing="0" width="100%">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>SCREENNAME</th>
-                  <th>GROUPNAME</th>
-                  <th>DOTMATICS ID</th>
-                </tr>
-              </thead>
-
-              <tfoot>
-                <tr>
-                  <th>ID</th>
-                  <th>SCREENNAME</th>
-                  <th>GROUPNAME</th>
-                  <th>DOTMATICS ID</th>
-                </tr>
-              </tfoot>
-
-            </table>
-            <!-- END OF ScreenInGrop Table -->
-        </div>
-      </div>
-    </div>
-    <!-- END OF Tab Content: -->
-
+    </div>    <!-- END OF OUTER Tab Content: -->
   </div>
 </div>
 
@@ -468,7 +524,7 @@ $(document).ready(function() {
                 data.table = 'screen';
         } );
 
-  $('#screen_table').DataTable( {
+  var screenTable = $('#screen_table').DataTable( {
     dom: "Tlfrtip",
     retrieve: true,
     //"bDestroy": true,
@@ -489,7 +545,18 @@ $(document).ready(function() {
     tableTools: {
         sRowSelect: "multi",
         aButtons: [
-            { sExtends: "editor_remove", editor: screenCreator }
+            { sExtends: "editor_remove", editor: screenCreator },
+            {
+              sExtends: 'select_single',
+              sButtonText: 'Generate Report',
+              fnClick: function() {
+                if ( screenTable.row('.selected').length !== 0 ){
+                  var iid = screenTable.row('.selected').node().id
+                  requestStr = '/reports/overview/ScreenReport-__Screen__' + iid.substring(4) + '-' + iid.substring(4)
+                  window.location.replace(requestStr);
+                }
+              }
+            }
         ]
     }
   } );  // #screen_table
@@ -522,8 +589,7 @@ $(document).ready(function() {
                 data.table = 'patients';
         } );
 
-
-  $('#patients_table').DataTable( {
+  var patientTable = $('#patients_table').DataTable( {
     dom: "Tlfrtip",
     retrieve: true,
     //"bDestroy": true,
@@ -546,11 +612,57 @@ $(document).ready(function() {
         aButtons: [
             { sExtends: "editor_create", editor: patientEditor },
             { sExtends: "editor_edit",   editor: patientEditor },
-            { sExtends: "editor_remove", editor: patientEditor }
+            { sExtends: "editor_remove", editor: patientEditor },
+            {
+              sExtends: 'select_single',
+              sButtonText: 'Generate Report',
+              fnClick: function() {
+                if ( patientTable.row('.selected').length !== 0 ){
+                  var iid = patientTable.row('.selected').node().id
+                  requestStr = '/reports/overview/PatientReport-__Patient__' + iid.substring(4) + '-' + iid.substring(4)
+                  window.location.replace(requestStr);
+                }
+              }
+            }
         ]
     }
   } );  // #patients_table
 
+  // --- Compuonds Set Up       ---
+  // ----------------------------
+  var compoundTable = $('#compounds_table').DataTable( {
+    dom: "Tlfrtip",
+    retrieve: true,
+    //"bDestroy": true,
+    ajax: {
+      url: "/ajax-rora-patients/" + $('#compounds_table').data('subject'),
+      type: "GET"
+    },
+    serverSide: true,
+    columns: [
+            { data: "PK_PRODUCT_NAME_ID" },
+            { data: "DRUG_NOTATION_ID" },
+            { data: "SUPPLIER_ID" },
+            { data: "DESCRIPTION" },
+            { data: "FIMM_PRODUCT_ID" }
+        ],
+        tableTools: {
+          sRowSelect: "multi",
+          aButtons: [
+            {
+              sExtends: 'select_single',
+              sButtonText: 'Generate Report',
+              fnClick: function() {
+                if ( compoundTable.row('.selected').length !== 0 ){
+                  var iid = compoundTable.row('.selected').node().id
+                  requestStr = '/reports/overview/DrugReport-__Drug__' + iid.substring(4) + '-' + iid.substring(4)
+                  window.location.replace(requestStr);
+                }
+              }
+            }
+          ]
+        }
+  } );  // #compounds_table
 
 
 });

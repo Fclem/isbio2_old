@@ -594,11 +594,13 @@ def dump_project_parameters(project, report):
 
     return copy.copy(dump)
 
-def dump_pipeline_config(report_type):
+def dump_pipeline_config(report_type, query_key):
     dump = ''
 
     config_path = str(settings.MEDIA_ROOT) + str(report_type.config)
-    dump += '# <----------  Pipeline Config  ----------> \n' + open(config_path, 'r').read() + '\n'
+    dump += '# <----------  Pipeline Config  ----------> \n'
+    dump += 'query.key          <- \"%s\"  # id of queried RORA instance \n' % query_key
+    dump += open(config_path, 'r').read() + '\n'
     dump += '# <------- end of Pipeline Config --------> \n\n\n'
 
     return copy.copy(dump)
@@ -659,7 +661,7 @@ def build_report(report_data, request_data, report_property, sections):
     script_string += '  return (section_name)\n}\n\n'
 
     script_string += dump_project_parameters(dbitem.project, dbitem)
-    script_string += dump_pipeline_config(rt)
+    script_string += dump_pipeline_config(rt, report_data['instance_id'])
 
     script_string += 'REPORT <- newCustomReport(report_name)\n'
 
