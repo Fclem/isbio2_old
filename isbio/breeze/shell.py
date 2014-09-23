@@ -656,8 +656,9 @@ def build_report(report_data, request_data, report_property, sections):
     script_string += 'path <- \"%s\"\n' % loc
     script_string += 'report_name <- \"%s\"\n' % report_name
     # define a function for exception handler
-    script_string += 'failed_fun_print <- function(section_name){\n'
-    script_string += '  section_name <- addTo( section_name, newParagraph( "This section FAILED! Contact the development team... " ) )\n'
+    script_string += 'failed_fun_print <- function(section_name, error_report){\n'
+    script_string += '  Error_report_par  <- newParagraph("<br>", asStrong( "Error Log Details: " ),"<br><br>",asCode(paste(error_report,collapse=""))); \n'
+    script_string += '  section_name      <- addTo( section_name, newParagraph( "This section FAILED! Contact the development team... " ), Error_report_par )\n'
     script_string += '  return (section_name)\n}\n\n'
 
     script_string += dump_project_parameters(dbitem.project, dbitem)
@@ -683,7 +684,7 @@ def build_report(report_data, request_data, report_property, sections):
             header_path = str(settings.MEDIA_ROOT) + str(tag.header)
             script_string += '# <----------  header  ----------> \n' + open(header_path, 'r').read() + '\n\n'
             script_string += 'new_section <- newSection( section_name )\n'
-            script_string += 'tag_section <- tryCatch({section_body(new_section)}, error = function(e){ failed_fun_print(new_section) })\n'
+            script_string += 'tag_section <- tryCatch({section_body(new_section)}, error = function(e){ failed_fun_print(new_section,e) })\n'
             script_string += 'REPORT <- addTo( REPORT, tag_section )\n'
             script_string += '# <------- end of header --------> \n'
             script_string += '##### END OF TAG #####\n\n\n'
