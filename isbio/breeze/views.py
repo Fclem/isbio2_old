@@ -299,7 +299,6 @@ def ajax_patients(request, which):
             rora.update_patient(patient)
             return HttpResponseRedirect('/dbviewer')
         else:
-            print("hello")
             patient_info = breezeForms.PatientInfo(request.POST)
         
     else:
