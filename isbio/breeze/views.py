@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os, copy, tempfile, zipfile, shutil, fnmatch
 from datetime import datetime
+import json
+import rpy2
 from collections import OrderedDict
 from django.db.models import Q
 from django.contrib import auth
@@ -8,6 +10,7 @@ from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.template.context import RequestContext
+from django.template.loader import render_to_string
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required, permission_required
@@ -15,6 +18,9 @@ from django.contrib.auth.models import User, Group
 from django.conf import settings
 from multiprocessing import Process
 from django.utils import simplejson
+from dateutil.relativedelta import relativedelta
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt
 
 import xml.etree.ElementTree as xml
 import shell as rshell
@@ -274,6 +280,79 @@ def ajax_patients_data(request, which):
     }
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+    
+def ajax_patients(request, which):
+    #patient_id = which
+    if request.method == 'POST':
+        patient_form = breezeForms.PatientInfo(request.POST)
+
+        if patient_form.is_valid():
+            patient = dict()
+            patient['id'] = patient_form.cleaned_data.get('patient_id')
+            patient['identifier'] = patient_form.cleaned_data.get('identifier')
+            patient['source'] = patient_form.cleaned_data.get('source')
+            patient['description'] = patient_form.cleaned_data.get('description')
+            patient['organism'] = patient_form.cleaned_data.get('organism')
+            patient['sex'] = patient_form.cleaned_data.get('sex')
+            #print(type(patient_form.cleaned_data.get('birthdate')))
+            patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
+            rora.update_patient(patient)
+            return HttpResponseRedirect('/dbviewer')
+        else:
+            print("hello")
+            patient_info = breezeForms.PatientInfo(request.POST)
+        
+    else:
+        data = rora.patient_data(which)
+        if isinstance(data[3], rpy2.rinterface.NACharacterType):
+            data[3] = ''
+        if isinstance(data[5], rpy2.rinterface.NACharacterType):
+            patient_info = breezeForms.PatientInfo(initial={
+                 'patient_id': data[0], 'identifier': data[1], 'source': data[2], 'birthdate': data[6].split()[0], 'organism': int(data[4]),
+                 'description': data[3]
+             })
+        else:
+            patient_info = breezeForms.PatientInfo(initial={
+                'patient_id': data[0], 'identifier': data[1], 'source': data[2], 'birthdate': data[6].split()[0], 'organism': int(data[4]),
+                'sex':int(data[5]), 'description': data[3]
+            })
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': patient_info,
+        'action': '/patient-data/0',
+        'header': 'Update Patient Info',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+
+def ajax_patients_new(request):
+    #patient_id = which
+    if request.method == 'POST':
+        patient_form = breezeForms.PatientInfo(request.POST)
+
+        if patient_form.is_valid():
+            patient = dict()
+            patient['identifier'] = patient_form.cleaned_data.get('identifier')
+            patient['source'] = patient_form.cleaned_data.get('source')
+            patient['description'] = patient_form.cleaned_data.get('description')
+            patient['organism'] = patient_form.cleaned_data.get('organism')
+            patient['sex'] = patient_form.cleaned_data.get('sex')
+            #print(type(patient_form.cleaned_data.get('birthdate')))
+            patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
+            rora.insert_row("patients", patient)
+            return HttpResponseRedirect('/dbviewer')
+        else:
+            patient_info = breezeForms.PatientInfo(request.POST)
+        
+    else:
+        patient_info = breezeForms.PatientInfo()
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': patient_info,
+        'action': '/patient-new/',
+        'header': 'Update Patient Info',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
 
 def ajax_rora_action(request):
 
