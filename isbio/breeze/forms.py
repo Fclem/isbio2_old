@@ -1,4 +1,6 @@
 import copy
+import json
+import datetime
 from django import forms
 from django.conf import settings
 import xml.etree.ElementTree as xml
@@ -8,6 +10,8 @@ from django.contrib.auth.models import User
 from django.template.defaultfilters import default
 from decimal import Decimal
 import rora as rora
+from django.forms import extras
+from django.contrib.admin import widgets 
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
 class NewProjectForm(forms.Form):
@@ -209,6 +213,76 @@ class PersonalInfo(forms.Form):
         max_length=75,
         widget=forms.TextInput(attrs={'placeholder': ' first.last@helsinki.fi ', })
     )
+    
+
+
+class PatientInfo(forms.Form):
+    def __init__(self, *args, **kwargs):
+
+        super(PatientInfo, self).__init__(*args, **kwargs)
+        
+        
+        self.fields['patient_id'] = forms.IntegerField(
+            required=False,
+            label = "Patient ID",
+            widget = forms.TextInput(attrs={'placeholder': ' ID ', 'readonly': True, })
+        )
+    
+        self.fields['identifier'] = forms.CharField(
+            max_length = 75,
+            label = "Indentifier",
+            widget = forms.TextInput(attrs={'placeholder': ' Indentifier ', })
+        )
+        
+        self.fields['source'] = forms.CharField(
+            max_length = 75,
+            label = "Source",
+            widget = forms.TextInput(attrs={'placeholder': ' Source ', })
+        )
+    
+        self.fields['description'] = forms.CharField(
+            required=False,
+            max_length = 7500,
+            label = "Description",
+            widget = forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'Description'})
+        )
+        
+        organism_list = list()
+        organisms = json.loads(rora.organism_data()[0])
+        for ID, name in zip(organisms[0]['ORGANISM_ID'], organisms[1]['DESCRIPTION']):
+            organism_list.append(tuple((ID, name)))
+        #print(organisms)
+        self.fields['organism'] = forms.ChoiceField(
+            required=False,
+            choices=organism_list,
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        sex_list = list()
+        sex = json.loads(rora.sex_data()[0])
+       
+        sex_list.append(tuple((0, 'Unkown')))
+        for ID, name in zip(sex[0]['SEX_ID'], sex[1]['DESCRIPTION']):
+            sex_list.append(tuple((ID, name)))
+            
+        self.fields['sex'] = forms.ChoiceField(
+            required=False,
+            choices=sex_list,
+            #initial=0,
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        #print(organism_list[0][0])
+    
+        self.fields['birthdate'] = forms.DateField(
+            widget = widgets.AdminDateWidget(),
+            initial = datetime.date.today()
+        )
+    
 
 class LoginForm(forms.Form):
     user_name = forms.CharField(

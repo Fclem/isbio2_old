@@ -112,6 +112,65 @@ def get_patients_info(params, subject):
     }
 
     return response
+    
+def patient_data(id):
+    """
+          Return one row from table by ID
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    
+    # Export a function to call
+    r_getterFunc = ro.globalenv['searchPatient']
+    
+    # R call
+    data = r_getterFunc(id)
+    return data
+    
+def sex_data():
+    """"
+         Return all possible sex category
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    
+    # Export a function to call
+    r_getterFunc = ro.globalenv['searchSex']
+    
+    # R call
+    data = r_getterFunc()
+    
+    return data
+
+def organism_data():
+    """"
+        Return all possible organism options
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    
+    # Export a function to call
+    r_getterFunc = ro.globalenv['searchOrganism']
+    
+    # R call
+    data = r_getterFunc()
+    
+    return data
+    
+
+def update_patient(data):
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    # Export a function to call
+    r_getterFunc = ro.globalenv['updatePatient']
+    
+    # R call
+    update = r_getterFunc(ro.DataFrame(data))
+    return True
 
 def insert_row(table, data):
     """
@@ -127,8 +186,11 @@ def insert_row(table, data):
         r_getterFunc = ro.globalenv['createScreenGroup']
 
         r_getter_output = r_getterFunc(data['group_user'], data['group_name'])
-
-
+    elif table == "patients":
+        print(data)
+        r_getterFunc = ro.globalenv['createPatient']
+        print(ro.DataFrame(data))
+        r_getter_output = r_getterFunc(ro.DataFrame(data))
     return True
 
 def remove_row(table, ids):

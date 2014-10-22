@@ -19,7 +19,8 @@
   <script type="text/javascript" src="/static/js/jquery.dataTables.min.js"></script>
   <script type="text/javascript" src="/static/js/dataTables.tableTools.min.js"></script>
   <script type="text/javascript" src="/static/js/dataTables.editor.js"></script>
-  <!-- <script type="text/javascript" src="/static/js/dataTables.editor.min.js"></script> -->
+  <script type="text/javascript" src="/static/js/livevalidation_standalone.js"></script>
+ <!--<script type="text/javascript" src="/static/js/dataTables.editor.min.js"></script>-->
 
   <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
   <link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
@@ -260,6 +261,8 @@
     </div>    <!-- END OF OUTER Tab Content: -->
   </div>
 </div>
+
+<div id="patientEdit" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
 
 <script>
 
@@ -577,10 +580,13 @@ $(document).ready(function() {
             { "label": "Birth date:",   "name": "BIRTHDATE",          "type": "date",  "dateFormat": "yy-mm-dd", "opts": { "changeMonth": true, "changeYear": true }  }
         ]
     } );
+    
 
+  
   // Set field options:
   patientEditor.field('ORGANISM_ID').update( [ 'Homosapiens', 'Mouse'  ] );
   patientEditor.field('SEX_ID').update( [ 'Male', 'Female'  ] );
+
 
   // Supply additional parameters before Submit:
   patientEditor.on( 'preSubmit', function ( e, data, action ) {
@@ -588,6 +594,7 @@ $(document).ready(function() {
                 data.group_author = username;
                 data.table = 'patients';
         } );
+
 
   var patientTable = $('#patients_table').DataTable( {
     dom: "Tlfrtip",
@@ -608,10 +615,40 @@ $(document).ready(function() {
             { data: "BIRTHDATE" }
         ],
     tableTools: {
-        sRowSelect: "multi",
+        //sRowSelect: "multi",
+        sRowSelect: "os",
         aButtons: [
-            { sExtends: "editor_create", editor: patientEditor },
-            { sExtends: "editor_edit",   editor: patientEditor },
+            { sExtends: "select_single", sButtonText: 'New',
+              fnClick:function(){
+                  var url = "/patient-new/";
+                  
+                  $("#patientEdit").load(url,function(){
+                      $('.multiselect').multiselect(multiConfigurationSet);
+                      $("#patientEdit").modal('show');
+                      var id = new LiveValidation( "id_identifier");
+                      id.add( Validate.Presence, 
+                                    { failureMessage: "This field is required!" } );
+                      var source = new LiveValidation( "id_source");
+                      source.add( Validate.Presence, 
+                                    { failureMessage: "This field is required!" } );
+                  });
+              }
+        },
+            //{ sExtends: "editor_edit",   editor: patientEditor },
+            { sExtends: "select_single", sButtonText: 'Edit',
+               fnClick:function(){
+                   
+                   if ( patientTable.row('.selected').length !== 0 ){
+                       var url = "/patient-data/"+patientTable.cell('.selected', 0).data();
+                       
+                       $("#patientEdit").load(url,function(){
+                           $('.multiselect').multiselect(multiConfigurationSet);
+                           $("#patientEdit").modal('show');
+                       });
+                       
+                   }
+               }
+                },
             { sExtends: "editor_remove", editor: patientEditor },
             {
               sExtends: 'select_single',
