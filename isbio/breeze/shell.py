@@ -256,7 +256,7 @@ def run_job(job, script=None):
     os.chdir(default_dir)
     return True
 
-def run_report(report):
+def run_report(report, fmFlag):
     """
         Submits reports as an R-job to cluster with SGE;
         This submission implements REPORTS concept in BREEZE
@@ -267,6 +267,9 @@ def run_report(report):
 
     default_dir = os.getcwd()
     os.chdir(loc)
+
+    if fmFlag:
+        os.system("/projects/fhrb_pm/bin/start-jdbc-bridge")
 
     report.status = "active"
     report.progress = 15
@@ -306,6 +309,14 @@ def run_report(report):
     # aux.open_folder_permissions(loc, 0777)
 
     os.chdir(default_dir)
+
+    if fmFlag:
+        extra_path = loc + "/transfer_to_fm.txt"
+        extra_file = open(extra_path, 'r')
+        command = extra_file.read()
+        run = command.split("\"")[1]
+        os.system(run)
+
     return True
 
 def track_sge_job(job):
@@ -666,11 +677,15 @@ def build_report(report_data, request_data, report_property, sections):
 
     script_string += 'REPORT <- newCustomReport(report_name)\n'
 
+    dummy_flag = False
     for tag in sections:
         secID = 'Section_dbID_' + str(tag.id)
         if secID in request_data.POST and request_data.POST[secID] == '1':
             tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
             script_string += '##### TAG: %s #####\n' % tag.name
+
+            if tag.name == "Import to FileMaker":
+                dummy_flag = True
 
             # source main code segment
             code_path = str(settings.MEDIA_ROOT) + str(tag.code)
@@ -718,7 +733,7 @@ def build_report(report_data, request_data, report_property, sections):
     os.chmod(loc, st.st_mode | stat.S_IRWXG)
 
     # submit r-code
-    p = Process(target=run_report, args=(dbitem,))
+    p = Process(target=run_report, args=(dbitem,dummy_flag))
     p.start()
 
     return True

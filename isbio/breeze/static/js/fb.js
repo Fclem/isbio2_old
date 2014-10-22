@@ -193,7 +193,8 @@
           break;
         case "dtm_samples_selector":
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DTM_SAMPLES\" val=\"\" ';
-          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" /> \n';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
+          docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
         case "drop_down":
           tmp = '';

@@ -29,3 +29,4 @@ isbio/breeze/mould/
 *.sublime-project
 *.sublime-workspace
 *.gz
+run.sh

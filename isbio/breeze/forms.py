@@ -627,6 +627,7 @@ def form_from_xml(xml, req=None, init=False, usr=None):
                     custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
                             choices=dtm_options,
                             initial=input_item.attrib["val"],
+                            required=optional_prop,
                             help_text=help_line,
                             widget=forms.SelectMultiple(attrs={'class':'dotmatix_samples'})
                     )

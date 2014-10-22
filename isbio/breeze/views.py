@@ -280,14 +280,13 @@ def ajax_rora_action(request):
     params = request.POST
     table = params.get('table', '')
 
-
     action = params.get('action', '')
 
     if action == 'remove':
         # Clean up row IDs:
         ids = aux.clean_up_dt_id( params.getlist('id[]', '') )
-
-        if ids and table in ['patients', 'grouSps', 'content', 'screen']:
+        
+        if ids and table in ['patients', 'groups', 'content', 'screen']:
             feedback = rora.remove_row(table=table, ids=ids)
 
     elif action == 'create':
