@@ -548,6 +548,18 @@ $(document).ready(function() {
     tableTools: {
         sRowSelect: "multi",
         aButtons: [
+            { sExtends: "select_single", sButtonText: 'Edit',
+                fnClick: function() {
+                    if ( screenTable.row('.selected').length !== 0 ){
+                        var url = "/screen-data/"+screenTable.cell('.selected', 0).data();
+                       
+                        $("#patientEdit").load(url,function(){
+                            $('.multiselect').multiselect(multiConfigurationSet);
+                            $("#patientEdit").modal('show');
+                        });
+                    }
+                }
+            },
             { sExtends: "editor_remove", editor: screenCreator },
             {
               sExtends: 'select_single',
@@ -686,6 +698,18 @@ $(document).ready(function() {
         tableTools: {
           sRowSelect: "multi",
           aButtons: [
+          {
+            sExtends: 'select_single',
+            sButtonText: 'New',
+            fnClick: function() {
+                //generate new compound
+                var url = "/compound-new/";
+                $("#patientEdit").load(url,function(){
+                    $('.multiselect').multiselect(multiConfigurationSet);
+                    $("#patientEdit").modal('show');
+                });
+            }
+          },
             {
               sExtends: 'select_single',
               sButtonText: 'Generate Report',
@@ -697,6 +721,7 @@ $(document).ready(function() {
                 }
               }
             }
+            
           ]
         }
   } );  // #compounds_table

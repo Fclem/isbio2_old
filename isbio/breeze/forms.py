@@ -282,6 +282,241 @@ class PatientInfo(forms.Form):
             widget = widgets.AdminDateWidget(),
             initial = datetime.date.today()
         )
+        
+
+class ScreenInfo(forms.Form):
+    def __init__(self, *args, **kwargs):
+
+        super(ScreenInfo, self).__init__(*args, **kwargs)
+
+        self.fields['screen_id'] = forms.IntegerField(
+            #required=False,
+            label = "Sreen ID",
+            widget = forms.TextInput(attrs={'placeholder': ' ID ', 'readonly': True, })
+        )
+        
+        self.fields['identifier'] = forms.CharField(
+            max_length = 75,
+            label = "Indentifier",
+            widget = forms.TextInput(attrs={'placeholder': ' Indentifier ', 'readonly': True})
+        )
+        
+        self.fields['description'] = forms.CharField(
+            required=False,
+            max_length = 7500,
+            label = "Description",
+            widget = forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'Description', 'readonly':                                         True})
+        )
+        
+        self.fields['source_id'] = forms.CharField(
+            max_length = 75,
+            label = "Source ID",
+            widget = forms.TextInput(attrs={'placeholder': ' Source ID', 'readonly': True})
+        )
+        
+        self.fields['source'] = forms.CharField(
+            max_length = 75,
+            label = "Source",
+            widget = forms.TextInput(attrs={'placeholder': ' Source ', 'readonly': True})
+        )
+    
+        self.fields['protocol'] = forms.CharField(
+            #required=False,
+            max_length = 75,
+            label = "Protocol",
+            widget = forms.TextInput(attrs={'placeholder': ' Protocol ', 'readonly': True})
+        )
+        
+        patient_list = list()
+        patients = json.loads(rora.get_all_patient()[0])
+        for ID, name in zip(patients[0]['PK_ENTITY_ID'], patients[1]['IDENTIFIER']):
+            patient_list.append(tuple((ID, name)))
+            
+        self.fields['patient'] = forms.ChoiceField(
+            required=False,
+            choices=patient_list,
+            label='Patient',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        self.fields['alias'] = forms.CharField(
+            #required=False,
+            max_length = 75,
+            label = "Breeze Alias",
+            widget = forms.TextInput(attrs={'placeholder': ' Breeze Alias '})
+        )
+        
+        # sample type
+        st_list = list()
+        st = json.loads(rora.sample_type()[0])
+        for ID, name in zip(st[0]['SAMPLE_TYPE_ID'], st[1]['DESCRIPTION']):
+            st_list.append(tuple((ID, name)))
+            
+        self.fields['st'] = forms.ChoiceField(
+            required=False,
+            choices=st_list,
+            label='Sample Type',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        # disease sub type
+        dst_list = list()
+        dst = json.loads(rora.disease_sub_type()[0])
+        for ID, name in zip(dst[0]['DISEASE_SUB_TYPE_ID'], dst[1]['DESCRIPTION']):
+            dst_list.append(tuple((ID, name)))
+        self.fields['dst'] = forms.ChoiceField(
+            required=False,
+            choices=dst_list,
+            label='Disease Sub Type',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        # media type 
+        mt_list = list()
+        
+        mt = json.loads(rora.media_type()[0])
+        for ID, name in zip(mt[0]['MEDIA_TYPE_ID'], mt[1]['DESCRIPTION']):
+            mt_list.append(tuple((ID, name)))
+        self.fields['mt'] = forms.ChoiceField(
+            required=False,
+            choices=mt_list,
+            label='Media Type',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        # histology
+        history_list = list()
+        
+        history = json.loads(rora.histology()[0])
+        for ID, name in zip(history[0]['HISTOLOGY_ID'], history[1]['DESCRIPTION']):
+            history_list.append(tuple((ID, name)))
+        
+        self.fields['histology'] = forms.ChoiceField(
+            required=False,
+            choices=history_list,
+            label='Histology',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        # disease state
+        d_state_list = list()
+        d_state = json.loads(rora.disease_state_data()[0])
+        for ID, name in zip(d_state[0]['DISEASE_STATE_ID'], d_state[1]['DESCRIPTION']):
+            d_state_list.append(tuple((ID, name)))
+    
+        self.fields['dstate'] = forms.ChoiceField(
+            required=False,
+            choices=d_state_list,
+            label='Disease State',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        # experiment type
+        et_list = list()
+        et = json.loads(rora.experiment_type_data()[0])
+
+        for ID, name in zip(et[0]['EXPERIMENT_TYPE_ID'], et[1]['DESCRIPTION']):
+            et_list.append(tuple((ID, name)))
+
+        self.fields['et'] = forms.ChoiceField(
+            required=False,
+            choices=et_list,
+            label='Experiment Type',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        # plate count
+        
+        self.fields['plate_count'] = forms.IntegerField(
+            #required=False,
+            label = "Plate Count",
+            widget = forms.TextInput(attrs={'placeholder': ' Plate Count '})
+        )
+        
+        # disease grade
+        
+        dg_list = list()
+        dg = json.loads(rora.disease_grade_data()[0])
+
+        for ID, name in zip(dg[0]['DISEASE_GRADE_ID'], dg[1]['DESCRIPTION']):
+            dg_list.append(tuple((ID, name)))
+
+        self.fields['dg'] = forms.ChoiceField(
+            required=False,
+            choices=dg_list,
+            label='Disease Grade',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        # disease stage
+        disease_stage_list = list()
+        disease_stage = json.loads(rora.disease_stage_data()[0])
+
+        for ID, name in zip(disease_stage[0]['DISEASE_STAGE_ID'], disease_stage[1]['DESCRIPTION']):
+            disease_stage_list.append(tuple((ID, name)))
+
+        self.fields['disease_stage'] = forms.ChoiceField(
+            required=False,
+            choices=disease_stage_list,
+            label='Disease Stage',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        # read out
+        read_out_list = list()
+        read_out = json.loads(rora.read_out_data()[0])
+
+        for ID, name in zip(read_out[0]['SCREEN_READOUT_ID'], read_out[1]['DESCRIPTION']):
+            read_out_list.append(tuple((ID, name)))
+
+        self.fields['read_out'] = forms.ChoiceField(
+            required=False,
+            choices=read_out_list,
+            label='Screen Read Out',
+            #initial=organism_list[0][0],
+            widget=forms.Select(
+                attrs={'class': 'multiselect', }
+            )
+        )
+        
+        # create date
+        
+        self.fields['createdate'] = forms.DateField(
+            label = 'Create Date',
+            widget = widgets.AdminDateWidget(),
+            initial = datetime.date.today()
+        )
+    
+    
+    
+    
+
+
     
 
 class LoginForm(forms.Form):

@@ -348,10 +348,59 @@ def ajax_patients_new(request):
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': patient_info,
         'action': '/patient-new/',
-        'header': 'Update Patient Info',
+        'header': 'Create New Patient',
         'layout': 'horizontal',
         'submit': 'Save'
     }))
+
+def screen_data(request, which):
+    if request.method == 'POST':
+        screen_form = breezeForms.ScreenInfo(request.POST)
+
+        if screen_form.is_valid():
+            screen = dict()
+            screen['id'] = screen_form.cleaned_data.get('screen_id')
+            screen['entity_id'] = screen_form.cleaned_data.get('patient')
+            screen['alias'] = screen_form.cleaned_data.get('alias')
+            screen['sample_type'] = screen_form.cleaned_data.get('st')
+            screen['disease_sub'] = screen_form.cleaned_data.get('dst')
+            screen['media_type'] = screen_form.cleaned_data.get('mt')
+            screen['histology'] = screen_form.cleaned_data.get('histology')
+            screen['disease_state'] = screen_form.cleaned_data.get('dstate')
+            screen['experiment_type'] = screen_form.cleaned_data.get('et')
+            screen['plate_count'] = screen_form.cleaned_data.get('plate_count')
+            screen['disease_grade'] = screen_form.cleaned_data.get('dg')
+            screen['disease_stage'] = screen_form.cleaned_data.get('disease_stage')
+            screen['read_out'] = screen_form.cleaned_data.get('read_out')
+            screen['createdate'] = str(screen_form.cleaned_data.get('createdate'))
+            #print(screen)
+            rora.update_screen(screen)
+            return HttpResponseRedirect('/dbviewer')
+        else:
+            screen_info = breezeForms.ScreenInfo(request.POST)
+        
+    else:
+        data = rora.screen_data(which)
+        print(data[22])
+        if isinstance(data[2], rpy2.rinterface.NACharacterType):
+            data[2] = ''
+        screen_info = breezeForms.ScreenInfo(initial={
+                'screen_id': data[0], 'identifier': data[1], 'description': data[2], 'source_id': data[3],
+                'source': data[5],'protocol': data[4], 'patient': int(data[6]), 'alias': data[7], 'st': int(data[8]), 
+                'dst': int(data[9]), 'mt': int(data[10]), 'histology': int(data[11]), 'dstate': int(data[12]), 'et':
+                int(data[13]), 'plate_count': data[14], 'dg': int(data[15]), 'disease_stage': int(data[16]), 'read_out':
+                int(data[21]), 'createdate': data[22].split()[0]
+            })
+        #print(screen_info)
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': screen_info,
+        'action': '/screen-data/0',
+        'header': 'Update Screen Info',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+    
+    
 
 def ajax_rora_action(request):
 
