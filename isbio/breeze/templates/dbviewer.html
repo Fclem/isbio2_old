@@ -14,12 +14,14 @@
   <link rel="stylesheet" href="/static/css/jquery.dataTables.min.css" type="text/css"/>
   <link rel="stylesheet" href="/static/css/dataTables.tableTools.min.css" type="text/css"/>
   <link rel="stylesheet" href="/static/css/dataTables.editor.min.css" type="text/css"/>
+  <link rel="stylesheet" href="/static/css/jquery.qtip.css" type="text/css"/>
 
 
   <script type="text/javascript" src="/static/js/jquery.dataTables.min.js"></script>
   <script type="text/javascript" src="/static/js/dataTables.tableTools.min.js"></script>
   <script type="text/javascript" src="/static/js/dataTables.editor.js"></script>
   <script type="text/javascript" src="/static/js/livevalidation_standalone.js"></script>
+  <script type="text/javascript" src="/static/js/jquery.qtip.js"></script>
  <!--<script type="text/javascript" src="/static/js/dataTables.editor.min.js"></script>-->
 
   <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
@@ -556,6 +558,16 @@ $(document).ready(function() {
                         $("#patientEdit").load(url,function(){
                             $('.multiselect').multiselect(multiConfigurationSet);
                             $("#patientEdit").modal('show');
+                            $('#id_alias').qtip({ // Grab some elements to apply the tooltip to
+                                content: {
+                                    title: 'Name Convention',
+                                    text: 'Rules: PatientIdentifier_SamplingData_SamplingTime_TissuseSourceCode_Media_ReadOut'+
+                                    '<br> Example: <br> Patient identifer: source.PatientNumer (e.g. FHRB.303)<br> Sampling data: 230914 <br>'+
+                                    'Sampling time: 1130 <br> Tiusse source code: PB <br> Media: CM <br> Readout: RPPA <br> Final Breeze Alias: <br>'+
+                                    'FHRB.303_230914_1130_PB_CM_RPPA'
+                                },
+                                style: 'qtip-bootstrap'
+                            })
                         });
                     }
                 }
