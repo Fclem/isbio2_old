@@ -561,12 +561,14 @@ $(document).ready(function() {
                             $('#id_alias').qtip({ // Grab some elements to apply the tooltip to
                                 content: {
                                     title: 'Name Convention',
-                                    text: 'Rules: PatientIdentifier_SamplingData_SamplingTime_TissuseSourceCode_Media_ReadOut'+
-                                    '<br> Example: <br> Patient identifer: source.PatientNumer (e.g. FHRB.303)<br> Sampling data: 230914 <br>'+
-                                    'Sampling time: 1130 <br> Tiusse source code: PB <br> Media: CM <br> Readout: RPPA <br> Final Breeze Alias: <br>'+
-                                    'FHRB.303_230914_1130_PB_CM_RPPA'
+                                    text: '<b>Rules</b>: PatientIdentifier_SamplingDate_SamplingTime_TissuseSourceCode_Media_ReadOut'+
+                                    '<br> <b> Example </b>: <br> <b>Patient identifer</b>: source.PatientNumer (e.g. FHRB.303)<br> <b>Sampling date</b>: 230914 <br>'+
+                                    '<b>Sampling time</b>: 1130 <br> <b>Tiusse source code</b>: PB <br> <b>Media</b>: CM <br> <b>Readout</b>: RPPA'+ 
+                                    '<br> <b>Final Breeze Alias</b>:<br>FHRB.303_230914_1130_PB_CM_RPPA'
                                 },
-                                style: 'qtip-bootstrap'
+                                style: {
+                                    classes: 'qtip-bootstrap'
+                                }
                             })
                         });
                     }
