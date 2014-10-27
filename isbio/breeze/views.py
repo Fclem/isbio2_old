@@ -381,6 +381,7 @@ def screen_data(request, which):
         
     else:
         data = rora.screen_data(which)
+       #	print(data[22])
         if isinstance(data[2], rpy2.rinterface.NACharacterType):
             data[2] = ''
         screen_info = breezeForms.ScreenInfo(initial={
