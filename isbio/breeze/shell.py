@@ -308,6 +308,17 @@ def run_report(report):
     os.chdir(default_dir)
     return True
 
+def abort_report(report):
+    
+    s = drmaa.Session()
+    s.initialize()
+    s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
+    report.status = "aborted"
+    report.save()
+    s.exit()
+    
+    return True
+
 def track_sge_job(job):
     status = str(job.status)
     #    decodestatus = {

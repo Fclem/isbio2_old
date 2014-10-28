@@ -141,7 +141,7 @@
                 <td id="{{ job.id }}_list_td">{{ job.progress }} %</td>
                 <td></td>
                 <td></td>
-                <td><a href="#" class="btn btn-danger">Abort</a></td>
+                <td><a href="#" class="btn btn-danger" data-param="/abortreports/{{job.id}}">Abort</a></td>
                 <td></td><td></td><td></td>
               </tr>
               {% endfor %}
@@ -199,6 +199,26 @@
     });
 
     });
+    
+    
+    $(".abort").click(function(ev){
+        ev.preventDefault(); // prevent navigation
+        var par = $(this).data("param");
+        $.ajax({
+          type: "GET",
+          url: par,
+          success: function(response){
+          },
+          error: function (request, status, error) {
+                      //implement proper error handling
+                      console.log(request);
+                      //console.log(request.responseText);
+          }
+        });
+        
+        
+    });
+    
     $(".rtext").click(function(ev) {
         ev.preventDefault(); // prevent navigation
         var par = $(this).data("param");
