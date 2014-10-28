@@ -252,7 +252,7 @@ def run_job(job, script=None):
         job.status = 'failed'
 
     job.save()
-
+    s.exit()
     os.chdir(default_dir)
     return True
 
@@ -305,7 +305,7 @@ def run_report(report, fmFlag):
         report.status = 'failed'
 
     report.save()
-
+    s.exit()
     # aux.open_folder_permissions(loc, 0777)
 
     os.chdir(default_dir)
@@ -323,6 +323,7 @@ def abort_report(report):
     
     s = drmaa.Session()
     s.initialize()
+    #print("hello!")
     s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
     report.status = "aborted"
     report.save()

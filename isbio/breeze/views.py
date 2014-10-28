@@ -914,9 +914,11 @@ def run_script(request, jid):
 @login_required(login_url='/')
 def abort_report(request, rid):
     report = Report.objects.get(id = rid)
+    #print(report)
     #script = str(job.script.code)
-    p = Process(target=rshell.abort_report, args=(report))
-    p.start()
+    #p = Process(target=rshell.run_report, args=(report))
+    #p.start()
+    rshell.abort_report(report)
 
     return HttpResponseRedirect('/jobs/')
 
