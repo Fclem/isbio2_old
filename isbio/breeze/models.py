@@ -186,3 +186,16 @@ class Report(models.Model):
 
     def __unicode__(self):
         return self.name
+        
+
+class Statistics(models.Model):
+    script = models.CharField(max_length=55)
+    author = ForeignKey(User)
+    istag = models.BooleanField(default=False)
+    times = models.PositiveSmallIntegerField(default=0)
+    
+    def __unicode__(self):
+        return self.script
+    
+    class Meta:
+        ordering = ['-times']

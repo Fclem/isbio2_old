@@ -28,7 +28,7 @@ import auxiliary as aux
 import rora as rora
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, Statistics
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -96,6 +96,8 @@ def home(request, state="feed"):
         explorer_pane = 'show_datasets'
         pref_tab = 'projects_tab'
         pref_pane = 'show_projects'
+        stat_tab = 'analysis_stat_tab'
+        stat_pane = 'show_analysis_stat'
     elif state == 'projects':
         menu = 'preferences_menu'
         show_menu = 'show_preferences'
@@ -103,6 +105,8 @@ def home(request, state="feed"):
         explorer_pane = 'show_datasets'
         pref_tab = 'projects_tab'
         pref_pane = 'show_projects'
+        stat_tab = 'analysis_stat_tab'
+        stat_pane = 'show_analysis_stat'
     elif state == 'groups':
         menu = 'preferences_menu'
         show_menu = 'show_preferences'
@@ -110,10 +114,16 @@ def home(request, state="feed"):
         explorer_pane = 'show_datasets'
         pref_tab = 'usergroups_tab'
         pref_pane = 'show_usergroups'
+        stat_tab = 'analysis_stat_tab'
+        stat_pane = 'show_analysis_stat'
 
     projects = Project.objects.exclude(~Q(author__exact=request.user) & Q(collaborative=False)).order_by("name")
     groups = Group.objects.filter(author__exact=request.user).order_by("name")
-
+    
+    # get all the script info
+    #rscripts = Rscripts.objects.all().get(draft=True)
+    # get all the report info
+    stats = Statistics.objects.all()
     occurrences['jobs_running'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").count()
     occurrences['jobs_scheduled'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").count()
     occurrences['jobs_history'] = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").count()
@@ -136,12 +146,15 @@ def home(request, state="feed"):
         str(explorer_pane): 'active',
         str(pref_tab): 'active',
         str(pref_pane): 'active',
+        str(stat_tab): 'active',
+        str(stat_pane): 'active',
         'dbStat': occurrences,
         'projects': projects,
         'groups': groups,
         'posts': posts,
         'screens': screens,
-        'patients': patients
+        'patients': patients,
+        'stats': stats
     }))
 
 @login_required(login_url='/')
@@ -459,7 +472,6 @@ def reports_search(request):
 @login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):
     tags_data_list = list()  # a list of 'tag_data' dictionaries
-
     # filter tags according to report type (here we pick non-draft tags):
     tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype)).order_by('order')
 
@@ -478,20 +490,46 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
         if property_form.is_valid() and sections_valid:
             rshell.build_report(overview, request, property_form, tags)
+            #print(rtype)
+            for tag in tags:
+                secID = 'Section_dbID_' + str(tag.id)
+                if secID in request.POST and request.POST[secID] == '1':
+                    # update the statistics table
+
+                    
+                    try:
+                        stat = Statistics.objects.get(script=tag.name)
+                        stat.times += 1
+                        stat.save()
+                    except Statistics.DoesNotExist:
+                        stat = Statistics()
+                        stat.script = tag.name
+                        stat.author = tag.author
+                        stat.istag = tag.istag
+                        stat.times = 1
+                        stat.save()
+                    
+                else:
+                    pass
+                
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
         property_form = breezeForms.ReportPropsForm(request=request)
         tags_data_list = breezeForms.create_report_sections(tags, request)
+        access_script = list(request.user.users.all().values('name'))
+        script = list()
+        for each in access_script:
+            script.append(each['name'])
 
     return render_to_response('search.html', RequestContext(request, {
         'overview': True,
         'reports_status': 'active',
         'overview_info': overview,
         'props_form': property_form,
-        'tags_available': tags_data_list
+        'tags_available': tags_data_list,
+        'access_script': script
     }))
-
 
 @login_required(login_url='/')
 def search(request, what=None):
@@ -850,14 +888,15 @@ def edit_job(request, jid=None, mod=None):
 @login_required(login_url='/')
 def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
+
     new_job = Jobs()
     tree = xml.parse(str(settings.MEDIA_ROOT) + str(script.docxml))
     script_name = str(script.name)  # tree.getroot().attrib['name']
     script_inline = script.inln
     user_info = User.objects.get(username=request.user)
-
+    #print(request.method)
     if request.method == 'POST':
-
+        # after fill the forms for creating the new job
         head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
 
@@ -867,16 +906,27 @@ def create_job(request, sid=None):
             new_job.jname = head_form.cleaned_data['job_name']
             new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
-            new_job.status = "scheduled"
+            new_job.status = request.POST['job_status']
             new_job.juser = request.user
             new_job.progress = 0
-
             new_job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
             new_job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
             new_job.rexecut.close()
             new_job.docxml.close()
 
+
             rshell.schedule_job(new_job, request.POST)
+            try:
+                stat = Statistics.objects.get(script=script.name)
+                stat.times += 1
+                stat.save()
+            except Statistics.DoesNotExist:
+                stat = Statistics()
+                stat.script = script.name
+                stat.author = script.author
+                stat.istag = script.istag
+                stat.times = 1
+                stat.save()
 
             # improve the manipulation with XML - tmp folder not a good idea!
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
@@ -885,7 +935,8 @@ def create_job(request, sid=None):
             if 'run_job' in request.POST:
                 p = Process( target=rshell.run_job, args=(new_job,) )
                 p.start()
-
+                #print("running jobs")
+            #return HttpResponseRedirect('/home/')
             return HttpResponseRedirect('/jobs/')
     else:
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None)

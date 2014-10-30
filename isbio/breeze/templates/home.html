@@ -9,6 +9,13 @@
   <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
   <link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
   <script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
+  <link rel="stylesheet" type="text/css" hrf="/static/css/jquery.jqplot.min.css" />
+  
+  <script type="text/javascript" src="/static/js/jquery.jqplot.min.js"></script>
+  <script type="text/javascript" src="/static/js/jqplot.json2.min.js"></script>
+  <script type="text/javascript" src="/static/js/jqplot.dateAxisRenderer.js"></script>
+  <script type="text/javascript" src="/static/js/jqplot.CanvasAxisTickRenderer.js"></script>
+  <script type="text/javascript" src="/static/js/jqplot.CanvasTextRenderer.min.js"></script>
 
   <style>
     .thumbnails .span4:nth-child(3n+1) {
@@ -56,6 +63,7 @@
           <li class="{{ feed_menu }}"><a href="#feed_menu" data-toggle="tab"><strong>Feed</strong></a></li>
           <li class="{{ explorer_menu }}"><a href="#explorer_menu" data-toggle="tab"><strong>DB Explorer</strong></a></li>
           <li class="{{ preferences_menu }}"><a href="#preferences_menu" data-toggle="tab"><strong>Preferences</strong></a></li>
+          <li class="{{ statistics_menu }}"><a href="#statistics_menu" data-toggle="tab"><strong>Statistics</strong></a></li>
         </ul>
       </div>
     </div>
@@ -265,6 +273,57 @@
             </div>
           </div>
         </div>
+        
+              <!-- Statistics -->
+              <div class="tab-pane {{ show_statistics }}" id="statistics_menu">
+                <!-- User Statistics / Analysis Statistics -->
+                <div class="row-fluid">
+                  <div class="span 12">
+                    <div class="tabbable">
+                      <!-- Tabs' Header -->
+                      <ul class="nav nav-tabs">
+                        <li class="{{ analysis_stat_tab }}"><a href="#analysis_stat_tab" data-toggle="tab">Analysis Statistics</a></li>
+                        <li class="{{ user_stat_tab }}"><a href="#user_stat_tab" data-toggle="tab">User Statistics</a></li>
+
+                      </ul>
+                      <!-- Tabs' Content -->
+                      <div class="tab-content">
+                        <!-- user statistics -->
+                        <div id="user_stat_tab" class="tab-pane {{ show_user_stat }}">
+                            <!--draw the plot! -->
+                          <div class="row-fluid">
+                            <div class="span12">
+                              <!-- user statistics data -->
+                               <div id="chartdiv" >
+                               </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- analysis statistics -->
+                        <div id="analysis_stat_tab" class="tab-pane {{ show_analysis_stat }}">
+                          <div class="row-fluid">
+                            <div class="span12">
+                              <!-- user statistics data -->
+                              <table class="table table-striped table-hover" id="main_table">
+                                <thead>
+                                  <tr>
+                                    <th>Name</th> <th>Author</th> <th> Type </th><th>Count</th> 
+                                  </tr>
+                                </thead>
+                                <tbody id="padination-projects">
+                                  {% include "statistics-paginator.html" %}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+        <!-- END of Tabs' Content -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+        
       </div>
     </div>
 

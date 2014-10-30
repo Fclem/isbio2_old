@@ -1,0 +1,25 @@
+{% for each in stats %}
+  <tr>
+    <td> {{ each.script }} </td>
+    <td> {{ each.author}} </td>
+    {% if each.istag %}
+    <td> 
+        Report
+    </td>
+    <td>
+        {{ each.times}}
+    </td>
+    {% else %}
+    <td>
+        Script
+    </td>
+    <td>
+        {{ each.times}}
+    </td>
+    {% endif %}
+  </tr>
+{% empty %}
+  <tr>
+    <td></td> <td>No scripts data found in the data base...</td><td></td><td></td><td>
+  </tr>
+{% endfor %}
