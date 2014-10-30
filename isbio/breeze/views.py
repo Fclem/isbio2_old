@@ -906,7 +906,8 @@ def create_job(request, sid=None):
             new_job.jname = head_form.cleaned_data['job_name']
             new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
-            new_job.status = request.POST['job_status']
+            #new_job.status = request.POST['job_status']
+            new_job.status = "scheduled"
             new_job.juser = request.user
             new_job.progress = 0
             new_job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
