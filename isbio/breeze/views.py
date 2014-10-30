@@ -490,7 +490,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
         if property_form.is_valid() and sections_valid:
             rshell.build_report(overview, request, property_form, tags)
-            #print(rtype)
+            print(rtype)
             for tag in tags:
                 secID = 'Section_dbID_' + str(tag.id)
                 if secID in request.POST and request.POST[secID] == '1':
