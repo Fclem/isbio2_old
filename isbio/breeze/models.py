@@ -78,6 +78,7 @@ class Rscripts(models.Model):
     order = models.DecimalField(max_digits=3, decimal_places=1, blank=True, default=0)
     report_type = models.ManyToManyField(ReportType, null=True, blank=True, default=None)  # assosiation with report type
     #report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
+    access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name="users")
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
