@@ -492,7 +492,8 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
             rshell.build_report(overview, request, property_form, tags)
             for tag in tags:
                 secID = 'Section_dbID_' + str(tag.id)
-                print(request.POST[secID])
+                if secID in request.POST and request.POST[secID] == '1':
+                    print(tag.name)
 
             return HttpResponse(True)
     else:
