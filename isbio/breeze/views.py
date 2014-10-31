@@ -495,7 +495,8 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                 if secID in request.POST and request.POST[secID] == '1':
                     print(tag.name)
                     stat = Statistics.objects.get(script=tag.name)
-                    stat.times += 1
+                    print(stat)
+                    stat.times = int(stat.times)+1
                     stat.save()
 
             return HttpResponse(True)
