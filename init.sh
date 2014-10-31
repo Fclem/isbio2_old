@@ -1,7 +1,7 @@
 #!/bin/bash
 
-source /homes/dbychkov/dev/isbio/venv/bin/activate
-python /homes/dbychkov/dev/isbio/isbio/manage.py runserver
+#source /homes/dbychkov/dev/isbio/venv/bin/activate
+#python /homes/dbychkov/dev/isbio/isbio/manage.py runserver
 
 
 #perl /projects/fhrb_pm/bin/start-jdbc-bridge
