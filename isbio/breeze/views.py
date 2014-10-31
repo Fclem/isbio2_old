@@ -500,10 +500,12 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                         stat.times = int(stat.times)+1
                         stat.save()
                     except Statistics.DoesNotExist:
+                        print(here)
                         stat = Statistics()
-                        stat.script = tag.name
+                        stat.script = str(tag.name)
                         stat.author = tag.author
                         stat.istag = tag.istag
+                        print(stat)
                         stat.times = 1
                         stat.save()
 
