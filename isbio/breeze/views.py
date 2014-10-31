@@ -493,7 +493,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
             for tag in tags:
                 secID = 'Section_dbID_' + str(tag.id)
                 if secID in request.POST and request.POST[secID] == '1':
-                    print(tag.name)
+                    type(tag.name)
                     stat = Statistics.objects.get(script=str(tag.name))
                     print(stat)
                     stat.times = int(stat.times)+1
