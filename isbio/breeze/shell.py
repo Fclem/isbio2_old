@@ -748,6 +748,7 @@ def build_report(report_data, request_data, report_property, sections):
 
     # submit r-code
     p = Process(target=run_report, args=(dbitem,dummy_flag))
+    print(dbitem)
     #run_report(dbitem,dummy_flag)
     p.start()
 
