@@ -496,14 +496,16 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                     
                     try:
                         stat = Statistics.objects.filter(script=str(tag.name), istag="1")
-                        print(stat)
+                        
                         stat.times = int(stat.times)+1
+                        
                         stat.save()
+                        print(stat)
                     except Statistics.DoesNotExist:
                         print("here")
                         stat = Statistics()
                         stat.script = str(tag.name)
-                        stat.author = str(tag.author)
+                        stat.author = tag.author
                         stat.istag = "1"
                         print(stat)
                         stat.times = 1
