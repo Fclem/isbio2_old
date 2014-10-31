@@ -491,6 +491,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         if property_form.is_valid() and sections_valid:
             rshell.build_report(overview, request, property_form, tags)
             print(rtype)
+<<<<<<< HEAD
             for tag in tags:
 		print(tag.name)
                 secID = 'Section_dbID_' + str(tag.id)
@@ -516,6 +517,9 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                 else:
                     pass
                 
+=======
+            
+>>>>>>> 1993e049d0b009a795308b0ce4ad21895f56333c
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
