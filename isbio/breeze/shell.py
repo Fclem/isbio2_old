@@ -318,7 +318,7 @@ def run_report(report, fmFlag):
         command = extra_file.read()
         run = command.split("\"")[1]
         os.system(run)
-    #s.exit()
+    s.exit()
     return True
 
 def abort_report(report):
