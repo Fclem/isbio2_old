@@ -912,12 +912,12 @@ def create_job(request, sid=None):
 
             rshell.schedule_job(new_job, request.POST)
             try:
-                stat = Statistics.objects.get(script=script.name)
+                stat = Statistics.objects.get(script=script)
                 stat.times += 1
                 stat.save()
             except Statistics.DoesNotExist:
                 stat = Statistics()
-                stat.script = script.name
+                stat.script = script
                 stat.author = script.author
                 stat.istag = script.istag
                 stat.times = 1
