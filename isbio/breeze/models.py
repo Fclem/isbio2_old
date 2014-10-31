@@ -190,13 +190,14 @@ class Report(models.Model):
         
 
 class Statistics(models.Model):
-    script = models.CharField(max_length=55)
+    #script = models.CharField(max_length=55)
+    script = ForeignKey(Rscripts)
     author = ForeignKey(User)
     istag = models.BooleanField(default=False)
     times = models.PositiveSmallIntegerField(default=0)
     
     def __unicode__(self):
-        return self.script
+        return self.script.name
     
     class Meta:
         ordering = ['-times']
