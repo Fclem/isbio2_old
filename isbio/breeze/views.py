@@ -498,6 +498,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                         stat = Statistics.objects.get(script=str(tag.name))
                         stat.times = stat.times+1
                         stat.save()
+                        print(stat.script)
                     except Statistics.DoesNotExist:
                         print("here")
                         stat = Statistics()
