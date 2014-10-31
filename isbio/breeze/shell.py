@@ -307,7 +307,7 @@ def run_report(report, fmFlag):
         report.status = 'failed'
 
     report.save()
-    s.exit()
+    
     # aux.open_folder_permissions(loc, 0777)
 
     os.chdir(default_dir)
@@ -318,7 +318,7 @@ def run_report(report, fmFlag):
         command = extra_file.read()
         run = command.split("\"")[1]
         os.system(run)
-
+    s.exit()
     return True
 
 def abort_report(report):
