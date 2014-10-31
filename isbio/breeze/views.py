@@ -495,11 +495,9 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                 if secID in request.POST and request.POST[secID] == '1':
                     
                     try:
-                        stat = Statistics.objects.filter(script=str(tag.name), istag="1")
-                        stat[0].times = stat[0].times+1
-                        print(stat[0].times)
-                        stat[0].save()
-                        print(stat[0])
+                        stat = Statistics.objects.get(script=str(tag.name))
+                        stat.times = stat.times+1
+                        stat.save()
                     except Statistics.DoesNotExist:
                         stat = Statistics()
                         stat.script = str(tag.name)
