@@ -496,10 +496,12 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                     # update the statistics table
                     stat = Statistics.objects.filter(script=str(tag.name))
                     if stat:
+                        print("here")
                         for each in stat:
                             each.times += 1
                             each.save()
                     else:
+                        print("none")
                         stat = Statistics()
                         stat.script = tag.name
                         stat.author = tag.author
