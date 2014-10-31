@@ -239,6 +239,8 @@ def run_job(job, script=None):
 
     SGEID = copy.deepcopy(job.sgeid)
     # waiting for the job to end
+    #if not SGEID:
+	#print "no id!"
     retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
     job.progress = 100
     job.save()
