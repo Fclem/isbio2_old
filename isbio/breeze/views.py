@@ -492,13 +492,16 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
             rshell.build_report(overview, request, property_form, tags)
             print(rtype)
             for tag in tags:
+		print(tag.name)
                 secID = 'Section_dbID_' + str(tag.id)
+		print(request.POST[secID])
                 if secID in request.POST and request.POST[secID] == '1':
                     # update the statistics table
 
                     
                     try:
                         stat = Statistics.objects.get(script=tag.name)
+			print(stat)
                         stat.times += 1
                         stat.save()
                     except Statistics.DoesNotExist:
@@ -507,6 +510,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                         stat.author = tag.author
                         stat.istag = tag.istag
                         stat.times = 1
+			print(stat)
                         stat.save()
                     
                 else:
