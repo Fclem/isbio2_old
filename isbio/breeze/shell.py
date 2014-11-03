@@ -721,6 +721,7 @@ def build_report(report_data, request_data, report_property, sections):
             else:
                 print("here")
                 stat = breeze.models.Statistics()
+                print(stat)
                 stat.script = tag
                 stat.author = tag.author
                 stat.istag = tag.istag
