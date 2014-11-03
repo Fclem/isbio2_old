@@ -490,7 +490,25 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 
         if property_form.is_valid() and sections_valid:
             rshell.build_report(overview, request, property_form, tags)
-            
+            for tag in tags:
+                secID = 'Section_dbID_' + str(tag.id)
+                if secID in request_data.POST and request_data.POST[secID] == '1':
+                    # update the statistics table
+         
+                    stat = breeze.models.Statistics.objects.filter(script=tag)
+                    if stat:
+                        stat[0].times += 1
+                        stat[0].save()
+                    else:
+                        stat = breeze.models.Statistics(script = tag,
+                        author = tag.author,
+                        istag = tag.istag,
+                        times = 1)
+                        stat.save()
+                        print(stat)
+
+                else:  # if tag disabled - do nothing
+                    pass
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
