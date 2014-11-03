@@ -720,12 +720,12 @@ def build_report(report_data, request_data, report_property, sections):
                 print(stat[0])
             else:
                 print("here")
-                stat = breeze.models.Statistics()
+                stat = breeze.models.Statistics(stat.script = tag,
+                stat.author = tag.author,
+                stat.istag = tag.istag,
+                stat.times = 1)
                 print(stat)
-                stat.script = tag
-                stat.author = tag.author
-                stat.istag = tag.istag
-                stat.times = 1
+                
                 stat.save()
 
             if tag.name == "Import to FileMaker":
