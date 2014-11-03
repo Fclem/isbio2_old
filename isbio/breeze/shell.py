@@ -713,6 +713,7 @@ def build_report(report_data, request_data, report_property, sections):
             
             # update the statistics table
             try:
+                print(tag)
                 stat = Statistics.objects.get(script=tag)
                 print(stat)
                 stat.times += 1
