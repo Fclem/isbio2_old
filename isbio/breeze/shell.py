@@ -710,6 +710,22 @@ def build_report(report_data, request_data, report_property, sections):
         if secID in request_data.POST and request_data.POST[secID] == '1':
             tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
             script_string += '##### TAG: %s #####\n' % tag.name
+            
+            # update the statistics table
+            try:
+                stat = Statistics.objects.get(script=tag)
+                print(stat)
+                stat.times += 1
+                print(stat.times)
+                stat.save()
+            except Statistics.DoesNotExist:
+                print("i am here")
+                stat = Statistics()
+                stat.script = tag
+                stat.author = tag.author
+                stat.istag = tag.istag
+                stat.times = 1
+                stat.save()
 
             if tag.name == "Import to FileMaker":
                 dummy_flag = True
