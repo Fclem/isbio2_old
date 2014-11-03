@@ -712,15 +712,13 @@ def build_report(report_data, request_data, report_property, sections):
             script_string += '##### TAG: %s #####\n' % tag.name
             
             # update the statistics table
-            try:
-                print(sections)
-                stat = breeze.models.Statistics.objects.filter(script=tag)
-                print(stat)
+         
+            stat = breeze.models.Statistics.objects.filter(script=tag)
+            if stat:
                 stat.times += 1
                 print(stat.times)
                 stat.save()
-            except Statistics.DoesNotExist:
-                print("i am here")
+            else:
                 stat = breeze.models.Statistics()
                 stat.script = tag
                 stat.author = tag.author
