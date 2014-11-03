@@ -719,6 +719,7 @@ def build_report(report_data, request_data, report_property, sections):
                 print(stat.times)
                 stat.save()
             else:
+                print("here")
                 stat = breeze.models.Statistics()
                 stat.script = tag
                 stat.author = tag.author
