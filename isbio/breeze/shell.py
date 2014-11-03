@@ -731,19 +731,6 @@ def build_report(report_data, request_data, report_property, sections):
             script_string += '# <------- end of header --------> \n'
             script_string += '##### END OF TAG #####\n\n\n'
             script_string += 'setwd(\"%s\")\n' % loc
-            
-            # update the statistics table
-            try:
-                stat = Statistics.objects.get(script=tag)
-                stat.times += 1
-                stat.save()
-            except Statistics.DoesNotExist:
-                stat = Statistics()
-                stat.script = tag
-                stat.author = tag.author
-                stat.istag = tag.istag
-                stat.times = 1
-                stat.save()
 
         else:  # if tag disabled - do nothing
             pass
