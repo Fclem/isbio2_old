@@ -720,10 +720,10 @@ def build_report(report_data, request_data, report_property, sections):
                 print(stat[0])
             else:
                 print("here")
-                stat = breeze.models.Statistics(stat.script = tag,
-                stat.author = tag.author,
-                stat.istag = tag.istag,
-                stat.times = 1)
+                stat = breeze.models.Statistics(script = tag,
+                author = tag.author,
+                istag = tag.istag,
+                times = 1)
                 print(stat)
                 
                 stat.save()
