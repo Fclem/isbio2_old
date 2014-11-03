@@ -505,7 +505,6 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                         istag = tag.istag,
                         times = 1)
                         newstat.save()
-                        print(newstat)
 
                 else:  # if tag disabled - do nothing
                     pass
