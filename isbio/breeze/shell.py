@@ -710,20 +710,6 @@ def build_report(report_data, request_data, report_property, sections):
         if secID in request_data.POST and request_data.POST[secID] == '1':
             tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
             script_string += '##### TAG: %s #####\n' % tag.name
-            
-            # update the statistics table
-         
-            stat = breeze.models.Statistics.objects.filter(script=tag)
-            if stat:
-                stat[0].times += 1
-                stat[0].save()
-            else:
-                stat = breeze.models.Statistics(script = tag,
-                author = tag.author,
-                istag = tag.istag,
-                times = 1)
-                stat.save()
-            print(stat)
             if tag.name == "Import to FileMaker":
                 dummy_flag = True
 
@@ -747,7 +733,6 @@ def build_report(report_data, request_data, report_property, sections):
 
         else:  # if tag disabled - do nothing
             pass
-    print("haha")
     # render report to file
     script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))\n' % dochtml
     script_string += 'system("chmod -R 770 .")'
