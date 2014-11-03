@@ -491,7 +491,6 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         if property_form.is_valid() and sections_valid:
             rshell.build_report(overview, request, property_form, tags)
             
-
             return HttpResponse(True)
     else:
         # Renders report overview and available tags

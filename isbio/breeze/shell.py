@@ -279,6 +279,7 @@ def run_report(report, fmFlag):
 
     s = drmaa.Session()
     s.initialize()
+    print("init successfully")
 
     jt = s.createJobTemplate()
 
@@ -288,8 +289,10 @@ def run_report(report, fmFlag):
     jt.blockEmail = False
     jt.remoteCommand = config
     jt.joinFiles = True
-
+    
+    #print()
     report.sgeid = s.runJob(jt)
+    print("the job id is: "+report.sgeid)
     report.progress = 30
     report.save()
 
