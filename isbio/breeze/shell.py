@@ -716,8 +716,8 @@ def build_report(report_data, request_data, report_property, sections):
             stat = breeze.models.Statistics.objects.filter(script=tag)
             if stat:
                 stat[0].times += 1
-                print(stat[0].times)
                 stat[0].save()
+                print(stat[0])
             else:
                 print("here")
                 stat = breeze.models.Statistics()
