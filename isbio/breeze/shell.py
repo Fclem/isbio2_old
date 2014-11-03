@@ -276,10 +276,20 @@ def run_report(report, fmFlag):
     report.status = "active"
     report.progress = 15
     report.save()
+    # create log files
+    logger = logging.getLogger('breeze')
+    log_name = report.name+'.log'
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(log_name)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(fh)
+    
 
     s = drmaa.Session()
     s.initialize()
-    print("init successfully")
+    logger.info("init successfully")
 
     jt = s.createJobTemplate()
 
@@ -292,7 +302,7 @@ def run_report(report, fmFlag):
     
     #print()
     report.sgeid = s.runJob(jt)
-    print("the job id is: "+report.sgeid)
+    logger.info("the job id is: "+report.sgeid)
     report.progress = 30
     report.save()
 
