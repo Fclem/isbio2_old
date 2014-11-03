@@ -495,12 +495,12 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                 if secID in request.POST and request.POST[secID] == '1':
                     # update the statistics table
          
-                    stat = breeze.models.Statistics.objects.filter(script=tag)
+                    stat = Statistics.objects.filter(script=tag)
                     if stat:
                         stat[0].times += 1
                         stat[0].save()
                     else:
-                        newstat = breeze.models.Statistics(script = tag,
+                        newstat = Statistics(script = tag,
                         author = tag.author,
                         istag = tag.istag,
                         times = 1)
