@@ -492,7 +492,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
             rshell.build_report(overview, request, property_form, tags)
             for tag in tags:
                 secID = 'Section_dbID_' + str(tag.id)
-                if secID in request_data.POST and request_data.POST[secID] == '1':
+                if secID in request.POST and request.POST[secID] == '1':
                     # update the statistics table
          
                     stat = breeze.models.Statistics.objects.filter(script=tag)
@@ -500,12 +500,12 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                         stat[0].times += 1
                         stat[0].save()
                     else:
-                        stat = breeze.models.Statistics(script = tag,
+                        newstat = breeze.models.Statistics(script = tag,
                         author = tag.author,
                         istag = tag.istag,
                         times = 1)
-                        stat.save()
-                        print(stat)
+                        newstat.save()
+                        print(newstat)
 
                 else:  # if tag disabled - do nothing
                     pass
