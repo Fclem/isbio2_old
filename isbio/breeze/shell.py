@@ -717,17 +717,13 @@ def build_report(report_data, request_data, report_property, sections):
             if stat:
                 stat[0].times += 1
                 stat[0].save()
-                print(stat[0])
             else:
-                print("here")
                 stat = breeze.models.Statistics(script = tag,
                 author = tag.author,
                 istag = tag.istag,
                 times = 1)
-                print(stat)
-                
                 stat.save()
-
+            print(stat)
             if tag.name == "Import to FileMaker":
                 dummy_flag = True
 
@@ -751,7 +747,7 @@ def build_report(report_data, request_data, report_property, sections):
 
         else:  # if tag disabled - do nothing
             pass
-
+    print("haha")
     # render report to file
     script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))\n' % dochtml
     script_string += 'system("chmod -R 770 .")'
