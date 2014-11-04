@@ -308,12 +308,11 @@ def run_report(report, fmFlag):
     jt.joinFiles = True
     
     #print()
-    report.sgeid = s.runJob(jt)
-    #logger.info("the job id is: "+report.sgeid)
     report.status="active"
-    #logger.info("report status:"+report.status)
     report.progress = 15
     report.save()
+    report.sgeid = s.runJob(jt)
+    
 
     # waiting for the job to end
     retval = s.wait(report.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
