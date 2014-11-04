@@ -271,20 +271,11 @@ def run_report(report, fmFlag):
     default_dir = os.getcwd()
     os.chdir(loc)
     
-    # create log files
-    logger = logging.getLogger('breeze')
-    log_name = report.name+'.log'
-    logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(log_name)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(fh)
+
     if fmFlag:
         os.system("/projects/fhrb_pm/bin/start-jdbc-bridge")
 
     report.status = "active"
-    log.info("report status:"+report.status)
     report.progress = 15
     
     report.save()
@@ -293,7 +284,6 @@ def run_report(report, fmFlag):
 
     s = drmaa.Session()
     s.initialize()
-    logger.info("init successfully")
 
     jt = s.createJobTemplate()
 
@@ -307,7 +297,6 @@ def run_report(report, fmFlag):
     #print()
 
     report.sgeid = s.runJob(jt)
-    
     SGEID = copy.deepcopy(report.sgeid)
     # waiting for the job to end
     retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
