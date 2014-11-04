@@ -264,6 +264,13 @@ def run_report(report, fmFlag):
         This submission implements REPORTS concept in BREEZE
         (For SCRIPTS submission see run_job)
     """
+    
+    
+    loc = str(settings.MEDIA_ROOT) + report.home
+    config = loc + '/sgeconfig.sh'
+    default_dir = os.getcwd()
+    os.chdir(loc)
+    
     # create log files
     logger = logging.getLogger('breeze')
     log_name = report.name+'.log'
@@ -273,24 +280,14 @@ def run_report(report, fmFlag):
     fh.setFormatter(formatter)
     # add the handlers to the logger
     logger.addHandler(fh)
-    
-    loc = str(settings.MEDIA_ROOT) + report.home
-    logger.info("the loc: "+loc)
-    config = loc + '/sgeconfig.sh'
-    logger.info("generate the configure info")
-
-    default_dir = os.getcwd()
-    logger.info("get the current work directory")
-    os.chdir(loc)
-
     if fmFlag:
         os.system("/projects/fhrb_pm/bin/start-jdbc-bridge")
 
-    #report.status = "active"
-    #log.info("report status:"+report.status)
-    #report.progress = 15
+    report.status = "active"
+    log.info("report status:"+report.status)
+    report.progress = 15
     
-    #report.save()
+    report.save()
    
     
 
@@ -308,14 +305,12 @@ def run_report(report, fmFlag):
     jt.joinFiles = True
     
     #print()
-    report.status="active"
-    report.progress = 15
-    report.save()
+
     report.sgeid = s.runJob(jt)
     
-
+    SGEID = copy.deepcopy(report.sgeid)
     # waiting for the job to end
-    retval = s.wait(report.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+    retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
     report.progress = 100
     report.save()
 
