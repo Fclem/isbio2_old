@@ -300,7 +300,9 @@ def run_report(report, fmFlag):
     report.save()
 
     # waiting for the job to end
-    retval = s.wait(report.sgeid, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+    SGEID = copy.deepcopy(report.sgeid)
+    print(SGEID)
+    retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
     report.progress = 100
     report.save()
 
