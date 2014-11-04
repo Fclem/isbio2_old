@@ -309,9 +309,9 @@ def run_report(report, fmFlag):
     
     #print()
     report.sgeid = s.runJob(jt)
-    logger.info("the job id is: "+report.sgeid)
+    #logger.info("the job id is: "+report.sgeid)
     report.status="active"
-    logger.info("report status:"+report.status)
+    #logger.info("report status:"+report.status)
     report.progress = 15
     report.save()
 
