@@ -767,9 +767,9 @@ def build_report(report_data, request_data, report_property, sections):
     os.chmod(loc, st.st_mode | stat.S_IRWXG)
 
     # submit r-code
-    #p = Process(target=run_report, args=(dbitem,dummy_flag))
+    p = Process(target=run_report, args=(dbitem,dummy_flag))
     #print(dbitem)
-    run_report(dbitem,dummy_flag)
-    #p.start()
+    #run_report(dbitem,dummy_flag)
+    p.start()
 
     return True
