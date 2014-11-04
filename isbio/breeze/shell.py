@@ -277,7 +277,6 @@ def run_report(report, fmFlag):
 
     report.status = "active"
     report.progress = 15
-    
     report.save()
    
     
@@ -297,6 +296,9 @@ def run_report(report, fmFlag):
     #print()
 
     report.sgeid = s.runJob(jt)
+    report.progress = 30
+    report.save()
+    
     SGEID = copy.deepcopy(report.sgeid)
     # waiting for the job to end
     retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
