@@ -164,7 +164,7 @@ class UserProfile(models.Model):
         slug = slugify(self.name)
         return 'profiles/%s/%s.%s' % (slug, slug, extension)
 
-    fimm_group = models.CharField(max_length=75)
+    fimm_group = models.CharField(max_length=75, blank=True)
     logo = models.FileField(upload_to=file_name, blank=True)
     institute_info = models.ForeignKey(Institute)
 
