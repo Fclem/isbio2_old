@@ -21,9 +21,9 @@ class Post(models.Model):
         return self.title
         
 class Institute(models.Model):
-    institute = models.CharField(max_length=75)
+    institute = models.CharField(max_length=75, default='FIMM')
     def __unicode__(self):
-        return self.institute
+       return self.institute
 
 class Project(models.Model):
     name = models.CharField(max_length=50, unique=True)
