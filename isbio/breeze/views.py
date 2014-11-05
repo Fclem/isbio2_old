@@ -513,16 +513,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                 if secID in request.POST and request.POST[secID] == '1':
                     # update the statistics table
          
-                    stat = Statistics.objects.filter(script=tag)
-                    if stat:
-                        stat[0].times += 1
-                        stat[0].save()
-                    else:
-                        newstat = Statistics(script = tag,
-                        author = tag.author,
-                        istag = tag.istag,
-                        times = 1)
-                        newstat.save()
+                    
 
                 else:  # if tag disabled - do nothing
                     pass
@@ -1464,8 +1455,6 @@ def report_search(request):
         paginator = Paginator(all_reports,30)
         found_entries = paginator.page(1)
     else:
-        print("ok")
-        print(request.POST['filt_type'])
         if ('filt_name' in request.POST) and request.POST['filt_name'].strip():
             query_string = request.POST['filt_name']
             entry_query = aux.get_query(query_string, ['name'])
