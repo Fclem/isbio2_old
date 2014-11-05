@@ -237,8 +237,23 @@ def scripts(request, layout="list"):
 
 @login_required(login_url='/')
 def reports(request):
-    all_reports = Report.objects.filter(status="succeed").order_by('-created')
-    report_type_lst = ReportType.objects.filter(access=request.user)
+    # get the user's institute
+    insti = UserProfile.objects.get(user=request.user).institute_info
+    all_reports = Report.objects.filter(status="succeed", institute=insti).order_by('-created')
+    user_rtypes = request.user.pipeline_access.all()
+    # later all_users will be changed to all users from the same insitute
+    all_users = UserProfile.objects.filter(institute_info=insti)
+    # first find all the users from the same institute, then find their accessable report types
+    reptypelst = list()
+    for each in all_users:
+        rtypes = each.user.pipeline_access.all()
+        if rtypes:
+            for each_type in rtypes:
+                if each_type not in reptypelst:
+                    reptypelst.append(each_type)
+    
+    #report_type_lst = ReportType.objects.filter(access=request.user)
+    all_projects = Project.objects.filter(institute=insti)
     paginator = Paginator(all_reports,30)  # show 3 items per page
 
     # If AJAX - check page from the request
@@ -258,7 +273,10 @@ def reports(request):
         return render_to_response('reports.html', RequestContext(request, {
             'reports_status': 'active',
             'reports': reports,
-            'rtypes': report_type_lst,
+            'rtypes': reptypelst,
+            'user_rtypes':user_rtypes,
+            'users': all_users,
+            'projects': all_projects,
             'pagination_number': paginator.num_pages
         }))
 
@@ -1445,12 +1463,35 @@ def report_search(request):
         all_reports = Report.objects.filter(status="succeed").order_by('-created')
         paginator = Paginator(all_reports,30)
         found_entries = paginator.page(1)
-
-    if ('filt_name' in request.POST) and request.POST['filt_name'].strip():
-        query_string = request.POST['filt_name']
-
-        entry_query = aux.get_query(query_string, ['name'])
-        found_entries = Report.objects.filter(entry_query).filter(status="succeed").order_by('-created')
+    else:
+        if ('filt_name' in request.POST) and request.POST['filt_name'].strip():
+            query_string = request.POST['filt_name']
+            entry_query = aux.get_query(query_string, ['name'])
+            #print(entry_query)
+            #found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
+        # filter by type
+        if ('filt_type' in request.POST) and request.POST['filt_type']:
+        #print("ok")
+            query_type = request.POST['filt_type']
+            if entry_query:
+                entry_query = entry_query & aux.get_query_new(query_type, ['type__type'])
+            else:
+                entry_query = aux.get_query_new(query_type, ['type__type'])
+        # filter by author
+        if ('filt_author' in request.POST) and request.POST['filt_author']:
+            query_type = request.POST['filt_author']
+            if entry_query:
+                entry_query = entry_query & aux.get_query_new(query_type, ['author__username'])
+            else:
+                entry_query = aux.get_query_new(query_type, ['author__username'])
+        # filter by project
+        if ('filt_project' in request.POST) and request.POST['filt_project']:
+            query_type = request.POST['filt_project']
+            if entry_query:
+                entry_query = entry_query & aux.get_query_new(query_type, ['project__name'])
+            else:
+                entry_query = aux.get_query_new(query_type, ['project__name'])
+        found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
 
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': found_entries

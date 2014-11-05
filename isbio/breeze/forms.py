@@ -309,6 +309,7 @@ class ScreenInfo(forms.Form):
         )
         
         self.fields['source_id'] = forms.CharField(
+            required=False,
             max_length = 75,
             label = "Source ID",
             widget = forms.TextInput(attrs={'placeholder': ' Source ID', 'readonly': True})
@@ -321,7 +322,7 @@ class ScreenInfo(forms.Form):
         )
     
         self.fields['protocol'] = forms.CharField(
-            #required=False,
+            required=False,
             max_length = 75,
             label = "Protocol",
             widget = forms.TextInput(attrs={'placeholder': ' Protocol ', 'readonly': True})

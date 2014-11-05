@@ -19,6 +19,11 @@ class Post(models.Model):
 
     def __unicode__(self):
         return self.title
+        
+class Institute(models.Model):
+    institute = models.CharField(max_length=75)
+    def __unicode__(self):
+        return self.institute
 
 class Project(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -159,9 +164,10 @@ class UserProfile(models.Model):
 
     fimm_group = models.CharField(max_length=75)
     logo = models.FileField(upload_to=file_name, blank=True)
+    institute_info = models.ForeignKey(Institute)
 
     def __unicode__(self):
-        return self.first_name
+        return self.user.username
 
 class Report(models.Model):
     type = models.ForeignKey(ReportType)

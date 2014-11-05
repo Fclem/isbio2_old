@@ -24,16 +24,7 @@
 {% block content %}
 
 
-  <!-- SIMPLE SEARCH FIELD -->
-  <div class="row-fluid">
-    <p><br>&nbsp;<br></p>
-    <div class="span8 offset2">
-      <form class="navbar-search pull-right" action="#" method="post">
-        {% csrf_token %}
-        <input name="query" type="text" class="search-query" placeholder="Quick Search... " value="{{ search_query }}" disabled>
-      </form>
-    </div>
-  </div>
+
 
   <!-- FILTER & CREATE BUTTONS ROW -->
   <div class="row-fluid">
@@ -53,14 +44,28 @@
     <div class="span8 offset4">
       <p><br>&nbsp;<br></p>
       <div id="demo" class="collapse in">
-        <form id="filter_form" class="form-inline" action="/reports/search" method="post">
+        <form id="filter_form" class="form-inline" method="post">
           {% csrf_token %}
           <select id="filt_type" name="filt_type" class="input-medium" >
-            <option id="" value="All Types" >All Types</option>
+            <option id="" value="" >All Types</option>
             {% for item in rtypes %}
               <option id="{{ item.id }}" value="{{ item.type }}" >{{ item.type }}</option>
             {% endfor %}
           </select>
+         <select id="filt_author" name="filt_author" class="input-medium" >
+           <option id="" value="" >All Authors</option>
+           {% for item in users %}
+             <option id="{{ item.user.id }}" value="{{ item.user.username }}" >{{ item.user.username }}</option>
+           {% endfor %}
+         </select>
+         <select id="filt_project" name="filt_project" class="input-medium" >
+           <option id="" value="" >All projects</option>
+           {% for item in projects %}
+             <option id="{{ item.id }}" value="{{ item.name }}" >{{ item.name }}</option>
+           {% endfor %}
+
+         </select>
+         
           <input id="filt_name" name="filt_name" type="text" class="input" placeholder="Report Name">
 
           <button type="submit" class="btn">Search</button>
