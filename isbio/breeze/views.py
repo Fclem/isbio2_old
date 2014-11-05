@@ -28,7 +28,7 @@ import auxiliary as aux
 import rora as rora
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, Statistics
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, Statistics, Institute
 
 class RequestStorage():
     form_details = OrderedDict()
