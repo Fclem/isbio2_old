@@ -1458,9 +1458,8 @@ def report_search(request):
     query_string = ''
     found_entries = None
     # report_type_lst = ReportType.objects.all()
-
+    entry_query = None
     if 'reset' in request.POST:
-        print("hi")
         all_reports = Report.objects.filter(status="succeed").order_by('-created')
         paginator = Paginator(all_reports,30)
         found_entries = paginator.page(1)
