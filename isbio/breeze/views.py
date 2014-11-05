@@ -1460,6 +1460,7 @@ def report_search(request):
     # report_type_lst = ReportType.objects.all()
 
     if 'reset' in request.POST:
+        print("hi")
         all_reports = Report.objects.filter(status="succeed").order_by('-created')
         paginator = Paginator(all_reports,30)
         found_entries = paginator.page(1)
