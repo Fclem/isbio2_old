@@ -30,6 +30,8 @@ class Project(models.Model):
     manager = models.CharField(max_length=50)
     pi = models.CharField(max_length=50)
     author = ForeignKey(User)
+    # store the institute info of the user who creates this report
+    institute = ForeignKey(Institute)
 
     collaborative = models.BooleanField(default=False)
 
