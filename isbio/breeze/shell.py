@@ -661,14 +661,15 @@ def build_report(report_data, request_data, report_property, sections):
     # shared_users = breeze.models.User.objects.filter(username__in=buddies)
 
     shared_users = aux.extract_users(request_data.POST.get('Groups'), request_data.POST.get('Individuals'))
-
+    insti = breeze.models.UserProfile.objects.get(user=request_data.user).institute_info
     # create initial instance so that we can use its db id
     dbitem = breeze.models.Report(
                 type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
                 name=str(report_data['instance_name']),
                 author=request_data.user,
                 progress=0,
-                project=breeze.models.Project.objects.get(id=request_data.POST.get('project'))
+                project=breeze.models.Project.objects.get(id=request_data.POST.get('project')),
+                institute=insti
                 # project=breeze.models.Project.objects.get(name=report_property.cleaned_data['Project'])
             )
     dbitem.save()
