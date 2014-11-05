@@ -179,6 +179,8 @@ class Report(models.Model):
     status = models.CharField(max_length=15, blank=True)
     progress = models.IntegerField()
     sgeid = models.CharField(max_length=15)
+    # store the institute info of the user who creates this report
+    institute = ForeignKey(Institute)
 
     project = models.ForeignKey(Project, null=True, blank=True, default=None)
     shared = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='report_shares')  # share list
