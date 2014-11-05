@@ -200,8 +200,8 @@ class Report(models.Model):
         
 
 class Statistics(models.Model):
-    #script = models.CharField(max_length=55)
-    script = ForeignKey(Rscripts)
+    script = models.CharField(max_length=55)
+    #script = ForeignKey(Rscripts)
     author = ForeignKey(User)
     istag = models.BooleanField(default=False)
     times = models.PositiveSmallIntegerField(default=0)
