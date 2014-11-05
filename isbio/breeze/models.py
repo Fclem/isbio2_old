@@ -199,15 +199,15 @@ class Report(models.Model):
         return self.name
         
 
-class Statistics(models.Model):
+#class Statistics(models.Model):
     #script = models.CharField(max_length=55)
     #script = ForeignKey(Rscripts)
-    author = ForeignKey(User)
-    istag = models.BooleanField(default=False)
-    times = models.PositiveSmallIntegerField(default=0)
+    #author = ForeignKey(User)
+    #istag = models.BooleanField(default=False)
+    #times = models.PositiveSmallIntegerField(default=0)
     
     #def __unicode__(self):
         #return self.script
     
-    class Meta:
-        ordering = ['-times']
+    #class Meta:
+        #ordering = ['-times']
