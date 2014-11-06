@@ -1,0 +1,167 @@
+
+                          <div class="tabbable">
+                            <!-- Tabs' Header -->
+                            <ul class="nav nav-tabs">
+                              <li class="free active"><a href="#free_app" data-toggle="tab">FREE</a></li>
+                              <li class="nonfree"><a href="#nonfree_app" data-toggle="tab">PAID</a></li>
+
+                            </ul>
+                            <!-- Tabs' Content -->
+                            <div class="tab-content">
+                              <!-- free apps -->
+                              <div id="free_app" class="tab-pane active">
+
+                                <div class="row-fluid">
+                                  <div class="span12">
+                              <table class="table table-striped freeapp_table" id="testing">
+                                <head>
+                                  <tr>
+                                    <th>Logo</th> <th>Name</th> <th>Purchase Data</th>
+                                    <th>Details</th><th>Price</th><th>Install</th> <th> Delete</th>
+                                  </tr>
+                                </head>
+                                <tbody>
+                                  {% for each in items_free %}
+                            
+                                  <tr>
+                                    <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ each.product.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
+                                    <td style="vertical-align: middle"><strong>{{ each.product.name }} <br /> <span class="subscript"> (author: {{ each.product.author }}) </span> </strong></td>
+                                    <td style="vertical-align: middle"><i>{{ each.date_created }}</i></td>
+                                    <td style="vertical-align: middle">
+                                      <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Des" data-param={{ each.product.id }}>
+                                        <i class="icon-info-sign icon-white"></i>
+                                      </a>
+                                    </td>
+                                    <td style="vertical-align: middle">
+                                        <strong> 
+                               
+                                            <span class='label label-success'>{{ each.product.price }}</span> 
+
+                                         </strong>
+                                    </td>
+                                    <td style="vertical-align: middle">
+                              
+                                      <a href="#" class="btn btn-success installapp"   data-param="/installscripts/{{ each.product.id }}" data-agreement={{each.product.agreement}}>
+                                        <i class="icon-black icon-download-alt"></i>
+                                      </a>
+                                    </td>
+                                    <td style="vertical-align: middle">
+                              
+                                      <a href="#" class="btn btn-danger delete"   data-param="/deletecart/{{ each.product.id }}">
+                                        <i class="icon-trash"></i>
+                                      </a>
+                                    </td>
+                                  </tr>
+                                  {% empty %}
+                                  <tr>
+                                      <td></td><td><p>No resources available!</p></td> <td></td>
+                                    <td></td>
+                                    <td></td><td></td><td></td>
+                                  </tr>
+                                  {% endfor %}
+                        
+                                  {% if items_free.count > 0 %}
+                                  <tr>
+                                      <td></td><td></td><td></td><td></td><td></td>
+                                      <td>
+
+                                      </td>
+                                      <td style="vertical-align: middle" align="right">
+                              
+                                        <a href="#" class="btn btn-danger deleteall"   data-param="deletefree">
+                                             <strong>All&nbsp;<i class="icon-trash"></i></strong>
+                                
+                                        </a>
+                                      </td>
+                                  </tr>
+                                  {% endif %}
+                                </tbody>
+                              </table>
+                
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- non free apps -->
+                              <div id="nonfree_app" class="tab-pane ">
+                                <div class="row-fluid">
+                                  <div class="span12">
+                              <table class="table table-striped">
+                                <head>
+                                  <tr>
+                                    <th>Logo</th> <th>Name</th> <th>Purchase Data</th>
+                                    <th>Details</th><th>Price</th><th>Install</th> <th> Delete</th>
+                                  </tr>
+                                </head>
+                                <tbody>
+                                  {% for each in items_nonfree %}
+                            
+                                  <tr>
+                                    <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ each.product.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
+                                    <td style="vertical-align: middle"><strong>{{ each.product.name }} <br /> <span class="subscript"> (author: {{ each.product.author }}) </span> </strong></td>
+                                    <td style="vertical-align: middle"><i>{{ each.date_created }}</i></td>
+                                    <td style="vertical-align: middle">
+                                      <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ each.product.id }}>
+                                        <i class="icon-info-sign icon-white"></i>
+                                      </a>
+                                    </td>
+                                    <td style="vertical-align: middle">
+                                        <strong> 
+                               
+                                            <span class='label label-important'>{{ each.product.price }}</span> 
+
+                                         </strong>
+                                    </td>
+                                    <td style="vertical-align: middle">
+                              
+                                      <a  class="btn btn-success install"   data-param="/payapp/{{ each.product.id }}">
+                                        <i class="icon-black icon-download-alt"></i>
+                                      </a>
+                                    </td>
+                                    <td style="vertical-align: middle">
+                              
+                                      <a  class="btn btn-danger delete"   data-param="/deletecart/{{ each.product.id }}">
+                                        <i class="icon-trash"></i>
+                                      </a>
+                                    </td>
+                                  </tr>
+                                     {% empty %}
+                                     <tr>
+                                         <td></td><td><p>No resources available!</p></td> <td></td>
+                                       <td></td>
+                                       <td></td><td></td><td></td>
+                                     </tr>
+                                  {% endfor %}
+                        
+                                  {% if items_nonfree.count > 0 %}
+                                  <tr>
+                                      <td></td><td></td><td></td><td></td><td></td>
+                                      <td>
+
+                                      </td>
+                                      <td style="vertical-align: middle" align="right">
+                              
+                                        <a href="#" class="btn btn-danger deleteall"   data-param="deletenonfree">
+                                             <strong>All&nbsp;<i class="icon-trash"></i></strong>
+                                
+                                        </a>
+                                      </td>
+                                  </tr>
+                                  {% endif %}
+                                </tbody>
+                              </table>
+                
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              
+                              
+              <!-- END of Tabs' Content -->
+                          </div>
+
+
+  <div id="Des" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+  
+  
+                
