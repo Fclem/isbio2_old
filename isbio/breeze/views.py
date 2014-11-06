@@ -1474,7 +1474,12 @@ def report_search(request):
                 entry_query = entry_query & aux.get_query_new(query_type, ['project__name'])
             else:
                 entry_query = aux.get_query_new(query_type, ['project__name'])
-        found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
+        if(entry_query == None):
+            all_reports = Report.objects.filter(status="succeed").order_by('-created')
+            paginator = Paginator(all_reports,30)
+            found_entries = paginator.page(1)
+        else:
+            found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
 
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': found_entries
