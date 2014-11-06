@@ -69,6 +69,16 @@ class ReportType(models.Model):
 
     class Meta:
         ordering = ('type',)
+        
+        
+class Script_categories(models.Model):
+    category = models.CharField(max_length=55, unique=True)
+    description = models.CharField(max_length=350, blank=True)
+    # if the script is a drat then the category should be inactive
+    #active = models.BooleanField(default=False)
+    
+    def __unicode__(self):
+        return self.category
 
 class Rscripts(models.Model):
     name = models.CharField(max_length=35, unique=True)
