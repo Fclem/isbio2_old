@@ -1,0 +1,52 @@
+                    <table class="table table-striped">
+                      <head>
+                        <tr>
+                          <th>Logo</th> <th>Name</th> <th>Data</th>
+                          <th>Details</th><th>Price</th><th>Action</th>
+                        </tr>
+                      </head>
+                      <tbody>
+                        {% for scr in tags %}
+                        <tr>
+                          <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ scr.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
+                          <td style="vertical-align: middle"><strong>{{ scr.name }} <br /> <span class="subscript"> (author: {{ scr.author }}) </span> </strong></td>
+                          <td style="vertical-align: middle"><i>{{ scr.creation_date }}</i></td>
+                          <td style="vertical-align: middle">
+                            <a href="#" data-toggle="modal" class="btn btn-primary describe" data-target="#Describe" data-param={{ scr.id }}>
+                              <i class="icon-info-sign icon-white"></i>
+                            </a>
+                          </td>
+                          <td style="vertical-align: middle">
+                              <strong> 
+                                  {% if scr.price == 0 %}
+                                  <span class='label label-success'>{{ scr.price }}</span> 
+                                  {% else %}
+                                  <span class='label label-important'>{{ scr.price }}</span> 
+                                  {% endif %}
+                               </strong>
+                          </td>
+                          <td style="vertical-align: middle">
+                              {% if scr in app_installed %}
+                            <a  class="btn btn-inverse" disabled='disabled'>
+                              <strong>Installed&nbsp;<i class="icon-ok icon-white"></i></strong>
+                            </a>
+                              {% else %}
+                            <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}">
+                              <strong>Add&nbsp;to&nbsp; Cart&nbsp;<i class="icon-shopping-cart icon-white"></i></strong>
+                            </a>
+                              {% endif %}
+                          </td>
+
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td></td> <td><p>No resources available!</p></td> <td></td>
+                            <td></td>
+                            <td></td><td></td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                    
+                    
+                    <div id="Describe" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
