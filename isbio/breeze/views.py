@@ -431,6 +431,28 @@ def screen_data(request, which):
         'submit': 'Save'
     }))
     
+@login_required(login_url='/')
+def addtocart(request, sid=None):
+    # check if this item in the cart already
+    try:
+        
+        #scr = Rscripts.objects.get(id = sid)
+        #print(scr.author)
+        
+        items = CartInfo.objects.get(product = sid, script_buyer=request.user)
+        return HttpResponse(simplejson.dumps({"exist": "Yes"}), mimetype='application/json')
+    except CartInfo.DoesNotExist:
+        #print("shit")
+        scripts = Rscripts.objects.get(id = sid)
+        #print(scripts)
+        mycart = CartInfo()
+        mycart.script_buyer = request.user
+        mycart.product = scripts
+        if(scripts.price>0): mycart.type_app = False
+        else: mycart.type_app = True
+        mycart.active = True
+        mycart.save()
+        return HttpResponse(simplejson.dumps({"exist": "No"}), mimetype='application/json')
     
 
 def ajax_rora_action(request):
