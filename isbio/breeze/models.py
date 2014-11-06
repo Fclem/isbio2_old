@@ -89,7 +89,7 @@ class Rscripts(models.Model):
     author = ForeignKey(User)
     creation_date = models.DateField(auto_now_add=True)
     draft = models.BooleanField(default=True)
-    #price = models.DecimalField(max_digits=19, decimal_places=2, default=0.00)
+    price = models.DecimalField(max_digits=19, decimal_places=2, default=0.00)
     # tag related
     istag = models.BooleanField(default=False)
     must = models.BooleanField(default=False)  # defines wheather the tag is enabled by default
