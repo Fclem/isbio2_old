@@ -102,6 +102,23 @@ class Rscripts(models.Model):
 
     class Meta:
         ordering = ["name"]
+        
+# define the table to store the products in user's cart
+class CartInfo(models.Model):
+    script_buyer = ForeignKey(User)
+    product = ForeignKey(Rscripts)
+    # if free or not
+    type_app = models.BooleanField(default=True)
+    date_created = models.DateField(auto_now_add=True)
+    date_updated = models.DateField(auto_now_add=True)
+    # if the user does not pay active == True else active == False
+    active = models.BooleanField(default=True)
+    
+    def __unicode__(self):
+        return self.product.name
+    
+    class Meta:
+        ordering = ["active"]
 
 
 class Jobs(models.Model):

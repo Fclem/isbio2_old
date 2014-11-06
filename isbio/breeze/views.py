@@ -637,6 +637,43 @@ def manage_pipes(request):
 @login_required(login_url='/')
 def dochelp(request):
     return render_to_response('help.html', RequestContext(request, {'help_status': 'active'}))
+    
+    
+@login_required(login_url='/')
+def store(request):
+    categories = Script_categories.objects.all()
+    cate = list()
+    scripts = Rscripts.objects.filter(draft="0", istag="0")
+    # filter cartinfo by user
+    count_app = CartInfo.objects.filter(script_buyer=request.user).count()
+    cat_list = dict()
+    #categories = list()
+    for each_cate in categories:
+        if Rscripts.objects.filter(category=each_cate, istag="0", draft="0").count() > 0:
+            cat_list[str(each_cate.category).capitalize()] = Rscripts.objects.filter(category=each_cate, istag="0", draft="0")
+            cate.append(str(each_cate.category).capitalize())
+    # get the tags
+    tags = Rscripts.objects.filter(istag="1")
+    reports = ReportType.objects.all()
+    
+    # get all the scripts that users have installed
+    app_installed = request.user.users.all()
+    '''
+    for script in all_scripts:
+        if str(script.category).capitalize() not in categories:
+            categories.append(str(script.category).capitalize())
+            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
+    '''
+    return render_to_response('store.html', RequestContext(request, {
+        'store_status': 'active',
+        'cate': cate,
+        'script_list': scripts,
+        'cat_list': sorted(cat_list.iteritems()),
+        'count_mycart': count_app,
+        'reports': reports,
+        'app_installed':app_installed
+        #'tags': tags
+    }))
 
 
 ######################################
