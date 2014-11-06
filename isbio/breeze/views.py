@@ -461,6 +461,19 @@ def updatecart(request):
     html = render_to_string('countcart.html', {'count_mycart': count_mycart})
     return HttpResponse(html)
     
+@login_required(login_url='/')
+def mycart(request):
+    #all_items = CartInfo.objects.filter(script_buyer=request.user)
+    items_free = CartInfo.objects.filter(script_buyer=request.user, type_app=True)
+    items_nonfree = CartInfo.objects.filter(script_buyer=request.user, type_app=False)
+    html = render_to_string('cartinfo.html', {
+        #'mycart_status': 'active',
+        'items_free': items_free,
+        'items_nonfree': items_nonfree
+        #'all_items': all_items 
+    })
+    return HttpResponse(html)
+    
 
 def ajax_rora_action(request):
 
