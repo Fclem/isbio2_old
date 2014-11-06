@@ -453,6 +453,13 @@ def addtocart(request, sid=None):
         mycart.active = True
         mycart.save()
         return HttpResponse(simplejson.dumps({"exist": "No"}), mimetype='application/json')
+
+
+@login_required(login_url='/')
+def updatecart(request):
+    count_mycart = CartInfo.objects.filter(script_buyer=request.user).count()
+    html = render_to_string('countcart.html', {'count_mycart': count_mycart})
+    return HttpResponse(html)
     
 
 def ajax_rora_action(request):
