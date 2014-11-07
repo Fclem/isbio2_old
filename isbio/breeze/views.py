@@ -569,6 +569,18 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         'tags_available': tags_data_list,
         'access_script': script
     }))
+    
+@login_required(login_url='/')
+def showdetails(request, sid=None):
+    tags = ReportType.objects.get(id=sid).rscripts_set.all()
+    print(request.user)
+    app_installed = request.user.users.all()
+    
+    return render_to_response('store-tags.html', RequestContext(request, {
+      'tags': tags,
+      'app_installed': app_installed  
+    })
+    )
 
 @login_required(login_url='/')
 def search(request, what=None):
