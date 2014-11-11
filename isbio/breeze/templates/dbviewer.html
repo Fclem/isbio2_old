@@ -483,6 +483,12 @@ $(document).ready(function() {
 
                                 // Initialize multiselect plugin
                                 $('.multiselect').multiselect(multiConfigurationSet);
+                                // disable the enter button
+                                $('.multiselect').bind('keypress', function(e){
+                                    if(e.keyCode == 13){
+                                        return false;
+                                    }
+                                });
                             });
                         }
                     } // function()
