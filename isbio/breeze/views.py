@@ -87,6 +87,15 @@ def base(request):
 
 @login_required(login_url='/')
 def home(request, state="feed"):
+    
+    user_info = User.objects.get(username=request.user)
+    try:
+        user_profile = UserProfile.objects.get(user=user_info)
+    except UserProfile.DoesNotExist:
+        insti = Institute.objects.get(institute='FIMM')
+        user_profile = UserProfile(user=user_info, institute_info=insti)
+        
+    
     occurrences = dict()
 
     if state == 'feed' or state == None:
