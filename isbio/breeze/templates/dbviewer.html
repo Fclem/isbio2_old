@@ -438,59 +438,25 @@ $(document).ready(function() {
               sButtonClass: 'marginLeft',
               sButtonText: 'Alter group content',
               fnClick: function () {
-                        if ( screenGroupTable.row( '.selected' ).length !== 0 ) {
-                            var opts = '';
-
-                            // Show the salary submit form
-                            groupEditor
-                                .title( 'Choose required screens...' )
-                                .buttons( { label: 'Save', fn: function() {
-                                  var control= $(this.dom.form).find('.multiselect-container li[class=active]').find('input');
-
-                                  var content = [];
-                                  $(control).each(function(){
-                                    var id = this.value
-                                    if ( id != 'multiselect-all') { content.push( id ); }
-                                  });
-
-                                  this.submit( null, null, function (data) {
-                                    data.screens = content;
-                                    data.table = 'groups';
-                                  });
-
-                                } } )
-                                .edit( screenGroupTable.row( '.selected' ).node() );
-
-                            // Clean up option content if any
-                            $('#group_editor_list option').remove();
-
-                            // Get group ID
-                            var rowID = screenGroupTable.row( '.selected' ).node().id;
-                            groupID = rowID.slice(4);   // trim 'row_' from rowID
-
-                            // Obtain <option />s for this group
-                            $.getJSON('/ajax-rora-plain-screens/' + groupID, function( data ){
-                                $.each( data, function( key, val ) {
-                                  if (val.selected) {
-                                    opts += '<option value="' + key + '" selected="selected">' + val.name + '</option>';
-                                  }
-                                  else {
-                                    opts += '<option value="' + key + '">' + val.name + '</option>';
-                                  }
-                                });
-
-                                $('#group_editor_list').append(opts);
-
-                                // Initialize multiselect plugin
-                                $('.multiselect').multiselect(multiConfigurationSet);
-                                // disable the enter button
-                                $('.multiselect').bind('keypress', function(e){
-                                    if(e.keyCode == 13){
-                                        return false;
-                                    }
-                                });
-                            });
-                        }
+                  if ( screenGroupTable.row( '.selected' ).length !== 0 ) {
+                      var url = "/ajax-rora-plain-screens/"+screenGroupTable.cell('.selected', 0).data();
+                      $("#patientEdit").load(url,function(){
+                          $('.multiselect').multiselect(multiConfigurationSet);
+                          // disable the enter button
+                          $('.multiselect-search').bind('keypress', function(e)
+                          {
+                             if(e.keyCode == 13)
+                             {
+                                return false;
+                             }
+                          });
+                          $('#patientEdit').modal('toggle').css({'width': '800px','margin-left': function () {return -($(this).width() / 2);}});
+                          $('.modal-body').css({'height': '300px'});
+                          $("#patientEdit").modal('show');
+                          
+                      });
+                      
+                  }
                     } // function()
             }
         ]

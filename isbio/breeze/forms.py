@@ -283,6 +283,26 @@ class PatientInfo(forms.Form):
             initial = datetime.date.today()
         )
         
+        
+class ScreenGroupInfo(forms.Form):
+    def __init__(self, *args, **kwargs):
+
+        super(ScreenGroupInfo, self).__init__(*args, **kwargs)
+        # screen group info
+        screen_list = list()
+        screen = json.loads(rora.getAllScreens()[0])
+        for ID, name in zip(screen[0]['PK_SCREEN_ID'], screen[1]['BREEZE_ALIAS']):
+            screen_list.append(tuple((ID, name)))
+            
+        self.fields['dst'] = forms.MultipleChoiceField(
+            required=False,
+            choices=screen_list,
+            label='Group Content',
+            widget=forms.SelectMultiple(
+                attrs={'class': 'multiselect', }
+            )
+        )
+    
 
 class ScreenInfo(forms.Form):
     def __init__(self, *args, **kwargs):

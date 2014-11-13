@@ -422,6 +422,15 @@ def update_row(table, content, iid):
 
 
     return r_output
+    
+    
+def updateScreenGroupContent(content, groupid):
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    r_updateFunc = ro.globalenv['updateSampleGroups']
+    r_output = r_updateFunc(content, groupid)
+    return r_output
 
 def getScreenGroupContent(groupID):
     """
@@ -451,3 +460,37 @@ def getScreenGroupContent(groupID):
 
 
     return screens
+    
+    
+def getScreenGroup(groupID):
+    """"
+        Get the screen group content
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    
+    # Export a function to call
+    r_getterFunc = ro.globalenv['getScreenGroupContent']
+    
+    # R call
+    data = r_getterFunc(groupID)
+    
+    return data
+
+
+def getAllScreens():
+    """"
+        Get all the screens
+    """
+    # Source & export R code
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    
+    # Export a function to call
+    r_getterFunc = ro.globalenv['getAllScreen']
+    
+    # R call
+    data = r_getterFunc()
+    
+    return data
