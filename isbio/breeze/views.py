@@ -94,6 +94,7 @@ def home(request, state="feed"):
     except UserProfile.DoesNotExist:
         insti = Institute.objects.get(institute='FIMM')
         user_profile = UserProfile(user=user_info, institute_info=insti)
+        user_profile.save()
         
     
     occurrences = dict()
