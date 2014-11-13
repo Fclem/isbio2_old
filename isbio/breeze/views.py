@@ -440,6 +440,30 @@ def screen_data(request, which):
         'submit': 'Save'
     }))
     
+def ajax_rora_screens(request, gid):
+    if request.method == 'POST':
+        screengroup_form = breezeForms.ScreenGroupInfo(request.POST)
+        
+        if screengroup_form.is_valid():
+            screen = dict()
+            screen['list'] = screengroup_form.cleaned_data.get('dst')
+            rora.updateScreenGroupContent(screen['list'], gid)
+            return HttpResponseRedirect('/dbviewer')
+    else:
+        #response_data = rora.getScreenGroupContent(groupID=gid)
+        group_content = rora.getScreenGroup(groupID=gid)
+        content_list = list()
+        for each in group_content:
+            content_list.append(int(each))
+        screen_groupinfo = breezeForms.ScreenGroupInfo(initial={'dst': content_list})
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': screen_groupinfo,
+        'action': '/ajax-rora-plain-screens/'+gid,
+        'header': 'Update Screen Group Info',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+    
 @login_required(login_url='/')
 def addtocart(request, sid=None):
     # check if this item in the cart already
@@ -515,12 +539,6 @@ def ajax_rora_action(request):
             feedback = rora.update_row(table=table, content=screens, iid=group)
 
     response_data = {}
-
-    return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
-
-def ajax_rora_screens(request, gid):
-
-    response_data = rora.getScreenGroupContent(groupID=gid)
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
