@@ -21,7 +21,7 @@ def init_script(name, inline, person):
 
     if not os.path.isdir(spath):
         os.makedirs(spath)
-        dbitem = breeze.models.Rscripts(name=name, inln=inline, author=person, details="empty", order=0)
+        dbitem = breeze.models.Rscripts(name=name, category=breeze.models.Script_categories.objects.get(category="general"), inln=inline, author=person, details="empty", order=0)
 
         # create empty files for header, code and xml
         dbitem.header.save('name.txt', base.ContentFile('# write your header here...'))
