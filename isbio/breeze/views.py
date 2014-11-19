@@ -601,7 +601,6 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 @login_required(login_url='/')
 def showdetails(request, sid=None):
     tags = ReportType.objects.get(id=sid).rscripts_set.all()
-    print(request.user)
     app_installed = request.user.users.all()
     
     return render_to_response('store-tags.html', RequestContext(request, {
@@ -737,7 +736,6 @@ def store(request):
     # get the tags
     tags = Rscripts.objects.filter(istag="1")
     reports = ReportType.objects.all()
-    print(reports)
     # get all the scripts that users have installed
     app_installed = request.user.users.all()
     '''
