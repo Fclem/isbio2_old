@@ -91,10 +91,9 @@ def home(request, state="feed"):
     user_info = User.objects.get(username=request.user)
     try:
         user_profile = UserProfile.objects.get(user=user_info)
+        user_info_complete = True
     except UserProfile.DoesNotExist:
-        insti = Institute.objects.get(institute='FIMM')
-        user_profile = UserProfile(user=user_info, institute_info=insti)
-        user_profile.save()
+        user_info_complete = False
         
     
     occurrences = dict()
@@ -164,7 +163,8 @@ def home(request, state="feed"):
         'posts': posts,
         'screens': screens,
         'patients': patients,
-        'stats': stats
+        'stats': stats,
+        'user_info': user_info_complete
     }))
 
 @login_required(login_url='/')

@@ -377,7 +377,67 @@
   </div>
 </div>
 
+<div id="user_info" data-para="{{ user_info }}">
+<div class="modal hide fade" id="myModal">
+  <div class="modal-header">
+    <a class="close" data-dismiss="modal">×</a>
+    <h3>Warning</h3>
+  </div>
+  <div class="modal-body">
+    <p>Please update your personal information before you start to use breeze!</p>
+  </div>
+  <div class="modal-footer">
+    <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+  </div>
+</div>
+
 <script type="text/javascript">
+$(window).load(function(){
+    var id = '#user_info';
+    if($(id).data('para')=="False"){
+        $('#myModal').modal('show');
+        $("#dash").removeAttr('href');
+        $("#dash").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+        $("#scripts").removeAttr('href');
+        $("#scripts").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+        $("#reports").removeAttr('href');
+        $("#reports").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+        $("#db").removeAttr('href');
+        $("#db").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+        $("#search").removeAttr('href');
+        $("#search").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+        $("#store").removeAttr('href');
+        $("#store").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+        $("#help").removeAttr('href');
+        $("#help").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+        $("#resources").removeAttr('href');
+        $("#resources").click(function(e){
+            e.preventDefault();
+            $('#myModal').modal('show');
+        });
+    }
+  });
   $(document).ready(function(){
     modalConnect();
 
