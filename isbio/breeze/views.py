@@ -1514,11 +1514,21 @@ def update_user_info_dialog(request):
             user_info.first_name = personal_form.cleaned_data.get('first_name', None)
             user_info.last_name = personal_form.cleaned_data.get('last_name', None)
             user_info.email = personal_form.cleaned_data.get('email', None)
+            user_details = UserProfile()
+            user_details.user = user_info
+            user_details.institute_info = Institute.objects.get(id=request.POST['institute'])
             user_info.save()
-            return HttpResponseRedirect('/home/')
+            user_details.save()
+            return HttpResponseRedirect('/home')
 
     else:
-        personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email })
+        
+        try:
+            user_details = UserProfile.objects.get(user=user_info.id)
+            personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email,'institute': user_details.institute_info.id})
+        except UserProfile.DoesNotExist:
+            personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email})
+
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': personal_form,
