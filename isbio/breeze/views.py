@@ -755,6 +755,16 @@ def store(request):
         #'tags': tags
     }))
 
+@login_required(login_url='/')
+def deletecart(request, sid=None):
+    try:
+        items = CartInfo.objects.get(product = sid, script_buyer=request.user)
+        cate = items.type_app
+        count_app = CartInfo.objects.filter(type_app=cate, script_buyer=request.user).count()
+        items.delete()
+        return HttpResponse(simplejson.dumps({"delete": "Yes", 'count_app': count_app}), mimetype='application/json')
+    except CartInfo.DoesNotExist:
+        return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###
