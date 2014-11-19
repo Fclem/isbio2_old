@@ -24,7 +24,7 @@
                                   {% for each in items_free %}
                             
                                   <tr>
-                                    <td style="vertical-align: middle"><img {% if scr.logo %} src="/media/{{ each.product.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
+                                    <td style="vertical-align: middle"><img {% if each.product.logo %} src="/media/{{ each.product.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
                                     <td style="vertical-align: middle"><strong>{{ each.product.name }} <br /> <span class="subscript"> (author: {{ each.product.author }}) </span> </strong></td>
                                     <td style="vertical-align: middle"><i>{{ each.date_created }}</i></td>
                                     <td style="vertical-align: middle">
@@ -97,7 +97,7 @@
                                   {% for each in items_nonfree %}
                             
                                   <tr>
-                                    <td style="vertical-align: middle"><img {% if each.product.logo %} src="/media/{{ each.product.logo }}" {% else %} src="/media/{{ each.product.logo }}" {% endif %} width="55" height="55" class="img-rounded"></td>
+                                    <td style="vertical-align: middle"><img {% if each.product.logo %} src="/media/{{ each.product.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded"></td>
                                     <td style="vertical-align: middle"><strong>{{ each.product.name }} <br /> <span class="subscript"> (author: {{ each.product.author }}) </span> </strong></td>
                                     <td style="vertical-align: middle"><i>{{ each.date_created }}</i></td>
                                     <td style="vertical-align: middle">
