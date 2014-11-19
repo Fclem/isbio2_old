@@ -41,7 +41,7 @@
             <li ><a href="#{{ cat }}" data-toggle="tab"><strong>{{ cat }}</strong></a></li>
           {% endfor %}
           <li class="divider"></li>
-          <li ><a href="#reports" data-toggle="tab"><strong>Pipelines</strong></a></li>
+          <li ><a href="#pipelines" data-toggle="tab"><strong>Pipelines</strong></a></li>
         </ul>
       </div>
     </div>
@@ -194,7 +194,7 @@
             {% endfor %}
 
             <!-- Reports -->
-            <div class="tab-pane" id="reports">
+            <div class="tab-pane" id="pipelines">
               <table class="table table-striped">
                 <tbody>
                   {% for report in reports %}
