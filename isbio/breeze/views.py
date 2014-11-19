@@ -765,6 +765,16 @@ def deletecart(request, sid=None):
         return HttpResponse(simplejson.dumps({"delete": "Yes", 'count_app': count_app}), mimetype='application/json')
     except CartInfo.DoesNotExist:
         return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
+        
+
+@login_required(login_url='/')
+def deletefree(request):
+    try:
+        items = CartInfo.objects.filter(type_app = True, script_buyer = request.user)
+        items.delete()
+        return HttpResponse(simplejson.dumps({"delete": "Yes"}), mimetype='application/json')
+    except CartInfo.DoesNotExist:
+        return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###
