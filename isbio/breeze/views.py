@@ -221,25 +221,36 @@ def scripts(request, layout="list"):
         nails = True
     else:
         nails = False
-
+    categories = Script_categories.objects.all()
     # all_scripts = Rscripts.objects.all()
-    all_scripts = Rscripts.objects.filter(draft="0").filter(istag="0")
+    user = User.objects.get(username=request.user)
+    all_scripts = user.users.all()
+    cat_list = dict()
+    cate = list()
+    for each_cate in categories:
+        if all_scripts.filter(category=each_cate, istag="0", draft="0").count() > 0:
+            cat_list[str(each_cate.category).capitalize()] = all_scripts.filter(category=each_cate, istag="0", draft="0")
+            cate.append(str(each_cate.category).capitalize())
+    
+    #cat_list['reports'] = all_scripts.filter(istag="1")
+    #reports = all_scripts.filter(istag="1")
     report_types = ReportType.objects.filter(access=request.user)
-
+    ''''
     cat_list = dict()
     categories = list()
     for script in all_scripts:
         if str(script.category).capitalize() not in categories:
             categories.append(str(script.category).capitalize())
             cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
-
+    '''
     # if request.user.has_perm('breeze.add_rscripts'):
     #    cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
     #    cat_list['_Datasets_'] = DataSet.objects.all()
-
+    
     return render_to_response('scripts.html', RequestContext(request, {
         'script_list': all_scripts,
         'scripts_status': 'active',
+        'cate': cate,
         'cat_list': sorted(cat_list.iteritems()),
         'reports': report_types,
         'thumbnails': nails
