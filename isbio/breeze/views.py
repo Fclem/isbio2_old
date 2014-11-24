@@ -816,6 +816,16 @@ def install(request, sid=None):
             return HttpResponse(simplejson.dumps({"install_status": "Yes", 'count_app': count_app}), mimetype='application/json')
     except CartInfo.DoesNotExist:
         return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
+        
+@login_required(login_url='/')
+def installreport(request, sid=None):
+    try:
+        #get the report type by id
+        report_type = ReportType.objects.get(id=sid)
+        report_type.access.add(request.user)
+        return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
+    except ReportType.DoesNotExist:
+        return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###

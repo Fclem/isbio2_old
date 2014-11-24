@@ -56,6 +56,11 @@ class ReportType(models.Model):
     search = models.BooleanField(default=True)
     access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='pipeline_access')  # share list
     # tags = models.ManyToManyField(Rscripts, blank=True)
+    
+    # who creates this report
+    author = ForeignKey(User)
+    # store the institute info of the user who creates this report
+    institute = ForeignKey(Institute)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
@@ -63,7 +68,7 @@ class ReportType(models.Model):
         return 'pipelines/%s/%s' % (slug, filename)
 
     config = models.FileField(upload_to=file_name, blank=True, null=True)
-
+    created = models.DateField(auto_now_add=True)
     def __unicode__(self):
         return self.type
 
