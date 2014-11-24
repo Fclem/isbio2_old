@@ -789,20 +789,19 @@ def install(request, sid=None):
         # first check if has already installed
         items_users = items.access.all()
         if request.user in items_users: 
-            cate = CartInfo.objects.get(product = sid).type_app
-            count_app = CartInfo.objects.filter(type_app=cate).count()
+            cate = CartInfo.objects.get(product = sid, script_buyer = request.user).type_app
+            count_app = CartInfo.objects.filter(type_app=cate, script_buyer = request.user).count()
             # delete this app from cart
-            CartInfo.objects.get(product = sid).delete()
+            CartInfo.objects.get(product = sid, script_buyer = request.user).delete()
             #items.install_date.add(ud)
             return HttpResponse(simplejson.dumps({"install_status": "exist", 'count_app':count_app}), mimetype='application/json')
         else:
             items.install_date.add(ud)
-            cate = CartInfo.objects.get(product = sid).type_app
+            cate = CartInfo.objects.get(product = sid, script_buyer = request.user).type_app
             items.access.add(request.user)
-            count_app = CartInfo.objects.filter(type_app=cate).count()
+            count_app = CartInfo.objects.filter(type_app=cate, script_buyer = request.user).count()
             # delete this app from cart
-            CartInfo.objects.get(product = sid).delete()
-            print(count_app)
+            CartInfo.objects.get(product = sid, script_buyer = request.user).delete()
             return HttpResponse(simplejson.dumps({"install_status": "Yes", 'count_app': count_app}), mimetype='application/json')
     except CartInfo.DoesNotExist:
         return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
