@@ -28,7 +28,7 @@ import auxiliary as aux
 import rora as rora
 
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, Statistics, Institute, Script_categories, CartInfo
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, Statistics, Institute, Script_categories, CartInfo, User_date
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -775,6 +775,37 @@ def deletefree(request):
         return HttpResponse(simplejson.dumps({"delete": "Yes"}), mimetype='application/json')
     except CartInfo.DoesNotExist:
         return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
+        
+        
+
+@login_required(login_url='/')
+def install(request, sid=None):
+    try:
+        items = Rscripts.objects.get(id = sid)
+        ud = User_date()
+        ud.user = request.user
+        #ud.install_date= datetime.datetime.today()
+        ud.save()
+        # first check if has already installed
+        items_users = items.access.all()
+        if request.user in items_users: 
+            cate = CartInfo.objects.get(product = sid).type_app
+            count_app = CartInfo.objects.filter(type_app=cate).count()
+            # delete this app from cart
+            CartInfo.objects.get(product = sid).delete()
+            #items.install_date.add(ud)
+            return HttpResponse(simplejson.dumps({"install_status": "exist", 'count_app':count_app}), mimetype='application/json')
+        else:
+            items.install_date.add(ud)
+            cate = CartInfo.objects.get(product = sid).type_app
+            items.access.add(request.user)
+            count_app = CartInfo.objects.filter(type_app=cate).count()
+            # delete this app from cart
+            CartInfo.objects.get(product = sid).delete()
+            print(count_app)
+            return HttpResponse(simplejson.dumps({"install_status": "Yes", 'count_app': count_app}), mimetype='application/json')
+    except CartInfo.DoesNotExist:
+        return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###

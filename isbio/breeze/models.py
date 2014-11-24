@@ -80,6 +80,13 @@ class Script_categories(models.Model):
     def __unicode__(self):
         return self.category
 
+class User_date(models.Model):
+    user = ForeignKey(User)
+    install_date = models.DateField(auto_now_add=True)
+    
+    def __unicode__(self):
+        return self.user.username
+
 class Rscripts(models.Model):
     name = models.CharField(max_length=35, unique=True)
     inln = models.CharField(max_length=150, blank=True)
