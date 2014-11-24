@@ -591,10 +591,10 @@ $(document).ready(function() {
             ev.preventDefault(); // prevent navigation
             var par = $(this).data("param");
             var parent = $(this).parent().parent();
-            var agreement = $(this).data("agreement");
+            //var agreement = $(this).data("agreement");
             console.log(agreement);
             bootbox.dialog({
-            message: agreement,
+            message: "agreement",
             title: "Agreement",
             buttons: {
             success: {
