@@ -104,6 +104,8 @@ class Rscripts(models.Model):
     report_type = models.ManyToManyField(ReportType, null=True, blank=True, default=None)  # assosiation with report type
     #report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
     access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name="users")
+    #install date info
+    install_date = models.ManyToManyField(User_date, blank=True, null=True, default=None, related_name="installdate")
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
