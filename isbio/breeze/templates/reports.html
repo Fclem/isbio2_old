@@ -178,6 +178,20 @@ $(document).ready(function() {
   });*/
 
   $('#new_popover').click(function(){
+      
+      $( "#popover_search" ).change(function() {
+          //$("#popover_search").rules("add", {regex: "^\d$"});
+       
+      //alert( "Handler for .change() called." );
+      text = $( "#popover_search" ).val()
+      if(text.match(/^\d/)){
+          $("#go").attr('disabled', 'disabled');
+          $("#ReportName").modal("show");
+      }else{
+          $("#go").removeAttr('disabled');
+      }
+      });
+      
     $('#type_selector').change(function(){
       if ($('#type_selector').find(':selected').data('search') == "True"){
         $('#popover_search').attr('placeholder', 'Item Search... ');
