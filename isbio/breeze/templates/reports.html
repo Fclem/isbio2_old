@@ -193,14 +193,14 @@ $(document).ready(function() {
 
   $('#new_popover').click(function(){
       
-      $( "#popover_search" ).change(function() {
+      $( "#popover_search" ).mouseover(function() {
           //$("#popover_search").rules("add", {regex: "^\d$"});
        
       //alert( "Handler for .change() called." );
       text = $( "#popover_search" ).val()
       if(text.match(/^\d/)){
           $("#go").attr('disabled', 'disabled');
-          $( "#popover_search" ).val("");
+          //$( "#popover_search" ).val("");
           $("#ReportName").modal("show");
       }else{
           $("#go").removeAttr('disabled');
