@@ -150,7 +150,7 @@ $(document).ready(function() {
     placement: "right",
     html: true,
     content: '\
-    <form class="navbar-search" action="/search/entity" method="post">\
+    <form id= "report_form" class="navbar-search" action="/search/entity" method="post">\
     <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"/>\
       <div class="control-group">\
         <div class="controls">\
