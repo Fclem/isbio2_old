@@ -200,6 +200,7 @@ $(document).ready(function() {
       text = $( "#popover_search" ).val()
       if(text.match(/^\d/)){
           $("#go").attr('disabled', 'disabled');
+          $( "#popover_search" ).val("");
           $("#ReportName").modal("show");
       }else{
           $("#go").removeAttr('disabled');
