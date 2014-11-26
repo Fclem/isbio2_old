@@ -826,6 +826,23 @@ def installreport(request, sid=None):
         return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
     except ReportType.DoesNotExist:
         return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
+        
+        
+
+@login_required(login_url='/')
+def ownreports(request):
+    own_reports = Report.objects.filter(status="succeed", author=request.user).order_by('-created')
+    return render_to_response('reports-paginator.html', RequestContext(request, {
+        'reports': own_reports
+    }))
+    
+    
+@login_required(login_url='/')
+def accessreports(request):
+    access_reports = Report.objects.filter(Q(status="succeed", author=request.user) | Q(status="succeed", shared=request.user) ).order_by('-created')
+    return render_to_response('reports-paginator.html', RequestContext(request, {
+        'reports': access_reports
+    }))
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###

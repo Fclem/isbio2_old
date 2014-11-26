@@ -73,6 +73,18 @@
         </form>
       </div>
     </div>
+    <div class="row">
+    <div class="span2 offset3">
+        <label class="checkbox">
+            <input id="own_report" type="checkbox"> Show only my own reports
+        </label>
+    </div>
+    <div class="span4">
+        <label class="checkbox">
+            <input id="access_report" type="checkbox"> Show only the reports I can access
+        </label>
+    </div>
+    </div>
   </div>
 
   <!-- LIST OF EXISTING REPORTS -->
@@ -211,6 +223,48 @@ $(document).ready(function() {
     });
   });
 
+  $("#own_report").click(function(){
+      var checked = $(this);
+      if(checked.is(':checked')){
+          $("#access_report").removeAttr('checked');
+          $.ajax({
+              type: 'GET',
+              url: '/reports/ownreports',
+              success: function(response){
+                  $("#pagination-content").html(response);
+              }
+          });
+      }
+      if(!checked.is(':checked')){
+                  $("#pagination-content").load('/reports/search', {
+                    reset: 1,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                  });
+                  $('#paginator_control').bootstrapPaginator(pagOptions);
+              }
+  });
+  
+  $("#access_report").click(function(){
+      var checked = $(this);
+      if(checked.is(':checked')){
+          $("#own_report").removeAttr('checked');
+          $.ajax({
+              type: 'GET',
+              url: '/reports/accessreports',
+              success: function(response){
+                  $("#pagination-content").html(response);
+              }
+          });
+      }
+      if(!checked.is(':checked')){
+                  $("#pagination-content").load('/reports/search', {
+                    reset: 1,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                  });
+                  $('#paginator_control').bootstrapPaginator(pagOptions);
+              }
+  });
+  
   // FILTERING: Submit filter form
   $('#filter_form').submit(function(ev){
     var formData = $(this).serialize();
