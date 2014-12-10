@@ -386,6 +386,7 @@ $(document).ready(function() {
   $(".installreport").click(function(ev){
       ev.preventDefault();
       var par = $(this).data("param");
+      var link = $(this);
       bootbox.dialog({
       message: "agreement",
       title: "Agreement",
@@ -414,8 +415,11 @@ $(document).ready(function() {
                       label: "Ok!",
                       className: "btn-success",
                       callback: function() {
-                          $(this).attr("disabled", "disabled");
-                          console.log($(this).data("param"))
+                          link.attr("disabled", "disabled");
+                          link.removeAttr("href");
+                          //link.removeAtttr("data-param");
+                          link.attr("class", "btn btn-inverse");
+                          link.children().text("Installed");
                       }
                       }
                       }
