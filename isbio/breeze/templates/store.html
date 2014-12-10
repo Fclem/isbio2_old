@@ -383,43 +383,64 @@ $(document).ready(function() {
   $(".installreport").click(function(ev){
       ev.preventDefault();
       var par = $(this).data("param");
-      $.ajax({
-          type:"GET",
-          url: par,
-          success: function(reponse){
-              if(reponse['install_status']=='Yes'){
-                  bootbox.dialog({
-                  message: "Installization is done!",
-                  title: "Information",
-                  buttons: {
-                  success: {
-                  label: "Ok!",
-                  className: "btn-success",
-                  callback: function() {
+      bootbox.dialog({
+      message: "agreement",
+      title: "Agreement",
+      buttons: {
+      success: {
+      label: "Cancel",
+      className: "btn-danger",
+      callback: function() {
+      //console.log("success");
+      }
+      },
+      danger: {
+      label: "Agree",
+      className: "btn-success",
+      callback: function() {
+          $.ajax({
+              type:"GET",
+              url: par,
+              success: function(reponse){
+                  if(reponse['install_status']=='Yes'){
+                      bootbox.dialog({
+                      message: "Installization is done!",
+                      title: "Information",
+                      buttons: {
+                      success: {
+                      label: "Ok!",
+                      className: "btn-success",
+                      callback: function() {
+                      }
+                      }
+                      }
+                      });
+                  } else{
+                      bootbox.dialog({
+                      message: "installization fails!",
+                      title: "Warning",
+                      buttons: {
+                      success: {
+                      label: "Ok!",
+                      className: "btn-success",
+                      callback: function() {
+                      }
+                      }
+                      }
+                      });
                   }
-                  }
-                  }
-                  });
-              } else{
-                  bootbox.dialog({
-                  message: "installization fails!",
-                  title: "Warning",
-                  buttons: {
-                  success: {
-                  label: "Ok!",
-                  className: "btn-success",
-                  callback: function() {
-                  }
-                  }
-                  }
-                  });
+              },
+              error: function (request, status, error) {
+                          //implement proper error handling
+                          console.log("failure");
               }
-          },
-          error: function (request, status, error) {
-                      //implement proper error handling
-                      console.log("failure");
-          }
+          });
+      //Example.show("uh oh, look out!");
+      }
+      }
+      }
       });
+      
   });
   
   $(".apply").click(function(ev) {
