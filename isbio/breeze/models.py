@@ -54,7 +54,7 @@ class ReportType(models.Model):
     type = models.CharField(max_length=17, unique=True)
     description = models.CharField(max_length=5500, blank=True)
     search = models.BooleanField(default=True)
-    #access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='pipeline_access')  # share list
+    access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='pipeline_access')  # share list
     # tags = models.ManyToManyField(Rscripts, blank=True)
     
     # who creates this report
