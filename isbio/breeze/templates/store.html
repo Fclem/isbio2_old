@@ -201,15 +201,11 @@
                           </td>
                             <-->  
                           <td style="vertical-align: middle">
-                              {% if scr in report_installed %}
-                              <a  class="btn btn-inverse" disabled='disabled'>
-                                <strong>Installed&nbsp;<i class="icon-white icon-download-alt"></i></strong>
-                              </a>
-                              {% else %}
+
                             <a href="/installreport/{{ scr.id }}" class="btn btn-inverse installreport"   data-param="/installreport/{{ scr.id }}">
                               <strong>Install&nbsp;<i class="icon-white icon-download-alt"></i></strong>
                             </a>
-                            {% endif %}
+                            
                             
                           </td>
 

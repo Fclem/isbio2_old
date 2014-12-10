@@ -747,7 +747,6 @@ def store(request):
     # get the tags
     tags = Rscripts.objects.filter(istag="1")
     reports = ReportType.objects.all()
-    print(reports)
     # get all the scripts that users have installed
     app_installed = request.user.users.all()
     # get all the pipelines that user has installed
