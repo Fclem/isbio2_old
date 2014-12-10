@@ -764,7 +764,7 @@ def store(request):
         'cat_list': sorted(cat_list.iteritems()),
         'count_mycart': count_app,
         'reports': reports,
-        'app_installed':app_installed
+        'app_installed':app_installed,
         'report_installed':report_installed
         #'tags': tags
     }))
