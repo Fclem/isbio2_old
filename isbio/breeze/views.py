@@ -750,7 +750,7 @@ def store(request):
     # get all the scripts that users have installed
     app_installed = request.user.users.all()
     # get all the pipelines that user has installed
-    report_installed = request.user.pipeline_access.all()
+    #report_installed = request.user.pipeline_access.all()
     '''
     for script in all_scripts:
         if str(script.category).capitalize() not in categories:
@@ -764,8 +764,8 @@ def store(request):
         'cat_list': sorted(cat_list.iteritems()),
         'count_mycart': count_app,
         'reports': reports,
-        'app_installed':app_installed,
-        'report_installed':report_installed
+        'app_installed':app_installed
+        #'report_installed':report_installed
         #'tags': tags
     }))
 
