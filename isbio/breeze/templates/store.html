@@ -182,7 +182,7 @@
                       </head>
                       <tbody>
                         {% for scr in reports %}
-                         {% if scr.rscripts_set.all%}
+                         <!-->{% if scr.rscripts_set.all%}<-->
                         <tr>
                           <td style="vertical-align: middle"><strong>{{ scr.type }} <br /> 
                           </strong></td>
@@ -217,7 +217,8 @@
                             </div>
                             </td>
                         </tr>
-                        {% endif %}
+                        <!-->{% endif %}<-->
+                        
                         {% empty %}
                         <tr>
                             <td></td> <td><p>No reports available!</p></td> <td></td>
