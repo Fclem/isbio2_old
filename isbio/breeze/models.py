@@ -58,9 +58,9 @@ class ReportType(models.Model):
     # tags = models.ManyToManyField(Rscripts, blank=True)
     
     # who creates this report
-    author = ForeignKey(User)
+    #author = ForeignKey(User)
     # store the institute info of the user who creates this report
-    institute = ForeignKey(Institute)
+    #institute = ForeignKey(Institute)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
