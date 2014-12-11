@@ -416,9 +416,6 @@ $(document).ready(function() {
                       className: "btn-success",
                       callback: function() {
                           link.attr("disabled", "disabled");
-                          link.removeAttr("href");
-                          link.removeAtttr("data-param");
-                          link.attr("class", "btn btn-inverse");
                           link.children().text("Installed");
                       }
                       }
