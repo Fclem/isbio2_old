@@ -202,7 +202,8 @@
                             <-->  
                           <td style="vertical-align: middle">
                             {% if scr in report_installed %}
-                            <a  class="btn btn-inverse" disabled='disabled'>
+                            <a  class="btn btn-success" disabled='disabled'>
+                                
                               <strong>Installed</strong>
                             </a>
                             {% else %}
@@ -416,6 +417,7 @@ $(document).ready(function() {
                       className: "btn-success",
                       callback: function() {
                           link.attr("disabled", "disabled");
+                          link.attr("class", "btn btn-success")
                           link.children().text("Installed");
                       }
                       }
