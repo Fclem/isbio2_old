@@ -95,7 +95,7 @@
                           <td style="vertical-align: middle">
                               {% if scr in app_installed %}
                               <a  class="btn btn-inverse" disabled='disabled'>
-                                <strong>Installed&nbsp;<i class="icon-ok icon-white"></i></strong>
+                                <strong>Installed&nbsp;</strong>
                               </a>
                               {% else %}
                             {% if scr.price == 0 %}
@@ -155,7 +155,7 @@
                         <td style="vertical-align: middle">
                           {% if scr in app_installed %}
                           <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}" disabled='disabled'>
-                            <strong>Installed&nbsp;<i class="icon-ok icon-white"></i></strong>
+                            <strong>Installed&nbsp;</strong>
                           </a>
                           {% else %}
                           {% if scr.price == 0 %}
