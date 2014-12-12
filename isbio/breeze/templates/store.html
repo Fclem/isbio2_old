@@ -98,9 +98,15 @@
                                 <strong>Installed&nbsp;<i class="icon-ok icon-white"></i></strong>
                               </a>
                               {% else %}
+                            {% if scr.price == 0 %}
+                            <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}">
+                              <strong>Install&nbsp;<i class="icon-white icon-download-alt"></i></strong>
+                            </a>
+                            {% else %}
                             <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}">
                               <strong>Add&nbsp;to&nbsp; Cart&nbsp;<i class="icon-shopping-cart icon-white"></i></strong>
                             </a>
+                            {% endif %}
                             {% endif %}
                           </td>
 
@@ -152,9 +158,15 @@
                             <strong>Installed&nbsp;<i class="icon-ok icon-white"></i></strong>
                           </a>
                           {% else %}
+                          {% if scr.price == 0 %}
+                          <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}">
+                            <strong>Install&nbsp;<i class="icon-white icon-download-alt"></i></strong>
+                          </a>
+                          {% else %}
                           <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}">
                             <strong>Add&nbsp;to&nbsp; Cart&nbsp;<i class="icon-shopping-cart icon-white"></i></strong>
                           </a>
+                          {% endif %}
                           {% endif %}
                         </td>
 
