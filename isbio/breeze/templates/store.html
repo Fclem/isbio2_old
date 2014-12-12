@@ -99,7 +99,7 @@
                               </a>
                               {% else %}
                             {% if scr.price == 0 %}
-                            <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}">
+                            <a href="/installscripts/{{ scr.id }}" class="btn btn-inverse installapp"   data-param="/installscripts/{{ scr.id }}" data-agreement={{scr.agreement}}>
                               <strong>Install&nbsp;<i class="icon-white icon-download-alt"></i></strong>
                             </a>
                             {% else %}
@@ -159,7 +159,7 @@
                           </a>
                           {% else %}
                           {% if scr.price == 0 %}
-                          <a href="/addtocart/{{ scr.id }}" class="btn btn-inverse apply"   data-param="/addtocart/{{ scr.id }}">
+                          <a href="/installscripts/{{ scr.id }}" class="btn btn-inverse installapp"   data-param="/installscripts/{{ scr.id }}" data-agreement={{scr.agreement}}>
                             <strong>Install&nbsp;<i class="icon-white icon-download-alt"></i></strong>
                           </a>
                           {% else %}
@@ -397,6 +397,73 @@ $(document).ready(function() {
 
   
   $(".installreport").click(function(ev){
+      ev.preventDefault();
+      var par = $(this).data("param");
+      var link = $(this);
+      bootbox.dialog({
+      message: "agreement",
+      title: "Agreement",
+      buttons: {
+      success: {
+      label: "Cancel",
+      className: "btn-danger",
+      callback: function() {
+      //console.log("success");
+      }
+      },
+      danger: {
+      label: "Agree",
+      className: "btn-success",
+      callback: function() {
+          $.ajax({
+              type:"GET",
+              url: par,
+              success: function(reponse){
+                  if(reponse['install_status']=='Yes'){
+                      bootbox.dialog({
+                      message: "Installization is done!",
+                      title: "Information",
+                      buttons: {
+                      success: {
+                      label: "Ok!",
+                      className: "btn-success",
+                      callback: function() {
+                          link.attr("disabled", "disabled");
+                          link.attr("class", "btn btn-success")
+                          link.children().text("Installed");
+                      }
+                      }
+                      }
+                      });
+                  } else{
+                      bootbox.dialog({
+                      message: "installization fails!",
+                      title: "Warning",
+                      buttons: {
+                      success: {
+                      label: "Ok!",
+                      className: "btn-success",
+                      callback: function() {
+                      }
+                      }
+                      }
+                      });
+                  }
+              },
+              error: function (request, status, error) {
+                          //implement proper error handling
+                          console.log("failure");
+              }
+          });
+      //Example.show("uh oh, look out!");
+      }
+      }
+      }
+      });
+      
+  });
+  
+  $(".installapp").click(function(ev){
       ev.preventDefault();
       var par = $(this).data("param");
       var link = $(this);
