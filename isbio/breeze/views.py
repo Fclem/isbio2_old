@@ -795,30 +795,13 @@ def deletefree(request):
 @login_required(login_url='/')
 def install(request, sid=None):
     try:
-        items = Rscripts.objects.get(id = sid)
-        ud = User_date()
-        ud.user = request.user
-        #ud.install_date= datetime.datetime.today()
-        ud.save()
-        # first check if has already installed
-        items_users = items.access.all()
-        if request.user in items_users: 
-            cate = CartInfo.objects.get(product = sid, script_buyer = request.user).type_app
-            count_app = CartInfo.objects.filter(type_app=cate, script_buyer = request.user).count()
-            # delete this app from cart
-            CartInfo.objects.get(product = sid, script_buyer = request.user).delete()
-            #items.install_date.add(ud)
-            return HttpResponse(simplejson.dumps({"install_status": "exist", 'count_app':count_app}), mimetype='application/json')
-        else:
-            items.install_date.add(ud)
-            cate = CartInfo.objects.get(product = sid, script_buyer = request.user).type_app
-            items.access.add(request.user)
-            count_app = CartInfo.objects.filter(type_app=cate, script_buyer = request.user).count()
-            # delete this app from cart
-            CartInfo.objects.get(product = sid, script_buyer = request.user).delete()
-            return HttpResponse(simplejson.dumps({"install_status": "Yes", 'count_app': count_app}), mimetype='application/json')
-    except CartInfo.DoesNotExist:
+        # get the script
+        scr = Rscripts.objects.get(id = sid)
+        scr.access.add(request.user)
+        return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
+    except Rscripts.DoesNotExist:
         return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
+    
         
 @login_required(login_url='/')
 def installreport(request, sid=None):
