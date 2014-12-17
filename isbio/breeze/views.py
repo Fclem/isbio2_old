@@ -234,7 +234,6 @@ def scripts(request, layout="list"):
     
     #cat_list['reports'] = all_scripts.filter(istag="1")
     #reports = all_scripts.filter(istag="1")
-    report_types = ReportType.objects.filter(access=request.user)
     ''''
     cat_list = dict()
     categories = list()
@@ -252,7 +251,6 @@ def scripts(request, layout="list"):
         'scripts_status': 'active',
         'cate': cate,
         'cat_list': sorted(cat_list.iteritems()),
-        'reports': report_types,
         'thumbnails': nails
     }))
 
