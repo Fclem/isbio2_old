@@ -605,16 +605,11 @@ $(window).load(function(){
     }); // submitItemModalFormBind(url, modalID)
   }
   
-  var done = false; 
-  var script = document.createElement('script'); 
-  script.async = true; 
-  script.type = 'text/javascript'; 
-  script.src = 'https://widget.purechat.com/VisitorWidget/WidgetScript'; 
-  document.getElementsByTagName('HEAD').item(0).appendChild(script); 
-  script.onreadystatechange = script.onload = function (e) { 
-      if (!done && (!this.readyState || this.readyState == 'loaded' || this.readyState == 'complete')) { 
-          var w = new PCWidget({ c: '63057a98-85aa-44f9-99ef-265a924ea274', f: true });
-           done = true; } };
+  window.$zopim||(function(d,s){var z=$zopim=function(c){z._.push(c)},$=z.s=
+  d.createElement(s),e=d.getElementsByTagName(s)[0];z.set=function(o){z.set.
+  _.push(o)};z._=[];z.set._=[];$.async=!0;$.setAttribute('charset','utf-8');
+  $.src='//v2.zopim.com/?2fQMyVQQ1GO74NehJsG5a8uf8RiZXHfV';z.t=+new Date;$.
+  type='text/javascript';e.parentNode.insertBefore($,e)})(document,'script');
   
   $('.updateinfo').click(function(ev){
       ev.preventDefault();
