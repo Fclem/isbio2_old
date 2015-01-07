@@ -430,7 +430,23 @@ $(document).ready(function() {
     tableTools: {
         sRowSelect: "multi",
         aButtons: [
-            { sExtends: "editor_create", editor: groupCreator },
+          { sExtends: "editor_create", 
+            fnClick: function () {
+                var data = {table:'screenGroup', action:'create'}
+                var url = "/ajax-rora-groupname/"
+                $("#newScreenGroup").load(url,function(){
+                    $("#newScreenGroup").modal('show');
+                    $("#form_modal_apply").submit(function(event){
+                        text = $( "#id_name" ).val();
+                        if(!text){
+                            event.preventDefault();
+                            //$("#ReportName").modal("show");
+                        }
+                    });
+                })
+                
+            }
+          },
             //{ sExtends: "editor_edit",   editor: groupEditor },
             { sExtends: "editor_remove", editor: groupCreator },
             {
