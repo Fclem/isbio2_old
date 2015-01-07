@@ -552,6 +552,30 @@ def ajax_rora_action(request):
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
+@login_required(login_url='/')
+def groupName(request):
+    if request.method == 'POST':
+        screen_group = breezeForms.screenGroup(request.POST)
+
+        if screen_group.is_valid():
+            group = dict()
+            group['group_name'] = screen_group.cleaned_data.get('name')
+            group['group_user'] = request.user.username
+            table = 'groups'
+            #print(request.user.username)
+            feedback = rora.insert_row(table=table, data=group)
+            #rora.update_screen(screen)
+            return HttpResponseRedirect('/dbviewer')
+    else:
+        screen_group = breezeForms.screenGroup()
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': screen_group,
+        'action': '/ajax-rora-groupname/',
+        'header': 'Create New Group',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+
 def reports_search(request):
     query_string = ''
     found_entries = None

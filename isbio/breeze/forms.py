@@ -557,7 +557,15 @@ class ScreenInfo(forms.Form):
 
 
     
-
+class screenGroup(forms.Form):
+    name = forms.CharField(
+        max_length=75,
+        label="Group Name",
+        widget=forms.TextInput(attrs={'placeholder':'Group Name'})
+        #required=True
+    )
+    
+    
 class LoginForm(forms.Form):
     user_name = forms.CharField(
         max_length=30,
