@@ -156,7 +156,7 @@ def home(request, state="feed"):
         if 'hugemem.q' in each.split():
             used = each.split()[1]
             total = each.split()[4]
-            server.status = used/total
+            server.status = int(used)/int(total)
             if server.status == 0:
                 server = 'idle'
     return render_to_response('home.html', RequestContext(request, {
