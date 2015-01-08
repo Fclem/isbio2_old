@@ -154,8 +154,9 @@ def home(request, state="feed"):
     server = 'unknown'
     for each in output.splitlines():
         if 'hugemem.q' in each.split():
-            used = each.split()[1]
-            total = each.split()[4]
+            used = each.split()[2]
+            total = each.split()[5]
+            print(total)
             server.status = int(used)/int(total)
             if server.status == 0:
                 server = 'idle'
