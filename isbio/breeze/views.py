@@ -17,6 +17,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User, Group
 from django.conf import settings
 from multiprocessing import Process
+import subprocess
 from django.utils import simplejson
 from dateutil.relativedelta import relativedelta
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -147,6 +148,16 @@ def home(request, state="feed"):
     patients = dict()
 
     posts = Post.objects.all().order_by("-time")
+    # get the server info
+    p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
+    output, err = p.communicate()
+    for each in output.splitlines():
+        if 'hugemem' in each.split():
+            used = each.split()[1]
+            total = each.split()[4]
+            server.status = used/total
+            if server.status == 0:
+                server = 'idle'
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
         str(menu): 'active',
@@ -164,7 +175,8 @@ def home(request, state="feed"):
         'screens': screens,
         'patients': patients,
         'stats': stats,
-        'user_info': user_info_complete
+        'user_info': user_info_complete,
+        'server_status': server
     }))
 
 @login_required(login_url='/')
