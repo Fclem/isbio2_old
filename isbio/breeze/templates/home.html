@@ -371,6 +371,7 @@ $(window).load(function(){
             dataType : 'json',
             success: function (msg) {
                 console.log(msg)
+                window.setTimeout(updateServer, 300);
             }
         });
     }
