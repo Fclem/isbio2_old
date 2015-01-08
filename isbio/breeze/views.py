@@ -151,6 +151,7 @@ def home(request, state="feed"):
     # get the server info
     p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
     output, err = p.communicate()
+    server = 'unknown'
     for each in output.splitlines():
         if 'hugemem' in each.split():
             used = each.split()[1]
