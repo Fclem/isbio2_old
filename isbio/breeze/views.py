@@ -157,8 +157,8 @@ def home(request, state="feed"):
             used = each.split()[2]
             total = each.split()[5]
             print(total)
-            server.status = int(used)/int(total)
-            if server.status == 0:
+            server_status = int(used)/int(total)
+            if server_status == 0:
                 server = 'idle'
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
