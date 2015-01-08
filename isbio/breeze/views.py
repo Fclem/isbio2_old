@@ -153,7 +153,7 @@ def home(request, state="feed"):
     output, err = p.communicate()
     server = 'unknown'
     for each in output.splitlines():
-        if 'hugemem' in each.split():
+        if 'hugemem.q' in each.split():
             used = each.split()[1]
             total = each.split()[4]
             server.status = used/total
