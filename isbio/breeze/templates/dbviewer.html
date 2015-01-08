@@ -266,6 +266,18 @@
 
 <div id="patientEdit" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
 <div id="newScreenGroup" class="modal hide fade" role="dialog" aria-hidden="true" style="background: url('/static/nail.png');"></div>
+<div id="NameError" class="modal hide fade" role="dialog"  aria-hidden="true">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <h3 id="del_title">Warning</h3>
+    </div>
+    <div class="modal-body">
+      <p> Your screen group name contains space. Please remove spaces in the screen group name! </p>
+    </div>
+    <div class="modal-footer">
+      <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+    </div>
+</div>
 <script>
 
 $(document).ready(function() {
@@ -436,11 +448,24 @@ $(document).ready(function() {
                 var url = "/ajax-rora-groupname/"
                 $("#newScreenGroup").load(url,function(){
                     $("#newScreenGroup").modal('show');
+                    $('#id_name').qtip({ // Grab some elements to apply the tooltip to
+                        content: {
+                            title: 'Name',
+                            text: '<b>Please do not use space in the screen group name!</b>'
+                        },
+                        style: {
+                            classes: 'qtip-bootstrap'
+                        }
+                    })
                     $("#form_modal_apply").submit(function(event){
                         text = $( "#id_name" ).val();
+                        
                         if(!text){
                             event.preventDefault();
                             //$("#ReportName").modal("show");
+                        }else if(/\s/g.test(text)){
+                            event.preventDefault();
+                            $("#NameError").modal('show')
                         }
                     });
                 })
