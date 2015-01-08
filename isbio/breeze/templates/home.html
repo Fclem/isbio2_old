@@ -363,7 +363,17 @@ $(window).load(function(){
   });
   $(document).ready(function(){
     modalConnect();
-    
+    updateServer();
+    function updateServer(){
+        $.ajax({
+            type: "GET",
+            url: "/update-server/",
+            dataType : 'json',
+            success: function (msg) {
+                console.log(msg)
+            }
+        });
+    }
   // paginator setup
   var pagOptScreens = {
     currentPage: 1,

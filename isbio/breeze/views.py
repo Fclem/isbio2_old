@@ -156,7 +156,6 @@ def home(request, state="feed"):
         if 'hugemem.q' in each.split():
             used = each.split()[2]
             total = each.split()[5]
-            print(total)
             server_status = int(used)/int(total)
             if server_status == 0:
                 server = 'idle'
@@ -180,7 +179,25 @@ def home(request, state="feed"):
         'user_info': user_info_complete,
         'server_status': server
     }))
-
+def updateServer(request):
+    # get the server info
+    p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
+    output, err = p.communicate()
+    server = 'unknown'
+    for each in output.splitlines():
+        if 'hugemem.q' in each.split():
+            used = each.split()[2]
+            total = each.split()[5]
+            server_status = int(used)/int(total)
+            if server_status == 0:
+                server = 'idle'
+            elif server_status <0.5:
+                server = 'healthy'
+            else:
+                server = 'busy'
+        
+    return HttpResponse(simplejson.dumps({'server_status': server}), mimetype='application/json')
+    
 @login_required(login_url='/')
 def jobs(request, state="scheduled"):
     if state == "scheduled":
