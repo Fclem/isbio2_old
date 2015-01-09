@@ -378,7 +378,7 @@ $(window).load(function(){
             url: "/update-server/",
             dataType : 'json',
             success: function (msg) {
-                console.log(msg)
+                console.log(msg.server_status)
                 window.setTimeout(updateServer, 300);
             }
         });
