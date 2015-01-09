@@ -84,11 +84,11 @@
                   <div class="span12 well">
                       <p> <h4> The server is currently:&nbsp;&nbsp;&nbsp;
                           {% if server_status == 'idle' %}
-                          <span class="label label-success">idle</span> 
+                          <span id="status" class="label label-success ">idle</span> 
                           {% elif server_status == 'bad' %}
-                          <span class="label label-important">bad</span> 
+                          <span id="status" class="label label-important ">bad</span> 
                           {% elif server_status == 'busy'%}
-                          <span class="label label-warning">busy</span> 
+                          <span id="status" class="label label-warning ">busy</span> 
                           {% endif %}
                       </h4></p>
                 </div>
@@ -378,7 +378,24 @@ $(window).load(function(){
             url: "/update-server/",
             dataType : 'json',
             success: function (msg) {
-                console.log(msg.server_status)
+                //console.log(msg.server_status)
+                if(msg.server_status == 'idle'){
+                    console.log("wowo")
+                    $('#status').removeAttr('class');
+                    $('#status').attr('class', 'label label-success');
+                    $('#status').empty();
+                    $('#status').text('idle')
+                } else if(msg.server_status == 'bad'){
+                    $('#status').removeAttr('class');
+                    $('#status').attr('class', 'label label-important');
+                    $('#status').empty();
+                    $('#status').text('bad')
+                } else if(msg.server_status == 'busy'){
+                    $('#status').removeAttr('class');
+                    $('#status').attr('class', 'label label-warning');
+                    $('#status').empty();
+                    $('#status').text('busy')
+                }
                 window.setTimeout(updateServer, 300);
             }
         });
