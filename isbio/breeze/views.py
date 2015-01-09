@@ -154,10 +154,17 @@ def home(request, state="feed"):
     server = 'unknown'
     for each in output.splitlines():
         if 'hugemem.q' in each.split():
-            used = each.split()[2]
+            avail = each.split()[4]
             total = each.split()[5]
-            server_status = int(used)/int(total)
-            if server_status == 0:
+            cdsuE = each.split()[7]
+            cqload = each.split()[1]
+            if total == cdsuE:
+                server = 'bad'
+            elif int(avail) <= 3:
+                server = 'busy'
+            elif float(cqload) >30:
+                server = 'busy'
+            else:
                 server = 'idle'
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
@@ -186,15 +193,18 @@ def updateServer(request):
     server = 'unknown'
     for each in output.splitlines():
         if 'hugemem.q' in each.split():
-            used = each.split()[2]
+            avail = each.split()[4]
             total = each.split()[5]
-            server_status = int(used)/int(total)
-            if server_status == 0:
-                server = 'idle'
-            elif server_status <0.5:
-                server = 'healthy'
-            else:
+            cdsuE = each.split()[7]
+            cqload = each.split()[1]
+            if total == cdsuE:
+                server = 'bad'
+            elif int(avail) <= 3:
                 server = 'busy'
+            elif float(cqload) >30:
+                server = 'busy'
+            else:
+                server = 'idle'
         
     return HttpResponse(simplejson.dumps({'server_status': server}), mimetype='application/json')
     

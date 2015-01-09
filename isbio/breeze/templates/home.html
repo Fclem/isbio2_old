@@ -81,9 +81,17 @@
 
   <div class="span7">
           <div class="tab-content" id="accordion">
-                <div class="span12 well">
-                    <p> The server is currently:<span class="label label-success">{{ server_status }}</span> </p>
-              </div>
+                  <div class="span12 well">
+                      <p> <h4> The server is currently:&nbsp;&nbsp;&nbsp;
+                          {% if server_status == 'idle' %}
+                          <span class="label label-success">idle</span> 
+                          {% elif server_status == 'bad' %}
+                          <span class="label label-important">bad</span> 
+                          {% elif server_status == 'busy'%}
+                          <span class="label label-warning">busy</span> 
+                          {% endif %}
+                      </h4></p>
+                </div>
             <!-- FEED -->
             <div class="tab-pane {{ show_feed }}" id="feed_menu">
               <div class="row-fluid">
