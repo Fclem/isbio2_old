@@ -84,11 +84,11 @@
                   <div class="span12 well">
                       <p> <h4> The server is currently:&nbsp;&nbsp;&nbsp;
                           {% if server_status == 'idle' %}
-                          <span id="status" class="label label-success ">idle</span> 
+                          <span id="status" class="btn btn-large btn-success ">idle</span> 
                           {% elif server_status == 'bad' %}
-                          <span id="status" class="label label-important ">bad</span> 
+                          <span id="status" class="btn btn-large btn-danger ">bad</span> 
                           {% elif server_status == 'busy'%}
-                          <span id="status" class="label label-warning ">busy</span> 
+                          <span id="status" class="btn btn-large btn-danger ">busy</span> 
                           {% endif %}
                       </h4></p>
                 </div>
