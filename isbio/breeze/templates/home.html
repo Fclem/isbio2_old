@@ -382,17 +382,17 @@ $(window).load(function(){
                 if(msg.server_status == 'idle'){
                     console.log("wowo")
                     $('#status').removeAttr('class');
-                    $('#status').attr('class', 'label label-success');
+                    $('#status').attr('class', 'btn btn-large btn-success');
                     $('#status').empty();
                     $('#status').text('idle')
                 } else if(msg.server_status == 'bad'){
                     $('#status').removeAttr('class');
-                    $('#status').attr('class', 'label label-important');
+                    $('#status').attr('class', 'btn btn-large btn-danger');
                     $('#status').empty();
                     $('#status').text('bad')
                 } else if(msg.server_status == 'busy'){
                     $('#status').removeAttr('class');
-                    $('#status').attr('class', 'label label-warning');
+                    $('#status').attr('class', 'btn btn-large btn-warning');
                     $('#status').empty();
                     $('#status').text('busy')
                 }
