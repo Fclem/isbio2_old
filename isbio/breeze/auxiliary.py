@@ -19,6 +19,7 @@ def save_new_project(form, author):
     form        -- instance of NewProjectForm
     author      -- user name
     """
+    insti = breeze.models.UserProfile.objects.get(user=author).institute_info
     dbitem = breeze.models.Project(
                 name=str(form.cleaned_data.get('project_name', None)),
                 manager=str(form.cleaned_data.get('project_manager', None)),
@@ -27,7 +28,8 @@ def save_new_project(form, author):
                 collaborative=form.cleaned_data.get('collaborative', None),
                 wbs=str(form.cleaned_data.get('wbs', None)),
                 external_id=str(form.cleaned_data.get('eid', None)),
-                description=str(form.cleaned_data.get('description', None))
+                description=str(form.cleaned_data.get('description', None)),
+                institute=insti
             )
 
     dbitem.save()
