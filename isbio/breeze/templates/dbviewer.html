@@ -60,9 +60,9 @@
       <div class="tab-pane active" id="patientsOuter">
         <!-- Inner Tab Headers: -->
         <ul class="nav nav-tabs" id="tabHeaders">
-          <li class="active"><a href="#patientsPane" data-toggle="tab">Patients</a></li>
+          <li class="active"><a href="#patientsPane" data-toggle="tab">Entity Registry</a></li>
           <li><a href="#screensPane" data-toggle="tab">Screens</a></li>
-          <li><a href="#samplesPane" data-toggle="tab">Samples</a></li>
+          <li><a href="#samplesPane" data-toggle="tab">Places</a></li>
           <li><a href="#sampleGroupsPane" data-toggle="tab">Screen Groups</a></li>
           <li><a href="#ScreenInGroupPane" data-toggle="tab">Screen Groups Content</a></li>
         </ul>
@@ -657,7 +657,7 @@ $(document).ready(function() {
         //sRowSelect: "multi",
         sRowSelect: "os",
         aButtons: [
-            { sExtends: "select_single", sButtonText: 'New',
+            { sExtends: "select_single", sButtonText: 'Register',
               fnClick:function(){
                   var url = "/patient-new/";
                   
