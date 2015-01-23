@@ -17,6 +17,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User, Group
 from django.conf import settings
 from multiprocessing import Process
+import subprocess
 from django.utils import simplejson
 from dateutil.relativedelta import relativedelta
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -147,6 +148,24 @@ def home(request, state="feed"):
     patients = dict()
 
     posts = Post.objects.all().order_by("-time")
+    # get the server info
+    p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
+    output, err = p.communicate()
+    server = 'unknown'
+    for each in output.splitlines():
+        if 'hugemem.q' in each.split():
+            avail = each.split()[4]
+            total = each.split()[5]
+            cdsuE = each.split()[7]
+            cqload = each.split()[1]
+            if total == cdsuE:
+                server = 'bad'
+            elif int(avail) <= 3:
+                server = 'busy'
+            elif float(cqload) >30:
+                server = 'busy'
+            else:
+                server = 'idle'
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',
         str(menu): 'active',
@@ -164,9 +183,31 @@ def home(request, state="feed"):
         'screens': screens,
         'patients': patients,
         'stats': stats,
-        'user_info': user_info_complete
+        'user_info': user_info_complete,
+        'server_status': server
     }))
-
+def updateServer(request):
+    # get the server info
+    p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
+    output, err = p.communicate()
+    server = 'unknown'
+    for each in output.splitlines():
+        if 'hugemem.q' in each.split():
+            avail = each.split()[4]
+            total = each.split()[5]
+            cdsuE = each.split()[7]
+            cqload = each.split()[1]
+            if total == cdsuE:
+                server = 'bad'
+            elif int(avail) <= 3:
+                server = 'busy'
+            elif float(cqload) >30:
+                server = 'busy'
+            else:
+                server = 'idle'
+        
+    return HttpResponse(simplejson.dumps({'server_status': server}), mimetype='application/json')
+    
 @login_required(login_url='/')
 def jobs(request, state="scheduled"):
     if state == "scheduled":

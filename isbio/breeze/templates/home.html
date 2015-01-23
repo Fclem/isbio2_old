@@ -81,6 +81,17 @@
 
   <div class="span7">
           <div class="tab-content" id="accordion">
+                  <div class="span12 well">
+                      <p> <h4> The server is currently:&nbsp;&nbsp;&nbsp;
+                          {% if server_status == 'idle' %}
+                          <span id="status" class="btn btn-large btn-success ">idle</span> 
+                          {% elif server_status == 'bad' %}
+                          <span id="status" class="btn btn-large btn-danger ">bad</span> 
+                          {% elif server_status == 'busy'%}
+                          <span id="status" class="btn btn-large btn-danger ">busy</span> 
+                          {% endif %}
+                      </h4></p>
+                </div>
             <!-- FEED -->
             <div class="tab-pane {{ show_feed }}" id="feed_menu">
               <div class="row-fluid">
@@ -360,7 +371,35 @@ $(window).load(function(){
   });
   $(document).ready(function(){
     modalConnect();
-    
+    updateServer();
+    function updateServer(){
+        $.ajax({
+            type: "GET",
+            url: "/update-server/",
+            dataType : 'json',
+            success: function (msg) {
+                //console.log(msg.server_status)
+                if(msg.server_status == 'idle'){
+                    console.log("wowo")
+                    $('#status').removeAttr('class');
+                    $('#status').attr('class', 'btn btn-large btn-success');
+                    $('#status').empty();
+                    $('#status').text('idle')
+                } else if(msg.server_status == 'bad'){
+                    $('#status').removeAttr('class');
+                    $('#status').attr('class', 'btn btn-large btn-danger');
+                    $('#status').empty();
+                    $('#status').text('bad')
+                } else if(msg.server_status == 'busy'){
+                    $('#status').removeAttr('class');
+                    $('#status').attr('class', 'btn btn-large btn-warning');
+                    $('#status').empty();
+                    $('#status').text('busy')
+                }
+                window.setTimeout(updateServer, 300);
+            }
+        });
+    }
   // paginator setup
   var pagOptScreens = {
     currentPage: 1,
