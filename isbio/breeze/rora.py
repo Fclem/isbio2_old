@@ -423,6 +423,18 @@ def update_row(table, content, iid):
 
     return r_output
     
+def request_data(table, iid):
+    rcode = 'source("%s%s")' %(settings.RORA_LIB,'patient-module.R')
+    ro.r( rcode )
+    
+    if table == "screen":
+        r_updateFunc = ro.globalenv['requestScreen']
+        
+    r_output = r_updateFunc(iid)
+        
+    return r_output
+        
+    
     
 def updateScreenGroupContent(content, groupid):
     # Source & export R code

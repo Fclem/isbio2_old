@@ -309,6 +309,7 @@
 </div>
 
 <div id="user_info" data-para="{{ user_info }}">
+<div id="db_access" data-para="{{db_access}}">
 <div class="modal hide fade" id="myModal">
   <div class="modal-header">
     <a class="close" data-dismiss="modal">×</a>
@@ -321,10 +322,13 @@
     <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
   </div>
 </div>
-
+<div class="modal hide fade" id="db_policy" tabindex="-1" role="dialog" aria-hidden="true">
+    {% include "db_policy.html" %}
+</div>
 <script type="text/javascript">
 $(window).load(function(){
     var id = '#user_info';
+    
     if($(id).data('para')=="False"){
         $('#myModal').modal('show');
         $("#dash").removeAttr('href');
@@ -372,6 +376,13 @@ $(window).load(function(){
   $(document).ready(function(){
     modalConnect();
     updateServer();
+    var db_access = '#db_access';
+    if($(db_access).data('para')=="False"){
+        $("#db").click(function(e){
+            e.preventDefault();
+            $('#db_policy').modal('show');
+        });
+    }
     function updateServer(){
         $.ajax({
             type: "GET",

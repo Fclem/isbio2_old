@@ -209,6 +209,8 @@ class UserProfile(models.Model):
     fimm_group = models.CharField(max_length=75, blank=True)
     logo = models.FileField(upload_to=file_name, blank=True)
     institute_info = models.ForeignKey(Institute)
+    # if user accepts the agreement or not
+    db_agreement = models.BooleanField(default=False)
 
     def __unicode__(self):
         return self.user.username
