@@ -90,9 +90,11 @@ def base(request):
 def home(request, state="feed"):
     
     user_info = User.objects.get(username=request.user)
+    db_access = False
     try:
         user_profile = UserProfile.objects.get(user=user_info)
         user_info_complete = True
+        db_access = user_profile.db_agreement
     except UserProfile.DoesNotExist:
         user_info_complete = False
         
@@ -184,7 +186,8 @@ def home(request, state="feed"):
         'patients': patients,
         'stats': stats,
         'user_info': user_info_complete,
-        'server_status': server
+        'server_status': server,
+        'db_access': db_access
     }))
 def updateServer(request):
     # get the server info
