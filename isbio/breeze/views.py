@@ -635,6 +635,13 @@ def reports_search(request):
                           context_instance=RequestContext(request))
 
 @login_required(login_url='/')
+def dbPolicy(request):
+    userprofile = UserProfile.objects.get(user=request.user)
+    userprofile.db_agreement = True
+    userprofile.save()
+    return HttpResponseRedirect('/dbviewer/')
+
+@login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):
     tags_data_list = list()  # a list of 'tag_data' dictionaries
     # filter tags according to report type (here we pick non-draft tags):
