@@ -35,5 +35,15 @@
     </section>
   </div>
 </div>
-
+<script type="text/javascript">
+$(document).ready(function() {
+    var db_access = '#db_access';
+    if($(db_access).data('para')=="False"){
+        $("#db").click(function(e){
+            e.preventDefault();
+            $('#db_policy').modal('show');
+        });
+    }
+});
+</script>
 {% endblock %}

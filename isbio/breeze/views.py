@@ -809,7 +809,9 @@ def manage_pipes(request):
 
 @login_required(login_url='/')
 def dochelp(request):
-    return render_to_response('help.html', RequestContext(request, {'help_status': 'active'}))
+    user_profile = UserProfile.objects.get(user=request.user)
+    db_access = user_profile.db_agreement
+    return render_to_response('help.html', RequestContext(request, {'help_status': 'active', 'db_access': db_access}))
     
     
 @login_required(login_url='/')
@@ -832,6 +834,8 @@ def store(request):
     app_installed = request.user.users.all()
     # get all the pipelines that user has installed
     report_installed = request.user.pipeline_access.all()
+    user_profile = UserProfile.objects.get(user=request.user)
+    db_access = user_profile.db_agreement
     '''
     for script in all_scripts:
         if str(script.category).capitalize() not in categories:
@@ -846,7 +850,8 @@ def store(request):
         'count_mycart': count_app,
         'reports': reports,
         'app_installed':app_installed,
-        'report_installed':report_installed
+        'report_installed':report_installed,
+        'db_access': db_access
         #'tags': tags
     }))
 
