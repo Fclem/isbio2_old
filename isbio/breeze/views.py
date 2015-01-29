@@ -247,6 +247,8 @@ def jobs(request, state="scheduled"):
 
         return render_to_response('jobs-hist-paginator.html', RequestContext(request, { 'history': hist_jobs }))
     else:
+        user_profile = UserProfile.objects.get(user=request.user)
+        db_access = user_profile.db_agreement
         hist_jobs = paginator.page(1)
         return render_to_response('jobs.html', RequestContext(request, {
             str(tab): 'active',
@@ -256,7 +258,8 @@ def jobs(request, state="scheduled"):
             'scheduled': scheduled_jobs,
             'history': hist_jobs,
             'current': merged_active,
-            'pagination_number': paginator.num_pages
+            'pagination_number': paginator.num_pages,
+            'db_access': db_access
         }))
 
 @login_required(login_url='/')

@@ -191,6 +191,13 @@
     $('#paginator_control').bootstrapPaginator(pagOptions);
 
     modalConnect();
+    var db_access = '#db_access';
+    if($(db_access).data('para')=="False"){
+        $("#db").click(function(e){
+            e.preventDefault();
+            $('#db_policy').modal('show');
+        });
+    }
 
     $(".jbar").each(function(){
       var par = $(this).data("param");
