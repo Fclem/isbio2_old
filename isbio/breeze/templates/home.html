@@ -306,7 +306,6 @@
 </div>
 
 <div id="user_info" data-para="{{ user_info }}">
-<div id="db_access" data-para="{{db_access}}">
 <div class="modal hide fade" id="myModal">
   <div class="modal-header">
     <a class="close" data-dismiss="modal">×</a>
@@ -319,9 +318,7 @@
     <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
   </div>
 </div>
-<div class="modal hide fade" id="db_policy" tabindex="-1" role="dialog" aria-hidden="true">
-    {% include "db_policy.html" %}
-</div>
+
 <script type="text/javascript">
 $(window).load(function(){
     var id = '#user_info';

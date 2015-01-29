@@ -289,13 +289,15 @@ def scripts(request, layout="list"):
     # if request.user.has_perm('breeze.add_rscripts'):
     #    cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
     #    cat_list['_Datasets_'] = DataSet.objects.all()
-    
+    user_profile = UserProfile.objects.get(user=request.user)
+    db_access = user_profile.db_agreement
     return render_to_response('scripts.html', RequestContext(request, {
         'script_list': all_scripts,
         'scripts_status': 'active',
         'cate': cate,
         'cat_list': sorted(cat_list.iteritems()),
-        'thumbnails': nails
+        'thumbnails': nails,
+        'db_access': db_access
     }))
 
 @login_required(login_url='/')

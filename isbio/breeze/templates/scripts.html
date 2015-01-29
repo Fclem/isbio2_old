@@ -225,7 +225,15 @@
 <script type="text/javascript">
 $(document).ready(function() {
   modalConnect();
-
+  var db_access = '#db_access';
+  if($(db_access).data('para')=="False"){
+      //$("#db").removeAttr('href');
+      $("#db").click(function(e){
+          e.preventDefault();
+          $('#db_policy').modal('show');
+          
+      });
+  }
   // initialize Multiselect plugin for Dotmatix Samples
   var multiConfigurationSet = {
     includeSelectAllOption: true,
