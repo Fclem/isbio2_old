@@ -335,6 +335,8 @@ def reports(request):
         return render_to_response('reports-paginator.html', RequestContext(request, { 'reports': reports }))
     else:
         reports = paginator.page(1)
+        user_profile = UserProfile.objects.get(user=request.user)
+        db_access = user_profile.db_agreement
         return render_to_response('reports.html', RequestContext(request, {
             'reports_status': 'active',
             'reports': reports,
@@ -342,7 +344,8 @@ def reports(request):
             'user_rtypes':user_rtypes,
             'users': all_users,
             'projects': all_projects,
-            'pagination_number': paginator.num_pages
+            'pagination_number': paginator.num_pages,
+            'db_access': db_access
         }))
 
 @login_required(login_url='/')
