@@ -196,6 +196,11 @@
           docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
           docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
           break;
+        case "screen_group_selector":
+          docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"SCREEN_GROUPS\" val=\"\" ';
+          docxml += 'help=\"' + $(this).find('[data-valtype="help_text"]').val() + '\" ';
+          docxml += 'optional=\"' + $(this).find('[data-valtype="flag_optional"]').val() + '\"/> \n';
+          break;
         case "drop_down":
           tmp = '';
           docxml += '<inputItem comment=\"' + fieldLabel + '\" default=\"\" rvarname=\"' + fieldVar + '\" type=\"DRP\" val=\"\" ';

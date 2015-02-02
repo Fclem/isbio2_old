@@ -987,6 +987,23 @@ def form_from_xml(xml, req=None, init=False, usr=None):
                             help_text=help_line,
                             widget=forms.SelectMultiple(attrs={'class':'dotmatix_samples'})
                     )
+                    
+                elif input_item.attrib["type"] == "SCREEN_GROUPS":
+                    group_list_of_tuples = list()
+                    
+                    group_list_of_tuples = rora.get_dtm_screen_groups()
+
+                    dtm_options = list()
+                    dtm_options.append( tuple(( 'Groups', tuple(group_list_of_tuples) )) )
+
+
+                    custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
+                            choices=dtm_options,
+                            initial=input_item.attrib["val"],
+                            required=optional_prop,
+                            help_text=help_line,
+                            widget=forms.SelectMultiple(attrs={'class':'dotmatix_samples'})
+                    )
 
                 elif input_item.attrib["type"] == "HED":  # section header
                     pass
