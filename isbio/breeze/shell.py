@@ -552,7 +552,17 @@ def gen_params_string(docxml, data, dir, files):
             params = params + '# First character of each element in the vector below\n# serves to distinguish Group (G) and Sample (S) Ids;\n# ! You have to trim each element to get original Id !\n'
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
         elif item.attrib['type'] == 'SCREEN_GROUPS':
-            params = params + "Screen_groups" + ' <- "' + str(data.get(item.attrib['comment'], "NA")) + '"\n'
+            res = ''
+            seq = 'c('
+            for itm in data.getlist(item.attrib['comment'], "NA"):
+                if itm != "":
+                    res += str(itm) + ','
+                    seq = seq + '\"%s\",' % itm
+            seq = seq[:-1] + ')'
+            item.set('val', res[:-1])
+            params = params + '# This shows the selected screen group IDs!\n'
+            params = params + "Screen_groups" + ' <- ' + str(seq) + '\n'
+            #params = params + "Screen_groups" + ' <- "' + str(data.get(item.attrib['comment'], "NA")) + '"\n'
         else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.get(item.attrib['comment'], "NA")) + '"\n'
 
