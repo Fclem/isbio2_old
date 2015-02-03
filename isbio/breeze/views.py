@@ -664,6 +664,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
     if request.method == 'POST':
         # Validates input info and creates (submits) a report
         property_form = breezeForms.ReportPropsForm(request.POST, request=request)
+        print(property_form)
         tags_data_list = breezeForms.validate_report_sections(tags, request)
 
         sections_valid = breezeForms.check_validity(tags_data_list)
