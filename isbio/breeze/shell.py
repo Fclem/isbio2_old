@@ -551,6 +551,8 @@ def gen_params_string(docxml, data, dir, files):
             item.set('val', res[:-1])
             params = params + '# First character of each element in the vector below\n# serves to distinguish Group (G) and Sample (S) Ids;\n# ! You have to trim each element to get original Id !\n'
             params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+        elif item.attrib['type'] == 'SCREEN_GROUPS':
+            print(item)
         else:  # for text, text_are, drop_down, radio
             params = params + str(item.attrib['rvarname']) + ' <- "' + str(data.get(item.attrib['comment'], "NA")) + '"\n'
 
