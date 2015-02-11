@@ -677,17 +677,6 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                     # update the statistics table
 
                     
-                    try:
-                        stat = Statistics.objects.get(script=tag)
-                        stat.times += 1
-                        stat.save()
-                    except Statistics.DoesNotExist:
-                        stat = Statistics()
-                        stat.script = tag
-                        stat.author = tag.author
-                        stat.istag = tag.istag
-                        stat.times = 1
-                        stat.save()
                     
                 else:
                     pass
