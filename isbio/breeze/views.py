@@ -675,7 +675,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                 secID = 'Section_dbID_' + str(tag.id)
                 if secID in request.POST and request.POST[secID] == '1':
                     # update the statistics table
-
+                    print("hello")
                     
                     
                 else:
