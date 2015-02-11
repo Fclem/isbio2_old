@@ -671,6 +671,27 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         if property_form.is_valid() and sections_valid:
             rshell.build_report(overview, request, property_form, tags)
             
+            for tag in tags:
+                secID = 'Section_dbID_' + str(tag.id)
+                if secID in request.POST and request.POST[secID] == '1':
+                    # update the statistics table
+
+                    
+                    try:
+                        stat = Statistics.objects.get(script=tag)
+                        stat.times += 1
+                        stat.save()
+                    except Statistics.DoesNotExist:
+                        stat = Statistics()
+                        stat.script = tag
+                        stat.author = tag.author
+                        stat.istag = tag.istag
+                        stat.times = 1
+                        stat.save()
+                    
+                else:
+                    pass
+            
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
