@@ -1682,11 +1682,19 @@ def update_user_info_dialog(request):
             user_info.first_name = personal_form.cleaned_data.get('first_name', None)
             user_info.last_name = personal_form.cleaned_data.get('last_name', None)
             user_info.email = personal_form.cleaned_data.get('email', None)
-            user_details = UserProfile()
-            user_details.user = user_info
-            user_details.institute_info = Institute.objects.get(id=request.POST['institute'])
-            user_info.save()
-            user_details.save()
+            try:
+                user_details = UserProfile.objects.get(user=request.user)
+                user_details.institute_info = Institute.objects.get(id=request.POST['institute'])
+                user_info.save()
+                user_details.save()
+            except UserProfile.DoesNotExist:
+                
+                user_details = UserProfile()
+                user_details.user = user_info
+                user_details.institute_info = Institute.objects.get(id=request.POST['institute'])
+            #print(personal_form.cleaned_data.get('institute', None))
+                user_info.save()
+                user_details.save()
             return HttpResponseRedirect('/home')
 
     else:
