@@ -198,22 +198,7 @@ class InputTemplate(models.Model):
     def __unicode__(self):
         return self.name
 
-class UserProfile(models.Model):
-    user = models.ForeignKey(User, unique=True)
 
-    def file_name(self, filename):
-        fname, dot, extension = filename.rpartition('.')
-        slug = slugify(self.name)
-        return 'profiles/%s/%s.%s' % (slug, slug, extension)
-
-    fimm_group = models.CharField(max_length=75, blank=True)
-    logo = models.FileField(upload_to=file_name, blank=True)
-    institute_info = models.ForeignKey(Institute)
-    # if user accepts the agreement or not
-    db_agreement = models.BooleanField(default=False)
-
-    def __unicode__(self):
-        return self.user.username
 
 class Report(models.Model):
     type = models.ForeignKey(ReportType)
