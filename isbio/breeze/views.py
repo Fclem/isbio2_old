@@ -773,23 +773,34 @@ def manage_scripts(request):
     paginator = Paginator(all_scripts, 25)
 
     # If AJAX - check page from the request
-    # Otherwise ruturn the first page
+    # Otherwise return the first page
     if request.is_ajax() and request.method == 'GET':
         page = request.GET.get('page')
         try:
+            #  added by Clement F
+            #  this session var is for the paginator to stay on the same page number after
+            #  sending forms (add or delete forms) for consistency and clarity
+            request.session['manage-scripts-page'] = page
             scripts = paginator.page(page)
         except PageNotAnInteger:  # if page isn't an integer
+            request.session['manage-scripts-page'] = 1
             scripts = paginator.page(1)
         except EmptyPage:  # if page out of bounds
+            request.session['manage-scripts-page'] = paginator.num_pages
             scripts = paginator.page(paginator.num_pages)
-
         return render_to_response('manage-scripts-paginator.html', RequestContext(request, { 'script_list': scripts }))
+
     else:
-        scripts = paginator.page(1)
+        if 'manage-scripts-page' in request.session:
+            page = request.session['manage-scripts-page']
+        else:
+            page = 1
+        scripts = paginator.page(page)
         return render_to_response('manage-scripts.html', RequestContext(request, {
             'resources_status': 'active',
             'script_list': scripts,
-            'pagination_number': paginator.num_pages
+            'pagination_number': paginator.num_pages,
+            'page': page  # to keep the paginator synced
         }))
 
 @login_required(login_url='/')
@@ -1549,7 +1560,8 @@ def new_script_dialog(request):
         sname = str(form.cleaned_data.get('name', None))
         sinline = str(form.cleaned_data.get('inline', None))
         newpath = rshell.init_script(sname, sinline, request.user)
-        return HttpResponseRedirect('/resources/scripts/')
+        return manage_scripts(request)  # call back the list rendering function
+        # return HttpResponseRedirect('/resources/scripts/')
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': form,

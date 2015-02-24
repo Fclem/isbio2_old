@@ -225,6 +225,7 @@ def run_job(job, script=None):
     s.initialize()
 
     jt = s.createJobTemplate()
+    assert isinstance(jt, object)
 
     jt.workingDirectory = loc
     jt.jobName = slugify(job.jname) + '_JOB'
