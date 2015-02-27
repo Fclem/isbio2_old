@@ -1,16 +1,20 @@
 {% extends "base.html" %}
 
-{% load bootstrap_toolkit %}
+
 
 {% block title %}Search{% endblock %}
 
 {% block extra_head %}
 
+{% load bootstrap_toolkit %}
   <link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
   <script src="/static/js/bootstrapSwitch.js"></script>
 
   <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
   <link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
+
+  <link rel="stylesheet" href="/static/css/custom.css" type="text/css"/>
+  <link href="/static/css/icon.css" rel="stylesheet">
 
 <style>
   .thumbnail {
@@ -215,7 +219,7 @@
           {% endfor %}
         </tbody>
       </table>
-      <div>
+      </div>
     </div>
     </form>
 
