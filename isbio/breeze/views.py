@@ -16,6 +16,7 @@ from django.shortcuts import render_to_response
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User, Group
 from django.conf import settings
+import thread
 from multiprocessing import Process
 import subprocess
 from django.utils import simplejson
@@ -669,8 +670,11 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         sections_valid = breezeForms.check_validity(tags_data_list)
 
         if property_form.is_valid() and sections_valid:
+            # lunches the script generation in a separate thread in order to avoid long blocking operation
+            # thread.start_new_thread(rshell.build_report, (overview, request, property_form, tags))
             rshell.build_report(overview, request, property_form, tags)
-            
+
+            """
             for tag in tags:
                 secID = 'Section_dbID_' + str(tag.id)
                 if secID in request.POST and request.POST[secID] == '1':
@@ -680,16 +684,17 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
                     
                 else:
                     pass
-            
+            """
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
         property_form = breezeForms.ReportPropsForm(request=request)
         tags_data_list = breezeForms.create_report_sections(tags, request)
-        access_script = list(request.user.users.all().values('name'))
-        script = list()
-        for each in access_script:
-            script.append(each['name'])
+
+    script = list()
+    access_script = list(request.user.users.all().values('name'))
+    for each in access_script:
+        script.append(each['name'])
 
     return render_to_response('search.html', RequestContext(request, {
         'overview': True,
