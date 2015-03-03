@@ -196,13 +196,16 @@ class BreezeSettings(Settings):
 class DevSettings(BreezeSettings):
     DEBUG = True
 
-    os.environ['LD_LIBRARY_PATH'] = '/opt/gridengine/lib/UNSUPPORTED-lx3.2.0-40-generic-amd64'
+    sge_arch = "lx26-amd64";
     os.environ['SGE_ROOT'] = '/opt/gridengine'
+    os.environ['QSTAT_BIN'] = os.environ['SGE_ROOT']+'/bin/'+sge_arch+'/qstat'
+    os.environ['LD_LIBRARY_PATH'] = os.environ['SGE_ROOT']+'/lib/UNSUPPORTED-lx3.2.0-40-generic-amd64'
+
     os.environ['SGE_QMASTER_PORT'] = '536'
     os.environ['SGE_EXECD_PORT'] = '537'
     os.environ['SGE_ARCH'] = 'UNSUPPORTED-lx3.2.0-40-generic-amd64'
     os.environ['SGE_CELL'] = 'default'
-    os.environ['DRMAA_LIBRARY_PATH'] = '/opt/gridengine/lib/lx26-amd64/libdrmaa.so'
+    os.environ['DRMAA_LIBRARY_PATH'] = os.environ['SGE_ROOT']+'/lib/'+sge_arch+'/libdrmaa.so'
     os.environ['MAIL'] = '/var/mail/dbychkov'
 
 

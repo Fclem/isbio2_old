@@ -151,8 +151,15 @@ def home(request, state="feed"):
     patients = dict()
 
     posts = Post.objects.all().order_by("-time")
+
+    # hotfix
+    if 'QSTAT_BIN' in os.environ:
+        qstat = os.environ['QSTAT_BIN']
+    else:
+        qstat = 'qstat'
+
     # get the server info
-    p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
+    p = subprocess.Popen([qstat, "-g", "c"], stdout=subprocess.PIPE)
     output, err = p.communicate()
     server = 'unknown'
     for each in output.splitlines():
@@ -1718,7 +1725,7 @@ def update_user_info_dialog(request):
         
         try:
             user_details = UserProfile.objects.get(user=user_info.id)
-            personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email,'institute': user_details.institute_info.id})
+            personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'institute': user_details.institute_info.id})
         except UserProfile.DoesNotExist:
             personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email})
 
