@@ -230,6 +230,9 @@ def run_job(job, script=None):
     jt.workingDirectory = loc
     jt.jobName = slugify(job.jname) + '_JOB'
     jt.email = [str(job.juser.email)]
+    # mail notification
+    # TODO add external mail adress support
+    jt.nativeSpecification = "-m " + job.mailing # Begin End Abort Suspend
     jt.blockEmail = False
     jt.remoteCommand = config
     jt.joinFiles = True

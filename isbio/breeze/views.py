@@ -1216,6 +1216,9 @@ def create_job(request, sid=None):
             #new_job.status = request.POST['job_status']
             new_job.status = "scheduled"
             new_job.juser = request.user
+            # TODO add external mail support
+            # TODO finish testing and debug
+            new_job.mailing = request.POST['Started'] + request.POST['Ready'] + request.POST['Aborted']
             new_job.progress = 0
             new_job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
             new_job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
@@ -1236,7 +1239,7 @@ def create_job(request, sid=None):
                 stat.times = 1
                 stat.save()
 
-            # improve the manipulation with XML - tmp folder not a good idea!
+            # TODO ? improve the manipulation with XML - tmp folder not a good idea!
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
 

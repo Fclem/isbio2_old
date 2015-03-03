@@ -156,6 +156,9 @@ class Jobs(models.Model):
     staged = models.DateTimeField(auto_now_add=True)
     progress = models.IntegerField()
     sgeid = models.CharField(max_length=15, blank=True)
+    mailing = models.CharField(max_length=3, blank=True, help_text="configuration of mailing events : Begin End "
+                                                                    "Abort") # TextField(name="mailing", )
+    # TODO add external mail adress support
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
