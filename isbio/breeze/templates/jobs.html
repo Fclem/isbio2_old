@@ -318,13 +318,38 @@ function modalConnect()
             });
         }
 
+var fake_progress = 0;
+var counter = 0;
+var increment = 2;
+var last_val = 0;
+var fake = false;
+
 function updateJobs(jid, item) {
     $.ajax({
         type: "GET",
         url: "/update-jobs/"+jid+"-"+item,
         dataType : 'json',
         success: function (msg) {
-            var arg = "width: " + msg.progress.toString() + "%";
+            //var arg = "width: " + msg.progress.toString() + "%";
+            // faking progression, just for user friendlyness
+            counter++;
+            var w = document.getElementById(jid.toString() + "_bar").style.width;
+            if(last_val!=msg.progress){
+                last_val = msg.progress;
+                fake_progress = last_val;
+            }
+            var arg = "width: " + last_val.toString() + "%";
+            if(fake && fake_progress<100 && ( w == last_val.toString()+ "%" || w == fake_progress + "%")){
+                fake_progress+= Math.floor(counter / increment) ;
+                if(Math.floor(counter / increment)>=1){
+                    counter = 0;
+                }
+                if(fake_progress>=85){
+                    fake_progress = last_val;
+                }
+                arg = "width: " + fake_progress.toString() + "%";
+            }
+
             $("#" + jid.toString() + "_bar").attr('style', arg);
             $("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
             $("#" + jid.toString() + "_list_td").text(msg.sge.toString());
