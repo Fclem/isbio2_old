@@ -71,13 +71,42 @@
       body {
         padding-top: 5px;
       }
+      /* Customized */
+      #popup_message_container{
+        position: fixed;
+        top: 66px;
+        width: 100%;
+        z-index:102;
+      }
+      #error_msg{
+        width: 400px;
+        z-index:103;
+        margin-left:auto;
+        margin-right:auto;
+      }
     </style>
+    <script type="text/javascript">
+        //Diplays floating disposable error message box
+        function ShowError(HtmlContent){
+          $("#error_msg").removeClass("hidden");
+          //$("#error_msg").innerHTML = HtmlContent;
+          var x = document.getElementById("error_msg_holder");
+          x.innerHTML = HtmlContent;
+        }
+    </script>
   </head>
 
   <body>
   <!--[if lt IE 9]>
   <link rel="stylesheet" type="text/css" href="/static/css/jquery.ui.1.9.2.ie.css"/>
   <![endif]-->
+  <!-- ERROR PLACE HOLDER -->
+  <div id="popup_message_container">
+    <div id="error_msg" class="alert alert-danger alert-dismissible hidden" role="alert">
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <strong><span id="error_msg_holder"></span></strong>
+    </div>
+  </div>
     <!-- /main navigation bar -->
     <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">

@@ -26,7 +26,7 @@
       visibility: hidden;
       display: none;
   }
-  .fullin {
+  .full.in {
       position: fixed;
       left: 0px;
       top: 46px;
@@ -51,15 +51,13 @@
       filter:  blur(1px); /* For IE8 and earlier */
       -webkit-filter:blur(1px);
   }
-
-
-
-.collapse.in[style="height: auto;"] {overflow: visible;}</style>
+  .collapse.in[style="height: auto;"] {overflow: visible;}</style>
 
 {% endblock %}
 
 {% block content %}
-    <div id="floater" class="full">&nbsp;</div>
+  <!-- OVERLAY -->
+  <div id="floater" class="full">&nbsp;</div>
   <!-- SEARCH BARS -->
   {% if search_bars %}
   <!-- breadcrumb navigation -->
@@ -379,7 +377,13 @@ $(document).ready(function() {
               //$("#Submit").modal('hide');
           }
       },
-      error: function (request, status, error) { },
+      error: function (request, status, error) {
+          ShowError("AJAX: " + status + " (" + request.status + " " + error + ")<br>Please <a href=\"#\" " +
+          "onclick=\"location.reload();\" >reload the page</a> and try again"),
+
+          $("#progress-bar").addClass('hidden');
+          $("#gen_report").removeClass("hidden");
+      },
       cache: false,
       contentType: false,
       processData: false
@@ -413,11 +417,12 @@ $(document).ready(function() {
       if( progB!=null ){
         progB.style.width =  st_width +"%"
 
-        if(st_width>=100 || $("#progress-bar").hasClass('hidden')){
-          window.clearInterval(ticktock);
+        if(st_width>=90 || $("#progress-bar").hasClass('hidden')){
           st_width= 1;
           progB.style.width =  st_width +"%";
-          //$("#floater").removeClass("fullin").addClass("full");
+        }
+        if($("#progress-bar").hasClass('hidden')){
+            window.clearInterval(ticktock);
         }
       }else{
           window.clearInterval(ticktock);
@@ -426,7 +431,7 @@ $(document).ready(function() {
 
   $('#gen_report').on('click',function(){
       $("#gen_report").addClass("hidden");
-      $("#floater").addClass("fullin"); //removeClass("full").
+      $("#floater").addClass("in");
       //$(".table").addClass("blury");
       $("#progress-bar").removeClass("hidden");
       ticktock=setInterval(function () {myTimer()}, 250);
