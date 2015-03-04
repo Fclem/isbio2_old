@@ -80,6 +80,8 @@
         z-index:103;
         margin-left:auto;
         margin-right:auto;
+        opacity: 0.85;
+        filter: alpha(opacity=85); /* For IE8 and earlier */
       }
        /* Managing the footnote to always be at the bottom even if page content is not as tall as the viewport
         cf. http://www.cssreset.com/how-to-keep-footer-at-bottom-of-page-with-css/
@@ -114,9 +116,18 @@
         function ShowError(HtmlContent){
           $("#error_msg").removeClass("hidden");
           //$("#error_msg").innerHTML = HtmlContent;
-          var x = document.getElementById("error_msg_holder");
-          x.innerHTML = HtmlContent;
+          if(HtmlContent!=""){
+              var x = document.getElementById("error_msg_holder");
+              x.innerHTML = HtmlContent;
+          }
+
         }
+        $(document).ready(function(){
+            var x = document.getElementById("error_msg_holder");
+            if(x.innerHTML != "" && x.innerHTML != "<p></p>"){
+                ShowError("");
+            }
+        });
     </script>
   </head>
   <body>
@@ -128,7 +139,7 @@
       <div id="popup_message_container">
         <div id="error_msg" class="alert alert-danger alert-dismissible hidden" role="alert">
           <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          <strong><span id="error_msg_holder"></span></strong>
+          <strong><span id="error_msg_holder">{{ error_message|linebreaks }}</span></strong>
         </div>
       </div>
       <!-- /error popup message placeholder -->
