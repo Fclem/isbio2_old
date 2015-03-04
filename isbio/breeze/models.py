@@ -158,7 +158,7 @@ class Jobs(models.Model):
     sgeid = models.CharField(max_length=15, blank=True)
     mailing = models.CharField(max_length=3, blank=True, help_text="configuration of mailing events : Begin End "
                                                                     "Abort") # TextField(name="mailing", )
-    # TODO add external mail adress support
+    email = models.CharField(max_length=75, help_text="mail address to where the notification(s) has to be sent")
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')

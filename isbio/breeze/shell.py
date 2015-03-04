@@ -221,46 +221,64 @@ def run_job(job, script=None):
     job.progress = 15
     job.save()
 
-    s = drmaa.Session()
-    s.initialize()
+    try:
+        s = drmaa.Session()
+        s.initialize()
 
-    jt = s.createJobTemplate()
-    assert isinstance(jt, object)
+        jt = s.createJobTemplate()
+        assert isinstance(jt, object)
 
-    jt.workingDirectory = loc
-    jt.jobName = slugify(job.jname) + '_JOB'
-    jt.email = [str(job.juser.email)]
-    # mail notification
-    # TODO add external mail adress support
-    jt.nativeSpecification = "-m " + job.mailing # Begin End Abort Suspend
-    jt.blockEmail = False
-    jt.remoteCommand = config
-    jt.joinFiles = True
+        jt.workingDirectory = loc
+        jt.jobName = slugify(job.jname) + '_JOB'
+        # external mail adress support
+        if job.email != '':
+            jt.email = [str(job.email), str(job.juser.email)]
+        else:
+            jt.email = [str(job.juser.email)]
+        #print "Mail address for this job is : " +  ', '.join(jt.email)
+        # mail notification on events
+        if job.mailing != '':
+            jt.nativeSpecification = "-m " + job.mailing  # Begin End Abort Suspend
+        jt.blockEmail = False
+        jt.remoteCommand = config
+        jt.joinFiles = True
 
-    job.sgeid = s.runJob(jt)
-    job.progress = 30
-    job.save()
+        job.sgeid = s.runJob(jt)
+        job.progress = 30
+        job.save()
 
-    SGEID = copy.deepcopy(job.sgeid)
-    # waiting for the job to end
-    #if not SGEID:
-	#print "no id!"
-    retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-    job.progress = 100
-    job.save()
+        SGEID = copy.deepcopy(job.sgeid)
+        # waiting for the job to end
+        #if not SGEID:
+        #print "no id!"
+        # TODO fix that, this is no good way to do it
+        retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+        job.progress = 100
+        job.save()
 
-    if retval.hasExited and retval.exitStatus == 0:
-        job.status = 'succeed'
+        if retval.hasExited and retval.exitStatus == 0:
+            job.status = 'succeed'
 
-        # clean up the folder
+            # clean up the folder
 
-    else:
-        job.status = 'failed'
+        else:
+            job.status = 'failed'
 
-    job.save()
-    s.exit()
-    os.chdir(default_dir)
-    return True
+        job.save()
+        s.exit()
+        os.chdir(default_dir)
+        return True
+    except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
+        print(u"DRMAA ERROR")
+        job.status = "failed"
+        job.save()
+        if e == drmaa.AlreadyActiveSessionException:
+            print(u"AlreadyActiveSessionException")
+        elif e == drmaa.InvalidArgumentException:
+            print(u"InvalidArgumentException")
+        elif e == drmaa.InvalidJobException:
+            print(u"InvalidJobException")
+        return e
 
 def run_report(report, fmFlag):
     """
@@ -284,87 +302,119 @@ def run_report(report, fmFlag):
     report.save()
    
     
+    try:
+        s = drmaa.Session()
+        s.initialize()
 
-    s = drmaa.Session()
-    s.initialize()
+        jt = s.createJobTemplate()
 
-    jt = s.createJobTemplate()
+        jt.workingDirectory = loc
+        jt.jobName = slugify(report.name) + '_REPORT'
+        jt.email = [str(report.author.email)]
+        jt.blockEmail = False
+        jt.remoteCommand = config
+        jt.joinFiles = True
 
-    jt.workingDirectory = loc
-    jt.jobName = slugify(report.name) + '_REPORT'
-    jt.email = [str(report.author.email)]
-    jt.blockEmail = False
-    jt.remoteCommand = config
-    jt.joinFiles = True
-    
-    #print()
+        #print()
 
-    report.sgeid = s.runJob(jt)
-    report.progress = 30
-    report.save()
+        report.sgeid = s.runJob(jt)
+        report.progress = 30
+        report.save()
 
-    # waiting for the job to end
-    SGEID = copy.deepcopy(report.sgeid)
-    print(SGEID)
-    retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-    report.progress = 100
-    report.save()
+        # waiting for the job to end
+        SGEID = copy.deepcopy(report.sgeid)
+        print(SGEID)
+        retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+        report.progress = 100
+        report.save()
 
-    if retval.hasExited and retval.exitStatus == 0:
-        report.status = 'succeed'
+        if retval.hasExited and retval.exitStatus == 0:
+            report.status = 'succeed'
 
-        # clean up the folder
+            # clean up the folder
 
-    else:
-        report.status = 'failed'
+        else:
+            report.status = 'failed'
 
-    report.save()
-    
-    # aux.open_folder_permissions(loc, 0777)
+        report.save()
 
-    os.chdir(default_dir)
+        # aux.open_folder_permissions(loc, 0777)
 
-    if fmFlag:
-        extra_path = loc + "/transfer_to_fm.txt"
-        extra_file = open(extra_path, 'r')
-        command = extra_file.read()
-        run = command.split("\"")[1]
-        os.system(run)
-    s.exit()
-    return True
+        os.chdir(default_dir)
+
+        if fmFlag:
+            extra_path = loc + "/transfer_to_fm.txt"
+            extra_file = open(extra_path, 'r')
+            command = extra_file.read()
+            run = command.split("\"")[1]
+            os.system(run)
+        s.exit()
+        return True
+    except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
+        print(u"DRMAA ERROR")
+        report.status = "failed"
+        report.save()
+        if e == drmaa.AlreadyActiveSessionException:
+            print(u"AlreadyActiveSessionException")
+        elif e == drmaa.InvalidArgumentException:
+            print(u"InvalidArgumentException")
+        elif e == drmaa.InvalidJobException:
+            print(u"InvalidJobException")
+        return False
 
 def abort_report(report):
-    
-    s = drmaa.Session()
-    s.initialize()
-    #print("hello!")
-    s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
-    report.status = "aborted"
-    report.save()
-    s.exit()
-    
+    try:
+        s = drmaa.Session()
+        s.initialize()
+        #print("hello!")
+        s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
+        report.status = "aborted"
+        report.save()
+        s.exit()
+    except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException):
+        #report.status = "failed"
+        #report.save()
+        return ""
+    except drmaa.InvalidJobException:
+        return "invalid or no jobID"
+
     return True
 
-def track_sge_job(job):
+def track_sge_job(job, force_refresh=False):
+
+    decodestatus = {
+        drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
+        drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
+        drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
+        drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
+        drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
+        drmaa.JobState.RUNNING: 'job is running',
+        drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
+        drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
+        drmaa.JobState.DONE: 'job finished normally',
+        drmaa.JobState.FAILED: 'job finished, but failed',
+    }
+
     status = str(job.status)
-    #    decodestatus = {
-    #        drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
-    #        drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
-    #        drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
-    #        drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
-    #        drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
-    #        drmaa.JobState.RUNNING: 'job is running',
-    #        drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
-    #        drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
-    #        drmaa.JobState.DONE: 'job finished normally',
-    #        drmaa.JobState.FAILED: 'job finished, but failed',
-    #        }
+    # TODO refactor this
+    if force_refresh:
+        try:
+            s = drmaa.Session()
+            s.initialize()
 
-    # s = drmaa.Session()
-    # s.initialize()
+            status = str(s.jobStatus(job.sgeid))
+            print("Force refresh says :" + status)
+            # TODO translate drmaa status to Breeze
+            s.exit()
+        except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException):
+            print("AlreadyActiveSessionException | InvalidArgumentException")
+        except drmaa.InvalidJobException:
+            job.status = "failed"
+            print("InvalidJobException")
+        finally:
+            status = str(job.status)
 
-    # status = str(s.jobStatus(job.id))
-    # s.exit()
+
 
     if status == 'queued_active':
         job.progress = 35

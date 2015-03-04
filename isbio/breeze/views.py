@@ -28,15 +28,19 @@ import xml.etree.ElementTree as xml
 import shell as rshell
 import auxiliary as aux
 import rora as rora
-
+import sys, traceback
 import forms as breezeForms
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, Statistics, Institute, Script_categories, CartInfo, User_date
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
+    Statistics, Institute, Script_categories, CartInfo, User_date
+
 
 class RequestStorage():
     form_details = OrderedDict()
+
     def get_param_list(self):
         class creepy():
             pass
+
         tmp = creepy()
         plist = list()
         pkeys = self.form_details.keys()
@@ -49,16 +53,19 @@ class RequestStorage():
     def del_param(self, var):
         del self.form_details[var]
 
+
 storage = RequestStorage()
 storage.progress = 10
 
 
 def breeze(request):
-    return render_to_response('index.html', RequestContext(request, {'layout': 'inline' }))
+    return render_to_response('index.html', RequestContext(request, {'layout': 'inline'}))
+
 
 def logout(request):
     auth.logout(request)
     return HttpResponseRedirect('/')
+
 
 def register_user(request):
     if request.user.is_authenticated():
@@ -67,13 +74,13 @@ def register_user(request):
         form = breezeForms.RegistrationForm(request.POST)
         if form.is_valid():
             user = User.objects.create_user(username=form.cleaned_data['username'],
-                                    email=form.cleaned_data['email'], password=form.cleaned_data['password'])
+                                            email=form.cleaned_data['email'], password=form.cleaned_data['password'])
             g = Group.objects.get(name='USERS')
             g.user_set.add(user)
             user.is_staff = False
             user.save()
             profile = UserProfile(user=user, first_name=form.cleaned_data['first_name'],
-                                        last_name=form.cleaned_data['last_name'], fimm_group=form.cleaned_data['fimm_group'])
+                                  last_name=form.cleaned_data['last_name'], fimm_group=form.cleaned_data['fimm_group'])
             profile.save()
             return render_to_response('forms/welcome_modal.html', RequestContext(request))
         else:
@@ -84,12 +91,13 @@ def register_user(request):
 
     return 1
 
+
 def base(request):
     return render_to_response('base.html')
 
+
 @login_required(login_url='/')
 def home(request, state="feed"):
-    
     user_info = User.objects.get(username=request.user)
     db_access = False
     try:
@@ -98,8 +106,7 @@ def home(request, state="feed"):
         db_access = user_profile.db_agreement
     except UserProfile.DoesNotExist:
         user_info_complete = False
-        
-    
+
     occurrences = dict()
 
     if state == 'feed' or state == None:
@@ -132,20 +139,22 @@ def home(request, state="feed"):
 
     projects = Project.objects.exclude(~Q(author__exact=request.user) & Q(collaborative=False)).order_by("name")
     groups = Group.objects.filter(author__exact=request.user).order_by("name")
-    
+
     # get all the script info
-    #rscripts = Rscripts.objects.all().get(draft=True)
+    # rscripts = Rscripts.objects.all().get(draft=True)
     # get all the report info
     stats = Statistics.objects.all()
     occurrences['jobs_running'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").count()
-    occurrences['jobs_scheduled'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").count()
-    occurrences['jobs_history'] = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").count()
+    occurrences['jobs_scheduled'] = Jobs.objects.filter(juser__exact=request.user).filter(
+        status__exact="scheduled").count()
+    occurrences['jobs_history'] = Jobs.objects.filter(juser__exact=request.user).exclude(
+        status__exact="scheduled").exclude(status__exact="active").count()
 
     occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
     occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
 
     # Get Screens
-    screens = dict() #rora.get_screens_info()
+    screens = dict()  #rora.get_screens_info()
 
     # Patients
     patients = dict()
@@ -172,7 +181,7 @@ def home(request, state="feed"):
                 server = 'bad'
             elif int(avail) <= 3:
                 server = 'busy'
-            elif float(cqload) >30:
+            elif float(cqload) > 30:
                 server = 'busy'
             else:
                 server = 'idle'
@@ -197,6 +206,8 @@ def home(request, state="feed"):
         'server_status': server,
         'db_access': db_access
     }))
+
+
 def updateServer(request):
     # get the server info
     p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
@@ -212,15 +223,16 @@ def updateServer(request):
                 server = 'bad'
             elif int(avail) <= 3:
                 server = 'busy'
-            elif float(cqload) >30:
+            elif float(cqload) > 30:
                 server = 'busy'
             else:
                 server = 'idle'
-        
+
     return HttpResponse(simplejson.dumps({'server_status': server}), mimetype='application/json')
-    
+
+
 @login_required(login_url='/')
-def jobs(request, state="scheduled"):
+def jobs(request, state="scheduled", error_msg=""):
     if state == "scheduled":
         tab = "scheduled_tab"
         show_tab = "show_sched"
@@ -228,9 +240,9 @@ def jobs(request, state="scheduled"):
         tab = "history_tab"
         show_tab = "show_hist"
 
-
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
-    history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").order_by("-id")
+    history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(
+        status__exact="active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
     active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
     merged_active = aux.merge_job_history(active_jobs, active_reports)
@@ -240,10 +252,10 @@ def jobs(request, state="scheduled"):
 
     merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
-    paginator = Paginator(merged_history,15)  # show 15 items per page
+    paginator = Paginator(merged_history, 15)  # show 15 items per page
 
     # If AJAX - check page from the request
-    # Otherwise ruturn the first page
+    # Otherwise return the first page
     if request.is_ajax() and request.method == 'GET':
         page = request.GET.get('page')
         try:
@@ -253,8 +265,10 @@ def jobs(request, state="scheduled"):
         except EmptyPage:  # if page out of bounds
             hist_jobs = paginator.page(paginator.num_pages)
 
-        return render_to_response('jobs-hist-paginator.html', RequestContext(request, { 'history': hist_jobs }))
+        return render_to_response('jobs-hist-paginator.html', RequestContext(request, {'history': hist_jobs}))
     else:
+        for jobitem in active_jobs:
+            rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
         user_profile = UserProfile.objects.get(user=request.user)
         db_access = user_profile.db_agreement
         hist_jobs = paginator.page(1)
@@ -267,8 +281,10 @@ def jobs(request, state="scheduled"):
             'history': hist_jobs,
             'current': merged_active,
             'pagination_number': paginator.num_pages,
-            'db_access': db_access
+            'db_access': db_access,
+            'error_message': error_msg
         }))
+
 
 @login_required(login_url='/')
 def scripts(request, layout="list"):
@@ -284,19 +300,20 @@ def scripts(request, layout="list"):
     cate = list()
     for each_cate in categories:
         if all_scripts.filter(category=each_cate, istag="0", draft="0").count() > 0:
-            cat_list[str(each_cate.category).capitalize()] = all_scripts.filter(category=each_cate, istag="0", draft="0")
+            cat_list[str(each_cate.category).capitalize()] = all_scripts.filter(category=each_cate, istag="0",
+                                                                                draft="0")
             cate.append(str(each_cate.category).capitalize())
-    
-    #cat_list['reports'] = all_scripts.filter(istag="1")
+
+    # cat_list['reports'] = all_scripts.filter(istag="1")
     #reports = all_scripts.filter(istag="1")
     ''''
-    cat_list = dict()
-    categories = list()
-    for script in all_scripts:
-        if str(script.category).capitalize() not in categories:
-            categories.append(str(script.category).capitalize())
-            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
-    '''
+	cat_list = dict()
+	categories = list()
+	for script in all_scripts:
+		if str(script.category).capitalize() not in categories:
+			categories.append(str(script.category).capitalize())
+			cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
+	'''
     # if request.user.has_perm('breeze.add_rscripts'):
     #    cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
     #    cat_list['_Datasets_'] = DataSet.objects.all()
@@ -310,6 +327,7 @@ def scripts(request, layout="list"):
         'thumbnails': nails,
         'db_access': db_access
     }))
+
 
 @login_required(login_url='/')
 def reports(request):
@@ -327,10 +345,10 @@ def reports(request):
             for each_type in rtypes:
                 if each_type not in reptypelst:
                     reptypelst.append(each_type)
-    
-    #report_type_lst = ReportType.objects.filter(access=request.user)
+
+    # report_type_lst = ReportType.objects.filter(access=request.user)
     all_projects = Project.objects.filter(institute=insti)
-    paginator = Paginator(all_reports,30)  # show 3 items per page
+    paginator = Paginator(all_reports, 30)  # show 3 items per page
 
     # If AJAX - check page from the request
     # Otherwise ruturn the first page
@@ -343,7 +361,7 @@ def reports(request):
         except EmptyPage:  # if page out of bounds
             reports = paginator.page(paginator.num_pages)
 
-        return render_to_response('reports-paginator.html', RequestContext(request, { 'reports': reports }))
+        return render_to_response('reports-paginator.html', RequestContext(request, {'reports': reports}))
     else:
         reports = paginator.page(1)
         user_profile = UserProfile.objects.get(user=request.user)
@@ -352,12 +370,13 @@ def reports(request):
             'reports_status': 'active',
             'reports': reports,
             'rtypes': reptypelst,
-            'user_rtypes':user_rtypes,
+            'user_rtypes': user_rtypes,
             'users': all_users,
             'projects': all_projects,
             'pagination_number': paginator.num_pages,
             'db_access': db_access
         }))
+
 
 @login_required(login_url='/')
 def dbviewer(request):
@@ -365,12 +384,13 @@ def dbviewer(request):
         'dbviewer_status': 'active',
     }))
 
+
 def ajax_patients_data(request, which):
     """
-        Generic function to extract data from RORA tables;
-        Aimed to serve: Patients (ENTITY), Screens and Samples
-        in json format for DataTables
-    """
+		Generic function to extract data from RORA tables;
+		Aimed to serve: Patients (ENTITY), Screens and Samples
+		in json format for DataTables
+	"""
     # copy parameters
     params = request.GET
 
@@ -384,15 +404,16 @@ def ajax_patients_data(request, which):
 
     response_data = {
         'draw': int(params.get('draw')),
-        'data' : aadata,
+        'data': aadata,
         'recordsTotal': iTotalRecords,
         'recordsFiltered': iTotalDisplayRecords
     }
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
-    
+
+
 def ajax_patients(request, which):
-    #patient_id = which
+    # patient_id = which
     if request.method == 'POST':
         patient_form = breezeForms.PatientInfo(request.POST)
 
@@ -410,20 +431,22 @@ def ajax_patients(request, which):
             return HttpResponseRedirect('/dbviewer')
         else:
             patient_info = breezeForms.PatientInfo(request.POST)
-        
+
     else:
         data = rora.patient_data(which)
         if isinstance(data[3], rpy2.rinterface.NACharacterType):
             data[3] = ''
         if isinstance(data[5], rpy2.rinterface.NACharacterType):
             patient_info = breezeForms.PatientInfo(initial={
-                 'patient_id': data[0], 'identifier': data[1], 'source': data[2], 'birthdate': data[6].split()[0], 'organism': int(data[4]),
-                 'description': data[3]
-             })
+                'patient_id': data[0], 'identifier': data[1], 'source': data[2], 'birthdate': data[6].split()[0],
+                'organism': int(data[4]),
+                'description': data[3]
+            })
         else:
             patient_info = breezeForms.PatientInfo(initial={
-                'patient_id': data[0], 'identifier': data[1], 'source': data[2], 'birthdate': data[6].split()[0], 'organism': int(data[4]),
-                'sex':int(data[5]), 'description': data[3]
+                'patient_id': data[0], 'identifier': data[1], 'source': data[2], 'birthdate': data[6].split()[0],
+                'organism': int(data[4]),
+                'sex': int(data[5]), 'description': data[3]
             })
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
@@ -434,8 +457,9 @@ def ajax_patients(request, which):
         'submit': 'Save'
     }))
 
+
 def ajax_patients_new(request):
-    #patient_id = which
+    # patient_id = which
     if request.method == 'POST':
         patient_form = breezeForms.PatientInfo(request.POST)
 
@@ -452,7 +476,7 @@ def ajax_patients_new(request):
             return HttpResponseRedirect('/dbviewer')
         else:
             patient_info = breezeForms.PatientInfo(request.POST)
-        
+
     else:
         patient_info = breezeForms.PatientInfo()
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
@@ -462,6 +486,7 @@ def ajax_patients_new(request):
         'layout': 'horizontal',
         'submit': 'Save'
     }))
+
 
 def screen_data(request, which):
     if request.method == 'POST':
@@ -483,24 +508,24 @@ def screen_data(request, which):
             screen['disease_stage'] = screen_form.cleaned_data.get('disease_stage')
             screen['read_out'] = screen_form.cleaned_data.get('read_out')
             screen['createdate'] = str(screen_form.cleaned_data.get('createdate'))
-            #print(screen)
+            # print(screen)
             rora.update_screen(screen)
             return HttpResponseRedirect('/dbviewer')
         else:
             screen_info = breezeForms.ScreenInfo(request.POST)
-        
+
     else:
         data = rora.screen_data(which)
-       #	print(data[22])
+        # print(data[22])
         if isinstance(data[2], rpy2.rinterface.NACharacterType):
             data[2] = ''
         screen_info = breezeForms.ScreenInfo(initial={
-                'screen_id': data[0], 'identifier': data[1], 'description': data[2], 'source_id': data[3],
-                'source': data[5],'protocol': data[4], 'patient': int(data[6]), 'alias': data[7], 'st': int(data[8]), 
-                'dst': int(data[9]), 'mt': int(data[10]), 'histology': int(data[11]), 'dstate': int(data[12]), 'et':
+            'screen_id': data[0], 'identifier': data[1], 'description': data[2], 'source_id': data[3],
+            'source': data[5], 'protocol': data[4], 'patient': int(data[6]), 'alias': data[7], 'st': int(data[8]),
+            'dst': int(data[9]), 'mt': int(data[10]), 'histology': int(data[11]), 'dstate': int(data[12]), 'et':
                 int(data[13]), 'plate_count': data[14], 'dg': int(data[15]), 'disease_stage': int(data[16]), 'read_out':
                 int(data[21]), 'createdate': data[22].split()[0]
-            })
+        })
         #print(screen_info)
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': screen_info,
@@ -509,18 +534,19 @@ def screen_data(request, which):
         'layout': 'horizontal',
         'submit': 'Save'
     }))
-    
+
+
 def ajax_rora_screens(request, gid):
     if request.method == 'POST':
         screengroup_form = breezeForms.ScreenGroupInfo(request.POST)
-        
+
         if screengroup_form.is_valid():
             screen = dict()
             screen['list'] = screengroup_form.cleaned_data.get('dst')
             rora.updateScreenGroupContent(screen['list'], gid)
             return HttpResponseRedirect('/dbviewer')
     else:
-        #response_data = rora.getScreenGroupContent(groupID=gid)
+        # response_data = rora.getScreenGroupContent(groupID=gid)
         group_content = rora.getScreenGroup(groupID=gid)
         content_list = list()
         for each in group_content:
@@ -528,31 +554,34 @@ def ajax_rora_screens(request, gid):
         screen_groupinfo = breezeForms.ScreenGroupInfo(initial={'dst': content_list})
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': screen_groupinfo,
-        'action': '/ajax-rora-plain-screens/'+gid,
+        'action': '/ajax-rora-plain-screens/' + gid,
         'header': 'Update Screen Group Info',
         'layout': 'horizontal',
         'submit': 'Save'
     }))
-    
+
+
 @login_required(login_url='/')
 def addtocart(request, sid=None):
     # check if this item in the cart already
     try:
-        
-        #scr = Rscripts.objects.get(id = sid)
+
+        # scr = Rscripts.objects.get(id = sid)
         #print(scr.author)
-        
-        items = CartInfo.objects.get(product = sid, script_buyer=request.user)
+
+        items = CartInfo.objects.get(product=sid, script_buyer=request.user)
         return HttpResponse(simplejson.dumps({"exist": "Yes"}), mimetype='application/json')
     except CartInfo.DoesNotExist:
-        #print("shit")
-        scripts = Rscripts.objects.get(id = sid)
+        # print("shit")
+        scripts = Rscripts.objects.get(id=sid)
         #print(scripts)
         mycart = CartInfo()
         mycart.script_buyer = request.user
         mycart.product = scripts
-        if(scripts.price>0): mycart.type_app = False
-        else: mycart.type_app = True
+        if (scripts.price > 0):
+            mycart.type_app = False
+        else:
+            mycart.type_app = True
         mycart.active = True
         mycart.save()
         return HttpResponse(simplejson.dumps({"exist": "No"}), mimetype='application/json')
@@ -563,23 +592,23 @@ def updatecart(request):
     count_mycart = CartInfo.objects.filter(script_buyer=request.user).count()
     html = render_to_string('countcart.html', {'count_mycart': count_mycart})
     return HttpResponse(html)
-    
+
+
 @login_required(login_url='/')
 def mycart(request):
-    #all_items = CartInfo.objects.filter(script_buyer=request.user)
+    # all_items = CartInfo.objects.filter(script_buyer=request.user)
     items_free = CartInfo.objects.filter(script_buyer=request.user, type_app=True)
     items_nonfree = CartInfo.objects.filter(script_buyer=request.user, type_app=False)
     html = render_to_string('cartinfo.html', {
         #'mycart_status': 'active',
         'items_free': items_free,
         'items_nonfree': items_nonfree
-        #'all_items': all_items 
+        #'all_items': all_items
     })
     return HttpResponse(html)
-    
+
 
 def ajax_rora_action(request):
-
     params = request.POST
     table = params.get('table', '')
 
@@ -587,8 +616,8 @@ def ajax_rora_action(request):
 
     if action == 'remove':
         # Clean up row IDs:
-        ids = aux.clean_up_dt_id( params.getlist('id[]', '') )
-        
+        ids = aux.clean_up_dt_id(params.getlist('id[]', ''))
+
         if ids and table in ['patients', 'groups', 'content', 'screen']:
             feedback = rora.remove_row(table=table, ids=ids)
 
@@ -601,8 +630,8 @@ def ajax_rora_action(request):
             feedback = rora.insert_row(table=table, data=data)
 
     elif action == 'edit':
-        par = [ params.get('id', '') ]
-        group = aux.clean_up_dt_id( par )
+        par = [params.get('id', '')]
+        group = aux.clean_up_dt_id(par)
         screens = params.getlist('screens[]', '')
 
         if table in ['patients', 'groups']:
@@ -611,6 +640,7 @@ def ajax_rora_action(request):
     response_data = {}
 
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+
 
 @login_required(login_url='/')
 def groupName(request):
@@ -622,7 +652,7 @@ def groupName(request):
             group['group_name'] = screen_group.cleaned_data.get('name')
             group['group_user'] = request.user.username
             table = 'groups'
-            #print(request.user.username)
+            # print(request.user.username)
             feedback = rora.insert_row(table=table, data=group)
             #rora.update_screen(screen)
             return HttpResponseRedirect('/dbviewer')
@@ -636,19 +666,21 @@ def groupName(request):
         'submit': 'Save'
     }))
 
+
 def reports_search(request):
     query_string = ''
     found_entries = None
     if ('q' in request.GET) and request.GET['q'].strip():
         query_string = request.GET['q']
 
-        entry_query = aux.get_query(query_string, ['title', 'body',])
+        entry_query = aux.get_query(query_string, ['title', 'body', ])
 
         # found_entries = Entry.objects.filter(entry_query).order_by('-pub_date')
 
     return render_to_response('search/search_results.html',
-                          { 'query_string': query_string, 'found_entries': found_entries },
-                          context_instance=RequestContext(request))
+                              {'query_string': query_string, 'found_entries': found_entries},
+                              context_instance=RequestContext(request))
+
 
 @login_required(login_url='/')
 def dbPolicy(request):
@@ -657,11 +689,13 @@ def dbPolicy(request):
     userprofile.save()
     return HttpResponseRedirect('/dbviewer/')
 
+
 @login_required(login_url='/')
 def report_overview(request, rtype, iname, iid=None, mod=None):
     tags_data_list = list()  # a list of 'tag_data' dictionaries
     # filter tags according to report type (here we pick non-draft tags):
-    tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(report_type=ReportType.objects.get(type=rtype)).order_by('order')
+    tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
+        report_type=ReportType.objects.get(type=rtype)).order_by('order')
 
     overview = dict()
     overview['report_type'] = rtype
@@ -682,16 +716,16 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
             rshell.build_report(overview, request, property_form, tags)
 
             """
-            for tag in tags:
-                secID = 'Section_dbID_' + str(tag.id)
-                if secID in request.POST and request.POST[secID] == '1':
-                    # update the statistics table
-                    print("hello")
-                    
-                    
-                else:
-                    pass
-            """
+			for tag in tags:
+				secID = 'Section_dbID_' + str(tag.id)
+				if secID in request.POST and request.POST[secID] == '1':
+					# update the statistics table
+					print("hello")
+
+
+				else:
+					pass
+			"""
             return HttpResponse(True)
     else:
         # Renders report overview and available tags
@@ -711,17 +745,19 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
         'tags_available': tags_data_list,
         'access_script': script
     }))
-    
+
+
 @login_required(login_url='/')
 def showdetails(request, sid=None):
     tags = ReportType.objects.get(id=sid).rscripts_set.all()
     app_installed = request.user.users.all()
-    
+
     return render_to_response('store-tags.html', RequestContext(request, {
-      'tags': tags,
-      'app_installed': app_installed  
+        'tags': tags,
+        'app_installed': app_installed
     })
     )
+
 
 @login_required(login_url='/')
 def search(request, what=None):
@@ -773,11 +809,14 @@ def search(request, what=None):
     else:
         pass
 
-    return render_to_response('search.html', RequestContext(request, {'search_status': 'active', 'search_bars': True, 'ds_count': ds_count, 'rtypes': report_type_lst }))
+    return render_to_response('search.html', RequestContext(request, {'search_status': 'active', 'search_bars': True,
+                                                                      'ds_count': ds_count, 'rtypes': report_type_lst}))
+
 
 @login_required(login_url='/')
 def resources(request):
     return render_to_response('resources.html', RequestContext(request, {'resources_status': 'active', }))
+
 
 @login_required(login_url='/')
 def manage_scripts(request):
@@ -789,7 +828,7 @@ def manage_scripts(request):
     if request.is_ajax() and request.method == 'GET':
         page = request.GET.get('page')
         try:
-            #  added by Clement F
+            # added by Clement F
             #  this session var is for the paginator to stay on the same page number after
             #  sending forms (add or delete forms) for consistency and clarity
             request.session['manage-scripts-page'] = page
@@ -800,7 +839,7 @@ def manage_scripts(request):
         except EmptyPage:  # if page out of bounds
             request.session['manage-scripts-page'] = paginator.num_pages
             scripts = paginator.page(paginator.num_pages)
-        return render_to_response('manage-scripts-paginator.html', RequestContext(request, { 'script_list': scripts }))
+        return render_to_response('manage-scripts-paginator.html', RequestContext(request, {'script_list': scripts}))
 
     else:
         if 'manage-scripts-page' in request.session:
@@ -814,6 +853,7 @@ def manage_scripts(request):
             'pagination_number': paginator.num_pages,
             'page': page  # to keep the paginator synced
         }))
+
 
 @login_required(login_url='/')
 def manage_pipes(request):
@@ -840,13 +880,14 @@ def manage_pipes(request):
             'pagination_number': paginator.num_pages
         }))
 
+
 @login_required(login_url='/')
 def dochelp(request):
     user_profile = UserProfile.objects.get(user=request.user)
     db_access = user_profile.db_agreement
     return render_to_response('help.html', RequestContext(request, {'help_status': 'active', 'db_access': db_access}))
-    
-    
+
+
 @login_required(login_url='/')
 def store(request):
     categories = Script_categories.objects.all()
@@ -855,10 +896,11 @@ def store(request):
     # filter cartinfo by user
     count_app = CartInfo.objects.filter(script_buyer=request.user).count()
     cat_list = dict()
-    #categories = list()
+    # categories = list()
     for each_cate in categories:
         if Rscripts.objects.filter(category=each_cate, istag="0", draft="0").count() > 0:
-            cat_list[str(each_cate.category).capitalize()] = Rscripts.objects.filter(category=each_cate, istag="0", draft="0")
+            cat_list[str(each_cate.category).capitalize()] = Rscripts.objects.filter(category=each_cate, istag="0",
+                                                                                     draft="0")
             cate.append(str(each_cate.category).capitalize())
     # get the tags
     tags = Rscripts.objects.filter(istag="1")
@@ -870,11 +912,11 @@ def store(request):
     user_profile = UserProfile.objects.get(user=request.user)
     db_access = user_profile.db_agreement
     '''
-    for script in all_scripts:
-        if str(script.category).capitalize() not in categories:
-            categories.append(str(script.category).capitalize())
-            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
-    '''
+	for script in all_scripts:
+		if str(script.category).capitalize() not in categories:
+			categories.append(str(script.category).capitalize())
+			cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
+	'''
     return render_to_response('store.html', RequestContext(request, {
         'store_status': 'active',
         'cate': cate,
@@ -882,57 +924,56 @@ def store(request):
         'cat_list': sorted(cat_list.iteritems()),
         'count_mycart': count_app,
         'reports': reports,
-        'app_installed':app_installed,
-        'report_installed':report_installed,
+        'app_installed': app_installed,
+        'report_installed': report_installed,
         'db_access': db_access
         #'tags': tags
     }))
 
+
 @login_required(login_url='/')
 def deletecart(request, sid=None):
     try:
-        items = CartInfo.objects.get(product = sid, script_buyer=request.user)
+        items = CartInfo.objects.get(product=sid, script_buyer=request.user)
         cate = items.type_app
         count_app = CartInfo.objects.filter(type_app=cate, script_buyer=request.user).count()
         items.delete()
         return HttpResponse(simplejson.dumps({"delete": "Yes", 'count_app': count_app}), mimetype='application/json')
     except CartInfo.DoesNotExist:
         return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
-        
+
 
 @login_required(login_url='/')
 def deletefree(request):
     try:
-        items = CartInfo.objects.filter(type_app = True, script_buyer = request.user)
+        items = CartInfo.objects.filter(type_app=True, script_buyer=request.user)
         items.delete()
         return HttpResponse(simplejson.dumps({"delete": "Yes"}), mimetype='application/json')
     except CartInfo.DoesNotExist:
         return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
-        
-        
+
 
 @login_required(login_url='/')
 def install(request, sid=None):
     try:
         # get the script
-        scr = Rscripts.objects.get(id = sid)
+        scr = Rscripts.objects.get(id=sid)
         scr.access.add(request.user)
         return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
     except Rscripts.DoesNotExist:
         return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
-    
-        
+
+
 @login_required(login_url='/')
 def installreport(request, sid=None):
     try:
-        #get the report type by id
+        # get the report type by id
         report_type = ReportType.objects.get(id=sid)
         report_type.access.add(request.user)
         return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
     except ReportType.DoesNotExist:
         return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
-        
-        
+
 
 @login_required(login_url='/')
 def ownreports(request):
@@ -940,14 +981,16 @@ def ownreports(request):
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': own_reports
     }))
-    
-    
+
+
 @login_required(login_url='/')
 def accessreports(request):
-    access_reports = Report.objects.filter(Q(status="succeed", author=request.user) | Q(status="succeed", shared=request.user) ).order_by('-created')
+    access_reports = Report.objects.filter(
+        Q(status="succeed", author=request.user) | Q(status="succeed", shared=request.user)).order_by('-created')
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': access_reports
     }))
+
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###
@@ -957,7 +1000,7 @@ def accessreports(request):
 def script_editor(request, sid=None, tab=None):
     script = Rscripts.objects.get(id=sid)
 
-    f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln })
+    f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln})
     f_attrs = breezeForms.ScriptAttributes(instance=script)
     f_logos = breezeForms.ScriptLogo()
 
@@ -973,6 +1016,7 @@ def script_editor(request, sid=None, tab=None):
         'logo_form': f_logos
     }))
 
+
 @login_required(login_url='/')
 def script_editor_update(request, sid=None):
     if request.method == 'POST':
@@ -985,7 +1029,7 @@ def script_editor_update(request, sid=None):
                 rshell.update_script_dasics(script, f_basic)
                 return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-general_tab')
         else:
-            f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln })
+            f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln})
 
         # Description Tab
         if request.POST['form_name'] == 'description' and request.is_ajax():
@@ -1027,14 +1071,15 @@ def script_editor_update(request, sid=None):
             f_logos = breezeForms.ScriptLogo()
 
         return render_to_response('script-editor.html', RequestContext(request, {
-                'resources_status': 'active',
-                'script': script,
-                'basic_form': f_basic
-                # 'attr_form': f_attrs,
-                # 'logo_form': f_logos
-            }))
+            'resources_status': 'active',
+            'script': script,
+            'basic_form': f_basic
+            # 'attr_form': f_attrs,
+            # 'logo_form': f_logos
+        }))
     # if NOT POST
     return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id)
+
 
 @login_required(login_url='/')
 def get_form(request, sid=None):
@@ -1076,6 +1121,7 @@ def get_rcode(request, sid=None, sfile=None):
 
     return HttpResponse(rcode)
 
+
 @login_required(login_url='/')
 def delete_job(request, jid):
     job = Jobs.objects.get(id=jid)
@@ -1084,7 +1130,8 @@ def delete_job(request, jid):
     else:
         tab = "history"
     rshell.del_job(job)
-    return HttpResponseRedirect('/jobs/' + tab)
+    return HttpResponseRedirect('/jobs/#' + tab)
+
 
 @login_required(login_url='/')
 def delete_script(request, sid):
@@ -1092,15 +1139,16 @@ def delete_script(request, sid):
     rshell.del_script(script)
     return HttpResponseRedirect('/resources/scripts/')
 
+
 @login_required(login_url='/')
 def delete_pipe(request, pid):
     pipe = ReportType.objects.get(id=pid)
     rshell.del_pipe(pipe)
     return HttpResponseRedirect('/resources/pipes/')
 
+
 @login_required(login_url='/')
 def delete_report(request, rid, redir):
-
     if redir == '-dash':
         redir = '/jobs/history'
     else:
@@ -1110,12 +1158,14 @@ def delete_report(request, rid, redir):
     rshell.del_report(report)
     return HttpResponseRedirect(redir)
 
+
 @login_required(login_url='/')
 def delete_project(request, pid):
     project = Project.objects.get(id=pid)
     aux.delete_project(project)
 
     return HttpResponseRedirect('/home/projects')
+
 
 @login_required(login_url='/')
 def delete_group(request, gid):
@@ -1124,10 +1174,12 @@ def delete_group(request, gid):
 
     return HttpResponseRedirect('/home/groups')
 
+
 @login_required(login_url='/')
 def read_descr(request, sid=None):
     script = Rscripts.objects.get(id=sid)
-    return render_to_response('forms/descr_modal.html', RequestContext(request, { 'scr': script }))
+    return render_to_response('forms/descr_modal.html', RequestContext(request, {'scr': script}))
+
 
 @login_required(login_url='/')
 def edit_job(request, jid=None, mod=None):
@@ -1161,7 +1213,7 @@ def edit_job(request, jid=None, mod=None):
                 shutil.rmtree(loc)
 
             rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-                                                    str(job.script.code), str(job.script.header), request.FILES)
+                                       str(job.script.code), str(job.script.header), request.FILES)
 
             job.jname = head_form.cleaned_data['job_name']
             job.jdetails = head_form.cleaned_data['job_details']
@@ -1178,7 +1230,8 @@ def edit_job(request, jid=None, mod=None):
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
             return HttpResponseRedirect('/jobs')
     else:
-        head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname), initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
+        head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname),
+                                             initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
         custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
     return render_to_response('forms/user_modal.html', RequestContext(request, {
@@ -1192,6 +1245,7 @@ def edit_job(request, jid=None, mod=None):
         'email': user_info.email
     }))
 
+
 @login_required(login_url='/')
 def create_job(request, sid=None):
     script = Rscripts.objects.get(id=sid)
@@ -1201,30 +1255,39 @@ def create_job(request, sid=None):
     script_name = str(script.name)  # tree.getroot().attrib['name']
     script_inline = script.inln
     user_info = User.objects.get(username=request.user)
-    #print(request.method)
+
+    mail_addr = user_info.email
+    mails = { 'Started': '',
+        'Ready': '',
+        'Aborted': ''
+    }
+    # print(request.method)
     if request.method == 'POST':
         # after fill the forms for creating the new job
-        head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
+        head_form = breezeForms.BasicJobForm(request.user, None, request.POST )
         custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
+        mail_addr = request.POST['report_to']
+        for key in mails:
+                if key in request.POST:
+                    mails[key] = u'checked'
+                    new_job.mailing += request.POST[key]
 
         if head_form.is_valid() and custom_form.is_valid():
             rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-                                                    str(script.code), str(script.header), request.FILES)
+                                       str(script.code), str(script.header), request.FILES)
             new_job.jname = head_form.cleaned_data['job_name']
             new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
             #new_job.status = request.POST['job_status']
-            new_job.status = "scheduled"
+            new_job.status = u"scheduled"
             new_job.juser = request.user
-            # TODO add external mail support
             # TODO finish testing and debug
-            new_job.mailing = request.POST['Started'] + request.POST['Ready'] + request.POST['Aborted']
+            new_job.email = mail_addr
             new_job.progress = 0
             new_job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
             new_job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
             new_job.rexecut.close()
             new_job.docxml.close()
-
 
             rshell.schedule_job(new_job, request.POST)
             try:
@@ -1244,16 +1307,17 @@ def create_job(request, sid=None):
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
 
             if 'run_job' in request.POST:
-                p = Process( target=rshell.run_job, args=(new_job,) )
-                p.start()
+                run_script(request, new_job.id)
+                #p = Process(target=rshell.run_job, args=(new_job))
+                #p.start()
                 #print("running jobs")
             #return HttpResponseRedirect('/home/')
             return HttpResponseRedirect('/jobs/')
     else:
-        head_form = breezeForms.BasicJobForm(user=request.user, edit=None)
+        head_form = breezeForms.BasicJobForm(user=request.user, edit=None, initial={'report_to': mail_addr})
         custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
-    return render_to_response('forms/user_modal.html', RequestContext(request, {
+    data = {
         'url': "/scripts/apply-script/" + str(sid),
         'name': script_name,
         'inline': script_inline,
@@ -1261,8 +1325,12 @@ def create_job(request, sid=None):
         'custform': custom_form,
         'layout': "horizontal",
         'mode': 'create',
-        'email': user_info.email
-    }))
+        'report_to': mail_addr
+    }
+    data.update(mails)
+
+    return render_to_response('forms/user_modal.html', RequestContext(request, data))
+
 
 @login_required(login_url='/')
 def run_script(request, jid):
@@ -1272,30 +1340,38 @@ def run_script(request, jid):
     p.start()
 
     return HttpResponseRedirect('/jobs/')
-    
+
+
 @login_required(login_url='/')
 def abort_report(request, rid):
     try:
-        report = Report.objects.get(id = rid)
+        report = Report.objects.get(id=rid)
     except Report.DoesNotExist:
-        report = Jobs.objects.get(id = rid)
-    rshell.abort_report(report)
+        report = Jobs.objects.get(id=rid)
 
-    return HttpResponseRedirect('/jobs/')
+    s = rshell.abort_report(report)
+
+    # TODO complete this stuff
+    if s==True:
+        return HttpResponseRedirect('/jobs/')
+    else:
+        return jobs(request, error_msg="DRMAA error :: " + s + "\nPlease contact Breeze support")
+
 
 @login_required(login_url='/')
 def delete_param(request, which):
     storage.del_param(which)
     local_representation = storage.get_param_list()
     return render_to_response('new-script.html', RequestContext(request, {
-            'hidden_form': storage.hidden_form,
-            'general_form': storage.form_general,
-            'params_form': local_representation,
-            'source_form': storage.form_sources,
-            'layout': 'inline',
-            'curr_tab': 'params',
-            'status': 'info',
-        }))
+        'hidden_form': storage.hidden_form,
+        'general_form': storage.form_general,
+        'params_form': local_representation,
+        'source_form': storage.form_sources,
+        'layout': 'inline',
+        'curr_tab': 'params',
+        'status': 'info',
+    }))
+
 
 @login_required(login_url='/')
 def append_param(request, which):
@@ -1352,6 +1428,7 @@ def append_param(request, which):
         'msg': msg, 'basic': basic_form, 'extra': extra_form, "type": which,
     }))
 
+
 @login_required(login_url='/')
 @permission_required('breeze.add_rscripts', login_url="/")
 def create_script(request):
@@ -1388,12 +1465,13 @@ def create_script(request):
         'curr_tab': tab,
         'status': 'info',
         'scripts_status': 'active',
-        }))
+    }))
+
 
 @login_required(login_url='/')
 def save(request):
     # validate form_details also somehow in the IF below
-    if  storage.form_general.is_valid() and storage.form_sources.is_valid():
+    if storage.form_general.is_valid() and storage.form_sources.is_valid():
         # .xml_from_form() - creates doc in tmp for now
         breezeForms.xml_from_form(storage.form_general, storage.form_details, storage.form_sources)
         rshell.build_header(storage.form_sources.cleaned_data['header'])
@@ -1415,6 +1493,7 @@ def save(request):
     else:
         # need an error handler here!
         return HttpResponseRedirect('/scripts/')
+
 
 def show_rcode(request, jid):
     job = Jobs.objects.get(id=jid)
@@ -1439,17 +1518,20 @@ def show_rcode(request, jid):
         'input': parameters,
     }))
 
+
 def veiw_project(request, pid):
     project = Project.objects.get(id=pid)
-    context = { 'project': project }
+    context = {'project': project}
 
     return render_to_response('forms/project_info.html', RequestContext(request, context))
 
+
 def view_group(request, gid):
     group = Group.objects.get(id=gid)
-    context = { 'group': group }
+    context = {'group': group}
 
     return render_to_response('forms/group_info.html', RequestContext(request, context))
+
 
 @login_required(login_url='/')
 def send_zipfile(request, jid, mod=None):
@@ -1470,7 +1552,8 @@ def send_zipfile(request, jid, mod=None):
                 archive.write(loc + item, str(item))
     elif mod == "-result":
         for item in files_list:
-            if not fnmatch.fnmatch(item, '*.xml') and not fnmatch.fnmatch(item, '*.r*') and not fnmatch.fnmatch(item, '*.sh*'):
+            if not fnmatch.fnmatch(item, '*.xml') and not fnmatch.fnmatch(item, '*.r*') and not fnmatch.fnmatch(item,
+                                                                                                                '*.sh*'):
                 archive.write(loc + item, str(item))
 
     archive.close()
@@ -1480,6 +1563,7 @@ def send_zipfile(request, jid, mod=None):
     response['Content-Length'] = temp.tell()
     temp.seek(0)
     return response
+
 
 @login_required(login_url='/')
 def send_template(request, name):
@@ -1492,13 +1576,14 @@ def send_template(request, name):
     response['Content-Disposition'] = 'attachment; filename=' + file
     return response
 
+
 @login_required(login_url='/')
 def send_file(request, ftype, fname):
     """
-        Supposed to be generic function that can send single file to client.
-        Each IF case prepare dispatch data of a certain type.
-        ! Should supbstitute send_template() function soon !
-    """
+		Supposed to be generic function that can send single file to client.
+		Each IF case prepare dispatch data of a certain type.
+		! Should supbstitute send_template() function soon !
+	"""
     if ftype == 'dataset':
         fitem = DataSet.objects.get(name=str(fname))
         local_path = str(fitem.rdata)
@@ -1516,6 +1601,7 @@ def send_file(request, ftype, fname):
     response['Content-Disposition'] = 'attachment; filename=' + file
     return response
 
+
 @login_required(login_url='/')
 def update_jobs(request, jid, item):
     if item == 'script':
@@ -1523,16 +1609,18 @@ def update_jobs(request, jid, item):
         # request job instance again to be sure that the data is updated
         job = Jobs.objects.get(id=jid)
 
-        response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status), progress=job.progress, sge=sge_status)
+        response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status),
+                        progress=job.progress, sge=sge_status)
     else:
         sge_status = rshell.track_sge_job(Report.objects.get(id=jid))
         # request job instance again to be sure that the data is updated
         report = Report.objects.get(id=jid)
 
-        response = dict(id=report.id, name=str(report.name), staged=str(report.created), status=str(report.status), progress=report.progress, sge=sge_status)
-
+        response = dict(id=report.id, name=str(report.name), staged=str(report.created), status=str(report.status),
+                        progress=report.progress, sge=sge_status)
 
     return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
 
 @login_required(login_url='/')
 def send_dbcontent(request, content, iid=None):
@@ -1565,10 +1653,10 @@ def builder(request):
 @login_required(login_url='/')
 def new_script_dialog(request):
     """
-        This view provides a dialog to create a new script and save new script in DB.
-        If script name is valid, the view creates an instance in DB which has the following fields completed:
-        Name, Category, Creation Date, Author and Script's root folder.
-    """
+		This view provides a dialog to create a new script and save new script in DB.
+		If script name is valid, the view creates an instance in DB which has the following fields completed:
+		Name, Category, Creation Date, Author and Script's root folder.
+	"""
     form = breezeForms.NewScriptDialog(request.POST or None)
 
     if form.is_valid():
@@ -1586,11 +1674,12 @@ def new_script_dialog(request):
         'submit': 'Add'
     }))
 
+
 @login_required(login_url='/')
 def new_rtype_dialog(request):
     """
-        This view provides a dialog to create a new report type in DB.
-    """
+		This view provides a dialog to create a new report type in DB.
+	"""
     form = breezeForms.NewRepTypeDialog(request.POST or None)
 
     if form.is_valid():
@@ -1605,11 +1694,12 @@ def new_rtype_dialog(request):
         'submit': 'Add'
     }))
 
+
 @login_required(login_url='/')
 def new_project_dialog(request):
     """
-        This view provides a dialog to create a new Project in DB.
-    """
+		This view provides a dialog to create a new Project in DB.
+	"""
     project_form = breezeForms.NewProjectForm(request.POST or None)
 
     if project_form.is_valid():
@@ -1624,11 +1714,12 @@ def new_project_dialog(request):
         'submit': 'Save'
     }))
 
+
 @login_required(login_url='/')
 def new_group_dialog(request):
     """
-        This view provides a dialog to create a new Group in DB.
-    """
+		This view provides a dialog to create a new Group in DB.
+	"""
     group_form = breezeForms.GroupForm(request.POST or None)
 
     if group_form.is_valid():
@@ -1643,11 +1734,12 @@ def new_group_dialog(request):
         'submit': 'Save'
     }))
 
+
 @login_required(login_url='/')
 def edit_project_dialog(request, pid):
     """
-        This view provides a dialog to create a new Project in DB.
-    """
+		This view provides a dialog to create a new Project in DB.
+	"""
     project_data = Project.objects.get(id=pid)
     form_action = '/projects/edit/' + str(pid)
     form_title = 'Edit Project: ' + str(project_data.name)
@@ -1670,11 +1762,12 @@ def edit_project_dialog(request, pid):
         'submit': 'Save'
     }))
 
+
 @login_required(login_url='/')
 def edit_group_dialog(request, gid):
     """
-        This view provides a dialog to edit an existing Group in DB.
-    """
+		This view provides a dialog to edit an existing Group in DB.
+	"""
     group_data = Group.objects.get(id=gid)
     form_action = '/groups/edit/' + str(gid)
     form_title = 'Edit Group: ' + str(group_data.name)
@@ -1692,12 +1785,13 @@ def edit_group_dialog(request, gid):
         group_form = breezeForms.EditGroupForm(initial={'group_team': team})
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
-        'form':   group_form,
+        'form': group_form,
         'action': form_action,
         'header': form_title,
         'layout': 'horizontal',
         'submit': 'Save'
     }))
+
 
 @login_required(login_url='/')
 def update_user_info_dialog(request):
@@ -1715,23 +1809,26 @@ def update_user_info_dialog(request):
                 user_info.save()
                 user_details.save()
             except UserProfile.DoesNotExist:
-                
+
                 user_details = UserProfile()
                 user_details.user = user_info
                 user_details.institute_info = Institute.objects.get(id=request.POST['institute'])
-            #print(personal_form.cleaned_data.get('institute', None))
+                # print(personal_form.cleaned_data.get('institute', None))
                 user_info.save()
                 user_details.save()
             return HttpResponseRedirect('/home')
 
     else:
-        
+
         try:
             user_details = UserProfile.objects.get(user=user_info.id)
-            personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'institute': user_details.institute_info.id})
+            personal_form = breezeForms.PersonalInfo(
+                initial={'first_name': user_info.first_name, 'last_name': user_info.last_name,
+                         'institute': user_details.institute_info.id})
         except UserProfile.DoesNotExist:
-            personal_form = breezeForms.PersonalInfo(initial={'first_name': user_info.first_name, 'last_name': user_info.last_name, 'email': user_info.email})
-
+            personal_form = breezeForms.PersonalInfo(
+                initial={'first_name': user_info.first_name, 'last_name': user_info.last_name,
+                         'email': user_info.email})
 
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': personal_form,
@@ -1741,32 +1838,34 @@ def update_user_info_dialog(request):
         'submit': 'Save'
     }))
 
+
 def ajax_user_stat(request):
     timeinfo = User.objects.values_list('date_joined', flat=True)
     # only keep year and month info
-    timeinfo = [ each.strftime('%Y-%m') for each in timeinfo]
+    timeinfo = [each.strftime('%Y-%m') for each in timeinfo]
     # get current time
     current_time = datetime.today()
     # store the date for the last 12 months
     period = [current_time]
     for each_mon in range(1, 12):
-        period.append(current_time+ relativedelta(months=-each_mon))
+        period.append(current_time + relativedelta(months=-each_mon))
     # format the period
-    period = [ each_month.strftime('%Y-%m') for each_month in period]
-    
-    # sort and group the time info  
-    #time_group = sorted(set(timeinfo))
+    period = [each_month.strftime('%Y-%m') for each_month in period]
+
+    # sort and group the time info
+    # time_group = sorted(set(timeinfo))
     response_data = {}
     #response_data['result'] = [["Aug", 1], ["Sep", 2],["Oct", 3], ["Noe", 4]]
     for idx, each_group in enumerate(period):
         count = 0
         for each_time in timeinfo:
-            if(each_time<=each_group):
-                count = count+1
+            if (each_time <= each_group):
+                count = count + 1
         response_data[idx] = [each_group, count]
     #response_data['message'] = ["Aug", "Sep", "Oct", "Nov"]
-    
+
     return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+
 
 @login_required(login_url='/')
 def report_search(request):
@@ -1776,17 +1875,17 @@ def report_search(request):
     entry_query = None
     if 'reset' in request.POST:
         all_reports = Report.objects.filter(status="succeed").order_by('-created')
-        paginator = Paginator(all_reports,30)
+        paginator = Paginator(all_reports, 30)
         found_entries = paginator.page(1)
     else:
         if ('filt_name' in request.POST) and request.POST['filt_name'].strip():
             query_string = request.POST['filt_name']
             entry_query = aux.get_query(query_string, ['name'])
-            #print(entry_query)
+            # print(entry_query)
             #found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
         # filter by type
         if ('filt_type' in request.POST) and request.POST['filt_type']:
-        #print("ok")
+            # print("ok")
             query_type = request.POST['filt_type']
             if entry_query:
                 entry_query = entry_query & aux.get_query_new(query_type, ['type__type'])
@@ -1806,9 +1905,9 @@ def report_search(request):
                 entry_query = entry_query & aux.get_query_new(query_type, ['project__name'])
             else:
                 entry_query = aux.get_query_new(query_type, ['project__name'])
-        if(entry_query == None):
+        if (entry_query == None):
             all_reports = Report.objects.filter(status="succeed").order_by('-created')
-            paginator = Paginator(all_reports,30)
+            paginator = Paginator(all_reports, 30)
             found_entries = paginator.page(1)
         else:
             found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
@@ -1816,6 +1915,7 @@ def report_search(request):
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': found_entries
     }))
+
 
 @login_required(login_url='/')
 def home_paginate(request):
@@ -1825,15 +1925,15 @@ def home_paginate(request):
 
         if table == 'screens':
             tag_symbol = 'screens'
-            paginator = Paginator(rora.get_screens_info(),15)
+            paginator = Paginator(rora.get_screens_info(), 15)
             template = 'screens-paginator.html'
         elif table == 'datasets':
             tag_symbol = 'datasets'
-            paginator = Paginator(rora.get_screens_info(),15)
+            paginator = Paginator(rora.get_screens_info(), 15)
             template = 'datasets-paginator.html'
         elif table == 'screen_groups':
             tag_symbol = 'screen_groups'
-            paginator = Paginator(rora.get_screens_info(),15)
+            paginator = Paginator(rora.get_screens_info(), 15)
             template = 'screen-groups-paginator.html'
 
         try:
@@ -1843,6 +1943,6 @@ def home_paginate(request):
         except EmptyPage:  # if page out of bounds
             items = paginator.page(paginator.num_pages)
 
-        return render_to_response(template, RequestContext(request, { tag_symbol: items }))
+        return render_to_response(template, RequestContext(request, {tag_symbol: items}))
     else:
         return False

@@ -18,35 +18,34 @@
         {{ headform|as_bootstrap:layout }}
 
         <!-- TODO : change this using design models as it SHOULD probably NOT be hardcoded here -->
-        <div class="control-group">
+        <!--
+        <div class="control-group required">
           <label class="control-label" for="mail_id">Report to</label>
           <div class="controls">
             <input type="text" id="mail_id" name="email" placeholder="first.last@helsinki.fi" value="{{ email }}">
           </div>
         </div>
+        -->
 
         <div class="control-group">
           <label class="control-label">Report when job is</label>
           <div class="controls">
             <label class="checkbox inline">
-              <input type="checkbox" id="b_id" name="Started" value="b"> Started
+              <input type="checkbox" id="b_id" name="Started" value="b" {{ Started }}> Started
             </label>
             <label class="checkbox inline">
-              <input type="checkbox" id="e_id" name="Ready" value="e"> Ready
+              <input type="checkbox" id="e_id" name="Ready" value="e" {{ Ready }}> Done
             </label>
             <label class="checkbox inline">
-              <input type="checkbox" id="a_id" name="Aborted" value="a"> Aborted
+              <input type="checkbox" id="a_id" name="Aborted" value="a" {{ Aborted }}> Aborted
             </label>
           </div>
-          
         </div>
-
 
         <p class="text-info"><strong>Input/Output Specification:</strong></p>
         {% for item in custform %}
           {{ item|as_bootstrap:layout }}
         {% endfor %}
-
 
       </div>
       <div class="modal-footer">

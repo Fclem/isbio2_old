@@ -4,6 +4,7 @@ import datetime
 from django import forms
 from django.conf import settings
 import xml.etree.ElementTree as xml
+from django.core import mail
 import breeze.models, re
 from django.db.models import Q
 from django.contrib.auth.models import User
@@ -593,7 +594,7 @@ class NewScriptDialog(forms.Form):
 
     inline = forms.CharField(
         max_length=150,
-        label="Inline Description",
+        label=u"Inline Description",
         widget=forms.Textarea(
              attrs={
                 'class': 'input-large',
@@ -608,7 +609,7 @@ class NewScriptDialog(forms.Form):
         except breeze.models.Rscripts.DoesNotExist:
             return name
         else:
-            raise forms.ValidationError("That script name is already taken.")
+            raise forms.ValidationError(u"That script name is already taken.")
 
 class NewRepTypeDialog(forms.ModelForm):
     class Meta:
@@ -629,6 +630,10 @@ class BasicJobForm(forms.Form):
         widget=forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'optional'}),
         required=False
     )
+    report_to = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': u'first.last@helsinki.fi'}),
+        max_length=75
+    )
 
 
     def clean_job_name(self):
@@ -641,7 +646,7 @@ class BasicJobForm(forms.Form):
             if str(exst) == str(self._edit):
                 return job_name
             else:
-                raise forms.ValidationError("That job name already exists.")
+                raise forms.ValidationError(u"That job name already exists.")
 
 class CustomForm(forms.Form):
     def setFields(self, kwds):
