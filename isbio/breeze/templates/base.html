@@ -11,7 +11,6 @@
     <link rel="shortcut icon" href="/static/img/logo.ico">
     -->
 
-
     <link href="/static/css/bootstrap.css" rel="stylesheet">
     <link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
     <link href="/static/css/jquery-ui-1.9.2.custom.css" rel="stylesheet">
@@ -22,7 +21,6 @@
     <!-- <link href="/static/third-party/wijmo/jquery.wijmo-open.1.5.0.css" rel="stylesheet"> -->
 
     <script src="/static/js/jquery.js"></script>
-    <!-- <script src="/static/js/bootstrap.js"></script> -->
     <script src="/static/js/jquery-1.8.3.min.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
     <script src="/static/js/bootbox.min.js"></script>
@@ -44,7 +42,6 @@
     <!-- HighCharts -->
     <!-- <script type="text/javascript" src="/static/third-party/highcharts/js/highcharts.js"></script> -->
 
-
     <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
@@ -56,20 +53,20 @@
 
     {% bootstrap_javascript_tag "tab" %}
     {% bootstrap_javascript_tag "affix" %}
-     {% bootstrap_javascript_tag "popover" %} -->
-
-
+    {% bootstrap_javascript_tag "popover" %} -->
 
     {% block extra_head %}{% endblock %}
     <style type="text/css">
       /* Override some defaults */
       html, body {
         background: url('/static/wall.png');
-
+        height: 100%;
         background-repeat: repeat;
+        margin:0;
+	      padding:0;
       }
       body {
-        padding-top: 5px;
+        overflow-y: scroll; /* prevents stretching effect of centered layout when content dynamically overflow-y */
       }
       /* Customized */
       #popup_message_container{
@@ -84,7 +81,31 @@
         margin-left:auto;
         margin-right:auto;
       }
+       /* Managing the footnote to always be at the bottom even if page content is not as tall as the viewport
+        cf. http://www.cssreset.com/how-to-keep-footer-at-bottom-of-page-with-css/
+        */
+      #wrapper {
+        min-height:100%;
+        position:relative;
+      }
+      #content {
+        /* padding:10px; */
+        padding-top:  50px;
+        padding-bottom:80px;   /* Height of the footer element */
+      }
+      #footer {
+        width:100%;
+        height:80px;
+        position:absolute;
+        bottom:0;
+        left:0;
+      }
     </style>
+    <!--[if lt IE 7]>
+    <style type="text/css">
+      #wrapper { height:100%; } /* Footnote as a real footer compatibility for IE<7 */
+    </style>
+    <![endif]-->
     <script type="text/javascript">
         //Diplays floating disposable error message box
         function ShowError(HtmlContent){
@@ -95,90 +116,99 @@
         }
     </script>
   </head>
-
   <body>
-  <!--[if lt IE 9]>
-  <link rel="stylesheet" type="text/css" href="/static/css/jquery.ui.1.9.2.ie.css"/>
-  <![endif]-->
-  <!-- ERROR PLACE HOLDER -->
-  <div id="popup_message_container">
-    <div id="error_msg" class="alert alert-danger alert-dismissible hidden" role="alert">
-      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-      <strong><span id="error_msg_holder"></span></strong>
-    </div>
-  </div>
-    <!-- /main navigation bar -->
-    <div class="navbar navbar-inverse navbar-fixed-top">
-      <div class="navbar-inner">
-        <div class="container-fluid">
-          <a class="brand" href="/breeze/">BREEZE</a>
-          <div class="navbar-content">
-            <div class="btn-group pull-right">
-              <p class="navbar-text">
-                <a class="btn btn-inverse" href="/logout/">logout <i class="icon-white icon-share"></i></a>
-              </p>
+    <div id="wrapper">
+      <!--[if lt IE 9]>
+      <link rel="stylesheet" type="text/css" href="/static/css/jquery.ui.1.9.2.ie.css"/>
+      <![endif]-->
+      <!-- error popup message placeholder -->
+      <div id="popup_message_container">
+        <div id="error_msg" class="alert alert-danger alert-dismissible hidden" role="alert">
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <strong><span id="error_msg_holder"></span></strong>
+        </div>
+      </div>
+      <!-- /error popup message placeholder -->
+
+      <!-- main navigation bar -->
+      <div class="navbar navbar-inverse navbar-fixed-top">
+        <div class="navbar-inner">
+          <div class="container-fluid">
+            <a class="brand" href="/breeze/">BREEZE</a>
+            <div class="navbar-content">
+              <div class="btn-group pull-right">
+                <p class="navbar-text">
+                  <a class="btn btn-inverse" href="/logout/">logout <i class="icon-white icon-share"></i></a>
+                </p>
+              </div>
+              <ul class="nav" >
+                <li class="{{ home_status }}">
+                  <a href="/home"> <i class="icon-home"></i> Home</a>
+                </li>
+                <li class="{{ jobs_status }}">
+                  <a href="/jobs" id="dash"> <i class="icon-tasks"></i> Dash</a>
+                </li>
+                <li class="{{ scripts_status }}">
+                  <a href="/scripts" id="scripts"> <i class="icon-list-alt"></i> Scripts</a>
+                </li>
+                <li class="{{ reports_status }}">
+                  <a href="/reports" id="reports"> <i class="icon-th"></i> Reports</a>
+                </li>
+                <li class="{{ dbviewer_status }}">
+                  <a href="/dbviewer" id="db"> <i class="icon-briefcase"></i> DB Viewer</a>
+                </li>
+                {% if is_local_admin %}
+                <li class="{{ resources_status }}">
+                  <a href="/resources" id="resources"> <i class="icon-wrench"></i> Manage Resources</a>
+                </li>
+                {% endif %}
+
+                <li class="{{ store_status }}">
+                    <a href="/store" id="store"> <i class=" icon-cog"></i>Markets </a>
+                </li>
+                <li class="{{ help_status }}">
+                  <a href="/help" id="help"> <i class="icon-question-sign"></i> Help</a>
+                </li>
+                <ul class="nav nav-tabs"></ul>
+                <ul class="nav pull-right"></ul>
+              </ul>
             </div>
-            <ul class="nav" >
-              <li class="{{ home_status }}">
-                <a href="/home"> <i class="icon-home"></i> Home</a>
-              </li>
-              <li class="{{ jobs_status }}">
-                <a href="/jobs" id="dash"> <i class="icon-tasks"></i> Dash</a>
-              </li>
-              <li class="{{ scripts_status }}">
-                <a href="/scripts" id="scripts"> <i class="icon-list-alt"></i> Scripts</a>
-              </li>
-              <li class="{{ reports_status }}">
-                <a href="/reports" id="reports"> <i class="icon-th"></i> Reports</a>
-              </li>
-              <li class="{{ dbviewer_status }}">
-                <a href="/dbviewer" id="db"> <i class="icon-briefcase"></i> DB Viewer</a>
-              </li>
-              {% if is_local_admin %}
-              <li class="{{ resources_status }}">
-                <a href="/resources" id="resources"> <i class="icon-wrench"></i> Manage Resources</a>
-              </li>
-              {% endif %}
-              
-              <li class="{{ store_status }}">
-                  <a href="/store" id="store"> <i class=" icon-cog"></i>Markets </a>
-              </li>
-              <li class="{{ help_status }}">
-                <a href="/help" id="help"> <i class="icon-question-sign"></i> Help</a>
-              </li>
-              <ul class="nav nav-tabs"></ul>
-              <ul class="nav pull-right"></ul>
-            </ul>
           </div>
         </div>
       </div>
-    </div> <!-- /main navigation bar -->
+      <!-- /main navigation bar -->
 
-    <!-- /global container under the nav-bar -->
-    <div class="container-fluid" style="margin-top:  50px">
-      {% block content %}
+      <!-- global container under the nav-bar -->
+      <div id="content" class="container-fluid">
+        {% block content %}
 
-      {% endblock %}
+        {% endblock %}
 
 
-      <hr>
 
-      <div class="row-fluid">
-        <div class="span12">
 
-          <footer>
-            <div class="container">
-              <p align="center">&middot; &copy; FIMM 2015 &middot;</p>
-            </div>
-          </footer>
 
+      </div>
+      <!-- /global container -->
+
+      <!-- footer container -->
+      <div id="footer" >
+
+            <hr>
+            <footer>
+              <div class="container">
+                <p align="center">&middot; &copy; FIMM 2015 &middot;</p>
+              </div>
+            </footer>
+
+      </div>
+      <!-- /footer container -->
+
+      <div id="db_access" data-para="{{db_access}}">
+        <div class="modal hide fade" id="db_policy"  role="dialog" aria-hidden="true" style="background: url('/static/nail.png');">
+            {% include "db_policy.html" %}
         </div>
       </div>
-
-    </div> <!-- /global container -->
-    <div id="db_access" data-para="{{db_access}}">
-<div class="modal hide fade" id="db_policy"  role="dialog" aria-hidden="true" style="background: url('/static/nail.png');">
-    {% include "db_policy.html" %}
-</div>
+    </div>
   </body>
 </html>
