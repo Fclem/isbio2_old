@@ -379,7 +379,7 @@ $(document).ready(function() {
       },
       error: function (request, status, error) {
           ShowError("AJAX: " + status + " (" + request.status + " " + error + ")<br>Please <a href=\"#\" " +
-          "onclick=\"location.reload();\" >reload the page</a> and try again"),
+          "onclick=\"location.reload();\" >reload the page</a> and try again");
 
           $("#progress-bar").addClass('hidden');
           $("#gen_report").removeClass("hidden");
