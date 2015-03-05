@@ -152,13 +152,13 @@ class Jobs(models.Model):
     juser = ForeignKey(User)
     script = ForeignKey(Rscripts)
     # status may be changed to NUMVER later
-    status = models.CharField(max_length=15)
+    status = models.CharField(max_length=15, help_text="scheduled|active|succeed|failed|aborted")
     staged = models.DateTimeField(auto_now_add=True)
     progress = models.IntegerField()
-    sgeid = models.CharField(max_length=15, blank=True)
-    mailing = models.CharField(max_length=3, blank=True, help_text="configuration of mailing events : Begin End "
-                                                                    "Abort") # TextField(name="mailing", )
-    email = models.CharField(max_length=75, help_text="mail address to where the notification(s) has to be sent")
+    sgeid = models.CharField(max_length=15, blank=True, help_text="SGE job id")
+    mailing = models.CharField(max_length=3, blank=True, help_text="configuration of mailing events : (b)egin (e)nd "
+                                                                    "(a)bort or empty") # TextField(name="mailing", )
+    email = models.CharField(max_length=75, help_text="mail address to send the notification to (not working ATM)")
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
