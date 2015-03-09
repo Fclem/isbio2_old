@@ -22,10 +22,24 @@
         <tbody>
           <div id="dashboard">
           {% for job in current %}
+	          {% if job.status == "active" %}
             <tr id="{{ job.id }}_tr1" class="info"> <td id="{{ job.id }}_SGEstatus">{{ job.jname }}  -  {{ job.staged }}</td> </tr>
             <tr id="{{ job.id }}_tr2" class="info">
                 <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" data-inst="{{ job.instance }}" style="width: {{ job.progress }}%" /></div></td>
             </tr>
+	          {% elif job.status == "queued_active" %}
+		          <tr id="{{ job.id }}_tr1" class="info">
+			          <td id="{{ job.id }}_SGEstatus">{{ job.jname }} - initialization... - {{ job.staged }}</td>
+		          </tr>
+		          <tr id="{{ job.id }}_tr2" class="info">
+			          <td>
+				          <div id="{{ job.id }}_div" class="progress progress-warning progress-striped active">
+					          <div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" data-inst="{{ job.instance }}"
+					               style="width: {{ job.progress }}%"/>
+				          </div>
+			          </td>
+		          </tr>
+	          {% endif %}
           {% empty %}
             <tr class="info"><td> <div align="center"> Nothing is running at the moment. </div> </td></tr>
           {% endfor %}
@@ -42,6 +56,17 @@
             {% elif job.status == "aborted" %}
               <tr class="error"><td>{{ job.jname }} - ABORTED!  -  {{ job.staged }}</td></tr>
               <tr class="error"><td><div class="progress progress-warning"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
+            {% elif job.status == "queued_active" %}
+	            <tr class="info"><!-- TODO DELETE THIS PART -->
+		            <td>{{ job.jname }} - Queued - {{ job.staged }}</td>
+	            </tr>
+	            <tr class="info">
+		            <td>
+			            <div class="progress progress-warning  progress-striped active">
+				            <div class="bar" style="width: {{ job.progress }}%"/>
+			            </div>
+		            </td>
+	            </tr>
             {% endif %}
             {% empty %}
               <tr class="info"><td> <div align="center"> You do not have job history yet. </div> </td></tr>
@@ -141,7 +166,7 @@
                 <td id="{{ job.id }}_list_td">{{ job.progress }} %</td>
                 <td></td>
                 <td></td>
-                <td><a href="/abortreports/{{job.id}}" class="btn btn-danger" data-param="/abortreports/{{job.id}}">Abort</a></td>
+                <td><a href="{{job.abohref}}" class="btn btn-danger" data-param="{{job.abohref}}">Abort</a></td>
                 <td></td><td></td><td></td>
               </tr>
               {% endfor %}
@@ -323,6 +348,7 @@ var counter = 0;
 var increment = 2;
 var last_val = 0;
 var fake = false;
+var last_state = [];
 
 function updateJobs(jid, item) {
     $.ajax({
@@ -332,6 +358,8 @@ function updateJobs(jid, item) {
         success: function (msg) {
             //var arg = "width: " + msg.progress.toString() + "%";
             // faking progression, just for user friendlyness
+	          // TODO finish
+/*
             counter++;
             var w = document.getElementById(jid.toString() + "_bar").style.width;
             if(last_val!=msg.progress){
@@ -349,12 +377,14 @@ function updateJobs(jid, item) {
                 }
                 arg = "width: " + fake_progress.toString() + "%";
             }
+*/
+	          var arg = "width: " + msg.progress.toString() + "%";
 
             $("#" + jid.toString() + "_bar").attr('style', arg);
             $("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
             $("#" + jid.toString() + "_list_td").text(msg.sge.toString());
 
-            if (msg.status != "active") {
+            if (msg.status != "active" && msg.status != "queued_active") {
                 var jstatus = ''
                 var jbar = ''
                 if (msg.status == "succeed") { jstatus = "success"; jbar = "success"; }
@@ -376,17 +406,39 @@ function updateJobs(jid, item) {
                     });
                     return false; // prevent the click propagation
                 });
-                $("#new_" + jid.toString() + "_del").click(function(){
+                $("#new_" + jid.toString() + "_del").click(function() { // TODO FIX
                     $("#del_btn").attr("href", "/jobs/delete/" + jid.toString());
                     $("#del_title").text(msg.name.toString());
                 });
 
                 $("#" + jid.toString() + "_list_tr").remove();
-            }
-            else {
+            }else{
+		          if(msg.status!= last_state[jid]) {
+			          var jstatus = ''
+			          var jbar = ''
+			          if (msg.status == "active") {
+				          jstatus = "success";
+				          jbar = "info";
+			          }
+			          if (msg.status == "queued_active") {
+				          jstatus = "success";
+				          jbar = "warning";
+			          }
+
+			          $("#" + jid.toString() + "_tr1").attr('class', jstatus);
+			          $("#" + jid.toString() + "_tr2").attr('class', jstatus);
+			          $("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+		          }
+	            if(msg.status == "queued_active"){
+		            delay = 1000
+	            }else {
+		            delay = 300
+	            }
+
               console.log(item);
-                window.setTimeout(updateJobs, 300, jid, item);
+                window.setTimeout(updateJobs, delay, jid, item);
             }
+	        last_state[jid] = msg.status;
         }
     });
     };
@@ -404,7 +456,7 @@ function appendToHistory(job){
     new_row += '<li class="divider"></li>'
     new_row += '<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li></ul></div></td>'
     new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-repeat"></i></a></td>'
-    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$("#del_btn").attr("href", "{{ job.delhref }}"); $("#del_title").text("{{ job.jname }}");" ><i class="icon-trash"></i></a></td>  </tr>'
+    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$(\\"#del_btn\\").attr(\\"href\\", \\"{{ job.delhref }}\\"); $(\\"#del_title\\").text(\\"{{ job.jname }}\\");" ><i class="icon-trash"></i></a></td>  </tr>'
     return new_row;
 } ;
 </script>

@@ -234,6 +234,7 @@ def merge_job_history(jobs, reports):
             el['reschedhref'] = '%s-repl' % str(item.id)
 
             el['delhref'] = '/jobs/delete/%s' % str(item.id)
+            el['abohref'] = '/abortjobs/%s' % str(item.id)
 
             el['progress'] = item.progress
 
@@ -252,10 +253,24 @@ def merge_job_history(jobs, reports):
             el['reschedhref'] = ''
 
             el['delhref'] = '/reports/delete/%s-dash' % str(item.id)
+            el['abohref'] = '/abortreports/%s' % str(item.id)
 
             el['progress'] = item.progress
 
         merged.append( copy.deepcopy(el) )
+
+    # sort list according to creation datenad time
+    merged.sort(key=lambda r: r['staged'])
+    merged.reverse()
+
+    return merged
+
+
+def merge_job_lst(item1, item2):
+    ''' Merge reports with reports or jobs with jobs in a unified object (list)
+    '''
+    merged = list()
+    merged = list(item1) + list(item2)
 
     # sort list according to creation datenad time
     merged.sort(key=lambda r: r['staged'])

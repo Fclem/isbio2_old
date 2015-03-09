@@ -11,6 +11,7 @@ import auxiliary as aux
 import logging
 
 import socket
+from breeze.models import Report, Jobs
 if socket.gethostname().startswith('breeze'):
     import drmaa
 
@@ -217,20 +218,20 @@ def run_job(job, script=None):
     default_dir = os.getcwd()
     os.chdir(loc)
 
-    job.status = "active"
+    job.status = "queued_active"
     job.progress = 15
     job.save()
 
     try:
         s = drmaa.Session()
         s.initialize()
-
         jt = s.createJobTemplate()
         assert isinstance(jt, object)
 
         jt.workingDirectory = loc
         jt.jobName = slugify(job.jname) + '_JOB'
-        # external mail adress support
+        # external mail address support
+        # Not working ATM probably because of mail backend not being properly configured
         if job.email != '':
             jt.email = [str(job.email), str(job.juser.email)]
         else:
@@ -251,7 +252,8 @@ def run_job(job, script=None):
         # waiting for the job to end
         #if not SGEID:
         #print "no id!"
-        # TODO fix that, this is no good way to do it
+        # TODO have a closer look into that
+        #status = str(s.jobStatus(job.sgeid))
         retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
         job.progress = 100
         job.save()
@@ -262,24 +264,47 @@ def run_job(job, script=None):
             # clean up the folder
 
         else:
-            job.status = 'failed'
+            job = Jobs.objects.get(id=job.id) # make sure data is updated
+            if job.status != 'aborted':
+                pass
+                job.status = 'failed'  # seems to interfere with aborting process TODO check
 
         job.save()
         s.exit()
         os.chdir(default_dir)
+
+        #track_sge_job(job, True)
+
         return True
     except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
-        print(u"DRMAA ERROR")
-        job.status = "failed"
+        # TODO improve this part
+
+        newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.name, job.jname), 'w')
+        newfile.write("DRMAA ERROR")
+        #job.status = "failed"
+        job.progress = 100
         job.save()
         if e == drmaa.AlreadyActiveSessionException:
-            print(u"AlreadyActiveSessionException")
+            newfile.write("AlreadyActiveSessionException")
         elif e == drmaa.InvalidArgumentException:
-            print(u"InvalidArgumentException")
+            newfile.write("InvalidArgumentException")
         elif e == drmaa.InvalidJobException:
-            print(u"InvalidJobException")
+            newfile.write("InvalidJobException")
+        newfile.close()
+        s.exit()
         return e
+    except e :
+        #job.status = 'failed'
+        job.progress = 100
+        job.save()
 
+        newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.juser, job.jname), 'w')
+        newfile.write("UNKNOW ERROR" + vars(e))
+        newfile.close()
+
+        s.exit()
+        return False
+# TODO merge those two functions
 def run_report(report, fmFlag):
     """
         Submits reports as an R-job to cluster with SGE;
@@ -297,7 +322,7 @@ def run_report(report, fmFlag):
     if fmFlag:
         os.system("/projects/fhrb_pm/bin/start-jdbc-bridge")
 
-    report.status = "active"
+    report.status = "queued_active"
     report.progress = 15
     report.save()
    
@@ -312,10 +337,11 @@ def run_report(report, fmFlag):
         jt.jobName = slugify(report.name) + '_REPORT'
         jt.email = [str(report.author.email)]
         jt.blockEmail = False
+
         jt.remoteCommand = config
         jt.joinFiles = True
+        jt.nativeSpecification = "-m bea"
 
-        #print()
 
         report.sgeid = s.runJob(jt)
         report.progress = 30
@@ -323,7 +349,6 @@ def run_report(report, fmFlag):
 
         # waiting for the job to end
         SGEID = copy.deepcopy(report.sgeid)
-        print(SGEID)
         retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
         report.progress = 100
         report.save()
@@ -334,7 +359,10 @@ def run_report(report, fmFlag):
             # clean up the folder
 
         else:
-            report.status = 'failed'
+            report = Report.objects.get(id=report.id)  # make sure data is updated
+            if report.status != 'aborted':
+                pass
+                report.status = 'failed' # seems to interfere with aborting process TODO check
 
         report.save()
 
@@ -349,39 +377,69 @@ def run_report(report, fmFlag):
             run = command.split("\"")[1]
             os.system(run)
         s.exit()
+
+        #track_sge_job(report, True)
         return True
     except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
-        print(u"DRMAA ERROR")
-        report.status = "failed"
+        # TODO improve this part
+        newfile = open('/tmp/report_%s_%s.log' % (report.name, report.author), 'w')
+        newfile.write("DRMAA ERROR")
+        #report.status = "failed"
+        report.progress = 100
         report.save()
         if e == drmaa.AlreadyActiveSessionException:
-            print(u"AlreadyActiveSessionException")
+            newfile.write("AlreadyActiveSessionException")
         elif e == drmaa.InvalidArgumentException:
-            print(u"InvalidArgumentException")
+            newfile.write("InvalidArgumentException")
         elif e == drmaa.InvalidJobException:
-            print(u"InvalidJobException")
+            newfile.write("InvalidJobException")
+        newfile.close()
+        s.exit()
+        return False
+    except:
+        #report.status = 'failed'
+        report.progress = 100
+        report.save()
+
+        newfile = open(str(settings.TEMP_FOLDER) + 'report_%s_%s.log' % (report.name, report.author), 'w')
+        newfile.write("UNKNOW ERROR")
+        newfile.close()
+
+        s.exit()
         return False
 
 def abort_report(report):
+    stat = report.status
     try:
         s = drmaa.Session()
         s.initialize()
-        #print("hello!")
+        report.status = "aborted"
+        report.save()
         s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
+
+        s.exit()
+    except drmaa.AlreadyActiveSessionException:
+        # TODO improve this part
+        if settings.DEBUG: print("AlreadyActiveSessionException")
+        report.status = stat
+        report.save()
+        s.exit()
+        return "unable to abort"
+    except drmaa.InvalidJobException:
+        if settings.DEBUG: print("InvalidJobException")
         report.status = "aborted"
         report.save()
         s.exit()
-    except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException):
-        #report.status = "failed"
-        #report.save()
-        return ""
-    except drmaa.InvalidJobException:
-        return "invalid or no jobID"
+        return "InvalidJobException"
+    except drmaa.InvalidArgumentException:
+        report.status = stat
+        report.save()
+        s.exit()
+        return "InvalidArgumentException"
 
     return True
 
 def track_sge_job(job, force_refresh=False):
-
     decodestatus = {
         drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
         drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
@@ -389,43 +447,55 @@ def track_sge_job(job, force_refresh=False):
         drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
         drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
         drmaa.JobState.RUNNING: 'job is running',
+        'active': 'job is running',
         drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
         drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
         drmaa.JobState.DONE: 'job finished normally',
+        'succeed': 'job finished normally',
         drmaa.JobState.FAILED: 'job finished, but failed',
     }
 
+    # TODO : optimize refactor code
     status = str(job.status)
-    # TODO refactor this
-    if force_refresh:
-        try:
-            s = drmaa.Session()
-            s.initialize()
 
-            status = str(s.jobStatus(job.sgeid))
-            print("Force refresh says :" + status)
-            # TODO translate drmaa status to Breeze
-            s.exit()
-        except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException):
-            print("AlreadyActiveSessionException | InvalidArgumentException")
-        except drmaa.InvalidJobException:
-            job.status = "failed"
-            print("InvalidJobException")
-        finally:
-            status = str(job.status)
+    if job.sgeid != "":
+        if force_refresh or status == drmaa.JobState.QUEUED_ACTIVE:
+            if settings.DEBUG: print("Force refresh :: " + str(job.sgeid))
+            try:
+                s = drmaa.Session()
+                s.initialize()
 
+                status = str(s.jobStatus(job.sgeid))
+                s.exit()
 
+            except drmaa.InvalidArgumentException:
+                if settings.DEBUG: print("InvalidArgumentException")
+                #status = "failed"
+            except drmaa.InvalidJobException:
+                if settings.DEBUG: print("InvalidJobException")
+                status = "failed"
+            except drmaa.AlreadyActiveSessionException:  # this is OK, since a child process is in a drmaa session monitoring the job
+                if settings.DEBUG: print("AlreadyActiveSessionException")
+    else:
+        if settings.DEBUG: print("JobID is empty !")
 
-    if status == 'queued_active':
+    job.status = status
+
+    if job.status == drmaa.JobState.QUEUED_ACTIVE:
         job.progress = 35
-    elif status == 'running':
+    elif job.status == "active" or status == drmaa.JobState.RUNNING:
+        job.status = "active"
         job.progress = 55
-    elif status == 'done' or status == 'failed':
+    elif job.status == drmaa.JobState.DONE or job.status == drmaa.JobState.FAILED:
         job.progress = 100
 
     job.save()
+    try:
+        s.exit()
+    except:
+        pass
 
-    return status
+    return decodestatus[job.status]
 
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
     """

@@ -233,22 +233,30 @@ def updateServer(request):
 
 @login_required(login_url='/')
 def jobs(request, state="scheduled", error_msg=""):
+    if settings.DEBUG: print("State says : " + str(state) )
     if state == "scheduled":
         tab = "scheduled_tab"
         show_tab = "show_sched"
+    elif state == "current":
+        tab = "current_tab"
+        show_tab = "show_curr"
     else:
         tab = "history_tab"
         show_tab = "show_hist"
 
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
-    history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(
-        status__exact="active").order_by("-id")
+    history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").exclude(status__exact="queued_active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
-    active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
-    merged_active = aux.merge_job_history(active_jobs, active_reports)
+    queued_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="queued_active").order_by("-id")
 
-    # ready_reports = Report.objects.filter(status="succeed").filter(author__exact=request.user).order_by('-created')
-    ready_reports = Report.objects.exclude(status="active").filter(author__exact=request.user).order_by('-created')
+    active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
+    queued_reports = Report.objects.filter(status="queued_active").filter(author__exact=request.user).order_by('-created')
+
+    queued_merged = aux.merge_job_history(queued_jobs, queued_reports)
+    merged_active = aux.merge_job_history(active_jobs, active_reports)
+    merged_active = aux.merge_job_lst(merged_active, queued_merged)
+
+    ready_reports = Report.objects.exclude(status="active").exclude(status="queued_active").filter(author__exact=request.user).order_by('-created')
 
     merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
@@ -269,6 +277,13 @@ def jobs(request, state="scheduled", error_msg=""):
     else:
         for jobitem in active_jobs:
             rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+        for jobitem in queued_jobs:
+            rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+        for jobitem in active_reports:
+            rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+        for jobitem in queued_reports:
+            rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+
         user_profile = UserProfile.objects.get(user=request.user)
         db_access = user_profile.db_agreement
         hist_jobs = paginator.page(1)
@@ -1245,6 +1260,34 @@ def edit_job(request, jid=None, mod=None):
         'email': user_info.email
     }))
 
+@login_required(login_url='/')
+def edit_rtype_dialog(request, pid=None, mod=None):
+    # TODO todo / this is just job edit function copied
+    """
+		This view provides a dialog to edit a report type in DB.
+	"""
+    pipe = ReportType.objects.get(id=pid)
+    form = breezeForms.NewRepTypeDialog(request.POST or None)
+    print(form)
+    #form.
+
+    if request.method == 'POST':
+
+        if form.is_valid():
+            #rshell.init_pipeline(form)
+            return HttpResponse(True)
+    else:
+        # TODO add multiple ´ile management for tutorials
+        print(pipe.type + " :: " + pipe.description)
+        #form = breezeForms.NewRepTypeDialog(initial={'type': pipe.type, 'description': pipe.description, 'search': pipe.search, 'access': pipe.access})
+
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': form,
+        'action': '/resources/pipes/pipe-editor/',
+        'header': 'Edit Report Type',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
 
 @login_required(login_url='/')
 def create_job(request, sid=None):
@@ -1257,10 +1300,7 @@ def create_job(request, sid=None):
     user_info = User.objects.get(username=request.user)
 
     mail_addr = user_info.email
-    mails = { 'Started': '',
-        'Ready': '',
-        'Aborted': ''
-    }
+    mails = { 'Started': '',  'Ready': '',  'Aborted': ''}
     # print(request.method)
     if request.method == 'POST':
         # after fill the forms for creating the new job
@@ -1268,9 +1308,9 @@ def create_job(request, sid=None):
         custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
         mail_addr = request.POST['report_to']
         for key in mails:
-                if key in request.POST:
-                    mails[key] = u'checked'
-                    new_job.mailing += request.POST[key]
+            if key in request.POST:
+                mails[key] = u'checked'
+                new_job.mailing += request.POST[key]
 
         if head_form.is_valid() and custom_form.is_valid():
             rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
@@ -1306,14 +1346,20 @@ def create_job(request, sid=None):
             os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
 
+            state = "scheduled"
             if 'run_job' in request.POST:
                 run_script(request, new_job.id)
+                state = "current"
                 #p = Process(target=rshell.run_job, args=(new_job))
                 #p.start()
                 #print("running jobs")
-            #return HttpResponseRedirect('/home/')
-            return HttpResponseRedirect('/jobs/')
+
+            #return HttpResponseRedirect('/jobs/')
+            #request = HttpResponse()
+            #request.method = "GET"
+            return jobs(request, state)
     else:
+        mails = {'Started': u'checked', 'Ready': u'checked', 'Aborted': u'checked' }
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None, initial={'report_to': mail_addr})
         custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
@@ -1343,20 +1389,35 @@ def run_script(request, jid):
 
 
 @login_required(login_url='/')
-def abort_report(request, rid):
+def abort_sge(request, id, type):
     try:
-        report = Report.objects.get(id=rid)
-    except Report.DoesNotExist:
-        report = Jobs.objects.get(id=rid)
+        if type == "report":
+            item = Report.objects.get(id=id)
+        elif type == "job":
+            item = Jobs.objects.get(id=id)
+    except (Report.DoesNotExist, Jobs.DoesNotExist):
+        return jobs(request, error_msg="job/report " + id + " does not exists\nPlease contact Breeze support")
 
-    s = rshell.abort_report(report)
+    s = rshell.abort_report(item)
 
-    # TODO complete this stuff
-    if s==True:
+    if s == True:
         return HttpResponseRedirect('/jobs/')
     else:
-        return jobs(request, error_msg="DRMAA error :: " + s + "\nPlease contact Breeze support")
+        return jobs(request, error_msg=s + "\nOn DRMAA job/report id " + id + "\nPlease contact Breeze support")
 
+
+@login_required(login_url='/')
+def abort_report(request, rid):
+    if settings.DEBUG: print("aborting report")
+
+    return abort_sge(request, rid, "report")
+
+
+@login_required(login_url='/')
+def abort_job(request, jid):
+    if settings.DEBUG: print("aborting job")
+
+    return abort_sge(request, jid, "job")
 
 @login_required(login_url='/')
 def delete_param(request, which):
@@ -1605,17 +1666,15 @@ def send_file(request, ftype, fname):
 @login_required(login_url='/')
 def update_jobs(request, jid, item):
     if item == 'script':
-        sge_status = rshell.track_sge_job(Jobs.objects.get(id=jid))
-        # request job instance again to be sure that the data is updated
         job = Jobs.objects.get(id=jid)
-
+        sge_status = rshell.track_sge_job(job)
+        # request job instance again to be sure that the data is updated
         response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status),
                         progress=job.progress, sge=sge_status)
     else:
-        sge_status = rshell.track_sge_job(Report.objects.get(id=jid))
-        # request job instance again to be sure that the data is updated
         report = Report.objects.get(id=jid)
-
+        sge_status = rshell.track_sge_job(report)
+        # request job instance again to be sure that the data is updated
         response = dict(id=report.id, name=str(report.name), staged=str(report.created), status=str(report.status),
                         progress=report.progress, sge=sge_status)
 
