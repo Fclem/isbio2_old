@@ -1,6 +1,52 @@
 import re, copy, os
 from django.db.models import Q
 import breeze.models
+from django.utils import timezone
+from subprocess import Popen, PIPE
+
+
+def updateServer_routine():
+    # hotfix
+    if 'QSTAT_BIN' in os.environ:
+        qstat = os.environ['QSTAT_BIN']
+    else:
+        qstat = 'qstat'
+
+    # get the server info by directly parsing qstat
+    # p = subprocess.Popen([qstat, "-g", "c"], stdout=subprocess.PIPE)
+    p = Popen([qstat, "-g", "c"], stdout=PIPE)
+    output, err = p.communicate()
+    server = 'unknown'
+    for each in output.splitlines():
+        if 'hugemem.q' in each.split(): #  TODO switch to dynamic server
+            s_name = each.split()[0]
+            cqload = each.split()[1]
+            used = each.split()[2]
+            avail = each.split()[4]
+            total = each.split()[5]
+            cdsuE = 0 + int(each.split()[7])
+
+            if total == cdsuE:
+                server = 'bad'
+            elif int(avail) <= 3:
+                server = 'busy'
+            elif float(cqload) > 30:
+                server = 'busy'
+            else:
+                server = 'idle'
+    server_info = {
+          's_name': s_name,
+          'cqload': cqload,
+          'cdsuE': str(cdsuE),
+          'total': total,
+          'avail': avail,
+          'used': used,
+    }
+    return server, server_info
+
+def update_last_active(user):
+    pass
+
 
 def clean_up_dt_id(lst):
     """ Cleans up row ids that come from the DataTable plugin.
@@ -194,14 +240,14 @@ def extract_users(groups, users):
     '''
     people = list()
 
-    # Process Groups
+    #  Process Groups
     if groups:
         for group_id in map(int, groups.split(',')):
             dbitem = breeze.models.Group.objects.get(id=group_id)
             ref = dbitem.team.all()
             people = list(set(people) | set(ref))
 
-    # Process Individual Users
+    #  Process Individual Users
     if users:
         users_ids = map(int, users.split(','))
         ref = breeze.models.User.objects.filter(id__in=users_ids)

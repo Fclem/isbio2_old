@@ -2,7 +2,7 @@ from django.db import models
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User
-
+from django.utils import timezone
 
 CATEGORY_OPT = (
         (u'general', u'General'),
@@ -214,6 +214,7 @@ class UserProfile(models.Model):
     institute_info = models.ForeignKey(Institute)
     # if user accepts the agreement or not
     db_agreement = models.BooleanField(default=False)
+    last_active = models.DateTimeField(default=timezone.now)
 
     def __unicode__(self):
         return self.user.username

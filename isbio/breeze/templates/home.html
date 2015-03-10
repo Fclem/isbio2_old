@@ -79,7 +79,19 @@
   <div class="span7">
           <div class="tab-content" id="accordion">
                   <div class="span12 well">
-                      <p> <h4> The server is currently:&nbsp;&nbsp;&nbsp;
+	                  <h4 style="margin-top: 5px;">
+		                  <small class="pull-right"><span id="s_name">{{ server_info.s_name }}</span> load :
+			                  <span class="pull-right" id="cqload">{{ server_info.cqload }}</span><br>
+			                  active jobs : <span class="pull-right" id="used">{{ server_info.used }}</span><br>
+			                  available queues : <span class="pull-right"><span id="avail">{{ server_info.avail }}</span>/<span
+					                  id="total">{{ server_info.total }}</span></span><br>
+			                  errors : <span class="pull-right" id="cdsuE">{{ server_info.cdsuE }}</span>
+		                  </small>
+	                  </h4>
+                      <p>
+	                      <h4>
+
+                    The server is currently:&nbsp;&nbsp;&nbsp;
                           {% if server_status == 'idle' %}
                           <span id="status" class="btn btn-large btn-success ">idle</span> 
                           {% elif server_status == 'bad' %}
@@ -385,7 +397,7 @@ $(window).load(function(){
             success: function (msg) {
                 //console.log(msg.server_status)
                 if(msg.server_status == 'idle'){
-                    console.log("wowo")
+                    //console.log("wowo")
                     $('#status').removeAttr('class');
                     $('#status').attr('class', 'btn btn-large btn-success');
                     $('#status').empty();
@@ -401,7 +413,12 @@ $(window).load(function(){
                     $('#status').empty();
                     $('#status').text('busy')
                 }
-                window.setTimeout(updateServer, 300);
+	            for (var prop in msg.server_info) {
+		            //auto updates vars from JSON using vars name as target id
+		            var elementExists = document.getElementById(prop);
+		            if(elementExists!=null) $('#' + prop).text(msg.server_info[prop]);
+              }
+                window.setTimeout(updateServer, 750);
             }
         });
     }
