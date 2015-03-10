@@ -160,7 +160,36 @@ def home(request, state="feed"):
     patients = dict()
 
     posts = Post.objects.all().order_by("-time")
+    for each in posts:
+        each.fname = each.author.get_full_name()
+        each.email = each.author.email
 
+    server = updateServer_routine()
+
+    return render_to_response('home.html', RequestContext(request, {
+        'home_status': 'active',
+        str(menu): 'active',
+        str(show_menu): 'active',
+        str(explorer_tab): 'active',
+        str(explorer_pane): 'active',
+        str(pref_tab): 'active',
+        str(pref_pane): 'active',
+        str(stat_tab): 'active',
+        str(stat_pane): 'active',
+        'dbStat': occurrences,
+        'projects': projects,
+        'groups': groups,
+        'posts': posts,
+        'screens': screens,
+        'patients': patients,
+        'stats': stats,
+        'user_info': user_info_complete,
+        'server_status': server,
+        'db_access': db_access
+    }))
+
+
+def updateServer_routine():
     # hotfix
     if 'QSTAT_BIN' in os.environ:
         qstat = os.environ['QSTAT_BIN']
@@ -185,48 +214,10 @@ def home(request, state="feed"):
                 server = 'busy'
             else:
                 server = 'idle'
-    return render_to_response('home.html', RequestContext(request, {
-        'home_status': 'active',
-        str(menu): 'active',
-        str(show_menu): 'active',
-        str(explorer_tab): 'active',
-        str(explorer_pane): 'active',
-        str(pref_tab): 'active',
-        str(pref_pane): 'active',
-        str(stat_tab): 'active',
-        str(stat_pane): 'active',
-        'dbStat': occurrences,
-        'projects': projects,
-        'groups': groups,
-        'posts': posts,
-        'screens': screens,
-        'patients': patients,
-        'stats': stats,
-        'user_info': user_info_complete,
-        'server_status': server,
-        'db_access': db_access
-    }))
-
+    return server
 
 def updateServer(request):
-    # get the server info
-    p = subprocess.Popen(["qstat", "-g", "c"], stdout=subprocess.PIPE)
-    output, err = p.communicate()
-    server = 'unknown'
-    for each in output.splitlines():
-        if 'hugemem.q' in each.split():
-            avail = each.split()[4]
-            total = each.split()[5]
-            cdsuE = each.split()[7]
-            cqload = each.split()[1]
-            if total == cdsuE:
-                server = 'bad'
-            elif int(avail) <= 3:
-                server = 'busy'
-            elif float(cqload) > 30:
-                server = 'busy'
-            else:
-                server = 'idle'
+    server = updateServer_routine()
 
     return HttpResponse(simplejson.dumps({'server_status': server}), mimetype='application/json')
 
