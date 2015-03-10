@@ -106,7 +106,7 @@
                           <div class="mic-info">
                             By: <a href="#">{{ post.author }}</a> {{ post.time }}
                           </div>
-                          <div class="comment-text">{{ post.body }}</div>
+                          <div class="comment-text">{{ post.body|linebreaks }}</div>
                         </li>
                         {% endfor %}
                       </ul>

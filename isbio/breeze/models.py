@@ -14,7 +14,7 @@ CATEGORY_OPT = (
 class Post(models.Model):
     author = ForeignKey(User)
     title = models.CharField(max_length=150)
-    body = models.CharField(max_length=3500)
+    body = models.TextField(max_length=3500)
     time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
