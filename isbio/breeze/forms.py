@@ -630,10 +630,15 @@ class BasicJobForm(forms.Form):
         widget=forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'optional'}),
         required=False
     )
-    report_to = forms.CharField(
+    report_to = forms.EmailField(
         widget=forms.TextInput(attrs={'placeholder': u'first.last@helsinki.fi'}),
         max_length=75
     )
+
+    #report_to = forms.CheckboxSelectMultiple(
+    #    widget=forms.TextInput(attrs={'placeholder': u'first.last@helsinki.fi'}),
+    #    max_length=75
+    #)
 
 
     def clean_job_name(self):
