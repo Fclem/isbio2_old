@@ -31,6 +31,7 @@ import auxiliary as aux
 import rora as rora
 import sys, traceback
 import forms as breezeForms
+from django.utils import timezone
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
     Statistics, Institute, Script_categories, CartInfo, User_date
 
@@ -94,7 +95,6 @@ def register_user(request):
 
 def base(request):
     return render_to_response('base.html')
-
 
 @login_required(login_url='/')
 def home(request, state="feed"):
@@ -163,8 +163,18 @@ def home(request, state="feed"):
     for each in posts:
         each.fname = each.author.get_full_name()
         each.email = each.author.email
+        each.icon = "icon-comment"
+        if user_info_complete:
+            #  emphasis Un-read news
+            if user_profile.last_active == None:
+                user_profile.last_active = user_info.last_login
+            if each.time > user_profile.last_active:
+                each.icon = "icon-fire"
 
     server, server_info = aux.updateServer_routine()
+
+    user_profile.last_active = timezone.now()
+    user_profile.save()
 
     return render_to_response('home.html', RequestContext(request, {
         'home_status': 'active',

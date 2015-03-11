@@ -111,8 +111,8 @@
                       <ul class="list-group">
                         {% for post in posts %}
                         <li class="list-group-item">
-                          <i class="icon-comment"></i>&nbsp;
-                          <a href="#">
+                          <i class="{{ post.icon }}"></i>&nbsp;
+                          <a href="#" {% if post.icon == 'icon-fire' %}style="font-weight: bold;font-size: large;"{% endif %}  >
                             {{ post.title }}
                           </a>
                           <div class="mic-info">
