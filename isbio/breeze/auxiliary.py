@@ -20,7 +20,7 @@ def updateServer_routine():
     for each in output.splitlines():
         if 'hugemem.q' in each.split(): #  TODO switch to dynamic server
             s_name = each.split()[0]
-            cqload = each.split()[1]
+            cqload = int(float(each.split()[1])*100)
             used = each.split()[2]
             avail = each.split()[4]
             total = each.split()[5]
@@ -36,7 +36,7 @@ def updateServer_routine():
                 server = 'idle'
     server_info = {
           's_name': s_name,
-          'cqload': cqload,
+          'cqload': str(cqload) + "%",
           'cdsuE': str(cdsuE),
           'total': total,
           'avail': avail,
