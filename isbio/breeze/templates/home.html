@@ -78,34 +78,34 @@
 
   <div class="span7">
           <div class="tab-content" id="accordion">
-                  <div class="span12 well">
-	                  <h4 style="margin-top: 5px;">
-		                  <small class="pull-right"><!-- <span id="s_name">{{ server_info.s_name }}</span>-->CPU load :
-			                  <span class="pull-right" id="cqload">{{ server_info.cqload }}</span><br>
-			                  active jobs : <span class="pull-right" id="used">{{ server_info.used }}</span><br>
-			                  avail. queues : <span class="pull-right"><span id="avail">{{ server_info.avail }}</span>/<span
-					                  id="total">{{ server_info.total }}</span></span><br>
-			                  errors : <span class="pull-right" id="cdsuE">{{ server_info.cdsuE }}</span>
-		                  </small>
-	                  </h4>
+            <div class="span12 well">
+                    <h4 style="margin-top: 5px;">
+                      <small class="pull-right"><!-- <span id="s_name">{{ server_info.s_name }}</span>-->CPU load :
+                        <span class="pull-right" id="cqload">{{ server_info.cqload }}</span><br>
+                        active jobs : <span class="pull-right" id="used">{{ server_info.used }}</span><br>
+                        avail. queues : <span class="pull-right"><span id="avail">{{ server_info.avail }}</span>/<span
+                            id="total">{{ server_info.total }}</span></span><br>
+                        errors : <span class="pull-right" id="cdsuE">{{ server_info.cdsuE }}</span>
+                      </small>
+                    </h4>
                       <p>
-	                      <h4>
+                        <h4>
 
                     The server is currently:&nbsp;&nbsp;&nbsp;
                           {% if server_status == 'idle' %}
-                          <span id="status" class="btn btn-large btn-success ">idle</span> 
+                          <span id="status" class="btn btn-large btn-success ">idle</span>
                           {% elif server_status == 'bad' %}
-                          <span id="status" class="btn btn-large btn-danger ">bad</span> 
+                          <span id="status" class="btn btn-large btn-danger ">bad</span>
                           {% elif server_status == 'busy'%}
-                          <span id="status" class="btn btn-large btn-danger ">busy</span> 
+                          <span id="status" class="btn btn-large btn-danger ">busy</span>
                           {% endif %}
                       </h4></p>
-                </div>
+            </div>
             <!-- FEED -->
             <div class="tab-pane {{ show_feed }}" id="feed_menu">
               <div class="row-fluid">
                 <div class="span 12">
-             
+
                   <div class="panel panel-default widget">
                     <div class="panel-body">
                       <ul class="list-group">
@@ -214,7 +214,7 @@
                 </div>
               </div>
             </div>
-      
+
             <!-- Statistics -->
             <div class="tab-pane {{ show_statistics }}" id="statistics_menu">
               <!-- User Statistics / Analysis Statistics -->
@@ -249,7 +249,7 @@
                             <table class="table table-striped table-hover" id="main_table">
                               <thead>
                                 <tr>
-                                  <th>Name</th> <th>Author</th> <th> Type </th><th>Count</th> 
+                                  <th>Name</th> <th>Author</th> <th> Type </th><th>Count</th>
                                 </tr>
                               </thead>
                               <tbody id="padination-projects">
@@ -585,11 +585,7 @@ $(window).load(function(){
     }); // submitItemModalFormBind(url, modalID)
   }
   
-  window.$zopim||(function(d,s){var z=$zopim=function(c){z._.push(c)},$=z.s=
-  d.createElement(s),e=d.getElementsByTagName(s)[0];z.set=function(o){z.set.
-  _.push(o)};z._=[];z.set._=[];$.async=!0;$.setAttribute('charset','utf-8');
-  $.src='//v2.zopim.com/?2fQMyVQQ1GO74NehJsG5a8uf8RiZXHfV';z.t=+new Date;$.
-  type='text/javascript';e.parentNode.insertBefore($,e)})(document,'script');
+  //old zopim code place
   
   $('.updateinfo').click(function(ev){
       ev.preventDefault();
