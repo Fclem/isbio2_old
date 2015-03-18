@@ -8,7 +8,7 @@
   <div class="modal-body">
     <blockquote>
       <p class="text-info"><strong>Category: {{ scr.category|capfirst }}</strong></p>
-      <p class="text-info"><strong>Author: {{ scr.author }} - (email comes soon) </strong></p>
+      <p class="text-info"><strong>Author: <a href="mailto:{{ scr.author.email }}">{{ scr.author.get_full_name }}</a></strong></p>
       <p class="text-info"><i>{{ scr.inln }}</i></p>
     </blockquote>
     <p>&nbsp;</p>
