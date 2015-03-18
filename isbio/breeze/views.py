@@ -18,6 +18,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User, Group
 from django.conf import settings
 import thread
+from django.core.files.uploadedfile import SimpleUploadedFile
 from multiprocessing import Process
 
 from django.utils import simplejson
@@ -699,6 +700,7 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
     overview['instance_name'] = iname
     overview['instance_id'] = iid
     overview['details'] = rshell.get_report_overview(rtype, iname, iid)
+    overview['manual'] = settings.MEDIA_URL + str(ReportType.objects.get(type=rtype).manual)
 
     if request.method == 'POST':
         # Validates input info and creates (submits) a report
@@ -1723,10 +1725,17 @@ def edit_rtype_dialog(request, pid=None, mod=None):
         @type request: django.db.models.query.QuerySet
         @type pid: int
     """
+    #file_data = ""
     instance = ReportType.objects.get(id=pid)
     if request.method == "POST":
-        form = breezeForms.NewRepTypeDialog(request.POST, instance=instance)
+        #
+        if request.FILES is not None:
+            form = breezeForms.NewRepTypeDialog(request.POST, request.FILES, instance=instance)
+        else:
+            form = breezeForms.NewRepTypeDialog(request.POST, instance=instance)
+
         form.save()
+
         return HttpResponse(True)
     else:
         form = breezeForms.NewRepTypeDialog(instance=instance)

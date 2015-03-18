@@ -68,7 +68,9 @@ class ReportType(models.Model):
         return 'pipelines/%s/%s' % (slug, filename)
 
     config = models.FileField(upload_to=file_name, blank=True, null=True)
+    manual = models.FileField(upload_to=file_name, blank=True, null=True)
     created = models.DateField(auto_now_add=True)
+
     def __unicode__(self):
         return self.type
 

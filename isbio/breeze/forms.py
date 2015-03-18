@@ -12,7 +12,8 @@ from django.template.defaultfilters import default
 from decimal import Decimal
 import rora as rora
 from django.forms import extras
-from django.contrib.admin import widgets 
+from django.contrib.admin import widgets
+from django.forms import FileField
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
 
 class NewProjectForm(forms.Form):
@@ -614,8 +615,7 @@ class NewScriptDialog(forms.Form):
 class NewRepTypeDialog(forms.ModelForm):
     class Meta:
         model = breeze.models.ReportType
-        fields = ('type', 'description', 'search', 'access')
-
+        fields = ('type', 'description', 'search', 'access', 'manual')
 
 class BasicJobForm(forms.Form):
     def __init__(self, user, edit, *args, **kwargs):
