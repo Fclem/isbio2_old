@@ -2,6 +2,7 @@
 import os, copy, tempfile, zipfile, shutil, fnmatch
 from datetime import datetime
 import json
+from django.forms import forms
 import rpy2
 from collections import OrderedDict
 from django.db.models import Q
@@ -34,6 +35,7 @@ import forms as breezeForms
 from django.utils import timezone
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
     Statistics, Institute, Script_categories, CartInfo, User_date
+
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -96,6 +98,7 @@ def register_user(request):
 def base(request):
     return render_to_response('base.html')
 
+
 @login_required(login_url='/')
 def home(request, state="feed"):
     user_info = User.objects.get(username=request.user)
@@ -154,7 +157,7 @@ def home(request, state="feed"):
     occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
 
     # Get Screens
-    screens = dict()  #rora.get_screens_info()
+    screens = dict()  # rora.get_screens_info()
 
     # Patients
     patients = dict()
@@ -165,7 +168,7 @@ def home(request, state="feed"):
         each.email = each.author.email
         each.icon = "icon-comment"
         if user_info_complete:
-            #  emphasis Un-read news
+            # emphasis Un-read news
             if user_profile.last_active == None:
                 user_profile.last_active = user_info.last_login
             if each.time > user_profile.last_active:
@@ -200,12 +203,11 @@ def home(request, state="feed"):
     }))
 
 
-
-
 def updateServer(request):
     server, server_info = aux.updateServer_routine()
 
-    return HttpResponse(simplejson.dumps({'server_status': server, 'server_info': server_info}), mimetype='application/json')
+    return HttpResponse(simplejson.dumps({'server_status': server, 'server_info': server_info}),
+                        mimetype='application/json')
 
 
 @login_required(login_url='/')
@@ -222,18 +224,21 @@ def jobs(request, state="scheduled", error_msg=""):
         show_tab = "show_hist"
 
     scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
-    history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(status__exact="active").exclude(status__exact="queued_active").order_by("-id")
+    history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(
+        status__exact="active").exclude(status__exact="queued_active").order_by("-id")
     active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
     queued_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="queued_active").order_by("-id")
 
     active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
-    queued_reports = Report.objects.filter(status="queued_active").filter(author__exact=request.user).order_by('-created')
+    queued_reports = Report.objects.filter(status="queued_active").filter(author__exact=request.user).order_by(
+        '-created')
 
     queued_merged = aux.merge_job_history(queued_jobs, queued_reports)
     merged_active = aux.merge_job_history(active_jobs, active_reports)
     merged_active = aux.merge_job_lst(merged_active, queued_merged)
 
-    ready_reports = Report.objects.exclude(status="active").exclude(status="queued_active").filter(author__exact=request.user).order_by('-created')
+    ready_reports = Report.objects.exclude(status="active").exclude(status="queued_active").filter(
+        author__exact=request.user).order_by('-created')
 
     merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
@@ -297,7 +302,7 @@ def scripts(request, layout="list"):
             cate.append(str(each_cate.category).capitalize())
 
     # cat_list['reports'] = all_scripts.filter(istag="1")
-    #reports = all_scripts.filter(istag="1")
+    # reports = all_scripts.filter(istag="1")
     ''''
 	cat_list = dict()
 	categories = list()
@@ -417,7 +422,7 @@ def ajax_patients(request, which):
             patient['description'] = patient_form.cleaned_data.get('description')
             patient['organism'] = patient_form.cleaned_data.get('organism')
             patient['sex'] = patient_form.cleaned_data.get('sex')
-            #print(type(patient_form.cleaned_data.get('birthdate')))
+            # print(type(patient_form.cleaned_data.get('birthdate')))
             patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
             rora.update_patient(patient)
             return HttpResponseRedirect('/dbviewer')
@@ -462,7 +467,7 @@ def ajax_patients_new(request):
             patient['description'] = patient_form.cleaned_data.get('description')
             patient['organism'] = patient_form.cleaned_data.get('organism')
             patient['sex'] = patient_form.cleaned_data.get('sex')
-            #print(type(patient_form.cleaned_data.get('birthdate')))
+            # print(type(patient_form.cleaned_data.get('birthdate')))
             patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
             rora.insert_row("patients", patient)
             return HttpResponseRedirect('/dbviewer')
@@ -518,7 +523,7 @@ def screen_data(request, which):
                 int(data[13]), 'plate_count': data[14], 'dg': int(data[15]), 'disease_stage': int(data[16]), 'read_out':
                 int(data[21]), 'createdate': data[22].split()[0]
         })
-        #print(screen_info)
+        # print(screen_info)
     return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
         'form': screen_info,
         'action': '/screen-data/0',
@@ -559,14 +564,14 @@ def addtocart(request, sid=None):
     try:
 
         # scr = Rscripts.objects.get(id = sid)
-        #print(scr.author)
+        # print(scr.author)
 
         items = CartInfo.objects.get(product=sid, script_buyer=request.user)
         return HttpResponse(simplejson.dumps({"exist": "Yes"}), mimetype='application/json')
     except CartInfo.DoesNotExist:
         # print("shit")
         scripts = Rscripts.objects.get(id=sid)
-        #print(scripts)
+        # print(scripts)
         mycart = CartInfo()
         mycart.script_buyer = request.user
         mycart.product = scripts
@@ -592,7 +597,7 @@ def mycart(request):
     items_free = CartInfo.objects.filter(script_buyer=request.user, type_app=True)
     items_nonfree = CartInfo.objects.filter(script_buyer=request.user, type_app=False)
     html = render_to_string('cartinfo.html', {
-        #'mycart_status': 'active',
+        # 'mycart_status': 'active',
         'items_free': items_free,
         'items_nonfree': items_nonfree
         #'all_items': all_items
@@ -646,7 +651,7 @@ def groupName(request):
             table = 'groups'
             # print(request.user.username)
             feedback = rora.insert_row(table=table, data=group)
-            #rora.update_screen(screen)
+            # rora.update_screen(screen)
             return HttpResponseRedirect('/dbviewer')
     else:
         screen_group = breezeForms.screenGroup()
@@ -748,7 +753,7 @@ def showdetails(request, sid=None):
         'tags': tags,
         'app_installed': app_installed
     })
-    )
+                              )
 
 
 @login_required(login_url='/')
@@ -807,7 +812,14 @@ def search(request, what=None):
 
 @login_required(login_url='/')
 def resources(request):
-    return render_to_response('resources.html', RequestContext(request, {'resources_status': 'active', }))
+    usage_graph = ({'url': 'http://192.168.0.225/S/D', 'html_alt': 'queue stats on the last 24h',
+                    'html_title': 'queue stats on the last 24h', 'legend': 'queue stats on the last 24h', 'href': ''},
+                   {'url': 'http://192.168.0.225/S/B', 'html_alt': 'This is an exemple of another graph',
+                    'html_title': 'This is an exemple of another graph',
+                    'legend': 'This is an exemple of another graph', })
+
+    return render_to_response('resources.html', RequestContext(request, {'resources_status': 'active',
+                                                                         'usage_graph': usage_graph}))
 
 
 @login_required(login_url='/')
@@ -821,7 +833,7 @@ def manage_scripts(request):
         page = request.GET.get('page')
         try:
             # added by Clement F
-            #  this session var is for the paginator to stay on the same page number after
+            # this session var is for the paginator to stay on the same page number after
             #  sending forms (add or delete forms) for consistency and clarity
             request.session['manage-scripts-page'] = page
             scripts = paginator.page(page)
@@ -919,7 +931,7 @@ def store(request):
         'app_installed': app_installed,
         'report_installed': report_installed,
         'db_access': db_access
-        #'tags': tags
+        # 'tags': tags
     }))
 
 
@@ -1237,34 +1249,6 @@ def edit_job(request, jid=None, mod=None):
         'email': user_info.email
     }))
 
-@login_required(login_url='/')
-def edit_rtype_dialog(request, pid=None, mod=None):
-    # TODO todo / this is just job edit function copied
-    """
-		This view provides a dialog to edit a report type in DB.
-	"""
-    pipe = ReportType.objects.get(id=pid)
-    form = breezeForms.NewRepTypeDialog(request.POST or None)
-    print(form)
-    #form.
-
-    if request.method == 'POST':
-
-        if form.is_valid():
-            #rshell.init_pipeline(form)
-            return HttpResponse(True)
-    else:
-        # TODO add multiple ´ile management for tutorials
-        print(pipe.type + " :: " + pipe.description)
-        #form = breezeForms.NewRepTypeDialog(initial={'type': pipe.type, 'description': pipe.description, 'search': pipe.search, 'access': pipe.access})
-
-    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
-        'form': form,
-        'action': '/resources/pipes/pipe-editor/',
-        'header': 'Edit Report Type',
-        'layout': 'horizontal',
-        'submit': 'Save'
-    }))
 
 @login_required(login_url='/')
 def create_job(request, sid=None):
@@ -1277,11 +1261,11 @@ def create_job(request, sid=None):
     user_info = User.objects.get(username=request.user)
 
     mail_addr = user_info.email
-    mails = { 'Started': '',  'Ready': '',  'Aborted': ''}
+    mails = {'Started': '', 'Ready': '', 'Aborted': ''}
     # print(request.method)
     if request.method == 'POST':
         # after fill the forms for creating the new job
-        head_form = breezeForms.BasicJobForm(request.user, None, request.POST )
+        head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
         custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
         mail_addr = request.POST['report_to']
         for key in mails:
@@ -1295,7 +1279,7 @@ def create_job(request, sid=None):
             new_job.jname = head_form.cleaned_data['job_name']
             new_job.jdetails = head_form.cleaned_data['job_details']
             new_job.script = script
-            #new_job.status = request.POST['job_status']
+            # new_job.status = request.POST['job_status']
             new_job.status = u"scheduled"
             new_job.juser = request.user
             # TODO finish testing and debug
@@ -1336,7 +1320,7 @@ def create_job(request, sid=None):
             #request.method = "GET"
             return jobs(request, state)
     else:
-        mails = {'Started': u'checked', 'Ready': u'checked', 'Aborted': u'checked' }
+        mails = {'Started': u'checked', 'Ready': u'checked', 'Aborted': u'checked'}
         head_form = breezeForms.BasicJobForm(user=request.user, edit=None, initial={'report_to': mail_addr})
         custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
@@ -1395,6 +1379,7 @@ def abort_job(request, jid):
     if settings.DEBUG: print("aborting job")
 
     return abort_sge(request, jid, "job")
+
 
 @login_required(login_url='/')
 def delete_param(request, which):
@@ -1714,8 +1699,8 @@ def new_script_dialog(request):
 @login_required(login_url='/')
 def new_rtype_dialog(request):
     """
-		This view provides a dialog to create a new report type in DB.
-	"""
+        This view provides a dialog to create a new report type in DB.
+    """
     form = breezeForms.NewRepTypeDialog(request.POST or None)
 
     if form.is_valid():
@@ -1732,10 +1717,35 @@ def new_rtype_dialog(request):
 
 
 @login_required(login_url='/')
+def edit_rtype_dialog(request, pid=None, mod=None):
+    """
+        This view provides a dialog to edit a report type in DB.
+        @type request: django.db.models.query.QuerySet
+        @type pid: int
+    """
+    instance = ReportType.objects.get(id=pid)
+    if request.method == "POST":
+        form = breezeForms.NewRepTypeDialog(request.POST, instance=instance)
+        form.save()
+        return HttpResponse(True)
+    else:
+        form = breezeForms.NewRepTypeDialog(instance=instance)
+
+    # TODO add multiple file management for tutorials
+    return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
+        'form': form,
+        'action': '/resources/pipes/pipe-editor/',
+        'header': 'Edit Report Type',
+        'layout': 'horizontal',
+        'submit': 'Save'
+    }))
+
+
+@login_required(login_url='/')
 def new_project_dialog(request):
     """
-		This view provides a dialog to create a new Project in DB.
-	"""
+        This view provides a dialog to create a new Project in DB.
+    """
     project_form = breezeForms.NewProjectForm(request.POST or None)
 
     if project_form.is_valid():
@@ -1891,7 +1901,7 @@ def ajax_user_stat(request):
     # sort and group the time info
     # time_group = sorted(set(timeinfo))
     response_data = {}
-    #response_data['result'] = [["Aug", 1], ["Sep", 2],["Oct", 3], ["Noe", 4]]
+    # response_data['result'] = [["Aug", 1], ["Sep", 2],["Oct", 3], ["Noe", 4]]
     for idx, each_group in enumerate(period):
         count = 0
         for each_time in timeinfo:
@@ -1918,7 +1928,7 @@ def report_search(request):
             query_string = request.POST['filt_name']
             entry_query = aux.get_query(query_string, ['name'])
             # print(entry_query)
-            #found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
+            # found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
         # filter by type
         if ('filt_type' in request.POST) and request.POST['filt_type']:
             # print("ok")

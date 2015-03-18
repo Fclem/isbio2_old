@@ -207,16 +207,17 @@
 
       <!-- footer container -->
       <div id="footer" >
-
+        {% block footer %}
             <hr>
             <footer>
               <div class="container">
                 <p align="center">&middot; &copy; FIMM 2015 &middot;</p>
               </div>
             </footer>
-
+        {% endblock %}
       </div>
       <!-- /footer container -->
+      <!-- template : {{db_access}} -->
 
       <div id="db_access" data-para="{{db_access}}">
         <div class="modal hide fade" id="db_policy"  role="dialog" aria-hidden="true" style="background: url('/static/nail.png');">
@@ -224,6 +225,7 @@
         </div>
       </div>
     </div>
+    {% block zopim %}
     <script type="text/javascript">
       $(window).load(function(){
         window.$zopim||(function(d,s){var z=$zopim=function(c){z._.push(c)},$=z.s=
@@ -233,5 +235,6 @@
         type='text/javascript';e.parentNode.insertBefore($,e)})(document,'script');
       });
     </script>
+    {% endblock %}
   </body>
 </html>
