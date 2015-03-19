@@ -36,7 +36,7 @@ import forms as breezeForms
 from django.utils import timezone
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
     Statistics, Institute, Script_categories, CartInfo, User_date
-
+from django.core.exceptions import PermissionDenied
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -346,10 +346,10 @@ def reports(request):
 
     # report_type_lst = ReportType.objects.filter(access=request.user)
     all_projects = Project.objects.filter(institute=insti)
-    paginator = Paginator(all_reports, 30)  # show 3 items per page
+    paginator = Paginator(all_reports, 30)  # show 30 items per page
 
     # If AJAX - check page from the request
-    # Otherwise ruturn the first page
+    # Otherwise return the first page
     if request.is_ajax() and request.method == 'GET':
         page = request.GET.get('page')
         try:
@@ -358,10 +358,18 @@ def reports(request):
             reports = paginator.page(1)
         except EmptyPage:  # if page out of bounds
             reports = paginator.page(paginator.num_pages)
+        #  access rights
+        for each in reports:
+            each.user_is_owner = each.author == request.user
+            each.user_has_access = request.user in each.shared.all or each.user_is_owner
 
         return render_to_response('reports-paginator.html', RequestContext(request, {'reports': reports}))
     else:
         reports = paginator.page(1)
+        # access rights
+        for each in reports:
+            each.user_is_owner = each.author == request.user
+            each.user_has_access = request.user in each.shared.all or each.user_is_owner
         user_profile = UserProfile.objects.get(user=request.user)
         db_access = user_profile.db_agreement
         return render_to_response('reports.html', RequestContext(request, {
@@ -1155,6 +1163,7 @@ def delete_pipe(request, pid):
 
 @login_required(login_url='/')
 def delete_report(request, rid, redir):
+    #  TODO enforce access rights
     if redir == '-dash':
         redir = '/jobs/history'
     else:
@@ -1605,10 +1614,11 @@ def send_template(request, name):
 @login_required(login_url='/')
 def send_file(request, ftype, fname):
     """
-		Supposed to be generic function that can send single file to client.
-		Each IF case prepare dispatch data of a certain type.
-		! Should supbstitute send_template() function soon !
-	"""
+        Supposed to be generic function that can send single file to client.
+        Each IF case prepare dispatch data of a certain type.
+        ! Should substitute send_template() function soon !
+    """
+    #  TODO : substitute with send_template() ?
     if ftype == 'dataset':
         fitem = DataSet.objects.get(name=str(fname))
         local_path = str(fitem.rdata)
@@ -1616,6 +1626,10 @@ def send_file(request, ftype, fname):
 
     if ftype == 'report':
         fitem = Report.objects.get(id=fname)
+        #  Enforce user access restrictions
+        if request.user not in fitem.shared.all() and fitem.author != request.user:
+            raise PermissionDenied
+
         local_path = fitem.home + '/report.html'
         path_to_file = str(settings.MEDIA_ROOT) + local_path
 
