@@ -27,6 +27,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.csrf import csrf_exempt
 
 import xml.etree.ElementTree as xml
+from six.moves.urllib import request
 from breeze import auxiliary
 import shell as rshell
 import auxiliary as aux
@@ -37,6 +38,9 @@ from django.utils import timezone
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
     Statistics, Institute, Script_categories, CartInfo, User_date
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
+from mimetypes import MimeTypes
+import urllib
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -361,7 +365,7 @@ def reports(request):
         #  access rights
         for each in reports:
             each.user_is_owner = each.author == request.user
-            each.user_has_access = request.user in each.shared.all or each.user_is_owner
+            each.user_has_access = request.user in each.shared.all() or each.user_is_owner
 
         return render_to_response('reports-paginator.html', RequestContext(request, {'reports': reports}))
     else:
@@ -369,7 +373,7 @@ def reports(request):
         # access rights
         for each in reports:
             each.user_is_owner = each.author == request.user
-            each.user_has_access = request.user in each.shared.all or each.user_is_owner
+            each.user_has_access = request.user in each.shared.all() or each.user_is_owner
         user_profile = UserProfile.objects.get(user=request.user)
         db_access = user_profile.db_agreement
         return render_to_response('reports.html', RequestContext(request, {
@@ -393,10 +397,10 @@ def dbviewer(request):
 
 def ajax_patients_data(request, which):
     """
-		Generic function to extract data from RORA tables;
-		Aimed to serve: Patients (ENTITY), Screens and Samples
-		in json format for DataTables
-	"""
+        Generic function to extract data from RORA tables;
+        Aimed to serve: Patients (ENTITY), Screens and Samples
+        in json format for DataTables
+    """
     # copy parameters
     params = request.GET
 
@@ -674,6 +678,7 @@ def groupName(request):
 
 
 def reports_search(request):
+    # TODO is this still in use/ finished ?
     query_string = ''
     found_entries = None
     if ('q' in request.GET) and request.GET['q'].strip():
@@ -926,11 +931,11 @@ def store(request):
     user_profile = UserProfile.objects.get(user=request.user)
     db_access = user_profile.db_agreement
     '''
-	for script in all_scripts:
-		if str(script.category).capitalize() not in categories:
-			categories.append(str(script.category).capitalize())
-			cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
-	'''
+    for script in all_scripts:
+        if str(script.category).capitalize() not in categories:
+            categories.append(str(script.category).capitalize())
+            cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
+    '''
     return render_to_response('store.html', RequestContext(request, {
         'store_status': 'active',
         'cate': cate,
@@ -992,6 +997,10 @@ def installreport(request, sid=None):
 @login_required(login_url='/')
 def ownreports(request):
     own_reports = Report.objects.filter(status="succeed", author=request.user).order_by('-created')
+    # modifications for template perf optimization
+    for each in own_reports:
+        each.user_is_owner = True
+        each.user_has_access = True
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': own_reports
     }))
@@ -1001,6 +1010,10 @@ def ownreports(request):
 def accessreports(request):
     access_reports = Report.objects.filter(
         Q(status="succeed", author=request.user) | Q(status="succeed", shared=request.user)).order_by('-created')
+    #  modifications for template perf optimization
+    for each in access_reports:
+        each.user_is_owner = each.author == request.user
+        each.user_has_access = True
     return render_to_response('reports-paginator.html', RequestContext(request, {
         'reports': access_reports
     }))
@@ -1139,6 +1152,9 @@ def get_rcode(request, sid=None, sfile=None):
 @login_required(login_url='/')
 def delete_job(request, jid):
     job = Jobs.objects.get(id=jid)
+    # Enforce access rights
+    if job.juser != request.user:
+        raise PermissionDenied
     if (job.status == "scheduled"):
         tab = ""
     else:
@@ -1150,6 +1166,9 @@ def delete_job(request, jid):
 @login_required(login_url='/')
 def delete_script(request, sid):
     script = Rscripts.objects.get(id=sid)
+    # Enforce access rights
+    if script.author != request.user:
+        raise PermissionDenied
     rshell.del_script(script)
     return HttpResponseRedirect('/resources/scripts/')
 
@@ -1157,19 +1176,24 @@ def delete_script(request, sid):
 @login_required(login_url='/')
 def delete_pipe(request, pid):
     pipe = ReportType.objects.get(id=pid)
+    # Enforce access rights
+    if pipe.author != request.user:
+        raise PermissionDenied
     rshell.del_pipe(pipe)
     return HttpResponseRedirect('/resources/pipes/')
 
 
 @login_required(login_url='/')
 def delete_report(request, rid, redir):
-    #  TODO enforce access rights
     if redir == '-dash':
         redir = '/jobs/history'
     else:
         redir = '/reports/'
 
     report = Report.objects.get(id=rid)
+    #  Enforce access rights
+    if report.author != request.user:
+        raise PermissionDenied
     rshell.del_report(report)
     return HttpResponseRedirect(redir)
 
@@ -1177,6 +1201,9 @@ def delete_report(request, rid, redir):
 @login_required(login_url='/')
 def delete_project(request, pid):
     project = Project.objects.get(id=pid)
+    # Enforce access rights
+    if project.author != request.user:
+        raise PermissionDenied
     aux.delete_project(project)
 
     return HttpResponseRedirect('/home/projects')
@@ -1185,6 +1212,9 @@ def delete_project(request, pid):
 @login_required(login_url='/')
 def delete_group(request, gid):
     group = Group.objects.get(id=gid)
+    # Enforce access rights
+    if group.author != request.user:
+        raise PermissionDenied
     aux.delete_group(group)
 
     return HttpResponseRedirect('/home/groups')
@@ -1640,6 +1670,60 @@ def send_file(request, ftype, fname):
     response['Content-Disposition'] = 'attachment; filename=' + file
     return response
 
+
+@login_required(login_url='/')
+def report_file_view(request, rid, fname=None):
+    return report_file_server(request, rid, 'view', fname)
+
+@login_required(login_url='/')
+def report_file_wrap(request, rid, rest, fname=None):
+    return report_file_server(request, rid, 'view', fname)
+
+@login_required(login_url='/')
+def report_file_wrap2(request, rid, fname=None):
+    return report_file_server(request, rid, 'view', fname)
+
+@login_required(login_url='/')
+def report_file_get(request, rid, fname=None):
+    return report_file_server(request, rid, 'get', fname)
+
+@login_required(login_url='/')
+def report_file_server(request, rid, type, fname=None):
+    """
+        Serve report files, while enforcing access rights
+    """
+    try:
+        fitem = Report.objects.get(id=rid)
+    except:
+        raise Http404
+
+    #  Enforce user access restrictions
+    if request.user not in fitem.shared.all() and fitem.author != request.user:
+        raise PermissionDenied
+
+    if fname is None: fname = 'report.html'
+    local_path = fitem.home + '/' + unicode.replace(unicode(fname), '../', '')
+    path_to_file = str(settings.MEDIA_ROOT) + local_path
+
+
+    mime = MimeTypes()
+    url = urllib.pathname2url(path_to_file)
+    mime_type, encoding = mime.guess_type(url)
+    mime_type = mime_type or 'application/octet-stream'
+
+    try:
+        f = open(path_to_file, 'r')
+        myfile = File(f)
+
+        response = HttpResponse(myfile, mimetype=mime_type)
+        folder, slash, file = local_path.rpartition('/')
+        if type == 'get':
+            response['Content-Disposition'] = 'attachment; filename=' + file
+        else:
+            response['Content-Disposition'] = 'filename=' + file
+        return response
+    except IOError:
+        raise Http404
 
 @login_required(login_url='/')
 def update_jobs(request, jid, item):
