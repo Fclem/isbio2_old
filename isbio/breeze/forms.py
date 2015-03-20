@@ -616,6 +616,7 @@ class NewRepTypeDialog(forms.ModelForm):
     class Meta:
         model = breeze.models.ReportType
         fields = ('type', 'description', 'search', 'access', 'manual')
+        # widgets = {'access': forms.CheckboxSelectMultiple( attrs = {'class': 'multiselect', })}
 
 class BasicJobForm(forms.Form):
     def __init__(self, user, edit, *args, **kwargs):
