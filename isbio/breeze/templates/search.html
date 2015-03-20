@@ -177,7 +177,7 @@
 
     <div class="span4 offset1">
       <div class="row-fluid thumbnail">
-        {% if overview_info.manual != "" %}
+        {% if overview_info.manual != "" and overview_info.manual != None %}
         <p class="pull-right" style="margin-right: 45px;margin-top: 20px;"><label><a href="{{ overview_info.manual }}" target="_blank"><img src="/static/pdf.png" title="Click here to download this pipeline user-manual" alt="Click here to download this pipeline user-manual" width="150" height="150"><br /><small>download</a> pipeline manual</small></label></p>
         {% endif %}
         <h5> {{ overview_info.report_type }} Report </h5>

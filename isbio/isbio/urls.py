@@ -94,6 +94,8 @@ urlpatterns = patterns('',
     url(r'^resources/files/$', views.manage_scripts),
     url(r'^resources/integration/$', views.manage_scripts),
     url(r'^pagination/home/$', views.home_paginate),
+    url(r'^media/pipelines/(?P<path>.*)$', 'django.views.static.serve',
+                 {'document_root': settings.MEDIA_ROOT + 'pipelines/'}),
     #url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
     #             {'document_root': settings.MEDIA_ROOT}),
     # TODO complete the access-enforced static files serving
