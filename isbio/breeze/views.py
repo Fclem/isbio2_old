@@ -713,7 +713,10 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
     overview['instance_name'] = iname
     overview['instance_id'] = iid
     overview['details'] = rshell.get_report_overview(rtype, iname, iid)
-    overview['manual'] = settings.MEDIA_URL + str(ReportType.objects.get(type=rtype).manual)
+    manual = str(ReportType.objects.get(type=rtype).manual) or None
+    overview['manual'] = None
+    if manual is not None:
+        overview['manual'] = settings.MEDIA_URL + manual
 
     if request.method == 'POST':
         # Validates input info and creates (submits) a report
