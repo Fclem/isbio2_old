@@ -138,6 +138,10 @@
                     </a>
                 </td>
               </tr>
+              {% empty %}
+              <tr>
+                              <td colspan="8">No scheduled job at the moment.</td>
+                            </tr>
               {% endfor %}
             </tbody>
           </table>
@@ -169,6 +173,10 @@
                 <td><a href="{{job.abohref}}" class="btn btn-danger" data-param="{{job.abohref}}">Abort</a></td>
                 <td></td><td></td><td></td>
               </tr>
+              {% empty %}
+                            <tr>
+                                            <td colspan="8">No active task at the moment.</td>
+                                          </tr>
               {% endfor %}
             </tbody>
           </table>

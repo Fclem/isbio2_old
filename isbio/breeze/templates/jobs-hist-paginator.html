@@ -45,5 +45,9 @@
 
     <!-- Delete Button -->
     <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '{{ job.delhref }}'); $('#del_title').text('{{ job.jname }}');" ><i class="icon-trash"></i></a></td>
-  </tr>
+</tr>
+{% empty %}
+<tr>
+   <td colspan="7">No scheduled job at the moment.</td>
+</tr>
 {% endfor %}
