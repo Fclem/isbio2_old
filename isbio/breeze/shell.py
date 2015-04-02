@@ -411,13 +411,17 @@ def run_report(report, fmFlag):
 def abort_report(report):
     stat = report.status
     try:
-        s = drmaa.Session()
-        s.initialize()
-        report.status = "aborted"
-        report.save()
-        s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
+        if report.sgeid!="" and report.sgeid is not None:
+            s = drmaa.Session()
+            s.initialize()
+            report.status = "aborted"
+            report.save()
+            s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
 
-        s.exit()
+            s.exit()
+        else:
+            report.status = "aborted"
+            report.save()
     except drmaa.AlreadyActiveSessionException:
         # TODO improve this part
         if settings.DEBUG: print("AlreadyActiveSessionException")

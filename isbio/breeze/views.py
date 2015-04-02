@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from django.core.context_processors import request
 import os, copy, tempfile, zipfile, shutil, fnmatch
 from datetime import datetime
+from datetime import datetime as dt
 import json
 from django.forms import forms
 import rpy2
@@ -27,7 +29,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.csrf import csrf_exempt
 
 import xml.etree.ElementTree as xml
-from six.moves.urllib import request
+from six.moves.urllib import request, request, request
 from breeze import auxiliary
 import shell as rshell
 import auxiliary as aux
@@ -41,6 +43,14 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from mimetypes import MimeTypes
 import urllib
+import pprint
+
+from django.http import HttpResponse
+import mimetypes
+import urllib2
+#import websockify as ws
+#import uwsgi
+
 
 class RequestStorage():
     form_details = OrderedDict()
@@ -217,7 +227,7 @@ def updateServer(request):
 
 @login_required(login_url='/')
 def jobs(request, state="scheduled", error_msg=""):
-    if settings.DEBUG: print("State says : " + str(state) )
+    if settings.DEBUG: print("State says : " + str(state))
     if state == "scheduled":
         tab = "scheduled_tab"
         show_tab = "show_sched"
@@ -274,6 +284,18 @@ def jobs(request, state="scheduled", error_msg=""):
         user_profile = UserProfile.objects.get(user=request.user)
         db_access = user_profile.db_agreement
         hist_jobs = paginator.page(1)
+
+        if state is None:
+            if len(merged_active) > 0:
+                tab = "current_tab"
+                show_tab = "show_curr"
+            elif len(scheduled_jobs) > 0:
+                tab = "scheduled_tab"
+                show_tab = "show_sched"
+            else:
+                tab = "history_tab"
+                show_tab = "show_hist"
+
         return render_to_response('jobs.html', RequestContext(request, {
             str(tab): 'active',
             str(show_tab): 'active',
@@ -1049,9 +1071,8 @@ def script_editor(request, sid=None, tab=None):
 
 @login_required(login_url='/')
 def script_editor_update(request, sid=None):
+    script = Rscripts.objects.get(id=sid)
     if request.method == 'POST':
-        script = Rscripts.objects.get(id=sid)
-
         # General Tab
         if request.POST['form_name'] == 'general':
             f_basic = breezeForms.ScriptBasics(script.name, request.POST)
@@ -1153,17 +1174,19 @@ def get_rcode(request, sid=None, sfile=None):
 
 
 @login_required(login_url='/')
-def delete_job(request, jid):
+def delete_job(request, jid, state):
     job = Jobs.objects.get(id=jid)
     # Enforce access rights
     if job.juser != request.user:
         raise PermissionDenied
-    if (job.status == "scheduled"):
-        tab = ""
+    if job.status == "scheduled":
+        tab = "scheduled"
+    elif job.status == "active" or job.status == "queued_active":
+        tab = "current"
     else:
         tab = "history"
     rshell.del_job(job)
-    return HttpResponseRedirect('/jobs/#' + tab)
+    return HttpResponseRedirect('/jobs/' + tab)
 
 
 @login_required(login_url='/')
@@ -1352,12 +1375,18 @@ def create_job(request, sid=None):
             os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
 
             state = "scheduled"
-            if 'run_job' in request.POST:
+            if u'run_job' in request.POST:
                 run_script(request, new_job.id)
                 state = "current"
                 #p = Process(target=rshell.run_job, args=(new_job))
                 #p.start()
                 #print("running jobs")
+            if u'action' in request.POST:
+                if request.POST['action']=='run_job':
+                    run_script(request, new_job.id)
+                    state = "current"
+
+            print vars(request.POST)
 
             #return HttpResponseRedirect('/jobs/')
             #request = HttpResponse()
@@ -2102,3 +2131,42 @@ def home_paginate(request):
         return render_to_response(template, RequestContext(request, {tag_symbol: items}))
     else:
         return False
+
+@csrf_exempt
+@login_required(login_url='/')
+def proxy_to(request, path, target_url):
+    url = '%s%s' % (target_url, path)
+    qs = ""
+    if request.META.has_key('QUERY_STRING') and request.META['QUERY_STRING'] != "":
+        qs = '?' + request.META['QUERY_STRING']
+        url += qs
+    try:
+        opener = urllib2.build_opener()
+        #copies headers
+        #for each in request.META.keys():
+        #    if each[0:4] == "HTTP":
+        #        opener.addheaders.append((each[5:], request.META[each]))
+        #copies form data
+        data = ""
+        if request.method == 'POST':
+            for each in request.POST.keys():
+                data = data + each + "=" + urllib.quote_plus(request.POST[each]) + "&"
+            data = data[0:-1]
+
+        proxied_request = opener.open(url, data or None)  # proxied_request = urllib2.urlopen(url)
+        status_code = proxied_request.code
+        mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
+        content = proxied_request.read()
+        if settings.DEBUG: uPrint(request, path+qs, proxied_request.code, str(len(content)))
+    except urllib2.HTTPError as e:
+        rep = HttpResponse(e.msg + " :FROM SHINY SERVER: " + e.reason + " :Data: ", status=e.code, mimetype='text/plain')
+    else:
+        rep = HttpResponse(content, status=status_code, mimetype=mimetype)
+    return rep
+
+def uPrint(request, url, code=None, size=None):
+    print "[" + dateT() + "] \"PROX " + request.method + "   " + url + " " + request.META['SERVER_PROTOCOL'] + "\" " + str(code) + " " + str(size)
+def dateT():
+    return str(datetime.strftime(datetime.now(), "%d/%b/%Y %H:%M:%S"))
+
+
