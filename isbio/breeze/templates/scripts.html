@@ -328,12 +328,28 @@ function modalConnect()
                     }
                   });
 
+
                   // $("input:file").customFileInput({ });
                   $("#Apply").modal('show');
 
                   $(document).ready(function () {
+                  $('input[type="submit"]').on('click',function(evt){
+                                         clkBtn = evt.target;
+                                         //evt.attr("disabled", "disabled");
+                                         clkBtn.disabled = true;
+                                         var input = document.createElement("input");
+                                         input.type = "hidden";
+                                         input.name = "action";
+                                         input.value = clkBtn.id;
+                                         clkBtn.form.appendChild(input);
+                                         //clkBtn.form.submit();
+                                         //$("#form_modal_apply").appendChild(input);
+                                         //$("#form_modal_apply").submit();
+                                         return true;
+                                       });
                      //bind the form to an ajax call. ajax call will be set to the received update url
                      submitItemModalFormBind(par.toString());
+
                   });
 
                 }, "html");

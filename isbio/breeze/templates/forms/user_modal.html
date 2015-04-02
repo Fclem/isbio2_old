@@ -2,6 +2,13 @@
 <!-- Apply Modal -->
 
   <form id="form_modal_apply" class="form-horizontal script-form" action={{ url }} method="post" enctype="multipart/form-data">
+    <script type="text/javascript">
+      //prevents multiple submission of the form (i.e. if the server is slow and take time to respond, or do not respond)
+      //Also add a hidden field to tell which buton has been pressed, since FireFox dosn't do it !!
+      $(document).ready(function() {
+
+      });
+    </script>
     <div id="form_modal_apply_div">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -18,15 +25,6 @@
         {{ headform|as_bootstrap:layout }}
 
         <!-- TODO : change this using design models as it SHOULD probably NOT be hardcoded here -->
-        <!--
-        <div class="control-group required">
-          <label class="control-label" for="mail_id">Report to</label>
-          <div class="controls">
-            <input type="text" id="mail_id" name="email" placeholder="first.last@helsinki.fi" value="{{ email }}">
-          </div>
-        </div>
-        -->
-
         <div class="control-group">
           <label class="control-label">Report when job is</label>
           <div class="controls">
@@ -50,8 +48,8 @@
       </div>
       <div class="modal-footer">
         {% if  mode == "create" %}
-        <input class="btn btn-inverse" name="schedule_job" type="submit" value="Schedule" form="form_modal_apply"/>
-        <input class="btn btn-inverse" name="run_job" type="submit" value="Run" form="form_modal_apply"/>
+        <input class="btn btn-inverse" name="schedule_job" id="schedule_job" type="submit" value="Schedule" form="form_modal_apply"/>
+        <input class="btn btn-inverse" name="run_job" id="run_job" type="submit" value="Run" form="form_modal_apply"/>
         {% elif  mode == "edit" %}
         <input class="btn btn-inverse" type="submit" value="Save" />
         {% elif  mode == "replicate" %}
