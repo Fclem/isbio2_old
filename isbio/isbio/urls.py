@@ -7,6 +7,7 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
+    url(r'^user_list$', views.user_list),
     url(r'^$', 'django_cas.views.login'),  # views.breeze),
     url(r'^breeze/$', views.breeze),
     # url(r'^test/$', views.dochelp),
@@ -50,6 +51,7 @@ urlpatterns = patterns('',
     url(r'^media/reports/(?P<rid>\d+)_(?P<rest>[^/]+)/(?P<fname>.+)?$', views.report_file_wrap),
     url(r'^media/reports/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_wrap2),
     url(r'^reports/delete/(?P<rid>\d+)(?P<redir>-[a-z]+)?$', views.delete_report),
+    url(r'^reports/edit_access/(?P<rid>\d+)$', views.edit_report_access),
     url(r'^reports/overview/(?P<rtype>[A-Za-z]+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
     url(r'^jobs/(?P<state>[a-z]+)?$', views.jobs),
     url(r'^jobs/delete/(?P<jid>\d+)(?P<state>[a-z]+)?$', views.delete_job),

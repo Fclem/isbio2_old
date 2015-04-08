@@ -12,26 +12,34 @@
           <i class="icon-eye-open"></i>
         </a>
       {% else %}
-        <i class="icon-minus-sign"></i>
+        <!-- <i class="icon-minus-sign"></i> -->
       {% endif %}
-        &nbsp;&nbsp;&nbsp;&nbsp;
+    </td>
+    <td>
       {% if report.user_has_access %}
         <a class="Glyph" data-toggle="tooltip" title="Download HTML<br>NB: Embedded links won't work" href="/reports/get/{{ report.id }}">
           <i class="icon-download-alt"></i>
         </a>
       {% else %}
-        <i class="icon-minus-sign"></i>
+        <!-- <i class="icon-minus-sign"></i> -->
       {% endif %}
     </td>
-    <td>
     {% if report.user_is_owner %}
-      <a href="#" data-toggle="modal" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('{{ report.name }}');" >
-        <i class="icon-trash"></i>
-      </a>
+      <td>
+        <a class="Glyph" href="#" data-toggle="modal" data-toggle="tooltip" title="Edit sharing" data-target="#Edit" class="btn btn-inverse apply" data-param="{{ report.id }}" onclick="get_form({{ report.id }});">
+          <i class="icon-user"></i>
+        </a>
+      </td>
+      <td>
+        <a class="Glyph" href="#" data-toggle="modal" data-toggle="tooltip" title="Delete report" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('Delete \'{{ report.name }}\' ?');" >
+          <i class="icon-trash"></i>
+        </a>
+      </td>
     {% else %}
-      <i class="icon-minus-sign"></i>
+      <td colspan="2">
+        <!-- <i class="icon-minus-sign"></i> -->
+      </td>
     {% endif %}
-    </td>
   </tr>
 {% empty %}
   <tr> <td colspan="7"> No reports in the data base... </td> </tr>

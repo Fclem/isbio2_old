@@ -119,6 +119,26 @@ class EditGroupForm(forms.Form):
         )
     )
 
+class EditReportAccessForm(forms.Form):
+    access_list = forms.ModelMultipleChoiceField(
+        required=True,
+        queryset=breeze.models.User.objects.all(),
+        widget=forms.SelectMultiple(
+            attrs={'class': 'multiselect', }
+        )
+    )
+
+
+class EditReportSharing(forms.ModelForm):
+	class Meta:
+		model = breeze.models.Report
+		fields = ('shared', )
+
+        widgets = {
+            'shared': forms.SelectMultiple(
+                attrs={'class': 'multiselect', },)
+        }
+
 class ReportPropsForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")

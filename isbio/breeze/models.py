@@ -219,7 +219,7 @@ class UserProfile(models.Model):
     last_active = models.DateTimeField(default=timezone.now)
 
     def __unicode__(self):
-        return self.user.username
+        return self.user.get_full_name() #  return self.user.username
 
 class Report(models.Model):
     type = models.ForeignKey(ReportType)

@@ -105,17 +105,28 @@
       input[type="text"]{
           color:#2E2E2E !important;
       }
+      .modal-body {
+          overflow-x: hidden;
+      }
       #NewGroup .modal-body, #UpdateInfo .modal-body{
         overflow-y: visible !important;
       }
       .multiselect-container{
-          position: absolute;
+          overflow-x: hidden;
+          position: fixed;
           top: inherit;
           left: inherit;
       }
-      .modal-body {
-          overflow-x: hidden;
+      input.form-control.multiselect-search{
+        width:95%;
+        /* margin-right: 14px; */
       }
+      .modal{
+        background: url('/static/nail.png');
+        }
+       #form_modal_apply{
+        margin-bottom: 0px;
+       }
     </style>
     <!--[if lt IE 7]>
     <style type="text/css">

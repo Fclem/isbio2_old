@@ -1,36 +1,35 @@
 {% load bootstrap_toolkit %}
 <!-- Basic FORM Modal -->
 
-
-  <form id="form_modal_apply" class="form-horizontal" action="{{ action }}" method="post" enctype="multipart/form-data" >
-    <div id="form_modal_apply_div">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-        <h3 id="myModalLabel">{{ header }}</h3>
-      </div>
-      <div class="modal-body">
-        {% csrf_token %}
-        
-        {% for item in form %}
-          {{ item|as_bootstrap:layout }}
-        {% endfor %}
-        
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-primary" type="submit" id="submit-btn">{{ submit }}</button>
-        <button class="btn btn-inverse" data-dismiss="modal">Cancel</button>
-      </div>
+<form id="form_modal_apply" class="form-horizontal" action="{{ action }}" method="post" enctype="multipart/form-data" >
+  <div id="form_modal_apply_div">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <h3 id="myModalLabel">{{ header }}</h3>
     </div>
-  </form>
-  <script type="text/javascript">
-    //prevents multiple submission of the form (i.e. if the server is slow and take time to respond, or do not respond)
-    $(document).ready(function() {
-      $('#submit-btn').on('click',function(){
-          $("#submit-btn").attr("disabled", "disabled");
-          $("#form_modal_apply").submit();
-          return true;
-      });
+    <div class="modal-body">
+      {% csrf_token %}
+
+      {% for item in form %}
+        {{ item|as_bootstrap:layout }}
+      {% endfor %}
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" type="submit" id="submit-btn">{{ submit }}</button>
+      <button class="btn btn-inverse" data-dismiss="modal">Cancel</button>
+    </div>
+  </div>
+</form>
+<script type="text/javascript">
+  //prevents multiple submission of the form (i.e. if the server is slow and take time to respond, or do not respond)
+  $(document).ready(function() {
+    $('#submit-btn').on('click',function(){
+        $("#submit-btn").attr("disabled", "disabled");
+        $("#form_modal_apply").submit();
+        return true;
     });
-  </script>
+  });
+</script>
 
 
