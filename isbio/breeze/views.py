@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from django.contrib.auth import models
 from django.core.context_processors import request
 import os, copy, tempfile, zipfile, shutil, fnmatch
 from datetime import datetime
@@ -50,7 +51,6 @@ import mimetypes
 import urllib2
 # import websockify as ws
 #import uwsgi
-
 
 class RequestStorage():
 	form_details = OrderedDict()

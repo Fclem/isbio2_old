@@ -4,6 +4,7 @@ from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+
 CATEGORY_OPT = (
         (u'general', u'General'),
         (u'visualization', u'Visualization'),

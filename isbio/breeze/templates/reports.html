@@ -217,9 +217,9 @@ function init_multi(){
 
 
 												 var obj = $('.multiselect');
-												 //NameTranslate(  obj );
+												 NameTranslate(  obj );
 
-												 $('.multiselect').multiselect(multiConfigurationSet);
+												 //$('.multiselect').multiselect(multiConfigurationSet);
 }
 
 function NameTranslate(MainObj){
@@ -232,7 +232,7 @@ function NameTranslate(MainObj){
             var obj = MainObj[0];
             for(var i = 0; i<obj.length; i++ ){
                 if(response[obj[i].text]!=""){
-                		obj[i].text = response[obj[i].text];
+                		obj[i].text = obj[i].text + " (" + response[obj[i].text] + ")";
                 }
             }
             MainObj.multiselect(multiConfigurationSet);
