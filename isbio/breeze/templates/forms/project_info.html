@@ -15,7 +15,7 @@
     </p>
   </blockquote>
   <dl>
-    <dt class="text-info"> Author: </dt>  <dd> {{ project.author }} </dd>
+    <dt class="text-info"> Author: </dt>  <dd> {%  firstof project.author.get_full_name project.author %} </dd>
     <dt class="text-info"> Manager: </dt>  <dd> {{ project.manager }} </dd>
     <dt class="text-info"> Principal Investigator: </dt>  <dd> {{ project.pi }} </dd>
     <dt class="text-info"> Description: </dt>  <dd> {{ project.description }} </dd>

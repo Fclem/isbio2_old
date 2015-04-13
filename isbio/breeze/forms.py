@@ -1064,6 +1064,7 @@ def create_report_sections(sections, req=None):
         sdata['inline'] = str(item.inln)
         sdata['name'] = str(item.name)
         sdata['form'] = form_from_xml(xml=tree, usr=req.user)
+        sdata['size'] = len(sdata['form'].__str__())
         section_lst.append( dict(sdata) )
 
     return section_lst

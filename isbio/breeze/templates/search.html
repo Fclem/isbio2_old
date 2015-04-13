@@ -51,7 +51,14 @@
       filter:  blur(1px); /* For IE8 and earlier */
       -webkit-filter:blur(1px);
   }
-  .collapse.in[style="height: auto;"] {overflow: visible;}</style>
+  .collapse.in[style="height: auto;"] {overflow: visible;}
+
+  .help-block.empty{
+			margin-top: 0px!important;
+    	margin-bottom: 9px!important;
+  }
+
+  </style>
 
 {% endblock %}
 
@@ -246,7 +253,13 @@
                   <!-- <p>{{ item.inline }}</p> -->
                   <!-- form -->
                   <!-- <form class="form-inline"> -->
+                  {%  if item.size  %}
                     {{ item.form|as_bootstrap:'horizontal' }}
+                  {%  else  %}
+										<div class="help-block empty">
+											This item has no settings.
+										</div>
+                  {%  endif  %}
                     <!-- <a type="button" href="#" class="btn">Configure</a> -->
                   <!-- </form> -->
                 </div>

@@ -49,8 +49,9 @@ import pprint
 from django.http import HttpResponse
 import mimetypes
 import urllib2
-# import websockify as ws
-#import uwsgi
+import glob
+import os.path
+
 
 class RequestStorage():
 	form_details = OrderedDict()
@@ -2182,33 +2183,65 @@ def home_paginate(request):
 @csrf_exempt
 @login_required(login_url='/')
 def proxy_to(request, path, target_url):
+	import fileinput
+
 	url = '%s%s' % (target_url, path)
 	qs = ""
 	if request.META.has_key('QUERY_STRING') and request.META['QUERY_STRING'] != "":
 		qs = '?' + request.META['QUERY_STRING']
 		url += qs
-	try:
-		opener = urllib2.build_opener()
-		#copies headers
-		#for each in request.META.keys():
-		#    if each[0:4] == "HTTP":
-		#        opener.addheaders.append((each[5:], request.META[each]))
-		#copies form data
-		data = ""
-		if request.method == 'POST':
-			for each in request.POST.keys():
-				data = data + each + "=" + urllib.quote_plus(request.POST[each]) + "&"
-			data = data[0:-1]
+	opener = urllib2.build_opener()
+	#copies headers
+	#for each in request.META.keys():
+	#    if each[0:4] == "HTTP":
+	#        opener.addheaders.append((each[5:], request.META[each]))
+	#copies form data
+	data = ""
+	if request.method == 'POST':
+		for each in request.POST.keys():
+			data = data + each + "=" + urllib.quote_plus(request.POST[each]) + "&"
+		data = data[:-1]
 
+	log = '/var/log/shiny-server.log'
+	log_size = os.stat(log).st_size
+	try:
 		proxied_request = opener.open(url, data or None)  # proxied_request = urllib2.urlopen(url)
+	except urllib2.HTTPError as e:
+		more = ''
+		# add the shiny-server log tail
+		if log_size < os.stat(log).st_size:
+			more = "Shiny-server.log :\n"
+			try:
+				f = open(log)
+				f.seek(log_size)
+				for line in f.readlines():
+					more += line + '\n'
+			except:
+				pass
+			finally:
+				f.close()
+			more = more[:-1] + dashed_line() + '\n'
+
+		# try to read the shiny app log :
+		p = '/var/log/shiny-server/' + path[:-1] + '-shiny-*'
+		for fileName in glob.glob(p):
+			more += os.path.basename(fileName)+' : \n'
+			for line in fileinput.input(fileName, openhook=fileinput.hook_encoded("utf8")):
+				more += line + '\n'
+			fileinput.close()
+			try:
+				os.remove(fileName)
+			except:
+				pass
+			more = more[:-1] + dashed_line() + '\n'
+
+		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + dashed_line() + '\n' + more, status=e.code,
+		                   mimetype='text/plain')
+	else:
 		status_code = proxied_request.code
 		mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
 		content = proxied_request.read()
 		if settings.DEBUG: uPrint(request, path + qs, proxied_request.code, str(len(content)))
-	except urllib2.HTTPError as e:
-		rep = HttpResponse(e.msg + " :FROM SHINY SERVER: " + e.reason + " :Data: ", status=e.code,
-		                   mimetype='text/plain')
-	else:
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep
 
@@ -2221,4 +2254,5 @@ def uPrint(request, url, code=None, size=None):
 def dateT():
 	return str(datetime.strftime(datetime.now(), "%d/%b/%Y %H:%M:%S"))
 
-
+def dashed_line():
+	return '---------------------------------------------------------------------------------------------------------------'
