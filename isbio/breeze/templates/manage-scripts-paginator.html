@@ -2,7 +2,7 @@
   <tr>
     <td style="vertical-align: middle">{{ scr.id }}</td>
     <td style="vertical-align: middle">{{ scr.name }}</td>
-    <td style="vertical-align: middle">{{%  firstof scr.author.get_full_name scr.author %}}</td>
+    <td style="vertical-align: middle">{%  firstof scr.author.get_full_name scr.author %}</td>
     <td style="vertical-align: middle">{{ scr.creation_date }}</td>
     <td style="vertical-align: middle">{{ scr.category }}</td>
     <td style="vertical-align: middle">{% if scr.draft %} <span class="badge badge-warning">DRAFT</span> {% endif %}</td>
