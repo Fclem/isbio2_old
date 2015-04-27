@@ -1,6 +1,5 @@
 {% load bootstrap_toolkit %}
 <!-- Apply Modal -->
-
   <form id="form_modal_apply" class="form-horizontal script-form" action={{ url }} method="post" enctype="multipart/form-data">
     <script type="text/javascript">
       //prevents multiple submission of the form (i.e. if the server is slow and take time to respond, or do not respond)
@@ -51,7 +50,7 @@
         <input class="btn btn-inverse" name="schedule_job" id="schedule_job" type="submit" value="Schedule" form="form_modal_apply"/>
         <input class="btn btn-inverse" name="run_job" id="run_job" type="submit" value="Run" form="form_modal_apply"/>
         {% elif  mode == "edit" %}
-        <input class="btn btn-inverse" type="submit" value="Save" />
+        <input class="btn btn-inverse" type="submit" value="Save" data-loading-text="Loading..." />
         {% elif  mode == "replicate" %}
         <input class="btn btn-inverse" type="submit" value="ReSchedule" />
         {% endif %}
