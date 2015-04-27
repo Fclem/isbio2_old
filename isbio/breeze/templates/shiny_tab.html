@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+
+{% block title %}{{ title }} :: Shiny{% endblock %}
+
+{% block extra_head %}
+	<style type="text/css">
+		.span12, .span6{
+
+		}
+		iframe{
+			height: 80%;
+			/* height: inherit; */
+			/* margin-top: 50px; */
+			/* padding-bottom: 70px; */
+			margin-left: 50px;
+			position: absolute;
+			bottom: 70px;
+			top: 50px;
+			border:0;
+			resize: vertical;
+			right: 5px;
+			width: inherit;
+
+		}
+		/*
+		.container-fluid{
+			padding-left: 0px;
+			padding-right: 0px;
+		}
+		*/
+	</style>
+	<script language="JavaScript">
+		<!--
+		function autoResize(id) {
+			var newheight;
+			var newwidth;
+
+			if (document.getElementById) {
+				newheight = document.getElementById(id).contentWindow.document.body.scrollHeight;
+				newwidth = document.getElementById(id).contentWindow.document.body.scrollWidth;
+			}
+
+			document.getElementById(id).height = (newheight) + "px";
+			document.getElementById(id).width = (newwidth) + "px";
+		}
+		//-->
+	</script>
+	<script type="text/javascript">
+		var our_frame = null;
+		var url = '';
+
+		$(document).ready(function () {
+			our_frame = document.getElementById('iframe_a');
+
+			/*
+			 url = document.location.origin + '/shiny/all-in-one/';
+
+			 our_frame.onloadend = setTimeout("checkReady()",  150);
+			 our_frame.src = url;
+			 */
+		});
+		function checkReady() {
+//console.log(our_frame.contentDocument.body);
+			if (our_frame.contentDocument['body']==undefined || our_frame.contentDocument.
+				body == null) {
+				setTimeout("checkReady()", 500);
+			}else {
+
+//our_frame.contentDocument.body.onchange = watch();
+				watch();
+			}
+		}
+
+		function watch(oldSize){
+			console.log('watch');
+			var s2 = 0;
+			var o2 = our_frame.contentDocument.body
+			  ;
+			if(not_empty(o2
+				, 'children')){
+				o2 = o2.
+				  children[0];
+				if (
+				  not_empty(o2, 'children')) {
+					o2 = o2.children[0]
+					;
+					if (o2 != undefined) {
+						s2 = o2.innerHTML.length;
+						console.
+						  log('oldSize=' + oldSize);
+						console.log('s2=' + s2.
+						  toString());
+						var size = our_frame.
+						  contentDocument.body.innerHTML.length;
+						console.log('Bsize=' + size.
+						  toString());
+//o2.onPageChanged = watch(s2);// setTimeout("watch(" + s2 + ")", 500);
+						if (size > 1056 && s2>78 && s2 != oldSize) {
+//duplicate();
+							autoResize(our_frame.id)
+
+						}
+						if (s2 == oldSize)  return;
+//return;
+					}
+				}
+			}
+			setTimeout("watch(" + s2 + ")", 250);//
+		}
+		function duplicate(){
+			console.log(
+			  'duplicate');
+			var obj = our_frame.
+			  contentDocument.body.innerHTML;
+			our_frame.visible = false;
+			var target
+			  = document.getElementById('1.1');
+			target.innerHTML = obj;
+		}
+		function not_empty
+		(obj, prop_name){
+			return obj!=undefined && obj[prop_name]!=undefined && obj[prop_name].length>0;
+		}
+	</script>
+{% endblock %}
+
+{% block content %}
+
+	<div class="row-fluid">
+		<div class="span2 well">
+			<!--Sidebar content-->
+			<h3>Report XY content :</h3>
+			<ul>
+			{% for key, value in pages.items %}
+				<li><a href="/shiny/{{ value }}/" target="iframe_a">{{ key }}</a></li>
+				{% empty %}
+				<li>Nothing to display - This shouldn't happend !</li>
+			{% endfor %}
+			</ul>
+		</div>
+		<div class="span10">
+			<iframe id="iframe_a" name="iframe_a"></iframe>
+		</div>
+	</div>
+
+
+
+
+{% endblock %}
