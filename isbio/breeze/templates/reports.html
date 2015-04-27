@@ -7,286 +7,312 @@
 
 {% block extra_head %}
 
-  <script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
-  <link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
-  <link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
-  <script src="/static/js/bootstrapSwitch.js"></script>
-  <script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
+	<script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
+	<link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
+	<link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
+	<script src="/static/js/bootstrapSwitch.js"></script>
+	<script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
 
-
-
-<style>
-#main_table td {text-align:center; vertical-align:middle;}
-#main_table th {text-align:center; vertical-align:middle;}
-.popover .left {
-    max-width: 1050px;
-    width: auto;
-}
-</style>
+	<style type="text/css">
+		#main_table td {text-align:center; vertical-align:middle;}
+		#main_table th {text-align:center; vertical-align:middle;}
+		.popover .left {
+			max-width: 1050px;
+			width: auto;
+		}
+		div.popover.fade.right {
+			z-index: 1500;
+		}
+		.pagination{
+			margin-top: 15px;
+			margin-right: 0px;
+			margin-bottom: 15px;
+			margin-left: 0px;
+		}
+		.btn-left{
+			top:	0px;
+			left:	9%;
+			position: relative;
+			float: left;
+		}
+		.btn-right {
+			top: 0px;
+			right: 9%;
+			position: relative;
+			float: right;
+		}
+	</style>
 
 {% endblock %}
 
 {% block content %}
+	<!-- FILTER & CREATE BUTTONS ROW -->
+	<div class="row-fluid" style="padding-top: 15pt;">
+
+		<!-- CREATE button -->
+		<a href="#" id="new_popover" class="btn btn-primary input-medium btn-left" rel="popover">
+			<strong><i class="icon-plus icon-white"></i> &nbsp;New Report </strong>
+		</a>
+		<!-- FILTERS HIDE/SHOW button -->
+		<a href="#" id="filter_popover" class="btn btn-primary input-medium btn-right" data-toggle="collapse"
+		   data-target="#demo">
+			<strong><i class="icon-filter icon-white"></i> &nbsp;Filters </strong>
+		</a>
+		<!-- FILTERS -->
+		<div id="demo" class="row-fluid collapse in">
+			<div class="span10 offset1">
+				<!-- FILTERS Collapse -->
+				<div class="offset1">
+
+						<form id="filter_form" class="form-inline span8 offset2" method="post" onsubmit="return false;" onchange="submit_form()">
+							<div class="row-fluid">
+							{% csrf_token %}
+							<select id="filt_type" name="filt_type" class="input-medium">
+								<option id="" value="">All Types</option>
+								{% for item in rtypes %}
+									<option id="{{ item.id }}" value="{{ item.type }}">{{ item.type }}</option>
+								{% endfor %}
+							</select>
+							<select id="filt_author" name="filt_author" class="input-medium">
+								<option id="" value="">All Authors</option>
+								{% for item in users %}
+									<option id="{{ item.user.id }}" value="{{ item.user.username }}">
+										{{ item.user.username }}</option><!-- {% firstof item.user.get_full_name item.user.username %} -->
+								{% endfor %}
+							</select>
+							<select id="filt_project" name="filt_project" class="input-medium">
+								<option id="" value="">All projects</option>
+								{% for item in projects %}
+									<option id="{{ item.id }}" value="{{ item.name }}">{{ item.name }}</option>
+								{% endfor %}
+							</select>
+							<input id="filt_name" name="filt_name" type="text" class="input" placeholder="Report Name (type & press Enter)" >
+
+							<!--<button type="submit" class="btn">Search</button>-->
+							<button id="filt_clean" class="btn" type="reset">Clear</button>
+							</div>
+							<div class="row-fluid" style="margin-top:5px;">
+								<div class="span3 offset2">
+									<label class="checkbox">
+										<input id="own_report" name="own_report" type="checkbox"> Show only my own reports
+									</label>
+								</div>
+								<div class="span4">
+									<label class="checkbox">
+										<input id="access_report" type="checkbox" name="access_report"> Show only the reports I can access
+									</label>
+								</div>
+							</div>
+						</form>
 
 
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+	<!-- LIST OF EXISTING REPORTS -->
+	<div class="row-fluid" style="padding-top: 0pt;">
+		<div id="pagination-content" class="span10 offset1">
+			{% include "reports-paginator.html" %}
+		</div>
+	</div>
+
+	<!-- DELETE modal dialogue-->
+	<div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="del_title">Delete JOB</h3>
+		</div>
+		<div class="modal-body">
+			<p>Please be sure this report won't be needed anymore.<br />This action is <u>FINAL and CANNOT BE UNDONE !</u></p>
+			<p align="right">Are you sure you want to delete this report ?</p>
+		</div>
+		<div class="modal-footer">
+			<a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
+			<a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Cancel</a>
+		</div>
+	</div>
+
+	<!-- NEW popover dialogue-->
+	<div id="ReportName" class="modal hide fade" role="dialog"  aria-hidden="true">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="del_title">Warning</h3>
+		</div>
+		<div class="modal-body">
+			<p> Please do not use a report name starting with numbers! </p>
+		</div>
+		<div class="modal-footer">
+			<a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+		</div>
+	</div>
+
+	<div id="Edit" class="modal fade" role="dialog"  aria-hidden="true"></div>
+
+	<script type="text/javascript">
+		function submitItemModalFormBind(url){
+			$('#form_modal_apply').submit(function(ev){
+				$(".multiselect option[value='multiselect-all']").remove();
+				var formData = new FormData($('#form_modal_apply')[0]);
+
+				$.ajax({
+					type: "POST",
+					url: url,
+					enctype: 'multipart/form-data',
+					data: formData,
+					success:function(response, textStatus, jqXHR){
+						var form = $("#form_modal_apply_div", response);
+						//form is returned if it is not valid. update modal with returned form
+						//change this "if" to check for a specific return code which should be set in the view
+						if (form.html()) {
+							$('#form_modal_apply_div').html(form);
+
+							// activate Multiselect plugin
+							init_multi();
+
+							$("#Edit").modal('show');
+						}
+						//form is not returned if form submission succeeded
+						else{
+							window.location.href = '/reports/';
+						}
+					},
+					error: function (request, status, error) {
+						//implement proper error handling
+						console.log("failure");
+						console.log(request.responseText);
+					},
+					cache: false,
+					contentType: false,
+					processData: false
+				});
+				return false;
+			});
+		}
+
+		function get_form(id){
+			//bind the click event
+
+			$("#Edit").load('/reports/edit_access/'+id, function() {
+				submitItemModalFormBind('/reports/edit_access/'+id);
+				init_multi();
+				$('#Edit').modal('show');
+			});
+
+		};
+
+		var multiConfigurationSet = {
+			includeSelectAllOption: true,
+			enableFiltering: true,
+			maxHeight: 450
+		};
+
+		function init_multi(){
+			// initialize Multiselect plugin
+
+			$('#id_shared').addClass('multiselect');
 
 
-  <!-- FILTER & CREATE BUTTONS ROW -->
-  <div class="row-fluid">
-    <div class="span10 offset1">
-      <p><br>&nbsp;<br><br></p>
-      <a href="#" id="new_popover" class="btn btn-primary input-medium pull-left" rel="popover">
-        <strong><i class="icon-plus icon-white"></i> &nbsp;New Report </strong>
-      </a>
-      <a href="#" id="filter_popover" class="btn btn-primary input-medium pull-right" data-toggle="collapse" data-target="#demo">
-        <strong><i class="icon-filter icon-white"></i> &nbsp;Filters </strong>
-      </a>
-    </div>
-  </div>
+			var obj = $('.multiselect');
+			NameTranslate(  obj );
 
-  <!-- FILTERS Collapse -->
-  <div class="row-fluid">
-      <div class="span8 offset3">
-        <p><br>&nbsp;<br></p>
-        <div id="demo" class="collapse in">
-          <form id="filter_form" class="form-inline" method="post">
-            {% csrf_token %}
-            <select id="filt_type" name="filt_type" class="input-medium" >
-              <option id="" value="" >All Types</option>
-              {% for item in rtypes %}
-                <option id="{{ item.id }}" value="{{ item.type }}" >{{ item.type }}</option>
-              {% endfor %}
-            </select>
-           <select id="filt_author" name="filt_author" class="input-medium" >
-             <option id="" value="" >All Authors</option>
-             {% for item in users %}
-               <option id="{{ item.user.id }}" value="{{ item.user.username }}" >{{ item.user.username }}</option>
-             {% endfor %}
-           </select>
-           <select id="filt_project" name="filt_project" class="input-medium" >
-             <option id="" value="" >All projects</option>
-             {% for item in projects %}
-               <option id="{{ item.id }}" value="{{ item.name }}" >{{ item.name }}</option>
-             {% endfor %}
+			//$('.multiselect').multiselect(multiConfigurationSet);
+		}
 
-           </select>
+		var nameDict = null;
 
-            <input id="filt_name" name="filt_name" type="text" class="input" placeholder="Report Name">
+		function NameTranslate(MainObj){
+			/*	Clement Fiere 08/04/2015
+			 Provide username translation into full names after form generation
+			 */
+			if(nameDict== null){
+				$.ajax({
+					url: '/user_list',
+					success:function(response, textStatus, jqXHR){
+						nameDict = response;
+					},
+					error: function (request, status, error) {
+						//implement proper error handling
+						console.log("failure");
+						console.log(request.responseText);
+						return false;
+					},
+					cache: false,
+					contentType: true,
+					processData: true
+				});
+			}
+			var obj = MainObj[0];
 
-            <button type="submit" class="btn">Search</button>
-            <button id="filt_clean" class="btn" type="reset">Clean</button>
-          </form>
-        </div>
+			for (var i = 0; i < obj.length; i++) {
+				if (nameDict[obj[i].text] != "") {
+					obj[i].text = obj[i].text + " (" + nameDict[obj[i].text] + ")";
+				}
+			}
+			MainObj.multiselect(multiConfigurationSet);
+		}
+	</script>
+	<script type="text/javascript">
+	  //AJAX submission of the form
+		function submit_form() {
+			var formData = $('#filter_form').serialize();
+			$("#pagination-content").fadeTo("", 0.33);
 
-        <p>&nbsp;</p>
-        <div class="row-fluid">
-          <div class="span3 offset1">
-            <label class="checkbox">
-                <input id="own_report" type="checkbox"> Show only my own reports
-            </label>
-          </div>
-          <div class="span4">
-            <label class="checkbox">
-                <input id="access_report" type="checkbox"> Show only the reports I can access
-            </label>
-          </div>
-        </div>
-      </div>
-  </div>
-  <div class="row-fluid">
+			$.ajax({
+				type   : 'POST',
+				url    : '/reports/search',
+				data   : formData,
+				success: function (response, textStatus, jqXHR) {
+					$("#pagination-content").fadeTo(0, 1);
+					$("#pagination-content").html(response);
+				},
+				error  : function (request, status, error) { console.log(error); }
+			});
 
-  </div>
+		}
+		// Refresh paginator selector
+		function apply_pg(options){
+			refresh = false;
+			$('#paginator_control').bootstrapPaginator(options);
+			refresh = true;
+		}
+		var refresh = true;
+		// initial paginator setup
+		var pagOptions = {
+			currentPage  : {{ page }},
+			numberOfPages: 5,
+			totalPages   : "{{ pagination_number }}",
+			alignment    : 'center',
+			onPageChanged: function (e, oldPage, newPage) {
+				if (oldPage == newPage || !refresh) return;
+				$.get("/reports/", {page: newPage}, function (data) {
+					$('#pagination-content').html(data);
+				});
+			}
+		}
 
-  <!-- LIST OF EXISTING REPORTS -->
-  <div class="row-fluid">
-    <div class="span10 offset1">
-      <p><br>&nbsp;<br></p>
-      <table class="table table-striped table-hover" id="main_table">
-        {% if reports %}
-        <thead>
-          <tr>
-            <th>Date</th> <th>Report Type</th> <th>Report Name</th> <th>Author</th> <th>Project</th> <th colspan="4">Actions</th>
-          </tr>
-        </thead>
-        {% endif %}
-        <tbody id="pagination-content">
-          {% include "reports-paginator.html" %}
-        </tbody>
-      </table>
-      <p><br>&nbsp;<br></p>
-      <div id="paginator_control"></div>
-    </div>
-  </div>
+		$(document).ready(function() {
+			apply_pg(pagOptions);
+			$('.Glyph').tooltip()
 
-  <div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-        <h3 id="del_title">Delete JOB</h3>
-      </div>
-      <div class="modal-body">
-        <p>Please be sure this report won't be needed anymore.<br />This action is <u>FINAL and CANNOT BE UNDONE !</u></p>
-        <p align="right">Are you sure you want to delete this report ?</p>
-      </div>
-      <div class="modal-footer">
-        <a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
-        <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Cancel</a>
-      </div>
-  </div>
-  
-  <div id="ReportName" class="modal hide fade" role="dialog"  aria-hidden="true">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-        <h3 id="del_title">Warning</h3>
-      </div>
-      <div class="modal-body">
-        <p> Please do not use a report name starting with numbers! </p>
-      </div>
-      <div class="modal-footer">
+			var db_access = '#db_access';
+			if($(db_access).data('para')=="False"){
+				$("#db").click(function(e){
+					e.preventDefault();
+					$('#db_policy').modal('show');
+				});
+			}
 
-        <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
-      </div>
-  </div>
-
-<div id="Edit" class="modal fade" role="dialog"  aria-hidden="true" ></div>
-
-<script type="text/javascript">
-
-
-
-function submitItemModalFormBind(url){
-         $('#form_modal_apply').submit(function(ev){
-             $(".multiselect option[value='multiselect-all']").remove();
-             var formData = new FormData($('#form_modal_apply')[0]);
-
-             $.ajax({
-                type: "POST",
-                url: url,
-                enctype: 'multipart/form-data',
-                data: formData,
-                success:function(response, textStatus, jqXHR){
-                     var form = $("#form_modal_apply_div", response);
-                     //form is returned if it is not valid. update modal with returned form
-                     //change this "if" to check for a specific return code which should be set in the view
-                     if (form.html()) {
-                         $('#form_modal_apply_div').html(form);
-
-                         // activate Multiselect plugin
-                         init_multi();
-
-                         $("#Edit").modal('show');
-                      }
-                      //form is not returned if form submission succeeded
-                      else{
-                        window.location.href = '/reports/';
-                      }
-                },
-                error: function (request, status, error) {
-                            //implement proper error handling
-                            console.log("failure");
-                            console.log(request.responseText);
-                    },
-                cache: false,
-                contentType: false,
-                processData: false
-                    });
-                    return false;
-                });
-              }
-
-function get_form(id){
-						//bind the click event
-
-										$("#Edit").load('/reports/edit_access/'+id, function() {
-										 submitItemModalFormBind('/reports/edit_access/'+id);
-											init_multi();
-											$('#Edit').modal('show');
-										});
-
-};
-
-var multiConfigurationSet = {
-													 includeSelectAllOption: true,
-													 enableFiltering: true,
-													 maxHeight: 450
-												 };
-
-function init_multi(){
-													// initialize Multiselect plugin
-
-													$('#id_shared').addClass('multiselect');
-
-
-												 var obj = $('.multiselect');
-												 NameTranslate(  obj );
-
-												 //$('.multiselect').multiselect(multiConfigurationSet);
-}
-
-function NameTranslate(MainObj){
-		/*	Clement Fiere 08/04/2015
-				Provide username translation into full names after form generation
-		 */
-    $.ajax({
-        url: '/user_list',
-        success:function(response, textStatus, jqXHR){
-            var obj = MainObj[0];
-            for(var i = 0; i<obj.length; i++ ){
-                if(response[obj[i].text]!=""){
-                		obj[i].text = obj[i].text + " (" + response[obj[i].text] + ")";
-                }
-            }
-            MainObj.multiselect(multiConfigurationSet);
-        },
-        error: function (request, status, error) {
-            //implement proper error handling
-            console.log("failure");
-            console.log(request.responseText);
-        },
-        cache: false,
-        contentType: true,
-        processData: true
-    });
-}
-
-
-</script>
-
-<script>
-$(document).ready(function() {
-  // paginator setup
-  var pagOptions = {
-    currentPage: 1,
-    numberOfPages:5,
-    totalPages: "{{ pagination_number }}",
-    alignment:'center',
-    onPageChanged: function(e,oldPage,newPage){
-      //console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
-      $.get("/reports/", { page: newPage }, function(data){
-        $('#pagination-content').html(data);
-      });
-    }
-  }
-
-  $('#paginator_control').bootstrapPaginator(pagOptions);
-
-  $('.Glyph').tooltip()
-  
-  var db_access = '#db_access';
-  if($(db_access).data('para')=="False"){
-      $("#db").click(function(e){
-          e.preventDefault();
-          $('#db_policy').modal('show');
-      });
-  }
-
-  $('#new_popover').popover({
-    title: "New Report Query",
-    trigger: "click",
-    placement: "right",
-    html: true,
-    content: '\
+			$('#new_popover').popover({
+				title: "New Report Query",
+				trigger: "click",
+				placement: "right",
+				html: true,
+				content: '\
     <form id= "report_form" class="navbar-search" action="/search/entity" method="post">\
-    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"/>\
+				<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"/>\
       <div class="control-group">\
         <div class="controls">\
           <select id="type_selector" name="type" class="input-medium search-query">\
@@ -309,119 +335,55 @@ $(document).ready(function() {
     </form>\
     </br>\
     '
-  });
+			});
 
-  /*$('#filter_popover').popover({
-    title: "Reports Filtering",
-    trigger: "click",
-    placement: "left",
-    html: true,
-    content: '\
-    <form class="form-inline" action="/reports/search" method="post">\
-      <div class="control-group">\
-      <p>Coming soon..</p>\
-      </div>\
-    </form>\
-    </br>\
-    '
-  });*/
+			$('#new_popover').click(function(){
 
-  $('#new_popover').click(function(){
-      
-      $("#report_form").submit(function(event){
-          text = $( "#popover_search" ).val();
-          if(text.match(/^\d/)){
-              event.preventDefault();
-              $("#ReportName").modal("show");
-          }
-      });
-      
-    $('#type_selector').change(function(){
-      if ($('#type_selector').find(':selected').data('search') == "True"){
-        $('#popover_search').attr('placeholder', 'Item Search... ');
-      }
-      else {
-        $('#popover_search').attr('placeholder', 'Report Name ');
-      }
-    });
-  });
+				$("#report_form").submit(function(event){
+					text = $( "#popover_search" ).val();
+					if(text.match(/^\d/)){
+						event.preventDefault();
+						$("#ReportName").modal("show");
+					}
+				});
 
-  $("#own_report").click(function(){
-      var checked = $(this);
-      if(checked.is(':checked')){
-          $("#access_report").removeAttr('checked');
-          $.ajax({
-              type: 'GET',
-              url: '/reports/ownreports',
-              success: function(response){
-                  $("#pagination-content").html(response);
-              }
-          });
-      }
-      if(!checked.is(':checked')){
-                  $("#pagination-content").load('/reports/search', {
-                    reset: 1,
-                    csrfmiddlewaretoken: '{{ csrf_token }}'
-                  });
-                  $('#paginator_control').bootstrapPaginator(pagOptions);
-              }
-  });
-  
-  $("#access_report").click(function(){
-      var checked = $(this);
-      if(checked.is(':checked')){
-          $("#own_report").removeAttr('checked');
-          $.ajax({
-              type: 'GET',
-              url: '/reports/accessreports',
-              success: function(response){
-                  $("#pagination-content").html(response);
-              }
-          });
-      }
-      if(!checked.is(':checked')){
-                  $("#pagination-content").load('/reports/search', {
-                    reset: 1,
-                    csrfmiddlewaretoken: '{{ csrf_token }}'
-                  });
-                  $('#paginator_control').bootstrapPaginator(pagOptions);
-              }
-  });
-  
-  // FILTERING: Submit filter form
-  $('#filter_form').submit(function(ev){
-    var formData = $(this).serialize();
-    $.ajax({
-      type: 'POST',
-      url: '/reports/search',
-      data: formData,
-      success: function(response, textStatus, jqXHR){
-        var options = {
-          currentPage: 1,
-          totalPages: 1
-        }
+				$('#type_selector').change(function(){
+					if ($('#type_selector').find(':selected').data('search') == "True"){
+						$('#popover_search').attr('placeholder', 'Item Search... ');
+					}
+					else {
+						$('#popover_search').attr('placeholder', 'Report Name ');
+					}
+				});
+			});
 
-        $('#paginator_control').bootstrapPaginator(options);
+		/*		FORM RELATED CODE		 */
+			// single checkbox
+			$("#own_report").click(function () {
+				var checked = $(this);
+				if (checked.is(':checked')) {
+					$("#access_report").removeAttr('checked');
+				}
+			});
+			$("#access_report").click(function () {
+				var checked = $(this);
+				if (checked.is(':checked')) {
+					$("#own_report").removeAttr('checked');
+				}
+			});
 
-        $("#pagination-content").html(response);
-      },
-      error: function (request, status, error){ console.log(error); },
-    });
+			// FILTERING: Clean filter form
+			$('#filt_clean').click(function(){
+				//$('#filter_form').reset();
+				$("#pagination-content").fadeTo("slow", 0.33);
+				$("#pagination-content").load('/reports/search', {
+					reset: 1,
+					csrfmiddlewaretoken: '{{ csrf_token }}'
+				});
+				$("#pagination-content").fadeTo(0, 1);
+				//$('#paginator_control').bootstrapPaginator(pagOptions);
+			});
 
-    return false;
-  });
-
-  // FILTERING: Clean filter form
-  $('#filt_clean').click(function(){
-    //$('#filter_form').reset();
-    $("#pagination-content").load('/reports/search', {
-      reset: 1,
-      csrfmiddlewaretoken: '{{ csrf_token }}'
-    });
-    $('#paginator_control').bootstrapPaginator(pagOptions);
-  });
-
-});
-</script>
-
+		});
+	</script>
 {% endblock %}

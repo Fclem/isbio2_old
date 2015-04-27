@@ -356,13 +356,15 @@ def scripts(request, layout="list"):
 
 @login_required(login_url='/')
 def reports(request):
+	page_index, entries_nb = report_common(request)
+
 	# get the user's institute
 	insti = UserProfile.objects.get(user=request.user).institute_info
 	all_reports = Report.objects.filter(status="succeed", institute=insti).order_by('-created')
 	user_rtypes = request.user.pipeline_access.all()
-	# later all_users will be changed to all users from the same insitute
-	all_users = UserProfile.objects.filter(institute_info=insti)
-	# first find all the users from the same institute, then find their accessable report types
+	# later all_users will be changed to all users from the same institute
+	all_users = UserProfile.objects.filter(institute_info=insti).order_by('user')
+	# first find all the users from the same institute, then find their accessible report types
 	reptypelst = list()
 	for each in all_users:
 		rtypes = each.user.pipeline_access.all()
@@ -373,14 +375,13 @@ def reports(request):
 
 	# report_type_lst = ReportType.objects.filter(access=request.user)
 	all_projects = Project.objects.filter(institute=insti)
-	paginator = Paginator(all_reports, 30)  # show 30 items per page
+	paginator = Paginator(all_reports, entries_nb)  # show 30 items per page
 
 	# If AJAX - check page from the request
 	# Otherwise return the first page
 	if request.is_ajax() and request.method == 'GET':
-		page = request.GET.get('page')
 		try:
-			reports = paginator.page(page)
+			reports = paginator.page(page_index)
 		except PageNotAnInteger:  # if page isn't an integer
 			reports = paginator.page(1)
 		except EmptyPage:  # if page out of bounds
@@ -390,7 +391,9 @@ def reports(request):
 			each.user_is_owner = each.author == request.user
 			each.user_has_access = request.user in each.shared.all() or each.user_is_owner
 
-		return render_to_response('reports-paginator.html', RequestContext(request, {'reports': reports}))
+		return render_to_response('reports-paginator.html', RequestContext(request, {'reports': reports,
+		                                                                             'pagination_number': paginator.num_pages,
+		                                                                             'page': page_index}))
 	else:
 		reports = paginator.page(1)
 		# access rights
@@ -407,9 +410,9 @@ def reports(request):
 			'users': all_users,
 			'projects': all_projects,
 			'pagination_number': paginator.num_pages,
+			'page': page_index,
 			'db_access': db_access
 		}))
-
 
 @login_required(login_url='/')
 def dbviewer(request):
@@ -873,7 +876,7 @@ def manage_scripts(request):
 	if request.is_ajax() and request.method == 'GET':
 		page = request.GET.get('page')
 		try:
-			# added by Clement F
+			# TODO change this, since it's not the way to do it
 			# this session var is for the paginator to stay on the same page number after
 			#  sending forms (add or delete forms) for consistency and clarity
 			request.session['manage-scripts-page'] = page
@@ -1018,32 +1021,6 @@ def installreport(request, sid=None):
 		return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
 	except ReportType.DoesNotExist:
 		return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
-
-
-@login_required(login_url='/')
-def ownreports(request):
-	own_reports = Report.objects.filter(status="succeed", author=request.user).order_by('-created')
-	# modifications for template perf optimization
-	for each in own_reports:
-		each.user_is_owner = True
-		each.user_has_access = True
-	return render_to_response('reports-paginator.html', RequestContext(request, {
-		'reports': own_reports
-	}))
-
-
-@login_required(login_url='/')
-def accessreports(request):
-	access_reports = Report.objects.filter(
-		Q(status="succeed", author=request.user) | Q(status="succeed", shared=request.user)).order_by('-created')
-	#  modifications for template perf optimization
-	for each in access_reports:
-		each.user_is_owner = each.author == request.user
-		each.user_has_access = True
-	return render_to_response('reports-paginator.html', RequestContext(request, {
-		'reports': access_reports
-	}))
-
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###
@@ -1735,6 +1712,82 @@ def send_file(request, ftype, fname):
 
 
 @login_required(login_url='/')
+def report_shiny_view(request, rid, fname=None):
+	try:
+		fitem = Report.objects.get(id=rid)
+	except:
+		raise Http404
+
+	# Enforce user access restrictions
+	if request.user not in fitem.shared.all() and fitem.author != request.user:
+		raise PermissionDenied
+
+	source  = "Test"
+	title = fitem.name
+
+	return render_to_response('shiny.html', RequestContext(request, {
+		'source': source,
+		'title': title
+	}))
+
+
+@login_required(login_url='/')
+def report_shiny_view2(request, rid, fname=None):
+	try:
+		fitem = Report.objects.get(id=rid)
+	except:
+		raise Http404
+
+	# Enforce user access restrictions
+	if request.user not in fitem.shared.all() and fitem.author != request.user:
+		raise PermissionDenied
+
+	source = "Test"
+	title = fitem.name
+
+	return render_to_response('shiny2.html', RequestContext(request, {
+	'source': source,
+	'title': title
+	}))
+
+
+@login_required(login_url='/')
+def report_shiny_view_tab(request, rid, fname=None):
+	try:
+		fitem = Report.objects.get(id=rid)
+	except:
+		raise Http404
+
+	# Enforce user access restrictions
+	if request.user not in fitem.shared.all() and fitem.author != request.user:
+		raise PermissionDenied
+
+	source = "Test"
+	title = fitem.name
+
+	pages = OrderedDict([
+	('Quality Control', 'blk1.1'),
+	('Quality Control (full)', 'qc_full'),
+	('Quality Control (extended)', 'qc_ext'),
+	('QC 2', 'blk1.2'),
+	('Curve', 'blk1.3'), 
+	('Curve 2', 'blk1.4'),
+	('DSS top50', 'blk2.1'), 
+	('DSS top50 2', 'blk2.2'), 
+	('Future Genomics', 'blk2.3'),
+	('Somatic', 'blk2.4'), 
+	('Comparaison to other relevant samples', 'blk3.1'), 
+	('Clinicaly relevant other drug', 'blk3.2'), 
+	('Drug - Mutations - Patient', 'blk3.3')
+	])
+
+	return render_to_response('shiny_tab.html', RequestContext(request, {
+	'source': source,
+	'pages': pages,
+	'title': title
+	}))
+
+@login_required(login_url='/')
 def report_file_view(request, rid, fname=None):
 	return report_file_server(request, rid, 'view', fname)
 
@@ -1765,7 +1818,7 @@ def report_file_server(request, rid, type, fname=None):
 		raise Http404
 
 	#  Enforce user access restrictions
-	if request.user not in fitem.shared.all() and fitem.author != request.user:
+	if request.user not in fitem.shared.all() and fitem.author != request.user and not request.user.is_superuser:
 		raise PermissionDenied
 
 	if fname is None: fname = 'report.html'
@@ -2100,52 +2153,99 @@ def ajax_user_stat(request):
 
 
 @login_required(login_url='/')
+def report_common(request):
+	if 'page' in request.REQUEST:
+		page_index = request.REQUEST['page']
+	else:
+		page_index = 1
+
+	if 'entries' in request.REQUEST:
+		entries_nb = request.REQUEST['entries']
+	else:
+		entries_nb = 18
+	return page_index, entries_nb
+
+@login_required(login_url='/')
 def report_search(request):
 	query_string = ''
 	found_entries = None
-	# report_type_lst = ReportType.objects.all()
 	entry_query = None
-	if 'reset' in request.POST:
-		all_reports = Report.objects.filter(status="succeed").order_by('-created')
-		paginator = Paginator(all_reports, 30)
-		found_entries = paginator.page(1)
+
+	page_index, entries_nb = report_common(request)
+
+	if 'reset' in request.REQUEST:
+		return HttpResponseRedirect('/reports/') # Redirects to the other view
 	else:
-		if ('filt_name' in request.POST) and request.POST['filt_name'].strip():
-			query_string = request.POST['filt_name']
+		if ('filt_name' in request.REQUEST) and request.REQUEST['filt_name'].strip():
+			query_string = '"' + request.REQUEST['filt_name'] + '"'
 			entry_query = aux.get_query(query_string, ['name'])
-			# print(entry_query)
 			# found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
 		# filter by type
-		if ('filt_type' in request.POST) and request.POST['filt_type']:
+		if ('filt_type' in request.REQUEST) and request.REQUEST['filt_type']:
 			# print("ok")
-			query_type = request.POST['filt_type']
+			query_type = '"' + request.REQUEST['filt_type'] + '"'
 			if entry_query:
 				entry_query = entry_query & aux.get_query_new(query_type, ['type__type'])
 			else:
 				entry_query = aux.get_query_new(query_type, ['type__type'])
 		# filter by author
-		if ('filt_author' in request.POST) and request.POST['filt_author']:
-			query_type = request.POST['filt_author']
+		if ('filt_author' in request.REQUEST) and request.REQUEST['filt_author']:
+			query_type = '"' + request.REQUEST['filt_author'] + '"'
 			if entry_query:
 				entry_query = entry_query & aux.get_query_new(query_type, ['author__username'])
 			else:
 				entry_query = aux.get_query_new(query_type, ['author__username'])
 		# filter by project
-		if ('filt_project' in request.POST) and request.POST['filt_project']:
-			query_type = request.POST['filt_project']
+		if ('filt_project' in request.REQUEST) and request.REQUEST['filt_project']:
+			query_type = '"' + request.REQUEST['filt_project'] + '"'
 			if entry_query:
 				entry_query = entry_query & aux.get_query_new(query_type, ['project__name'])
 			else:
 				entry_query = aux.get_query_new(query_type, ['project__name'])
-		if (entry_query == None):
-			all_reports = Report.objects.filter(status="succeed").order_by('-created')
-			paginator = Paginator(all_reports, 30)
-			found_entries = paginator.page(1)
+		# filter by owned reports
+		if ('own_report' in request.REQUEST) and request.REQUEST['own_report']:
+			query_type = '"' + request.user.username + '"'
+			tmp_query = aux.get_query_new(query_type, ['author__username'])
+			if entry_query:
+				entry_query = entry_query & tmp_query
+			else:
+				entry_query = tmp_query
+		# filter by accessible reports
+		elif ('access_report' in request.REQUEST) and request.REQUEST['access_report']:
+			query_type = '"' + request.user.username + '"'
+			tmp_query = (aux.get_query_new(query_type, ['author__username']) | aux.get_query_new(
+				query_type, ['shared__username']))
+			if entry_query:
+				entry_query = entry_query & tmp_query
+			else:
+				entry_query = tmp_query
+		# Process the query
+		if entry_query is None:
+			found_entries = Report.objects.filter(status="succeed").order_by('-created')
 		else:
 			found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
 
+	for each in found_entries:
+		each.user_is_owner = each.author == request.user
+		each.user_has_access = request.user in each.shared.all() or each.user_is_owner
+
+	# apply pagination
+	paginator = Paginator(found_entries, entries_nb)
+	found_entries = paginator.page(page_index)
+
+	# Copy the query for the paginator to work with filtering
+	if request.method == 'POST':
+		queryS = request.POST.urlencode()
+	else:
+		queryS = request.GET.urlencode()
+
 	return render_to_response('reports-paginator.html', RequestContext(request, {
-		'reports': found_entries
+		'reports': found_entries,
+		'pagination_number': paginator.num_pages,
+		'page': page_index,
+	    'url': 'search?',
+	    'search' : queryS
+
 	}))
 
 
