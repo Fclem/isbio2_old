@@ -66,7 +66,7 @@ def init_pipeline(form):
 def update_script_dasics(script, form):
     """
         Update script name and its inline description. In case of a new name it
-        careates a new folder for script and makes file copies but preserves db istance id
+        creates a new folder for script and makes file copies but preserves db istance id
     """
 
     if str(script.name) != str(form.cleaned_data['name']):
