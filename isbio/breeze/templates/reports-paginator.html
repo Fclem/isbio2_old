@@ -14,7 +14,8 @@
 	{% endif %}
 	<tbody id="">
 	{% for report in reports %}
-		<tr {% if not report.user_has_access %}style="color: grey;"{% endif %}><!-- {{ report.id }} -->
+		<tr {% comment %} {% if not report.user_has_access %}style="color: grey;"{% endif %} {% endcomment %}
+						  {% if report.user_has_access and not owned_filter %}style="font-weight: bold;"{% endif %}><!-- {{ report.id }} -->
 			<td> {{ report.created }} </td>
 			<td> {{ report.type }} </td> <!-- Implement TYPE in colors depending on report type =) -->
 			<td data-toggle="tooltip" title="{{ report.name }}"> {{ report.name|truncatechars:40 }} </td>
@@ -23,7 +24,6 @@
 			<td>
 				{% if report.user_has_access or user.is_superuser %}
 					<a class="Glyph" data-toggle="tooltip" title="View the Report" href="/reports/view/{{ report.id }}/report.html" target="_blank">
-
 						<i class="icon-eye-open"></i>
 					</a>
 				{% else %}
@@ -65,20 +65,23 @@
 <div id="paginator_control"></div>
 <script type="text/javascript">
 	$(document).ready(function () {
-		var searchQ =	'{{ search }}';
+		var searchQ = {	{{ search|safe }} };
 		// new paginator setup
 		var pagOptions = {
 			currentPage  : {{ page|default:"1" }},
 			numberOfPages: 5,
+			loop         : true,
 			totalPages   : {{ pagination_number|default:"1" }},
 			alignment    : 'center',
 			onPageChanged: function (e, oldPage, newPage) {
 				if (oldPage == newPage || !refresh) return;
 				$("#pagination-content").fadeTo('', 0.33);
-				$.get("/reports/{% if url %}{{ url }}{% endif %}" + searchQ , {page: newPage}, function (data) {
+				$.extend(searchQ, {page: newPage});
+				$.get("/reports/{% if url %}{{ url }}{% endif %}" ,  searchQ , function (data) {
+					//$('#pagination-content').html('');
+					$("#pagination-content").fadeTo(0, 1);
 					$('#pagination-content').html(data);
 				});
-				$("#pagination-content").fadeTo(0, 1);
 			}
 		}
 		//call refresh

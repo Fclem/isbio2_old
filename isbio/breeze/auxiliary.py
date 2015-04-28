@@ -1,9 +1,10 @@
-import re, copy, os
-from django.db.models import Q
 import breeze.models
-from django.utils import timezone
+import re, copy, os
+from datetime import datetime
+from django.db.models import Q
 from subprocess import Popen, PIPE
 
+# from django.utils import timezone
 
 def updateServer_routine():
     # hotfix
@@ -323,3 +324,49 @@ def merge_job_lst(item1, item2):
     merged.reverse()
 
     return merged
+
+# 28/04/2015 Clem
+def makeHTTP_query(request):
+	''' serialize GET or POST data from a query into a dict string
+	    '''
+	if request.method == 'POST':
+		args = request.POST.copy()
+	else:
+		args = request.GET.copy()
+
+	if 'page' in args:
+		del args['page']
+	if 'csrfmiddlewaretoken' in args:
+		del args['csrfmiddlewaretoken']
+
+	queryS = ''
+	for each in args:
+		if args[each] != '':
+			queryS = queryS + each + ': "' + args[each] + '", '
+
+	if len(queryS) > 0:
+		queryS = queryS[:-2]
+
+	return queryS
+
+# 10/03/2015 Clem
+def report_common(request, max=18):
+	if 'page' in request.REQUEST:
+		page_index = request.REQUEST['page']
+	else:
+		page_index = 1
+
+	if 'entries' in request.REQUEST:
+		entries_nb = request.REQUEST['entries']
+	else:
+		entries_nb = max
+	return page_index, entries_nb
+
+# 10/03/2015 Clem / ShinyProxy
+def uPrint(request, url, code=None, size=None):
+	print "[" + dateT() + "] \"PROX " + request.method + "   " + url + " " + request.META[
+		'SERVER_PROTOCOL'] + "\" " + str(code) + " " + str(size)
+
+# 10/03/2015 Clem / ShinyProxy
+def dateT():
+	return str(datetime.strftime(datetime.now(), "%d/%b/%Y %H:%M:%S"))

@@ -1,56 +1,44 @@
 # -*- coding: utf-8 -*-
-from django.contrib.auth import models
-from django.core.context_processors import request
-import os, copy, tempfile, zipfile, shutil, fnmatch
+import auxiliary as aux
+import forms as breezeForms
+import urllib, pprint, mimetypes, urllib2, glob, os, copy, tempfile, zipfile, shutil, fnmatch, rpy2, os.path
+import rora as rora
+import shell as rshell
+import xml.etree.ElementTree as xml
 from datetime import datetime
-from datetime import datetime as dt
-import json
-from django.forms import forms
-import rpy2
+from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
+	Statistics, Institute, Script_categories, CartInfo  # , User_date
 from collections import OrderedDict
-from django.db.models import Q
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.contrib import auth
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.models import User  # , Group
 from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
+from django.http import HttpResponseRedirect, Http404, HttpResponse
+from django.shortcuts import render_to_response
 from django.template.context import RequestContext
 from django.template.loader import render_to_string
-from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render_to_response
-from django.contrib.auth.decorators import login_required, permission_required
-from django.contrib.auth.models import User, Group
-from django.conf import settings
-import thread
-from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
+from django.utils import simplejson
+from django.views.decorators.csrf import csrf_exempt
+from mimetypes import MimeTypes
 from multiprocessing import Process
 
-from django.utils import simplejson
-from dateutil.relativedelta import relativedelta
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.csrf import csrf_exempt
-
-import xml.etree.ElementTree as xml
-from six.moves.urllib import request, request, request
-from breeze import auxiliary
-import shell as rshell
-import auxiliary as aux
-import rora as rora
-import sys, traceback
-import forms as breezeForms
-from django.utils import timezone
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
-	Statistics, Institute, Script_categories, CartInfo, User_date
-from django.core.exceptions import PermissionDenied
-from django.http import Http404
-from mimetypes import MimeTypes
-import urllib
-import pprint
-
-from django.http import HttpResponse
-import mimetypes
-import urllib2
-import glob
-import os.path
+# from django.contrib.auth import models
+# from django.core.context_processors import request
+# import json
+# from django.forms import forms
+# import thread
+# from django.core.files.uploadedfile import SimpleUploadedFile
+# from django.views.decorators.csrf import ensure_csrf_cookie
+# import sys, traceback
+# from six.moves.urllib import request, request, request
+# from breeze import auxiliary
 
 
 class RequestStorage():
@@ -71,7 +59,6 @@ class RequestStorage():
 
 	def del_param(self, var):
 		del self.form_details[var]
-
 
 storage = RequestStorage()
 storage.progress = 10
@@ -356,7 +343,7 @@ def scripts(request, layout="list"):
 
 @login_required(login_url='/')
 def reports(request):
-	page_index, entries_nb = report_common(request)
+	page_index, entries_nb = aux.report_common(request)
 
 	# get the user's institute
 	insti = UserProfile.objects.get(user=request.user).institute_info
@@ -784,7 +771,8 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 		'overview_info': overview,
 		'props_form': property_form,
 		'tags_available': tags_data_list,
-		'access_script': script
+		'access_script': script,
+		'disable_zopim': True
 	}))
 
 
@@ -2151,38 +2139,21 @@ def ajax_user_stat(request):
 
 	return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
-
-@login_required(login_url='/')
-def report_common(request):
-	if 'page' in request.REQUEST:
-		page_index = request.REQUEST['page']
-	else:
-		page_index = 1
-
-	if 'entries' in request.REQUEST:
-		entries_nb = request.REQUEST['entries']
-	else:
-		entries_nb = 18
-	return page_index, entries_nb
-
 @login_required(login_url='/')
 def report_search(request):
-	query_string = ''
-	found_entries = None
-	entry_query = None
-
-	page_index, entries_nb = report_common(request)
-
 	if 'reset' in request.REQUEST:
-		return HttpResponseRedirect('/reports/') # Redirects to the other view
+		return HttpResponseRedirect('/reports/') # Redirects to the default view
 	else:
+		entry_query = None
+		owned_filter = False
+
+		page_index, entries_nb = aux.report_common(request)
+
 		if ('filt_name' in request.REQUEST) and request.REQUEST['filt_name'].strip():
-			query_string = '"' + request.REQUEST['filt_name'] + '"'
-			entry_query = aux.get_query(query_string, ['name'])
-			# found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
+			query_type = '"' + request.REQUEST['filt_name'] + '"'
+			entry_query = aux.get_query(query_type, ['name'])
 		# filter by type
 		if ('filt_type' in request.REQUEST) and request.REQUEST['filt_type']:
-			# print("ok")
 			query_type = '"' + request.REQUEST['filt_type'] + '"'
 			if entry_query:
 				entry_query = entry_query & aux.get_query_new(query_type, ['type__type'])
@@ -2203,28 +2174,31 @@ def report_search(request):
 			else:
 				entry_query = aux.get_query_new(query_type, ['project__name'])
 		# filter by owned reports
-		if ('own_report' in request.REQUEST) and request.REQUEST['own_report']:
-			query_type = '"' + request.user.username + '"'
-			tmp_query = aux.get_query_new(query_type, ['author__username'])
-			if entry_query:
-				entry_query = entry_query & tmp_query
-			else:
-				entry_query = tmp_query
-		# filter by accessible reports
-		elif ('access_report' in request.REQUEST) and request.REQUEST['access_report']:
-			query_type = '"' + request.user.username + '"'
-			tmp_query = (aux.get_query_new(query_type, ['author__username']) | aux.get_query_new(
-				query_type, ['shared__username']))
-			if entry_query:
-				entry_query = entry_query & tmp_query
-			else:
-				entry_query = tmp_query
+		if ('access_filter1' in request.REQUEST) and request.REQUEST['access_filter1']:
+			if request.REQUEST['access_filter1'] == 'owned':
+				query_type = '"' + request.user.username + '"'
+				tmp_query = aux.get_query_new(query_type, ['author__username'])
+				if entry_query:
+					entry_query = entry_query & tmp_query
+				else:
+					entry_query = tmp_query
+				owned_filter = True
+			# filter by accessible reports
+			elif request.REQUEST['access_filter1'] == 'accessible':
+				query_type = '"' + request.user.username + '"'
+				# TODO : fix that, not working as expected
+				tmp_query = (aux.get_query_new(query_type, ['author__username']) | aux.get_query_new(
+					query_type, ['shared__username']))
+				if entry_query:
+					entry_query = entry_query & tmp_query
+				else:
+					entry_query = tmp_query
 		# Process the query
 		if entry_query is None:
 			found_entries = Report.objects.filter(status="succeed").order_by('-created')
 		else:
 			found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
-
+	# just a shortcut for the template
 	for each in found_entries:
 		each.user_is_owner = each.author == request.user
 		each.user_has_access = request.user in each.shared.all() or each.user_is_owner
@@ -2234,18 +2208,15 @@ def report_search(request):
 	found_entries = paginator.page(page_index)
 
 	# Copy the query for the paginator to work with filtering
-	if request.method == 'POST':
-		queryS = request.POST.urlencode()
-	else:
-		queryS = request.GET.urlencode()
+	queryS = aux.makeHTTP_query(request)
 
 	return render_to_response('reports-paginator.html', RequestContext(request, {
 		'reports': found_entries,
 		'pagination_number': paginator.num_pages,
 		'page': page_index,
 	    'url': 'search?',
-	    'search' : queryS
-
+	    'search' : queryS,
+		'owned_filter': owned_filter
 	}))
 
 
@@ -2279,6 +2250,7 @@ def home_paginate(request):
 	else:
 		return False
 
+DASHED_LINE = '---------------------------------------------------------------------------------------------------------------'
 
 @csrf_exempt
 @login_required(login_url='/')
@@ -2320,7 +2292,7 @@ def proxy_to(request, path, target_url):
 				pass
 			finally:
 				f.close()
-			more = more[:-1] + dashed_line() + '\n'
+			more = more[:-1] + DASHED_LINE + '\n'
 
 		# try to read the shiny app log :
 		p = '/var/log/shiny-server/' + path[:-1] + '-shiny-*'
@@ -2333,26 +2305,14 @@ def proxy_to(request, path, target_url):
 				os.remove(fileName)
 			except:
 				pass
-			more = more[:-1] + dashed_line() + '\n'
+			more = more[:-1] + DASHED_LINE + '\n'
 
-		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + dashed_line() + '\n' + more, status=e.code,
+		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + DASHED_LINE + '\n' + more, status=e.code,
 		                   mimetype='text/plain')
 	else:
 		status_code = proxied_request.code
 		mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
 		content = proxied_request.read()
-		if settings.DEBUG: uPrint(request, path + qs, proxied_request.code, str(len(content)))
+		if settings.DEBUG: aux.uPrint(request, path + qs, proxied_request.code, str(len(content)))
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep
-
-
-def uPrint(request, url, code=None, size=None):
-	print "[" + dateT() + "] \"PROX " + request.method + "   " + url + " " + request.META[
-		'SERVER_PROTOCOL'] + "\" " + str(code) + " " + str(size)
-
-
-def dateT():
-	return str(datetime.strftime(datetime.now(), "%d/%b/%Y %H:%M:%S"))
-
-def dashed_line():
-	return '---------------------------------------------------------------------------------------------------------------'

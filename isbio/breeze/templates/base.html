@@ -221,11 +221,6 @@
         {% block content %}
 
         {% endblock %}
-
-
-
-
-
       </div>
       <!-- /global container -->
 
@@ -242,23 +237,36 @@
       </div>
       <!-- /footer container -->
       <!-- template : {{db_access}} -->
-
       <div id="db_access" data-para="{{db_access}}">
         <div class="modal hide fade" id="db_policy"  role="dialog" aria-hidden="true" style="background: url('/static/nail.png');">
             {% include "db_policy.html" %}
         </div>
       </div>
     </div>
+		{% if not disable_zopim %}
     {% block zopim %}
-    <script type="text/javascript">
-      $(window).load(function(){
-        window.$zopim||(function(d,s){var z=$zopim=function(c){z._.push(c)},$=z.s=
-        d.createElement(s),e=d.getElementsByTagName(s)[0];z.set=function(o){z.set.
-        _.push(o)};z._=[];z.set._=[];$.async=!0;$.setAttribute('charset','utf-8');
-        $.src='//v2.zopim.com/?2fQMyVQQ1GO74NehJsG5a8uf8RiZXHfV';z.t=+new Date;$.
-        type='text/javascript';e.parentNode.insertBefore($,e)})(document,'script');
-      });
-    </script>
+		<!--Start of Zopim Live Chat Script-->
+		<script type="text/javascript">
+			window.$zopim || (function (d, s) {
+				var z = $zopim = function (c) {z._.push(c)}, $ = z.s =
+				  d.createElement(s), e = d.getElementsByTagName(s)[0];
+				z.set = function (o) {
+					z.set.
+					  _.push(o)
+				};
+				z._ = [];
+				z.set._ = [];
+				$.async = !0;
+				$.setAttribute("charset", "utf-8");
+				$.src = "//v2.zopim.com/?2fQMyVQQ1GO74NehJsG5a8uf8RiZXHfV";
+				z.t = +new Date;
+				$.
+				  type = "text/javascript";
+				e.parentNode.insertBefore($, e)
+			})(document, "script");
+		</script>
+		<!--End of Zopim Live Chat Script-->
     {% endblock %}
+		{% endif %}
   </body>
 </html>

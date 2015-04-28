@@ -63,9 +63,8 @@
 			<div class="span10 offset1">
 				<!-- FILTERS Collapse -->
 				<div class="offset1">
-
-						<form id="filter_form" class="form-inline span8 offset2" method="post" onsubmit="return false;" onchange="submit_form()">
-							<div class="row-fluid">
+					<form id="filter_form" class="form-inline span8 offset2" method="post" onsubmit="return false;" onchange="submit_form()">
+						<div class="row-fluid">
 							{% csrf_token %}
 							<select id="filt_type" name="filt_type" class="input-medium">
 								<option id="" value="">All Types</option>
@@ -87,25 +86,24 @@
 								{% endfor %}
 							</select>
 							<input id="filt_name" name="filt_name" type="text" class="input" placeholder="Report Name (type & press Enter)" >
-
 							<!--<button type="submit" class="btn">Search</button>-->
 							<button id="filt_clean" class="btn" type="reset">Clear</button>
+						</div>
+						<div class="row-fluid" style="margin-top:5px;">
+							<div class="span3 offset2">
+								<label class="radio">
+									<input type="radio" id="radio_owned" name="access_filter1" value="owned">
+									Show only my own reports
+								</label>
 							</div>
-							<div class="row-fluid" style="margin-top:5px;">
-								<div class="span3 offset2">
-									<label class="checkbox">
-										<input id="own_report" name="own_report" type="checkbox"> Show only my own reports
-									</label>
-								</div>
-								<div class="span4">
-									<label class="checkbox">
-										<input id="access_report" type="checkbox" name="access_report"> Show only the reports I can access
-									</label>
-								</div>
+							<div class="span4">
+								<label class="radio">
+									<input type="radio" id="radio_accessible"  name="access_filter1" value="accessible">
+									Show only the reports I can access
+								</label>
 							</div>
-						</form>
-
-
+						</div>
+					</form>
 				</div>
 			</div>
 		</div>
@@ -256,10 +254,9 @@
 	</script>
 	<script type="text/javascript">
 	  //AJAX submission of the form
-		function submit_form() {
+		function submit_form(e) {
+			$("#pagination-content").fadeTo(0, 0.33);
 			var formData = $('#filter_form').serialize();
-			$("#pagination-content").fadeTo("", 0.33);
-
 			$.ajax({
 				type   : 'POST',
 				url    : '/reports/search',
@@ -270,8 +267,8 @@
 				},
 				error  : function (request, status, error) { console.log(error); }
 			});
-
 		}
+
 		// Refresh paginator selector
 		function apply_pg(options){
 			refresh = false;
@@ -292,7 +289,7 @@
 				});
 			}
 		}
-
+		//registering events handlers / functions
 		$(document).ready(function() {
 			apply_pg(pagOptions);
 			$('.Glyph').tooltip()
@@ -357,33 +354,15 @@
 				});
 			});
 
-		/*		FORM RELATED CODE		 */
-			// single checkbox
-			$("#own_report").click(function () {
-				var checked = $(this);
-				if (checked.is(':checked')) {
-					$("#access_report").removeAttr('checked');
-				}
-			});
-			$("#access_report").click(function () {
-				var checked = $(this);
-				if (checked.is(':checked')) {
-					$("#own_report").removeAttr('checked');
-				}
-			});
-
 			// FILTERING: Clean filter form
 			$('#filt_clean').click(function(){
-				//$('#filter_form').reset();
 				$("#pagination-content").fadeTo("slow", 0.33);
 				$("#pagination-content").load('/reports/search', {
 					reset: 1,
 					csrfmiddlewaretoken: '{{ csrf_token }}'
 				});
 				$("#pagination-content").fadeTo(0, 1);
-				//$('#paginator_control').bootstrapPaginator(pagOptions);
 			});
-
 		});
 	</script>
 {% endblock %}
