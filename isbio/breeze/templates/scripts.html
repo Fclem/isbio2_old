@@ -221,7 +221,7 @@
 		</div>
 	</div>
 	<script type="text/javascript">
-		// initialize Multiselect plugin for Dotmatix Samples
+		// initial conf of Multiselect plugin for Dotmatix Samples
 		var multiConfigurationSet = {
 			includeSelectAllOption: true,
 			enableFiltering       : true,
@@ -291,6 +291,7 @@
 			});
 			return false;
 		}
+		// loads and display the modal form
 		function modalConnect() {
 			//unbind the click event. If not done we will end up with multiple click event bindings, since binding is done after each ajax call.
 			$(".apply").unbind('click');
@@ -306,6 +307,7 @@
 				return false; // prevent the click propagation
 			})
 		}
+		// triggers modalConnect, db_access and describe stuff onLoad
 		$(document).ready(function() {
 			modalConnect();
 			// TODO : remove db stuff : probably useless or unfinished code (and should go main page anaway)
