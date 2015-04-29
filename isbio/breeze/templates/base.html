@@ -152,6 +152,20 @@
                 ShowError("");
             }
         });
+		// prevents click on a submit button
+		function disableObj(name) {
+			clkBtn = $('#' + name + '')[0];
+			//protect from double submission while sending
+			if (clkBtn != undefined) clkBtn.disabled = true;
+		}
+		function enableObj(name) {
+			clkBtn = $('#' + name + '')[0];
+			if(clkBtn != undefined) clkBtn.disabled = false;
+		}
+		function switchObj(name) {
+			clkBtn = $('#' + name + '')[0];
+			if (clkBtn != undefined) clkBtn.disabled = !clkBtn.disabled;
+		}
     </script>
   </head>
   <body>
