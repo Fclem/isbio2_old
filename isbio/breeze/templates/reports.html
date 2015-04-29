@@ -352,6 +352,12 @@
 						$('#popover_search').attr('placeholder', 'Report Name ');
 					}
 				});
+				// prevents click on the submit button
+				$('input[type="submit"]').on('click', function (evt) {
+					clkBtn = evt.target;
+					//protect from double submission while sending
+					clkBtn.disabled = true;
+				});
 			});
 
 			// FILTERING: Clean filter form
