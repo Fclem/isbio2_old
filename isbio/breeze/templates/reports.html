@@ -326,12 +326,12 @@
       </div>\
       <div class="control-group">\
         <div class="controls">\
-          <button type="submit" class="btn btn-primary btn-small btn-block"><strong> GO </strong></button>\
-        </div>\
-      </div>\
-    </form>\
-    </br>\
-    '
+          <button id="subBtn" type="submit" class="btn btn-primary btn-small btn-block" onclick="disableObj(\'subBtn\');"><strong> GO </strong></button>\
+						</div>\
+					</div>\
+				</form>\
+				</br>\
+				'
 			});
 
 			$('#new_popover').click(function(){
@@ -351,12 +351,6 @@
 					else {
 						$('#popover_search').attr('placeholder', 'Report Name ');
 					}
-				});
-				// prevents click on the submit button
-				$('input[type="submit"]').on('click', function (evt) {
-					clkBtn = evt.target;
-					//protect from double submission while sending
-					clkBtn.disabled = true;
 				});
 			});
 
