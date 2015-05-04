@@ -249,6 +249,7 @@
 		}
 		// Special handling of two buttons submit form, and no double submit
 		function submitForm(evt, url) {
+			evt.preventDefault();
 			clkBtn = evt.target;
 			//protect from double submission while sending
 			clkBtn.disabled = true;
@@ -321,7 +322,7 @@
 			}
 			//if ('.dotmatix_samples' in $()) $('.dotmatix_samples').multiselect(multiConfigurationSet);
 			$(".describe").click(function(ev) {
-				ev.preventDefault(); // prevent navigation
+
 				var par = $(this).data("param");
 				$("#Describe").load("/scripts/read-descr/"+par, function() {
 					$(this).modal('show');
