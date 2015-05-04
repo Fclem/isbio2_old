@@ -1,474 +1,343 @@
 {% extends "base.html" %}
-
 {% load bootstrap_toolkit %}
-
 {% block title %}Dash{% endblock %}
-
 {% block extra_head %}
-
-  <script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
-
+	<style type="text/css">
+		.btn-group > .btn:first-child {
+			min-width: 60px;
+		}
+	</style>
+	<script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
 {% endblock %}
-
 {% block content %}
-<div class="row-fluid">
-  &nbsp;
-</div>
+	<!-- TODO : TOTAL REDISIGN OF THIS PAGE, REMOVE THE BS JS code and go full AJAX -->
+	<div class="row-fluid">
+		&nbsp;
+	</div>
+	<div class="row-fluid">
+		<!-- LEFT DASH PANEL -->
+		<div class="span3 offset1">
+			<div data-spy="affix span3" >
+				<table class="table table-bordered table-condensed" id="live-container">
+					<!-- TODO : fix bad nesting design -->
+					{% include "jobs-live.html" %}
+				</table>
+			</div>
+		</div>
+		<!-- RIGHT MAIN TABS TABLES -->
+		<div class="span7" >
+			<div class="tabbable" id="main-container">
+				{% include "jobs-content.html" %}
+			</div>
+		</div>
+	</div>
 
-<div class="row-fluid">
-  <div class="span3 offset1">
-    <div data-spy="affix" class="span3">
-      <table class="table table-bordered table-condensed">
-        <tbody>
-          <div id="dashboard">
-          {% for job in current %}
-	          {% if job.status == "active" %}
-            <tr id="{{ job.id }}_tr1" class="info"> <td id="{{ job.id }}_SGEstatus">{{ job.jname }}  -  {{ job.staged }}</td> </tr>
-            <tr id="{{ job.id }}_tr2" class="info">
-                <td><div id="{{ job.id }}_div" class="progress progress-striped active"><div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" data-inst="{{ job.instance }}" style="width: {{ job.progress }}%" /></div></td>
-            </tr>
-	          {% elif job.status == "queued_active" %}
-		          <tr id="{{ job.id }}_tr1" class="info">
-			          <td id="{{ job.id }}_SGEstatus">{{ job.jname }} - initialization... - {{ job.staged }}</td>
-		          </tr>
-		          <tr id="{{ job.id }}_tr2" class="info">
-			          <td>
-				          <div id="{{ job.id }}_div" class="progress progress-warning progress-striped active">
-					          <div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" data-inst="{{ job.instance }}"
-					               style="width: {{ job.progress }}%"/>
-				          </div>
-			          </td>
-		          </tr>
-	          {% endif %}
-          {% empty %}
-            <tr class="info"><td> <div align="center"> Nothing is running at the moment. </div> </td></tr>
-          {% endfor %}
+	<!-- Modals -->
+	<div id="script" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+	<div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+	<div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="del_title">Delete JOB</h3>
+		</div>
+		<div class="modal-body">
+			<p> Are you sure you DO NOT need this job any more?! </p>
+		</div>
+		<div class="modal-footer">
+			<a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
+			<a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
+		</div>
+	</div>
+	<!-- TODO redesign due to : very poor design :: (too much) duplicated code -->
+	<script type="text/javascript">
+		$(document).ready(function() {
+			// paginator setup
+			var pagOptions = {
+				currentPage: 1,
+				numberOfPages:5,
+				totalPages: "{{ pagination_number }}",
+				alignment:'center',
+				onPageChanged: function(e,oldPage,newPage){
+					//console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
+					$.get("/jobs/", { page: newPage }, function(data){
+						$('#history_top').html(data);
+					});
+				}
+			}
 
-          </div>
+			$('#paginator_control').bootstrapPaginator(pagOptions);
 
-          {% for job in dash_history %}
-            {% if job.status == "succeed" %}
-              <tr class="success"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
-              <tr class="success"><td><div class="progress progress-success"> <div class="bar" style="width: 100%"/> </div></td></tr>
-            {% elif job.status == "failed" %}
-              <tr class="error"><td>{{ job.jname }}  -  {{ job.staged }}</td></tr>
-              <tr class="error"><td><div class="progress progress-danger"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
-            {% elif job.status == "aborted" %}
-              <tr class="error"><td>{{ job.jname }} - ABORTED!  -  {{ job.staged }}</td></tr>
-              <tr class="error"><td><div class="progress progress-warning"><div class="bar" style="width: {{ job.progress }}%" /></div></td></tr>
-            {% elif job.status == "queued_active" %}
-	            <tr class="info"><!-- TODO DELETE THIS PART -->
-		            <td>{{ job.jname }} - Queued - {{ job.staged }}</td>
-	            </tr>
-	            <tr class="info">
-		            <td>
-			            <div class="progress progress-warning  progress-striped active">
-				            <div class="bar" style="width: {{ job.progress }}%"/>
-			            </div>
-		            </td>
-	            </tr>
-            {% endif %}
-            {% empty %}
-              <tr class="info"><td> <div align="center"> You do not have job history yet. </div> </td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+			modalConnect();
+			var db_access = '#db_access';
+			if($(db_access).data('para')=="False"){
+				$("#db").click(function(e){
+					e.preventDefault();
+					$('#db_policy').modal('show');
+				});
+			}
 
-  <div class="span7" >
+			$(".jbar").each(function(){
+				var par = $(this).data("param");
+				var itm = $(this).data("inst");
+				updateJobs(par, itm);
+			});
 
-    <div class="tabbable">
-      <!-- Tabs' Header -->
-      <ul class="nav nav-tabs" id="jobTabs">
-        <li class="{{ history_tab }}"><a href="#history" data-toggle="tab">History</a></li>
-        <li class="{{ scheduled_tab }}" ><a href="#scheduled" data-toggle="tab">Scheduled</a></li>
-        <li class="{{ current_tab }}"><a href="#current" data-toggle="tab">In Progress</a></li>
-      </ul>
-      <!-- Tabs' Content -->
-      <div class="tab-content">
-        <!-- HISTORY -->
-        <div class="tab-pane {{ show_hist }}" id="history" >
-          <table class="table table-striped">
-            <head>
-              <tr>
-                <th>Finished</th>
-                <th>Job Name</th>
-                <th></th>
-                <th>Status</th>
-                <th>Download</th>
-                <th>Misc</th>
-                <th>Delete</th>
-              </tr>
-            </head>
-            <tbody id="history_top">
-              {% include "jobs-hist-paginator.html" %}
-            </tbody>
-          </table>
-          <p><br>&nbsp;<br></p>
-          <div id="paginator_control"></div>
-        </div>
-        <!-- SCHEDULED -->
-        <div class="tab-pane {{ show_sched }}" id="scheduled">
-          <table class="table table-striped">
-            <head>
-              <tr>
-                <th>Scheduled</th>
-                <th>Job Name</th>
-                <th></th>
-                <th></th>
-                <th>RUN</th>
-                <th>Revise</th>
-                <th>Edit</th>
-                <th>Delete</th>
-              </tr>
-            </head>
-            <tbody>
-              {% for job in scheduled %}
-              <tr>
-                <td>{{ job.staged }}</td>
-                <td>{{ job.jname }}</td>
-                <td></td>
-                <td></td>
-                <td><a href="/jobs/run/{{ job.id }}" class="btn btn-success"> <i class="icon-play-circle"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-white icon-info-sign"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"  data-param={{ job.id }}><i class="icon-white icon-edit"></i></a></td>
-                <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}'); $('#del_title').text('{{ job.jname }}');" >
-                      <i class="icon-trash"></i>
-                    </a>
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                              <td colspan="8">No scheduled job at the moment.</td>
-                            </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        <!-- CURRENT -->
-        <div class="tab-pane {{ show_curr }}" id="current">
-          <table class="table table-striped">
-            <head>
-              <tr>
-                <th>Triggered</th>
-                <th>Job Name</th>
-                <th>Progress</th>
-                <th></th>
-                <th></th>
-                <th>Actions:</th>
-                <th></th>
-                <th></th>
-                <th></th>
-              </tr>
-            </head>
-            <tbody>
-              {% for job in current %}
-              <tr id="{{ job.id }}_list_tr">
-                <td>{{ job.staged }}</td>
-                <td>{{ job.jname }}</td>
-                <td id="{{ job.id }}_list_td">{{ job.progress }} %</td>
-                <td></td>
-                <td></td>
-                <td><a href="{{job.abohref}}" class="btn btn-danger" data-param="{{job.abohref}}">Abort</a></td>
-                <td></td><td></td><td></td>
-              </tr>
-              {% empty %}
-                            <tr>
-                                            <td colspan="8">No active task at the moment.</td>
-                                          </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <!-- END of Tabs' Content -->
-    </div>
-
-  </div>
-</div>
-
-<!-- Modals -->
-<div id="script" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
-<div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
-<div id="Del" class="modal hide fade" role="dialog"  aria-hidden="true">
-    <div class="modal-header">
-      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-      <h3 id="del_title">Delete JOB</h3>
-    </div>
-    <div class="modal-body">
-      <p> Are you sure you DO NOT need this job any more?! </p>
-    </div>
-    <div class="modal-footer">
-      <a id="del_btn" href="#" class="btn btn-danger" > Delete </a>
-      <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
-    </div>
-</div>
-
-<script>
-    $(document).ready(function() {
-        // paginator setup
-        var pagOptions = {
-        currentPage: 1,
-        numberOfPages:5,
-        totalPages: "{{ pagination_number }}",
-        alignment:'center',
-        onPageChanged: function(e,oldPage,newPage){
-          //console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
-          $.get("/jobs/", { page: newPage }, function(data){
-            $('#history_top').html(data);
-          });
-        }
-      }
-
-    $('#paginator_control').bootstrapPaginator(pagOptions);
-
-    modalConnect();
-    var db_access = '#db_access';
-    if($(db_access).data('para')=="False"){
-        $("#db").click(function(e){
-            e.preventDefault();
-            $('#db_policy').modal('show');
-        });
-    }
-
-    $(".jbar").each(function(){
-      var par = $(this).data("param");
-      var itm = $(this).data("inst");
-      updateJobs(par, itm);
-    });
-
-    });
-    
-    
-    $(".abort").click(function(ev){
-        ev.preventDefault(); // prevent navigation
-        var par = $(this).data("param");
-        $.ajax({
-          type: "GET",
-          url: par,
-          success: function(response){
-          },
-          error: function (request, status, error) {
-                      //implement proper error handling
-                      console.log(request);
-                      //console.log(request.responseText);
-          }
-        });
-        
-        
-    });
-    
-    $(".rtext").click(function(ev) {
-        ev.preventDefault(); // prevent navigation
-        var par = $(this).data("param");
-        $("#script").load("/jobs/show-code/"+par, function() {
-            $('#collapseOne').collapse('hide');
-            $(this).modal('show');
-        });
-        return false; // prevent the click propagation
-    });
-</script>
-<script type="text/javascript">
-function submitItemModalFormBind(url){
-         $('#form_modal_apply').submit(function(ev){
-             var formData = new FormData($('form')[0]);
-             $.ajax({
-                type: "POST",
-                url: url,
-                enctype: 'multipart/form-data',
-                data: formData,
-                success:function(response, textStatus, jqXHR){
-                    var form = $("#form_modal_apply_div", response);
-                    //form is returned if it is not valid. update modal with returned form
-                    //change this "if" to check for a specific return code which should be set in the view
-                    if (form.html()) {
-                       //update modal div
-
-                        $('#form_modal_apply_div').html(form);
-
-                        $("input:file").each(function(){
-                          if ( $(this).hasClass('TPL') ){
-                            var which = $(this).attr('which');
-                            $(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
-                            $(this).customFileInput({ });
-                          }
-                        });
-
-                        //$("input:file").customFileInput({ });
-                        $("#Apply").modal('show');
-                    }
-                    //form is not returned if form submission succeeded
-                    else{
-                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
-                        //document.open();
-                        //document.write(response);
-                        //document.close();
-                        //$("#Apply").modal('hide');
-                        window.location.href = '/jobs/';
-                    }
-                },
-                error: function (request, status, error) {
-                            //implement proper error handling
-                            console.log("failure");
-                            console.log(request.responseText);
-                    },
-                cache: false,
-                contentType: false,
-                processData: false
-                    });
-                    return false;
-                });
-              }
-function modalConnect()
-        {
-            $(".apply").unbind('click');
-            //bind the click event
-            $(".apply").click(function(ev) {
-                ev.preventDefault(); // prevent navigation
-                var par = $(this).data("param");
-                $.get("/jobs/edit/"+par, function(results){
-                  //update the dom with the received form
-                  $('#Apply').html(results);
-
-                  $("input:file").each(function(){
-                    if ( $(this).hasClass('TPL') ){
-                      var which = $(this).attr('which');
-                      $(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
-                      $(this).customFileInput({ });
-                    }
-                  });
-
-                  //$("input:file").customFileInput({ });
-                  $("#Apply").modal('show');
-                  $(document).ready(function () {
-                     //bind the form to an ajax call. ajax call will be set to the received update url
-                     submitItemModalFormBind("/jobs/edit/"+par);
-                  });
-
-                }, "html");
-                return false; // prevent the click propagation
-            });
-        }
-
-var fake_progress = 0;
-var counter = 0;
-var increment = 2;
-var last_val = 0;
-var fake = false;
-var last_state = [];
-
-function updateJobs(jid, item) {
-    $.ajax({
-        type: "GET",
-        url: "/update-jobs/"+jid+"-"+item,
-        dataType : 'json',
-        success: function (msg) {
-            //var arg = "width: " + msg.progress.toString() + "%";
-            // faking progression, just for user friendlyness
-	          // TODO finish
-/*
-            counter++;
-            var w = document.getElementById(jid.toString() + "_bar").style.width;
-            if(last_val!=msg.progress){
-                last_val = msg.progress;
-                fake_progress = last_val;
-            }
-            var arg = "width: " + last_val.toString() + "%";
-            if(fake && fake_progress<100 && ( w == last_val.toString()+ "%" || w == fake_progress + "%")){
-                fake_progress+= Math.floor(counter / increment) ;
-                if(Math.floor(counter / increment)>=1){
-                    counter = 0;
-                }
-                if(fake_progress>=85){
-                    fake_progress = last_val;
-                }
-                arg = "width: " + fake_progress.toString() + "%";
-            }
-*/
-	          var arg = "width: " + msg.progress.toString() + "%";
-
-            $("#" + jid.toString() + "_bar").attr('style', arg);
-            $("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
-            $("#" + jid.toString() + "_list_td").text(msg.sge.toString());
-
-            if (msg.status != "active" && msg.status != "queued_active") {
-                var jstatus = ''
-                var jbar = ''
-                if (msg.status == "succeed") { jstatus = "success"; jbar = "success"; }
-                if (msg.status == "failed") { jstatus = "error"; jbar = "danger"; }
-                if (msg.status == "aborted") { jstatus = "error"; jbar = "warning"; }
-
-                $("#" + jid.toString() + "_tr1").attr('class', jstatus);
-                $("#" + jid.toString() + "_tr2").attr('class', jstatus);
-                $("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
-                $('#history_top').prepend(appendToHistory(msg));
-
-                modalConnect();
-                $(".rtext").click(function(ev) {
-                    ev.preventDefault(); // prevent navigation
-                    var par = $(this).data("param");
-                    $("#script").load("/jobs/show-code/"+par, function() {
-                        $('#collapseOne').collapse('hide');
-                        $(this).modal('show');
-                    });
-                    return false; // prevent the click propagation
-                });
-                $("#new_" + jid.toString() + "_del").click(function() { // TODO FIX
-                    $("#del_btn").attr("href", "/jobs/delete/" + jid.toString());
-                    $("#del_title").text(msg.name.toString());
-                });
-
-                $("#" + jid.toString() + "_list_tr").remove();
-            }else{
-		          if(msg.status!= last_state[jid]) {
-			          var jstatus = ''
-			          var jbar = ''
-			          if (msg.status == "active") {
-				          jstatus = "success";
-				          jbar = "info";
-			          }
-			          if (msg.status == "queued_active") {
-				          jstatus = "success";
-				          jbar = "warning";
-			          }
-
-			          $("#" + jid.toString() + "_tr1").attr('class', jstatus);
-			          $("#" + jid.toString() + "_tr2").attr('class', jstatus);
-			          $("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
-		          }
-	            if(msg.status == "queued_active"){
-		            delay = 1000
-	            }else {
-		            delay = 300
-	            }
-
-              console.log(item);
-                window.setTimeout(updateJobs, delay, jid, item);
-            }
-	        last_state[jid] = msg.status;
-        }
-    });
-    };
-function appendToHistory(job){
-    var jstatus = ''
-    if (job.status.toString() == "succeed") { jstatus = "success"; }
-    else if (job.status.toString() == "failed") { jstatus = "important"; }
-    else if (job.status.toString() == "aborted") { jstatus = "warning"; }
-
-    var new_row = '<tr> <td>  NOW!</p></td> <td>' + job.name + '</td> <td></td>';
-    new_row += '<td> <span class="label label-' + jstatus + '">' + job.status.toString().toUpperCase() + '</span> </td>'
-    new_row += '<td><div class="btn-group"><a class="btn btn-inverse" href="{{ job.rdownhref }}"><i class="icon-white icon-download-alt"></i> Results</a>'
-    new_row += '<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button><ul class="dropdown-menu">'
-    new_row += '<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>'
-    new_row += '<li class="divider"></li>'
-    new_row += '<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li></ul></div></td>'
-    new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-repeat"></i></a></td>'
-    new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$(\\"#del_btn\\").attr(\\"href\\", \\"{{ job.delhref }}\\"); $(\\"#del_title\\").text(\\"{{ job.jname }}\\");" ><i class="icon-trash"></i></a></td>  </tr>'
-    return new_row;
-} ;
-</script>
+		});
 
 
+		$(".abort").click(function(ev){
+			ev.preventDefault(); // prevent navigation
+			var par = $(this).data("param");
+			$.ajax({
+				type: "GET",
+				url: par,
+				success: function(response){
+				},
+				error: function (request, status, error) {
+					//implement proper error handling
+					console.log(request);
+					//console.log(request.responseText);
+				}
+			});
+		});
+		$(".rtext").click(function(ev) {
+			ev.preventDefault(); // prevent navigation
+			var par = $(this).data("param");
+			$("#script").load("/jobs/show-code/"+par, function() {
+				$('#collapseOne').collapse('hide');
+				$(this).modal('show');
+			});
+			return false; // prevent the click propagation
+		});
+	</script>
+	<script type="text/javascript">
+		function submitItemModalFormBind(url){
+			$('#form_modal_apply').submit(function(ev){
+				var formData = new FormData($('form')[0]);
+				$.ajax({
+					type: "POST",
+					url: url,
+					enctype: 'multipart/form-data',
+					data: formData,
+					success:function(response, textStatus, jqXHR){
+						var form = $("#form_modal_apply_div", response);
+						//form is returned if it is not valid. update modal with returned form
+						//change this "if" to check for a specific return code which should be set in the view
+						if (form.html()) {
+							//update modal div
+
+							$('#form_modal_apply_div').html(form);
+
+							$("input:file").each(function(){
+								if ( $(this).hasClass('TPL') ){
+									var which = $(this).attr('which');
+									$(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
+									$(this).customFileInput({ });
+								}
+							});
+
+							//$("input:file").customFileInput({ });
+							$("#Apply").modal('show');
+						}
+						//form is not returned if form submission succeeded
+						else{
+							//update the entire document with the response received since we received a entire success page and we want to reload the entire page
+							//document.open();
+							//document.write(response);
+							//document.close();
+							//$("#Apply").modal('hide');
+							window.location.href = '/jobs/';
+						}
+					},
+					error: function (request, status, error) {
+						//implement proper error handling
+						console.log("failure");
+						console.log(request.responseText);
+					},
+					cache: false,
+					contentType: false,
+					processData: false
+				});
+				return false;
+			});
+		}
+		function modalConnect(){
+			$(".apply").unbind('click');
+			//bind the click event
+			$(".apply").click(function(ev) {
+				ev.preventDefault(); // prevent navigation
+				var par = $(this).data("param");
+				$.get("/jobs/edit/"+par, function(results){
+					//update the dom with the received form
+					$('#Apply').html(results);
+
+					$("input:file").each(function(){
+						if ( $(this).hasClass('TPL') ){
+							var which = $(this).attr('which');
+							$(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
+							$(this).customFileInput({ });
+						}
+					});
+
+					//$("input:file").customFileInput({ });
+					$("#Apply").modal('show');
+					$(document).ready(function () {
+						//bind the form to an ajax call. ajax call will be set to the received update url
+						submitItemModalFormBind("/jobs/edit/"+par);
+					});
+
+				}, "html");
+				return false; // prevent the click propagation
+			});
+		}
+
+		var fake_progress = 0;
+		var counter = 0;
+		var increment = 2;
+		var last_val = 0;
+		var fake = false;
+		var last_state = [];
+
+		function updateJobs(jid, item) {
+			$.ajax({
+				type: "GET",
+				url: "/update-jobs/"+jid+"-"+item,
+				dataType : 'json',
+				success: function (msg) {
+					//var arg = "width: " + msg.progress.toString() + "%";
+					// faking progression, just for user friendlyness
+					// TODO finish
+					/*
+					 counter++;
+					 var w = document.getElementById(jid.toString() + "_bar").style.width;
+					 if(last_val!=msg.progress){
+					 last_val = msg.progress;
+					 fake_progress = last_val;
+					 }
+					 var arg = "width: " + last_val.toString() + "%";
+					 if(fake && fake_progress<100 && ( w == last_val.toString()+ "%" || w == fake_progress + "%")){
+					 fake_progress+= Math.floor(counter / increment) ;
+					 if(Math.floor(counter / increment)>=1){
+					 counter = 0;
+					 }
+					 if(fake_progress>=85){
+					 fake_progress = last_val;
+					 }
+					 arg = "width: " + fake_progress.toString() + "%";
+					 }
+					 */
+					var arg = "width: " + msg.progress.toString() + "%";
+
+					$("#" + jid.toString() + "_bar").attr('style', arg);
+					$("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
+					$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
+
+					if (msg.status != "active" && msg.status != "queued_active") {
+						window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
+
+						var jstatus = ''
+						var jbar = ''
+						if (msg.status == "succeed") { jstatus = "success"; jbar = "success"; }
+						if (msg.status == "failed") { jstatus = "error"; jbar = "danger"; }
+						if (msg.status == "aborted") { jstatus = "error"; jbar = "warning"; }
+
+						$("#" + jid.toString() + "_tr1").attr('class', jstatus);
+						$("#" + jid.toString() + "_tr2").attr('class', jstatus);
+						$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+						$('#history_top').prepend(appendToHistory(msg));
+
+						modalConnect();
+						$(".rtext").click(function(ev) {
+							ev.preventDefault(); // prevent navigation
+							var par = $(this).data("param");
+							$("#script").load("/jobs/show-code/"+par, function() {
+								$('#collapseOne').collapse('hide');
+								$(this).modal('show');
+							});
+							return false; // prevent the click propagation
+						});
+						$("#new_" + jid.toString() + "_del").click(function() { // TODO FIX
+							$("#del_btn").attr("href", "/jobs/delete/" + jid.toString());
+							$("#del_title").text(msg.name.toString());
+						});
+
+						$("#" + jid.toString() + "_list_tr").remove();
+					}else{
+						if(msg.status!= last_state[jid]) {
+							var jstatus = ''
+							var jbar = ''
+							if (msg.status == "active") {
+								jstatus = "success";
+								jbar = "info";
+							}
+							if (msg.status == "queued_active") {
+								jstatus = "success";
+								jbar = "warning";
+							}
+
+							$("#" + jid.toString() + "_tr1").attr('class', jstatus);
+							$("#" + jid.toString() + "_tr2").attr('class', jstatus);
+							$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+						}
+						if(msg.status == "queued_active"){
+							delay = 1000
+						}else {
+							delay = 300
+						}
+
+						console.log(item);
+						window.setTimeout(updateJobs, delay, jid, item);
+					}
+					last_state[jid] = msg.status;
+				}
+			});
+		};
+		function appendToHistory(job){
+			var jstatus = ''
+			if (job.status.toString() == "succeed") { jstatus = "success"; }
+			else if (job.status.toString() == "failed") { jstatus = "important"; }
+			else if (job.status.toString() == "aborted") { jstatus = "warning"; }
+
+			var new_row = '<tr> <td>  NOW!</p></td> <td>' + job.name + '</td> <td></td>';
+			new_row += '<td> <span class="label label-' + jstatus + '">' + job.status.toString().toUpperCase() + '</span> </td>'
+			new_row += '<td><div class="btn-group"><a class="btn btn-inverse" href="{{ job.rdownhref }}"><i class="icon-white icon-download-alt"></i> Results</a>'
+			new_row += '<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button><ul class="dropdown-menu">'
+			new_row += '<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>'
+			new_row += '<li class="divider"></li>'
+			new_row += '<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li></ul></div></td>'
+			new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-repeat"></i></a></td>'
+			new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$(\\"#del_btn\\").attr(\\"href\\", \\"{{ job.delhref }}\\"); $(\\"#del_title\\").text(\\"{{ job.jname }}\\");" ><i class="icon-trash"></i></a></td>  </tr>'
+			return new_row;
+		} ;
+	</script>
+	<!-- New design attempt -->
+	<script type="text/javascript">
+		// Refresh paginator selector
+		function apply_pg(options) {
+			refresh = false;
+			$('#history').bootstrapPaginator(options);
+			refresh = true;
+		}
+		var refresh = true;
+
+		// not finished, WIP
+		function reload () {
+			//window.setTimeout(updateJobs, delay, jid, item);
+			//$("#pagination-content").fadeTo(0, 0.33);
+			//var formData = $('#filter_form').serialize();
+			$.ajax({
+				type   : 'GET',
+				url    : '/jobs/live-container',
+				data   : {'get-live': 1},
+				success: function (response, textStatus, jqXHR) {
+					//$("#pagination-content").fadeTo(0, 1);
+					$("#live-container").html(response);
+				},
+				error  : function (request, status, error) { console.log(error); }
+			});
+			//call refresh
+			//apply_pg(pagOptions);
+		}
+	</script>
 {% endblock %}
 

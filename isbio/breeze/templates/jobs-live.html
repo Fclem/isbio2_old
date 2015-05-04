@@ -1,0 +1,90 @@
+<tbody>
+<div id="dashboard">
+	{% for job in current %}
+		{% if job.status == "active" %}
+			<tr id="{{ job.id }}_tr1" class="info">
+				<td id="{{ job.id }}_SGEstatus">{{ job.jname }} - {{ job.staged }}</td>
+			</tr>
+			<tr id="{{ job.id }}_tr2" class="info">
+				<td>
+					<div id="{{ job.id }}_div" class="progress progress-striped active">
+						<div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" data-inst="{{ job.instance }}"
+							 style="width: {{ job.progress }}%"/>
+					</div>
+				</td>
+			</tr>
+		{% elif job.status == "queued_active" %}
+			<tr id="{{ job.id }}_tr1" class="info">
+				<td id="{{ job.id }}_SGEstatus">{{ job.jname }} - initialization... - {{ job.staged }}</td>
+			</tr>
+			<tr id="{{ job.id }}_tr2" class="info">
+				<td>
+					<div id="{{ job.id }}_div" class="progress progress-warning progress-striped active">
+						<div id="{{ job.id }}_bar" class="bar jbar" data-param="{{ job.id }}" data-inst="{{ job.instance }}"
+							 style="width: {{ job.progress }}%"/>
+					</div>
+				</td>
+			</tr>
+		{% endif %}
+		{% empty %}
+		<tr class="info">
+			<td>
+				<div align="center"> Nothing is running at the moment.</div>
+			</td>
+		</tr>
+	{% endfor %}
+</div>
+{% for job in dash_history %}
+	{% if job.status == "succeed" %}
+		<tr class="success">
+			<td>{{ job.jname }} - {{ job.staged }}</td>
+		</tr>
+		<tr class="success">
+			<td>
+				<div class="progress progress-success">
+					<div class="bar" style="width: 100%"/>
+				</div>
+			</td>
+		</tr>
+	{% elif job.status == "failed" %}
+		<tr class="error">
+			<td>{{ job.jname }} - {{ job.staged }}</td>
+		</tr>
+		<tr class="error">
+			<td>
+				<div class="progress progress-danger">
+					<div class="bar" style="width: {{ job.progress }}%"/>
+				</div>
+			</td>
+		</tr>
+	{% elif job.status == "aborted" %}
+		<tr class="error">
+			<td>{{ job.jname }} - ABORTED! - {{ job.staged }}</td>
+		</tr>
+		<tr class="error">
+			<td>
+				<div class="progress progress-warning">
+					<div class="bar" style="width: {{ job.progress }}%"/>
+				</div>
+			</td>
+		</tr>
+	{% elif job.status == "queued_active" %}
+		<tr class="info"><!-- TODO DELETE THIS PART -->
+			<td>{{ job.jname }} - Queued - {{ job.staged }}</td>
+		</tr>
+		<tr class="info">
+			<td>
+				<div class="progress progress-warning  progress-striped active">
+					<div class="bar" style="width: {{ job.progress }}%"/>
+				</div>
+			</td>
+		</tr>
+	{% endif %}
+	{% empty %}
+	<tr class="info">
+		<td>
+			<div align="center"> You do not have job history yet.</div>
+		</td>
+	</tr>
+{% endfor %}
+</tbody>

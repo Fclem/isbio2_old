@@ -1,53 +1,73 @@
 {% for job in history %}
-  <tr>
-    <td>{{ job.staged }}</td>
-    <td>{{ job.jname }}</td>
-    <td></td>
-    <!-- Status Label -->
-    <td>
-      {% if job.status == "succeed" %}
-        <span class="label label-success">{{ job.status.upper }}</span>
-      {% elif job.status == "failed" %}
-        <span class="label label-important">{{ job.status.upper }}</span>
-      {% elif job.status == "aborted" %}
-        <span class="label label-warning">{{ job.status.upper }}</span>
-      {% endif %}
-    </td>
-    <!-- Download Button -->
-    <td>
-      <div class="btn-group">
-        <a class="btn btn-inverse" href="{{ job.rdownhref }}"><i class="icon-white icon-download-alt"></i> Results</a>
-        <button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button>
-        <ul class="dropdown-menu">
-          <li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>
-          <li class="divider"></li>
-          <li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li>
-        </ul>
-      </div>
-    </td>
+	<tr>
+		<td>{{ job.staged }}</td>
+		<td>{{ job.jname }}</td>
+		<td>{{ job.type }}</td>
+		<!-- Status Label -->
+		<td>
+			{% if job.status == "succeed" %}
+				<span class="label label-success">{{ job.status.upper }}</span>
+			{% elif job.status == "failed" %}
+				<span class="label label-important">{{ job.status.upper }}</span>
+			{% elif job.status == "aborted" %}
+				<span class="label label-warning">{{ job.status.upper }}</span>
+			{% endif %}
+		</td>
+		<!-- Download Button -->
+		<td>
+			<div class="btn-group">
+				<a class="btn btn-inverse" href="{{ job.rdownhref }}"><i class="icon-white icon-download-alt"></i> {{ job.instance|capfirst }} </a>
+				<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button>
+				<ul class="dropdown-menu">
+					<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>
+					<li class="divider"></li>
+					<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li>
+						<li class="divider"></li>
+						<li align="right">
+							{% if job.instance == "report" %}
+							<a href="{{ job.reschedhref }}">
+							{% else %}
+							<a href="#" data-toggle="modal" data-target="#Apply" class="apply" data-param="{{ job.reschedhref }}">
+							{% endif %}
+								Re-Run / Duplicate
+								<i class="icon-repeat"></i>
+							</a>
+						</li>
+				</ul>
+			</div>
+		</td>
 
-    <!-- Parameters Details Modal Dialog -->
-    <!-- <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-
+		<!-- Parameters Details Modal Dialog -->
+		<!-- <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-
     white icon-file"></i></a></td>   -->
 
-    <!-- Reschesule Button -->
-    <td>
-      {% if job.instance == 'script' %}
-      <a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.reschedhref }}" >
-        <i class="icon-white icon-repeat"></i>
-      </a>
-      {% else %}
-      <a class="btn btn-inverse" href="/reports/view/{{ job.id }}/" target="_blank" >
-        <i class="icon-white icon-eye-open"></i>
-      </a>
-      {% endif %}
-    </td>
+		<!-- Reschesule Button -->
+		<td>
+			{% if job.instance == 'script' %}
+				{% if job.status == 'failed' or job.status == 'aborted' %}
+					<a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.reschedhref }}" >
+				{% else %}
+					<a href="#"class="btn btn-inverse disabled" disabled>
+				{% endif %}
+					<i class="icon-white icon-repeat"></i>
+				</a>
+			{% elif job.instance == 'report' and job.status == 'failed' %}
+				<a href="#" class="btn btn-inverse" disabled><!-- href="{{ job.reschedhref }}" -->
+					<!-- <i class="icon-white icon-repeat"></i>-->
+					<i class="icon-white icon-eye-open"></i>
+				</a>
+			{% else %}
+				<a class="btn btn-inverse" href="/reports/view/{{ job.id }}/" target="_blank" >
+					<i class="icon-white icon-eye-open"></i>
+				</a>
+			{% endif %}
+		</td>
 
-    <!-- Delete Button -->
-    <td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '{{ job.delhref }}'); $('#del_title').text('{{ job.jname }}');" ><i class="icon-trash"></i></a></td>
-</tr>
-{% empty %}
-<tr>
-   <td colspan="7">No scheduled job at the moment.</td>
-</tr>
+		<!-- Delete Button -->
+		<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '{{ job.delhref }}'); $('#del_title').text('{{ job.jname }}');" ><i class="icon-trash"></i></a></td>
+	</tr>
+	{% empty %}
+	<tr>
+		<td colspan="7">No scheduled job at the moment.</td>
+	</tr>
 {% endfor %}
