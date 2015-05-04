@@ -34,13 +34,18 @@
 			left:	9%;
 			position: relative;
 			float: left;
+			z-index: 200;
 		}
 		.btn-right {
 			top: 0px;
 			right: 9%;
 			position: relative;
 			float: right;
+			z-index: 200;
 		}
+	#demo {
+		z-index: 150;
+	}
 	</style>
 
 {% endblock %}
@@ -149,6 +154,7 @@
 
 	<div id="Edit" class="modal fade" role="dialog"  aria-hidden="true"></div>
 
+	<!-- User Access edit form management and User name conversion -->
 	<script type="text/javascript">
 		function submitItemModalFormBind(url){
 			$('#form_modal_apply').submit(function(ev){
@@ -174,7 +180,11 @@
 						}
 						//form is not returned if form submission succeeded
 						else{
-							window.location.href = '/reports/';
+							//window.location.href = '/reports/';
+							submit_form(function () {
+								//$("#Edit").modal('hide');
+							});
+							$("#Edit").modal('hide');
 						}
 					},
 					error: function (request, status, error) {
@@ -226,10 +236,13 @@
 			 Provide username translation into full names after form generation
 			 */
 			if(nameDict== null){
+				// caching mecanism
+				// only request the user list once and stores it
 				$.ajax({
 					url: '/user_list',
 					success:function(response, textStatus, jqXHR){
 						nameDict = response;
+						NameTransSub(MainObj);
 					},
 					error: function (request, status, error) {
 						//implement proper error handling
@@ -241,7 +254,14 @@
 					contentType: true,
 					processData: true
 				});
+			}else {
+				NameTransSub(MainObj);
 			}
+		}
+		function NameTransSub(MainObj) {
+			/*	Clement Fiere 30/04/2015
+			 Provide username translation into full names after form generation
+			 */
 			var obj = MainObj[0];
 
 			for (var i = 0; i < obj.length; i++) {
@@ -251,7 +271,9 @@
 			}
 			MainObj.multiselect(multiConfigurationSet);
 		}
+
 	</script>
+	<!-- Pagination, research, filtering management, popover -->
 	<script type="text/javascript">
 	  //AJAX submission of the form
 		function submit_form(e) {
@@ -264,6 +286,7 @@
 				success: function (response, textStatus, jqXHR) {
 					$("#pagination-content").fadeTo(0, 1);
 					$("#pagination-content").html(response);
+					if(e!=undefined) e.call(); //call-back
 				},
 				error  : function (request, status, error) { console.log(error); }
 			});
@@ -326,7 +349,7 @@
       </div>\
       <div class="control-group">\
         <div class="controls">\
-          <button id="subBtn" type="submit" class="btn btn-primary btn-small btn-block" onclick="disableObj(\'subBtn\');"><strong> GO </strong></button>\
+          <button id="subBtn" type="submit" class="btn btn-primary btn-small btn-block" onclick="disableObj(\'subBtn\');submit();"><strong> GO </strong></button>\
 						</div>\
 					</div>\
 				</form>\
@@ -360,8 +383,10 @@
 				$("#pagination-content").load('/reports/search', {
 					reset: 1,
 					csrfmiddlewaretoken: '{{ csrf_token }}'
+				}, function (response, status, xhr) {
+					$("#pagination-content").fadeTo(0, 1);
 				});
-				$("#pagination-content").fadeTo(0, 1);
+
 			});
 		});
 	</script>
