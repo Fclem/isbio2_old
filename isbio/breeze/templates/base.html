@@ -1,55 +1,55 @@
 <!DOCTYPE html>
 {% load bootstrap_toolkit %}
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>{% block title %} {% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <!--
+<head>
+	<meta charset="utf-8">
+	<title>{% block title %} {% endblock %}</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<!--
 
-    <link rel="shortcut icon" href="/static/img/logo.ico">
-    -->
-	  <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico"/>
+		<link rel="shortcut icon" href="/static/img/logo.ico">
+		-->
+	<link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico"/>
 
-    <link href="/static/css/bootstrap.css" rel="stylesheet">
-	  <link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
-    <link href="/static/css/jquery-ui-1.9.2.custom.css" rel="stylesheet">
+	<link href="/static/css/bootstrap.css" rel="stylesheet">
+	<link href="/static/css/bootstrap-responsive.css" rel="stylesheet">
+	<link href="/static/css/jquery-ui-1.9.2.custom.css" rel="stylesheet">
 
 
-    <!-- <link href="/static/third-party/jQuery-UI-Date-Range-Picker/css/ui.daterangepicker.css" rel="stylesheet"> -->
-    <link href="/static/third-party/jQuery-UI-FileInput/css/enhanced.css" rel="stylesheet">
-    <!-- <link href="/static/third-party/wijmo/jquery.wijmo-open.1.5.0.css" rel="stylesheet"> -->
+	<!-- <link href="/static/third-party/jQuery-UI-Date-Range-Picker/css/ui.daterangepicker.css" rel="stylesheet"> -->
+	<link href="/static/third-party/jQuery-UI-FileInput/css/enhanced.css" rel="stylesheet">
+	<!-- <link href="/static/third-party/wijmo/jquery.wijmo-open.1.5.0.css" rel="stylesheet"> -->
 
-    <script src="/static/js/jquery.js"></script>
-    <script src="/static/js/jquery-1.8.3.min.js"></script>
-    <script src="/static/js/bootstrap.min.js"></script>
-    <script src="/static/js/bootbox.min.js"></script>
+	<script src="/static/js/jquery.js"></script>
+	<script src="/static/js/jquery-1.8.3.min.js"></script>
+	<script src="/static/js/bootstrap.min.js"></script>
+	<script src="/static/js/bootbox.min.js"></script>
 
-    <script src="/static/js/jquery-ui-1.9.2.custom.min.js"></script>
-    <script src="/static/js/jquery.ajaxfileupload.js"></script>
-    <script src="/static/js/jquery.MultiFile.js"></script>
+	<script src="/static/js/jquery-ui-1.9.2.custom.min.js"></script>
+	<script src="/static/js/jquery.ajaxfileupload.js"></script>
+	<script src="/static/js/jquery.MultiFile.js"></script>
 
-    <!-- FileInput -->
-    <script src="/static/third-party/jQuery-UI-FileInput/js/enhance.min.js" type="text/javascript"></script>
-    <script src="/static/third-party/jQuery-UI-FileInput/js/fileinput.jquery.js" type="text/javascript"></script>
+	<!-- FileInput -->
+	<script src="/static/third-party/jQuery-UI-FileInput/js/enhance.min.js" type="text/javascript"></script>
+	<script src="/static/third-party/jQuery-UI-FileInput/js/fileinput.jquery.js" type="text/javascript"></script>
 
-    <!--daterangepicker-->
-    <!-- <script type="text/javascript" src="/static/third-party/wijmo/jquery.bgiframe-2.1.3-pre.js"></script> -->
-    <!-- <script type="text/javascript" src="/static/third-party/wijmo/jquery.wijmo-open.1.5.0.min.js"></script> -->
-    <!-- <script type="text/javascript" src="/static/third-party/jQuery-UI-Date-Range-Picker/js/daterangepicker.jQuery.js"></script> -->
-    <!-- <script type="text/javascript" src="/static/third-party/jQuery-UI-Date-Range-Picker/js/date.js"></script> -->
+	<!--daterangepicker-->
+	<!-- <script type="text/javascript" src="/static/third-party/wijmo/jquery.bgiframe-2.1.3-pre.js"></script> -->
+	<!-- <script type="text/javascript" src="/static/third-party/wijmo/jquery.wijmo-open.1.5.0.min.js"></script> -->
+	<!-- <script type="text/javascript" src="/static/third-party/jQuery-UI-Date-Range-Picker/js/daterangepicker.jQuery.js"></script> -->
+	<!-- <script type="text/javascript" src="/static/third-party/jQuery-UI-Date-Range-Picker/js/date.js"></script> -->
 
-    <!-- HighCharts -->
-    <!-- <script type="text/javascript" src="/static/third-party/highcharts/js/highcharts.js"></script> -->
+	<!-- HighCharts -->
+	<!-- <script type="text/javascript" src="/static/third-party/highcharts/js/highcharts.js"></script> -->
 
-    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
-    <!--[if lt IE 9]>
+	<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+	<!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
 
-    <!--
+	<!--
     {% bootstrap_javascript_tag "transition" %}
     {% bootstrap_javascript_tag "tooltip" %}
 
@@ -57,213 +57,182 @@
     {% bootstrap_javascript_tag "affix" %}
     {% bootstrap_javascript_tag "popover" %} -->
 
-    {% block extra_head %}{% endblock %}
-    <style type="text/css">
-      /* Override some defaults */
-      html, body {
-        background: url('/static/wall.png');
-        height: 100%;
-        background-repeat: repeat;
-        margin:0;
-	      padding:0;
-      }
-      body {
-        overflow-y: scroll; /* prevents stretching effect of centered layout when content dynamically overflow-y */
-      }
-      /* Customized */
-      #popup_message_container{
-        position: fixed;
-        top: 66px;
-        width: 100%;
-        z-index:102;
-      }
-      #error_msg{
-        width: 400px;
-        z-index:103;
-        margin-left:auto;
-        margin-right:auto;
-        opacity: 0.85;
-        filter: alpha(opacity=85); /* For IE8 and earlier */
-      }
-       /* Managing the footnote to always be at the bottom even if page content is not as tall as the viewport
-        cf. http://www.cssreset.com/how-to-keep-footer-at-bottom-of-page-with-css/
-        */
-      #wrapper {
-        min-height:100%;
-        position:relative;
-      }
-      #content {
-        /* padding:10px; */
-        padding-top:  50px;
-        padding-bottom:80px;   /* Height of the footer element */
-      }
-      #footer {
-        width:100%;
-        height:80px;
-        position:absolute;
-        bottom:0;
-        left:0;
-      }
-      input[type="text"]{
-          color:#2E2E2E !important;
-      }
-      .modal-body {
-          overflow-x: hidden;
-      }
-      #NewGroup .modal-body, #UpdateInfo .modal-body{
-        overflow-y: visible !important;
-      }
-      .multiselect-container{
-          overflow-x: hidden;
-          position: fixed;
-          top: inherit;
-          left: inherit;
-      }
-      input.form-control.multiselect-search{
-        width:95%;
-        /* margin-right: 14px; */
-      }
-      .modal{
-        background: url('/static/nail.png');
-        }
-       #form_modal_apply{
-        margin-bottom: 0px;
-       }
+	{% block extra_head %}{% endblock %}
+	<style type="text/css">
+		/* Override some defaults */
+		html, body {
+			background: url('/static/wall.png');
+			height: 100%;
+			background-repeat: repeat;
+			margin:0;
+			padding:0;
+		}
+		body {
+			overflow-y: scroll; /* prevents stretching effect of centered layout when content dynamically overflow-y */
+		}
+		/* Customized */
+		#popup_message_container{
+			position: fixed;
+			top: 66px;
+			width: 100%;
+			z-index:102;
+		}
+		#error_msg{
+			width: 400px;
+			z-index:103;
+			margin-left:auto;
+			margin-right:auto;
+			opacity: 0.85;
+			filter: alpha(opacity=85); /* For IE8 and earlier */
+		}
+		/* Managing the footnote to always be at the bottom even if page content is not as tall as the viewport
+						cf. http://www.cssreset.com/how-to-keep-footer-at-bottom-of-page-with-css/
+						*/
+		#wrapper {
+			min-height:100%;
+			position:relative;
+		}
+		#content {
+			/* padding:10px; */
+			padding-top:  50px;
+			padding-bottom:80px;   /* Height of the footer element */
+		}
+		#footer {
+			width:100%;
+			height:80px;
+			position:absolute;
+			bottom:0;
+			left:0;
+		}
+		input[type="text"]{
+			color:#2E2E2E !important;
+		}
+		.modal-body {
+			overflow-x: hidden;
+		}
+		#NewGroup .modal-body, #UpdateInfo .modal-body{
+			overflow-y: visible !important;
+		}
+		.multiselect-container{
+			overflow-x: hidden;
+			position: fixed;
+			top: inherit;
+			left: inherit;
+		}
+		input.form-control.multiselect-search{
+			width:95%;
+			/* margin-right: 14px; */
+		}
+		.modal{
+			background: url('/static/nail.png');
+		}
+		#form_modal_apply{
+			margin-bottom: 0px;
+		}
 
-	  .open > .dropdown-menu {
-		  display: block;
-		  position: absolute;
-	  }
-    </style>
-    <!--[if lt IE 7]>
+		.open > .dropdown-menu {
+			display: block;
+			position: absolute;
+		}
+	</style>
+	<!--[if lt IE 7]>
     <style type="text/css">
       #wrapper { height:100%; } /* Footnote as a real footer compatibility for IE<7 */
     </style>
     <![endif]-->
-    <script type="text/javascript">
-        //Diplays floating disposable error message box
-        function ShowError(HtmlContent){
-          $("#error_msg").removeClass("hidden");
-          //$("#error_msg").innerHTML = HtmlContent;
-          if(HtmlContent!=""){
-              var x = document.getElementById("error_msg_holder");
-              x.innerHTML = HtmlContent;
-          }
 
-        }
-        $(document).ready(function(){
-            var x = document.getElementById("error_msg_holder");
-            if(x.innerHTML != "" && x.innerHTML != "<p></p>"){
-                ShowError("");
-            }
-        });
-		// prevents click on a submit button
-		function disableObj(name) {
-			clkBtn = $('#' + name + '')[0];
-			//protect from double submission while sending
-			if (clkBtn != undefined) clkBtn.disabled = true;
-		}
-		function enableObj(name) {
-			clkBtn = $('#' + name + '')[0];
-			if(clkBtn != undefined) clkBtn.disabled = false;
-		}
-		function switchObj(name) {
-			clkBtn = $('#' + name + '')[0];
-			if (clkBtn != undefined) clkBtn.disabled = !clkBtn.disabled;
-		}
-    </script>
-  </head>
-  <body>
-    <div id="wrapper">
-      <!--[if lt IE 9]>
+</head>
+<body>
+<div id="wrapper">
+	<!--[if lt IE 9]>
       <link rel="stylesheet" type="text/css" href="/static/css/jquery.ui.1.9.2.ie.css"/>
       <![endif]-->
-      <!-- error popup message placeholder -->
-      <div id="popup_message_container">
-        <div id="error_msg" class="alert alert-danger alert-dismissible hidden" role="alert">
-          <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          <strong><span id="error_msg_holder">{{ error_message|linebreaks }}</span></strong>
-        </div>
-      </div>
-      <!-- /error popup message placeholder -->
+	<!-- error popup message placeholder -->
+	<div id="popup_message_container">
+		<div id="error_msg" class="alert alert-danger alert-dismissible hidden" role="alert">
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+			<strong><span id="error_msg_holder">{{ error_message|linebreaks }}</span></strong>
+		</div>
+	</div>
+	<!-- /error popup message placeholder -->
 
-      <!-- main navigation bar -->
-      <div class="navbar navbar-inverse navbar-fixed-top">
-        <div class="navbar-inner">
-          <div class="container-fluid">
-            <a class="brand" href="/breeze/">BREEZE</a>
-            <div class="navbar-content">
-              <div class="btn-group pull-right">
-                <p class="navbar-text">
-                  <a class="btn btn-inverse" href="/logout/">logout <i class="icon-white icon-share"></i></a>
-                </p>
-              </div>
-              <ul class="nav" >
-                <li class="{{ home_status }}">
-                  <a href="/home"> <i class="icon-home"></i> Home</a>
-                </li>
-                <li class="{{ jobs_status }}">
-                  <a href="/jobs" id="dash"> <i class="icon-tasks"></i> Dash</a>
-                </li>
-                <li class="{{ scripts_status }}">
-                  <a href="/scripts" id="scripts"> <i class="icon-list-alt"></i> Scripts</a>
-                </li>
-                <li class="{{ reports_status }}">
-                  <a href="/reports" id="reports"> <i class="icon-th"></i> Reports</a>
-                </li>
-                <li class="{{ dbviewer_status }}">
-                  <a href="/dbviewer" id="db"> <i class="icon-briefcase"></i> DB Viewer</a>
-                </li>
-                {% if is_local_admin %}
-                <li class="{{ resources_status }}">
-                  <a href="/resources" id="resources"> <i class="icon-wrench"></i> Manage Resources</a>
-                </li>
-                {% endif %}
+	<!-- main navigation bar -->
+	<div class="navbar navbar-inverse navbar-fixed-top">
+		<div class="navbar-inner">
+			<div class="container-fluid">
+				<a class="brand" href="/breeze/">BREEZE</a>
+				<div class="navbar-content">
+					<div class="btn-group pull-right">
+						<p class="navbar-text">
+							<a class="btn btn-inverse" href="/logout/">logout <i class="icon-white icon-share"></i></a>
+						</p>
+					</div>
+					<ul class="nav" >
+						<li class="{{ home_status }}">
+							<a href="/home"> <i class="icon-home"></i> Home</a>
+						</li>
+						<li class="{{ jobs_status }}">
+							<a href="/jobs" id="dash"> <i class="icon-tasks"></i> Dash</a>
+						</li>
+						<li class="{{ scripts_status }}">
+							<a href="/scripts" id="scripts"> <i class="icon-list-alt"></i> Scripts</a>
+						</li>
+						<li class="{{ reports_status }}">
+							<a href="/reports" id="reports"> <i class="icon-th"></i> Reports</a>
+						</li>
+						<li class="{{ dbviewer_status }}">
+							<a href="/dbviewer" id="db"> <i class="icon-briefcase"></i> DB Viewer</a>
+						</li>
+						{% if is_local_admin %}
+							<li class="{{ resources_status }}">
+								<a href="/resources" id="resources"> <i class="icon-wrench"></i> Manage Resources</a>
+							</li>
+						{% endif %}
 
-                <li class="{{ store_status }}">
-                    <a href="/store" id="store"> <i class=" icon-cog"></i>Markets </a>
-                </li>
-                <li class="{{ help_status }}">
-                  <a href="/help" id="help"> <i class="icon-question-sign"></i> Help</a>
-                </li>
-                <ul class="nav nav-tabs"></ul>
-                <ul class="nav pull-right"></ul>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- /main navigation bar -->
+						<li class="{{ store_status }}">
+							<a href="/store" id="store"> <i class=" icon-cog"></i>Markets </a>
+						</li>
+						<li class="{{ help_status }}">
+							<a href="/help" id="help"> <i class="icon-question-sign"></i> Help</a>
+						</li>
+						<ul class="nav nav-tabs"></ul>
+						<ul class="nav pull-right"></ul>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- /main navigation bar -->
 
-      <!-- global container under the nav-bar -->
-      <div id="content" class="container-fluid">
-        {% block content %}
+	<!-- global container under the nav-bar -->
+	<div id="content" class="container-fluid">
+		{% block content %}
 
-        {% endblock %}
-      </div>
-      <!-- /global container -->
+		{% endblock %}
+	</div>
+	<!-- /global container -->
 
-      <!-- footer container -->
-      <div id="footer" >
-        {% block footer %}
-            <hr>
-            <footer>
-              <div class="container">
-                <p align="center">&middot; &copy; FIMM 2015 &middot;</p>
-              </div>
-            </footer>
-        {% endblock %}
-      </div>
-      <!-- /footer container -->
-      <!-- template : {{db_access}} -->
-      <div id="db_access" data-para="{{db_access}}">
-        <div class="modal hide fade" id="db_policy"  role="dialog" aria-hidden="true" style="background: url('/static/nail.png');">
-            {% include "db_policy.html" %}
-        </div>
-      </div>
-    </div>
-		{% if not disable_zopim %}
-    {% block zopim %}
+	<!-- footer container -->
+	<div id="footer" >
+		{% block footer %}
+			<hr>
+			<footer>
+				<div class="container">
+					<p align="center">&middot; &copy; FIMM 2015 &middot;</p>
+				</div>
+			</footer>
+		{% endblock %}
+	</div>
+	<!-- /footer container -->
+	<!-- template : {{db_access}} -->
+	<div id="db_access" data-para="{{db_access}}">
+		<div class="modal hide fade" id="db_policy"  role="dialog" aria-hidden="true" style="background: url('/static/nail.png');">
+			{% include "db_policy.html" %}
+		</div>
+	</div>
+</div>
+{% if not disable_zopim %}
+	{% block zopim %}
 		<!--Start of Zopim Live Chat Script-->
 		<script type="text/javascript">
 			window.$zopim || (function (d, s) {
@@ -285,7 +254,43 @@
 			})(document, "script");
 		</script>
 		<!--End of Zopim Live Chat Script-->
-    {% endblock %}
-		{% endif %}
-  </body>
+	{% endblock %}
+{% endif %}
+<script type="text/javascript">
+	//Diplays floating disposable error message box
+	function ShowError(HtmlContent) {
+		$("#error_msg").removeClass("hidden");
+//$("#error_msg").innerHTML = HtmlContent;
+		if (HtmlContent != "") {
+			var x = document.getElementById("error_msg_holder");
+			if (x != undefined) {
+				x.innerHTML = HtmlContent;
+			}
+		}
+	}
+	$(document).ready(function () {
+		var x = document.getElementById("error_msg_holder");
+		if (x.innerHTML != "" && x.innerHTML != "<p></p>") {
+			ShowError("");
+		}
+
+	});
+	// prevents click on a submit button
+	function disableObj(name) {
+		clkBtn = $('#' + name + '')[0];
+//protect from double submission while sending
+		if (clkBtn != undefined) clkBtn.disabled = true;
+	}
+
+	function enableObj(name) {
+		clkBtn = $('#' + name + '')[0];
+		if (clkBtn != undefined) clkBtn.disabled = false;
+	}
+
+	function switchObj(name) {
+		clkBtn = $('#' + name + '')[0];
+		if (clkBtn != undefined) clkBtn.disabled = !clkBtn.disabled;
+	}
+</script>
+</body>
 </html>
