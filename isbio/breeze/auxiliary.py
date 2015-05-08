@@ -416,10 +416,10 @@ def get_report_path_test(fitem, fname=None, NoFail=False):
 	old_local_path = os.path.dirname( str(settings.MEDIA_ROOT) + local_path)
 
 	# hack to access reports that were generated while dev was using prod folder
-	if not (dir_exists and file_exists):
+	if not (dir_exists and file_exists) and settings.DEV_MODE:
 		path_to_file = str(settings.MEDIA_ROOT).replace('-dev', '') + local_path
-		local_path = (old_local_path, os.path.dirname(path_to_file))
+		old_local_path = (old_local_path, os.path.dirname(path_to_file))
 		file_exists = os.path.exists(path_to_file)
 		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
 
-	return local_path, path_to_file, file_exists, dir_exists
+	return old_local_path, path_to_file, file_exists, dir_exists

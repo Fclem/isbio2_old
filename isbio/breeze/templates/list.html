@@ -12,12 +12,13 @@
 
 	<!-- LIST OF EXISTING REPORTS -->
 	<div class="row-fluid">
-		<div class="span10 offset1">
+		<div class="span12">
 			<h2>{{ missing }}<small> reports are MISSING out of {{ total }} reports in DB</small></h2>
 			<h3>Missing reports list :</h3>
 			<ul>
 			{% for report in reports %}
-				<li>{{ report.created }} : {{ report.type }} :: <b>{% firstof report.author.get_full_name report.author %} // {{ report.name }}</b> ({{ report.project }}) <small style="float:right;">not found : {{ report.path.0 }}</small></li>
+				<li>
+					<small>{{ report.created }} : {{ report.id }}</small> : <b>{% firstof report.author.get_full_name report.author %} // {{ report.name }}</b> ({{ report.type }} / {{ report.project }}) <small style="float:right;">not found : {{ report.path.0 }}</small></li>
 				<!--<li>{{ report.path }}</li>-->
 				{% empty %}
 				<li>
