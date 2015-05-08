@@ -257,6 +257,9 @@ class DevSettings(BreezeSettings):
 		PROJECT_FOLDER = '/projects/'
 		PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
 
+	PROJECT_FHRB_PM_PATH = '/projects/fhrb_pm/'
+	JDBC_BRIDGE_PATH = PROJECT_FHRB_PM_PATH + 'bin/start-jdbc-bridge'
+
 	# root of the Breeze django project folder, includes 'venv', 'static' folder copy, isbio, logs
 	SOURCE_ROOT = recur(3, os.path.dirname, os.path.realpath(__file__)) + '/'
 
