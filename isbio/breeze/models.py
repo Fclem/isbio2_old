@@ -95,6 +95,7 @@ class User_date(models.Model):
     def __unicode__(self):
         return self.user.username
 
+
 class Rscripts(models.Model):
     name = models.CharField(max_length=35, unique=True)
     inln = models.CharField(max_length=150, blank=True)
@@ -222,6 +223,16 @@ class UserProfile(models.Model):
     def __unicode__(self):
         return self.user.get_full_name() #  return self.user.username
 
+
+class BlobField(models.Field):
+	description = "Blob"
+
+	def db_type(self, connection):
+		return 'blob'
+
+	def __unicode__(self):
+		return self.value_to_string()
+
 class Report(models.Model):
     type = models.ForeignKey(ReportType)
     name = models.CharField(max_length=55)
@@ -237,6 +248,10 @@ class Report(models.Model):
 
     project = models.ForeignKey(Project, null=True, blank=True, default=None)
     shared = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='report_shares')  # share list
+    conf_params = models.TextField()
+    #conf_params = models.(null=True, blank=True, default=None)
+    conf_files = models.TextField()
+    #conf_files = models.CharField(null=True, blank=True, default=None)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
