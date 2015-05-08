@@ -2,9 +2,12 @@ import breeze.models
 import re, copy, os
 from datetime import datetime
 from django.db.models import Q
+from django.http import Http404
 from subprocess import Popen, PIPE
 
 # from django.utils import timezone
+from isbio import settings
+
 
 def updateServer_routine():
     # hotfix
@@ -372,3 +375,25 @@ def uPrint(request, url, code=None, size=None):
 # 10/03/2015 Clem / ShinyProxy
 def dateT():
 	return str(datetime.strftime(datetime.now(), "%d/%b/%Y %H:%M:%S"))
+
+
+def get_report_path(fitem, fname=None):
+	'''
+	:param fitem: a Report.objects from db
+	:param fname: a specified file name (optional, default is report.html)
+	:return: (local_path, path_to_file)
+	'''
+
+	if fname is None: fname = 'report.html'
+	local_path = fitem.home + '/' + unicode.replace(unicode(fname), '../', '')
+	path_to_file = str(settings.MEDIA_ROOT) + local_path
+
+	# hack to access reports that were generated while dev was using prod folder
+	if not os.path.exists(path_to_file) and settings.DEV_MODE:
+		path_to_file = str(settings.MEDIA_ROOT).replace('-dev', '') + local_path
+
+	if not os.path.exists(path_to_file):
+		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
+		raise Http404('File ' + str(path_to_file) + ' NOT found. The folder was ' + ('NOT' if not dir_exists else ' ') + 'existent.')
+
+	return local_path, path_to_file
