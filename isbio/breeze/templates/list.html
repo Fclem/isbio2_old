@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+{% load user_translate %}
+
+{% block title %}Reports{% endblock %}
+
+{% block extra_head %}
+{% endblock %}
+
+{% block content %}
+
+	<!-- LIST OF EXISTING REPORTS -->
+	<div class="row-fluid">
+		<div class="span10 offset1">
+			<h2>{{ missing }}<small> reports are MISSING out of {{ total }} reports in DB</small></h2>
+			<ul>
+			{% for report in reports %}
+				<li>MISSING : {{ report.created }} : {{ report.type }} :: <b>{% firstof report.author.get_full_name report.author %} // {{ report.name }}</b> ({{ report.project }})</li>
+				<!--<li>{{ report.path }}</li>-->
+				{% empty %}
+				<li>
+					There is no report in the database matching your search criterias...
+				</li>
+			{% endfor %}
+		</div>
+	</div>
+
+
+{% endblock %}

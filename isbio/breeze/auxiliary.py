@@ -394,6 +394,29 @@ def get_report_path(fitem, fname=None):
 
 	if not os.path.exists(path_to_file):
 		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
-		raise Http404('File ' + str(path_to_file) + ' NOT found. The folder was ' + ('NOT' if not dir_exists else ' ') + 'existent.')
+		raise Http404('File ' + str(path_to_file) + ' NOT found. The folder was ' + ('NOT ' if not dir_exists else ' ') + 'existent.')
 
 	return local_path, path_to_file
+
+
+def get_report_path_test(fitem, fname=None, NoFail=False):
+	'''
+	:param fitem: a Report.objects from db
+	:param fname: a specified file name (optional, default is report.html)
+	:return: (local_path, path_to_file)
+	'''
+
+	if fname is None: fname = 'report.html'
+	local_path = fitem.home + '/' + unicode.replace(unicode(fname), '../', '')
+	path_to_file = str(settings.MEDIA_ROOT) + local_path
+
+	file_exists = os.path.exists(path_to_file)
+	dir_exists = os.path.isdir(os.path.dirname(path_to_file))
+
+	# hack to access reports that were generated while dev was using prod folder
+	if not (dir_exists and file_exists):
+		path_to_file = str(settings.MEDIA_ROOT).replace('-dev', '') + local_path
+		file_exists = os.path.exists(path_to_file)
+		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
+
+	return local_path, path_to_file, file_exists, dir_exists

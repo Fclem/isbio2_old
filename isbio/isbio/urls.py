@@ -58,6 +58,7 @@ urlpatterns = patterns('',
     url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
     url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
     url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Re Run report
+    url(r'^reports/check$', views.check_reports),  # Re Run report
     # fusion thoses lines
     url(r'^jobs/current', views.jobs, {'state': "current"}),
     url(r'^jobs/scheduled?$', views.jobs, {'state': "scheduled"}),
