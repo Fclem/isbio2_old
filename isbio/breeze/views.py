@@ -1317,6 +1317,33 @@ def edit_reportMMMMM(request, jid=None, mod=None):
 	files = str(json.loads(report.conf_files) if report.conf_files is not None and len(report.conf_files) > 0 else None)
 	return HttpResponse(data + '\n' + files)
 
+
+@login_required(login_url='/')
+def check_reports(request):
+	reports = Report.objects.all().order_by('-created')
+	i = 0
+	malst = list()
+	for each in reports:
+		local_path, path_to_file, fileE, folderE = aux.get_report_path_test(each, None, True)
+		if not folderE or not fileE:
+			malst.append({
+			'type': str(each.type),
+			'created': str(each.created),
+			'author': unicode(each.author.get_full_name() or each.author.username),
+			'name': str(each.name),
+			'project': str(each.project),
+			'path': (path_to_file, fileE, folderE),
+			}
+			)
+			i += 1
+
+	return render_to_response('list.html', RequestContext(request, {
+	'reports': malst,
+	'missing': i,
+	'total': reports.count,
+	}))
+
+
 @login_required(login_url='/')
 def edit_job(request, jid=None, mod=None):
 	job = Jobs.objects.get(id=jid)
