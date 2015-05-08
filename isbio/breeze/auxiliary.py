@@ -278,12 +278,13 @@ def merge_job_history(jobs, reports):
             el['fdownhref'] = '/jobs/download/%s' % str(item.id)  # full folder
 
             el['home'] = ''
-            el['reschedhref'] = '%s-repl' % str(item.id)
+            el['reschedhref'] = 'jobs/%s-repl' % str(item.id)
 
             el['delhref'] = '/jobs/delete/%s' % str(item.id)
             el['abohref'] = '/abortjobs/%s' % str(item.id)
 
             el['progress'] = item.progress
+            el['type'] = item.script
 
         else:                             # report
             el['instance'] = 'report'
@@ -297,16 +298,17 @@ def merge_job_history(jobs, reports):
             el['fdownhref'] = ''  # full folder
 
             el['home'] = item.home
-            el['reschedhref'] = ''
+            el['reschedhref'] = '/reports/edit/%s' % str(item.id)
 
             el['delhref'] = '/reports/delete/%s-dash' % str(item.id)
             el['abohref'] = '/abortreports/%s' % str(item.id)
 
             el['progress'] = item.progress
+            el['type'] = item.type
 
         merged.append( copy.deepcopy(el) )
 
-    # sort list according to creation datenad time
+    # sort list according to creation daten and time
     merged.sort(key=lambda r: r['staged'])
     merged.reverse()
 
@@ -317,9 +319,9 @@ def merge_job_lst(item1, item2):
     ''' Merge reports with reports or jobs with jobs in a unified object (list)
     '''
     merged = list()
-    merged = list(item1) + list(item2)
+    merged = list() + list(item1) + list(item2)
 
-    # sort list according to creation datenad time
+    # sort list according to creation date and time
     merged.sort(key=lambda r: r['staged'])
     merged.reverse()
 
