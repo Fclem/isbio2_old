@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+from social_auth.backends.pipeline import user
 import auxiliary as aux
 import forms as breezeForms
-import urllib, pprint, mimetypes, urllib2, glob, os, copy, tempfile, zipfile, shutil, fnmatch, rpy2, os.path
+import urllib, pprint, mimetypes, urllib2, glob, os, copy, tempfile, zipfile, shutil, fnmatch, rpy2, os.path, sys
 import rora as rora
 import shell as rshell
 import xml.etree.ElementTree as xml
+import json, pickle
 from datetime import datetime
 from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
 	Statistics, Institute, Script_categories, CartInfo  # , User_date
@@ -17,7 +19,7 @@ from django.contrib.auth.models import User  # , Group
 from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.db.models import Q
 from django.http import HttpResponseRedirect, Http404, HttpResponse
 from django.shortcuts import render_to_response
@@ -59,6 +61,7 @@ class RequestStorage():
 
 	def del_param(self, var):
 		del self.form_details[var]
+
 
 storage = RequestStorage()
 storage.progress = 10
@@ -214,8 +217,8 @@ def updateServer(request):
 
 
 @login_required(login_url='/')
-def jobs(request, state="scheduled", error_msg=""):
-	if settings.DEBUG: print("State says : " + str(state))
+def jobs(request, state="", error_msg=""):
+	#if settings.DEBUG: print("State says : " + str(state))
 	if state == "scheduled":
 		tab = "scheduled_tab"
 		show_tab = "show_sched"
@@ -223,6 +226,7 @@ def jobs(request, state="scheduled", error_msg=""):
 		tab = "current_tab"
 		show_tab = "show_curr"
 	else:
+		state == "history"
 		tab = "history_tab"
 		show_tab = "show_hist"
 
@@ -250,15 +254,23 @@ def jobs(request, state="scheduled", error_msg=""):
 	# If AJAX - check page from the request
 	# Otherwise return the first page
 	if request.is_ajax() and request.method == 'GET':
-		page = request.GET.get('page')
-		try:
-			hist_jobs = paginator.page(page)
-		except PageNotAnInteger:  # if page isn't an integer
+		if 'get-live' in request.GET:
 			hist_jobs = paginator.page(1)
-		except EmptyPage:  # if page out of bounds
-			hist_jobs = paginator.page(paginator.num_pages)
 
-		return render_to_response('jobs-hist-paginator.html', RequestContext(request, {'history': hist_jobs}))
+			return render_to_response('jobs-live.html', RequestContext(request, {
+			'dash_history': hist_jobs[0:3],
+			'current': merged_active,
+			}))
+		else:
+			page = request.GET.get('page')
+			try:
+				hist_jobs = paginator.page(page)
+			except PageNotAnInteger:  # if page isn't an integer
+				hist_jobs = paginator.page(1)
+			except EmptyPage:  # if page out of bounds
+				hist_jobs = paginator.page(paginator.num_pages)
+
+			return render_to_response('jobs-hist-paginator.html', RequestContext(request, {'history': hist_jobs}))
 	else:
 		for jobitem in active_jobs:
 			rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
@@ -273,20 +285,15 @@ def jobs(request, state="scheduled", error_msg=""):
 		db_access = user_profile.db_agreement
 		hist_jobs = paginator.page(1)
 
-		if state is None:
-			if len(merged_active) > 0:
-				tab = "current_tab"
-				show_tab = "show_curr"
-			elif len(scheduled_jobs) > 0:
-				tab = "scheduled_tab"
-				show_tab = "show_sched"
-			else:
-				tab = "history_tab"
-				show_tab = "show_hist"
+		if state is None and len(merged_active) > 0:
+			tab = "current_tab"
+			show_tab = "show_curr"
+			state = 'current'
 
 		return render_to_response('jobs.html', RequestContext(request, {
 			str(tab): 'active',
 			str(show_tab): 'active',
+			'active_tab': state,
 			'jobs_status': 'active',
 			'dash_history': hist_jobs[0:3],
 			'scheduled': scheduled_jobs,
@@ -294,7 +301,8 @@ def jobs(request, state="scheduled", error_msg=""):
 			'current': merged_active,
 			'pagination_number': paginator.num_pages,
 			'db_access': db_access,
-			'error_message': error_msg
+			'error_message': error_msg,
+			'current_nb': merged_active.__len__()
 		}))
 
 
@@ -327,7 +335,7 @@ def scripts(request, layout="list"):
 			cat_list[str(script.category).capitalize()] = Rscripts.objects.filter(category__exact=str(script.category)).filter(draft="0").filter(istag="0")
 	'''
 	# if request.user.has_perm('breeze.add_rscripts'):
-	#    cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
+	# cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
 	#    cat_list['_Datasets_'] = DataSet.objects.all()
 	user_profile = UserProfile.objects.get(user=request.user)
 	db_access = user_profile.db_agreement
@@ -373,7 +381,7 @@ def reports(request):
 			reports = paginator.page(1)
 		except EmptyPage:  # if page out of bounds
 			reports = paginator.page(paginator.num_pages)
-		#  access rights
+		# access rights
 		for each in reports:
 			each.user_is_owner = each.author == request.user
 			each.user_has_access = request.user in each.shared.all() or each.user_is_owner
@@ -400,6 +408,7 @@ def reports(request):
 			'page': page_index,
 			'db_access': db_access
 		}))
+
 
 @login_required(login_url='/')
 def dbviewer(request):
@@ -549,7 +558,7 @@ def screen_data(request, which):
 				int(data[13]), 'plate_count': data[14], 'dg': int(data[15]), 'disease_stage': int(data[16]), 'read_out':
 				int(data[21]), 'createdate': data[22].split()[0]
 		})
-		# print(screen_info)
+	# print(screen_info)
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': screen_info,
 		'action': '/screen-data/0',
@@ -622,11 +631,9 @@ def mycart(request):
 	# all_items = CartInfo.objects.filter(script_buyer=request.user)
 	items_free = CartInfo.objects.filter(script_buyer=request.user, type_app=True)
 	items_nonfree = CartInfo.objects.filter(script_buyer=request.user, type_app=False)
-	html = render_to_string('cartinfo.html', {
-		# 'mycart_status': 'active',
-		'items_free': items_free,
-		'items_nonfree': items_nonfree
-		#'all_items': all_items
+	html = render_to_string('cartinfo.html', {  # 'mycart_status': 'active',
+	                                            'items_free': items_free,
+	                                            'items_nonfree': items_nonfree  # 'all_items': all_items
 	})
 	return HttpResponse(html)
 
@@ -699,7 +706,7 @@ def reports_search(request):
 
 		entry_query = aux.get_query(query_string, ['title', 'body', ])
 
-		# found_entries = Entry.objects.filter(entry_query).order_by('-pub_date')
+	# found_entries = Entry.objects.filter(entry_query).order_by('-pub_date')
 
 	return render_to_response('search/search_results.html',
 	                          {'query_string': query_string, 'found_entries': found_entries},
@@ -715,11 +722,35 @@ def dbPolicy(request):
 
 
 @login_required(login_url='/')
-def report_overview(request, rtype, iname, iid=None, mod=None):
-	tags_data_list = list()  # a list of 'tag_data' dictionaries
-	# filter tags according to report type (here we pick non-draft tags):
-	tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
-		report_type=ReportType.objects.get(type=rtype)).order_by('order')
+def report_overview(request, rtype, iname=None, iid=None, mod=None):
+	tags_data_list = list()
+	files = None
+	title = None
+	if mod == 'reload':
+		try:
+			report = Report.objects.get(id=iid)
+		except ObjectDoesNotExist:
+			raise Http404('There is no report with id '+ iid + ' in database')
+		rtype = str(report.type)
+		iname =	report.name + '_bis'
+		try:
+			# filter tags according to report type (here we pick non-draft tags):
+			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
+			report_type=ReportType.objects.get(id=report.type_id)).order_by('order')
+		except ObjectDoesNotExist:
+			raise Http404('There is ReportType with id ' + report.type_id + ' in database')
+		data = pickle.loads(report.conf_params) if report.conf_params is not None else None
+		files = json.loads(report.conf_files) if report.conf_files is not None and len(report.conf_files) > 0 else None
+		title = 'ReRun report ' + report.name
+	else:
+		try:
+			# filter tags according to report type (here we pick non-draft tags):
+			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
+				report_type=ReportType.objects.get(type=rtype)).order_by('order')
+		except ObjectDoesNotExist:
+			raise Http404('There is ReportType with id ' + rtype + ' in database')
+		data = request.POST
+		files = request.FILES if request.FILES else None
 
 	overview = dict()
 	overview['report_type'] = rtype
@@ -732,17 +763,19 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 		overview['manual'] = settings.MEDIA_URL + manual
 
 	if request.method == 'POST':
+		#pprint.pprint(request.POST)
 		# Validates input info and creates (submits) a report
 		property_form = breezeForms.ReportPropsForm(request.POST, request=request)
+		#property_form = breezeForms.ReportPropsForm(request=request)
 		tags_data_list = breezeForms.validate_report_sections(tags, request)
 
 		sections_valid = breezeForms.check_validity(tags_data_list)
 
-		if property_form.is_valid() and sections_valid:
+		if property_form.is_valid() and sections_valid and mod != 'reload':
 			# lunches the script generation in a separate thread in order to avoid long blocking operation
 			# thread.start_new_thread(rshell.build_report, (overview, request, property_form, tags))
 			rshell.build_report(overview, request, property_form, tags)
-
+			# print request.POST['shared']
 			"""
 			for tag in tags:
 				secID = 'Section_dbID_' + str(tag.id)
@@ -755,10 +788,26 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 					pass
 			"""
 			return HttpResponse(True)
+		else:
+			#print('Has posted, not valid')
+			for x in tags_data_list:
+				x['value'] = request.POST.get('Section_dbID_' + str(x['id']))
+				if not 'size' in x:
+					x['size'] = len(x['form'].fields)
+				x['opened'] = x['value'] == '1' and not x['isvalid']
 	else:
 		# Renders report overview and available tags
-		property_form = breezeForms.ReportPropsForm(request=request)
-		tags_data_list = breezeForms.create_report_sections(tags, request)
+		if mod == 'reload' and report:
+			property_form = breezeForms.ReportPropsFormRE(instance=report, request=request)
+			loc = str(settings.MEDIA_ROOT) + report.home
+			tags_data_list = breezeForms.create_report_sections(tags, request, data, files, path=loc)
+		else:
+			property_form = breezeForms.ReportPropsForm(request=request)
+			tags_data_list = breezeForms.create_report_sections(tags, request, data, files)
+		#print('Not posted')
+		for x in tags_data_list:
+			if not 'value' in x: x['value'] = '0'
+			x['opened'] = x['value'] == '1'
 
 	script = list()
 	access_script = list(request.user.users.all().values('name'))
@@ -772,13 +821,17 @@ def report_overview(request, rtype, iname, iid=None, mod=None):
 		'props_form': property_form,
 		'tags_available': tags_data_list,
 		'access_script': script,
-		'disable_zopim': True
+		'disable_zopim': True,
+	    'title': title
 	}))
 
 
 @login_required(login_url='/')
 def showdetails(request, sid=None):
-	tags = ReportType.objects.get(id=sid).rscripts_set.all()
+	try:
+		tags = ReportType.objects.get(id=sid).rscripts_set.all()
+	except ObjectDoesNotExist:  # TODO protect all alike request as such
+		raise Http404('There is no object with id ' + sid + ' in database')
 	app_installed = request.user.users.all()
 
 	return render_to_response('store-tags.html', RequestContext(request, {
@@ -866,7 +919,7 @@ def manage_scripts(request):
 		try:
 			# TODO change this, since it's not the way to do it
 			# this session var is for the paginator to stay on the same page number after
-			#  sending forms (add or delete forms) for consistency and clarity
+			# sending forms (add or delete forms) for consistency and clarity
 			request.session['manage-scripts-page'] = page
 			scripts = paginator.page(page)
 		except PageNotAnInteger:  # if page isn't an integer
@@ -962,8 +1015,7 @@ def store(request):
 		'reports': reports,
 		'app_installed': app_installed,
 		'report_installed': report_installed,
-		'db_access': db_access
-		# 'tags': tags
+		'db_access': db_access  # 'tags': tags
 	}))
 
 
@@ -1009,6 +1061,7 @@ def installreport(request, sid=None):
 		return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
 	except ReportType.DoesNotExist:
 		return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
+
 
 ######################################
 ###      SUPPLEMENTARY VIEWS       ###
@@ -1090,9 +1143,7 @@ def script_editor_update(request, sid=None):
 		return render_to_response('script-editor.html', RequestContext(request, {
 			'resources_status': 'active',
 			'script': script,
-			'basic_form': f_basic
-			# 'attr_form': f_attrs,
-			# 'logo_form': f_logos
+			'basic_form': f_basic  # 'attr_form': f_attrs,  # 'logo_form': f_logos
 		}))
 	# if NOT POST
 	return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id)
@@ -1183,7 +1234,7 @@ def delete_report(request, rid, redir):
 		redir = '/reports/'
 
 	report = Report.objects.get(id=rid)
-	#  Enforce access rights
+	# Enforce access rights
 	if report.author != request.user:
 		raise PermissionDenied
 	rshell.del_report(report)
@@ -1248,6 +1299,24 @@ def read_descr(request, sid=None):
 	return render_to_response('forms/descr_modal.html', RequestContext(request, {'scr': script}))
 
 
+# Wrapper for report edition/ReRunning
+@login_required(login_url='/')
+def edit_report(request, jid=None, mod=None):
+	return report_overview(request, rtype=None, iid=jid, mod='reload')
+
+
+@login_required(login_url='/')
+def edit_reportMMMMM(request, jid=None, mod=None):
+	report = Report.objects.get(id=jid)
+	rtype = report.type
+	iname = report.name + '_bis'
+	# filter tags according to report type (here we pick non-draft tags):
+	tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
+		report_type=ReportType.objects.get(id=report.type_id)).order_by('order')
+	data = str(pickle.loads(report.conf_params) if report.conf_params else '')
+	files = str(json.loads(report.conf_files) if report.conf_files is not None and len(report.conf_files) > 0 else None)
+	return HttpResponse(data + '\n' + files)
+
 @login_required(login_url='/')
 def edit_job(request, jid=None, mod=None):
 	job = Jobs.objects.get(id=jid)
@@ -1298,7 +1367,8 @@ def edit_job(request, jid=None, mod=None):
 			return HttpResponseRedirect('/jobs')
 	else:
 		head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname),
-		                                     initial={'job_name': str(tmpname), 'job_details': str(job.jdetails)})
+		                                     initial={'job_name': str(tmpname), 'job_details': str(job.jdetails),
+		                                              'report_to': str(job.email if job.email else user_info.email)})
 		custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
 	return render_to_response('forms/user_modal.html', RequestContext(request, {
@@ -1374,9 +1444,9 @@ def create_job(request, sid=None):
 			if u'run_job' in request.POST:
 				run_script(request, new_job.id)
 				state = "current"
-				#p = Process(target=rshell.run_job, args=(new_job))
-				#p.start()
-				#print("running jobs")
+			# p = Process(target=rshell.run_job, args=(new_job))
+			#p.start()
+			#print("running jobs")
 			if u'action' in request.POST:
 				if request.POST['action'] == 'run_job':
 					run_script(request, new_job.id)
@@ -1384,7 +1454,7 @@ def create_job(request, sid=None):
 
 			print vars(request.POST)
 
-			#return HttpResponseRedirect('/jobs/')
+			# return HttpResponseRedirect('/jobs/')
 			#request = HttpResponse()
 			#request.method = "GET"
 			return jobs(request, state)
@@ -1676,20 +1746,25 @@ def send_file(request, ftype, fname):
         Each IF case prepare dispatch data of a certain type.
         ! Should substitute send_template() function soon !
     """
-	#  TODO : substitute with send_template() ?
+	# TODO : substitute with send_template() ?
 	if ftype == 'dataset':
-		fitem = DataSet.objects.get(name=str(fname))
-		local_path = str(fitem.rdata)
-		path_to_file = str(settings.MEDIA_ROOT) + local_path
+		try:
+			fitem = DataSet.objects.get(name=str(fname))
+		except ObjectDoesNotExist:
+			raise Http404('There is no report with id ' + str(fname) + ' in database')
+		# TODO Enforce user access restrictions ?
+		local_path, path_to_file = aux.get_report_path(fitem)
 
 	if ftype == 'report':
-		fitem = Report.objects.get(id=fname)
+		try:
+			fitem = Report.objects.get(id=str(fname))
+		except ObjectDoesNotExist:
+			raise Http404('There is no report with id ' + str(fname) + ' in database')
 		#  Enforce user access restrictions
 		if request.user not in fitem.shared.all() and fitem.author != request.user:
 			raise PermissionDenied
 
-		local_path = fitem.home + '/report.html'
-		path_to_file = str(settings.MEDIA_ROOT) + local_path
+		local_path, path_to_file = aux.get_report_path(fitem)
 
 	f = open(path_to_file, 'r')
 	myfile = File(f)
@@ -1710,7 +1785,7 @@ def report_shiny_view(request, rid, fname=None):
 	if request.user not in fitem.shared.all() and fitem.author != request.user:
 		raise PermissionDenied
 
-	source  = "Test"
+	source = "Test"
 	title = fitem.name
 
 	return render_to_response('shiny.html', RequestContext(request, {
@@ -1754,19 +1829,19 @@ def report_shiny_view_tab(request, rid, fname=None):
 	title = fitem.name
 
 	pages = OrderedDict([
-	('Quality Control', 'blk1.1'),
-	('Quality Control (full)', 'qc_full'),
-	('Quality Control (extended)', 'qc_ext'),
-	('QC 2', 'blk1.2'),
-	('Curve', 'blk1.3'), 
-	('Curve 2', 'blk1.4'),
-	('DSS top50', 'blk2.1'), 
-	('DSS top50 2', 'blk2.2'), 
-	('Future Genomics', 'blk2.3'),
-	('Somatic', 'blk2.4'), 
-	('Comparaison to other relevant samples', 'blk3.1'), 
-	('Clinicaly relevant other drug', 'blk3.2'), 
-	('Drug - Mutations - Patient', 'blk3.3')
+		('Quality Control', 'blk1.1'),
+		('Quality Control (full)', 'qc_full'),
+		('Quality Control (extended)', 'qc_ext'),
+		('QC 2', 'blk1.2'),
+		('Curve', 'blk1.3'),
+		('Curve 2', 'blk1.4'),
+		('DSS top50', 'blk2.1'),
+		('DSS top50 2', 'blk2.2'),
+		('Future Genomics', 'blk2.3'),
+		('Somatic', 'blk2.4'),
+		('Comparaison to other relevant samples', 'blk3.1'),
+		('Clinicaly relevant other drug', 'blk3.2'),
+		('Drug - Mutations - Patient', 'blk3.3')
 	])
 
 	return render_to_response('shiny_tab.html', RequestContext(request, {
@@ -1774,6 +1849,7 @@ def report_shiny_view_tab(request, rid, fname=None):
 	'pages': pages,
 	'title': title
 	}))
+
 
 @login_required(login_url='/')
 def report_file_view(request, rid, fname=None):
@@ -1800,18 +1876,17 @@ def report_file_server(request, rid, type, fname=None):
 	"""
         Serve report files, while enforcing access rights
     """
-	try:
-		fitem = Report.objects.get(id=rid)
-	except:
-		raise Http404
+	#
+	# try:
+	fitem = Report.objects.get(id=rid)
+	# except:
+	#	raise Http404
 
-	#  Enforce user access restrictions
+	# Enforce user access restrictions
 	if request.user not in fitem.shared.all() and fitem.author != request.user and not request.user.is_superuser:
 		raise PermissionDenied
 
-	if fname is None: fname = 'report.html'
-	local_path = fitem.home + '/' + unicode.replace(unicode(fname), '../', '')
-	path_to_file = str(settings.MEDIA_ROOT) + local_path
+	local_path, path_to_file = aux.get_report_path(fitem, fname)
 
 	mime = MimeTypes()
 	url = urllib.pathname2url(path_to_file)
@@ -1830,6 +1905,7 @@ def report_file_server(request, rid, type, fname=None):
 			response['Content-Disposition'] = 'filename=' + file
 		return response
 	except IOError:
+		print 'IOError', path_to_file
 		raise Http404
 
 
@@ -1893,7 +1969,7 @@ def new_script_dialog(request):
 		sinline = str(form.cleaned_data.get('inline', None))
 		newpath = rshell.init_script(sname, sinline, request.user)
 		return manage_scripts(request)  # call back the list rendering function
-		# return HttpResponseRedirect('/resources/scripts/')
+	# return HttpResponseRedirect('/resources/scripts/')
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': form,
@@ -1943,7 +2019,7 @@ def edit_rtype_dialog(request, pid=None, mod=None):
         @type request: django.db.models.query.QuerySet
         @type pid: int
     """
-	#file_data = ""
+	# file_data = ""
 	instance = ReportType.objects.get(id=pid)
 	if request.method == "POST":
 		#
@@ -2135,14 +2211,15 @@ def ajax_user_stat(request):
 			if (each_time <= each_group):
 				count = count + 1
 		response_data[idx] = [each_group, count]
-	#response_data['message'] = ["Aug", "Sep", "Oct", "Nov"]
+	# response_data['message'] = ["Aug", "Sep", "Oct", "Nov"]
 
 	return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+
 
 @login_required(login_url='/')
 def report_search(request):
 	if 'reset' in request.REQUEST:
-		return HttpResponseRedirect('/reports/') # Redirects to the default view
+		return HttpResponseRedirect('/reports/')  # Redirects to the default view
 	else:
 		entry_query = None
 		owned_filter = False
@@ -2214,8 +2291,8 @@ def report_search(request):
 		'reports': found_entries,
 		'pagination_number': paginator.num_pages,
 		'page': page_index,
-	    'url': 'search?',
-	    'search' : queryS,
+		'url': 'search?',
+		'search': queryS,
 		'owned_filter': owned_filter
 	}))
 
@@ -2250,7 +2327,9 @@ def home_paginate(request):
 	else:
 		return False
 
+
 DASHED_LINE = '---------------------------------------------------------------------------------------------------------------'
+
 
 @csrf_exempt
 @login_required(login_url='/')
@@ -2263,7 +2342,7 @@ def proxy_to(request, path, target_url):
 		qs = '?' + request.META['QUERY_STRING']
 		url += qs
 	opener = urllib2.build_opener()
-	#copies headers
+	# copies headers
 	#for each in request.META.keys():
 	#    if each[0:4] == "HTTP":
 	#        opener.addheaders.append((each[5:], request.META[each]))
@@ -2297,7 +2376,7 @@ def proxy_to(request, path, target_url):
 		# try to read the shiny app log :
 		p = '/var/log/shiny-server/' + path[:-1] + '-shiny-*'
 		for fileName in glob.glob(p):
-			more += os.path.basename(fileName)+' : \n'
+			more += os.path.basename(fileName) + ' : \n'
 			for line in fileinput.input(fileName, openhook=fileinput.hook_encoded("utf8")):
 				more += line + '\n'
 			fileinput.close()
@@ -2307,7 +2386,8 @@ def proxy_to(request, path, target_url):
 				pass
 			more = more[:-1] + DASHED_LINE + '\n'
 
-		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + DASHED_LINE + '\n' + more, status=e.code,
+		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + DASHED_LINE + '\n' + more,
+		                   status=e.code,
 		                   mimetype='text/plain')
 	else:
 		status_code = proxied_request.code
