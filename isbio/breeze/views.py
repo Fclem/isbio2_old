@@ -1327,12 +1327,13 @@ def check_reports(request):
 		local_path, path_to_file, fileE, folderE = aux.get_report_path_test(each, None, True)
 		if not folderE or not fileE:
 			malst.append({
+			'id': str(each.id),
 			'type': str(each.type),
 			'created': str(each.created),
 			'author': unicode(each.author.get_full_name() or each.author.username),
 			'name': str(each.name),
 			'project': str(each.project),
-			'path': (path_to_file, fileE, folderE),
+			'path': (local_path, path_to_file, fileE, folderE),
 			}
 			)
 			i += 1
