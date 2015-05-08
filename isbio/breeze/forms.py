@@ -139,6 +139,17 @@ class EditReportSharing(forms.ModelForm):
                 attrs={'class': 'multiselect', },)
         }
 
+
+class EditReportSharing(forms.ModelForm):
+	class Meta:
+		model = breeze.models.Report
+		fields = ('shared', )
+
+	widgets = {
+		'shared': forms.SelectMultiple(
+			attrs={'class': 'multiselect', }, )
+	}
+
 class ReportPropsForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")
@@ -163,25 +174,47 @@ class ReportPropsForm(forms.Form):
 
         self.fields["Share"] = forms.MultipleChoiceField(
             required=False,
-            choices=share_options,
-            #queryset=breeze.models.User.objects.all(),
+            choices=share_options, #queryset=breeze.models.User.objects.all(),
             widget=forms.SelectMultiple(
                 attrs={'class': 'multiselect', }
             )
         )
 
 
-class ReportPropsFormOld(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop("request")
-        super(ReportPropsForm, self).__init__(*args, **kwargs)
-        self.fields["project"] = forms.ModelChoiceField(
-            queryset=breeze.models.Project.objects.exclude(~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
-        )
+class ReportPropsFormRE(forms.ModelForm):
+	def __init__(self, *args, **kwargs):
+		self.request = kwargs.pop("request")
+		super(ReportPropsFormRE, self).__init__(*args, **kwargs)
 
-    class Meta:
-        model = breeze.models.Report
-        fields = ('shared',)
+		group_list_of_tuples = list()
+		users_list_of_tuples = list()
+
+		for ur in breeze.models.User.objects.all():
+			users_list_of_tuples.append(tuple((ur.id, ur.username)))
+
+		for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
+			group_list_of_tuples.append(tuple((gr.id, gr.name)))
+
+		share_options = list()
+		share_options.append(tuple(( 'Groups', tuple(group_list_of_tuples) )))
+		share_options.append(tuple(( 'Individual Users', tuple(users_list_of_tuples) )))
+
+		self.fields["project"] = forms.ModelChoiceField(
+			queryset=breeze.models.Project.objects.exclude(
+				~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
+		)
+
+		self.fields["shared"] = forms.MultipleChoiceField(
+			required=False,
+			choices=share_options,  # queryset=breeze.models.User.objects.all(),
+			widget=forms.SelectMultiple(
+				attrs={'class': 'multiselect', }
+			)
+		)
+	class Meta:
+		model = breeze.models.Report
+		#fields = ('shared',)
+		fields = ()
 
 
 class RegistrationForm(forms.ModelForm):
@@ -856,21 +889,19 @@ def xml_from_form(form_g, form_d, form_s):
     newxml.close()
     return newxml
 
-def form_from_xml(xml, req=None, init=False, usr=None):
+def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, path=None):
     input_array = xml.getroot().find('inputArray')
 
     if req:
         custom_form = CustomForm(req.POST, req.FILES)
-    elif init:
-        custom_form = CustomForm(req.POST, req.FILES)
+    elif init and post:
+        custom_form = CustomForm(post, files)
     else:
         custom_form = CustomForm()
 
-
-    if input_array != None:
+    if input_array is not None:
         for input_item in input_array:
             if input_item.tag == "inputItem":
-
                 try:
                     if input_item.attrib["optional"] == '1':
                         optional_prop = False
@@ -882,7 +913,7 @@ def form_from_xml(xml, req=None, init=False, usr=None):
                 try:
                     help_line = input_item.attrib["help"]
                 except:
-                    help_line = ''
+                    help_line = None
 
                 if  input_item.attrib["type"] == "NUM":  # numeric input
                     # protect empty MAX and MIN limits
@@ -974,7 +1005,7 @@ def form_from_xml(xml, req=None, init=False, usr=None):
 
                 elif input_item.attrib["type"] == "FIL" or input_item.attrib["type"] == "TPL":  # file upload field
                     custom_form.fields[input_item.attrib["comment"]] = forms.FileField(
-                            # initial=input_item.attrib["val"],
+                            #initial=loc,
                             required=optional_prop,
                             help_text=help_line,
                             widget=forms.ClearableFileInput(
@@ -1048,7 +1079,7 @@ def form_from_xml(xml, req=None, init=False, usr=None):
 
     return custom_form
 
-def create_report_sections(sections, req=None):
+def create_report_sections(sections, req=None, posted=None, files=None, path=None):
     """ Creates a list of sections content for report overview page.
 
     Arguments:
@@ -1061,9 +1092,12 @@ def create_report_sections(sections, req=None):
     for item in sections:
         tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
         sdata['id'] = item.id
+        key = 'Section_dbID_' + str(item.id)
+        # TODO remove # print 'Section ' + key + ' active : ' + posted[key] if key in posted else 0
+        sdata['value'] = posted[key] if posted and key in posted else 0
         sdata['inline'] = str(item.inln)
         sdata['name'] = str(item.name)
-        sdata['form'] = form_from_xml(xml=tree, usr=req.user)
+        sdata['form'] = form_from_xml(xml=tree, post=posted, files=files, usr=req.user, init=True if posted else False, path=path)
         sdata['size'] = len(sdata['form'].__str__())
         section_lst.append( dict(sdata) )
 
