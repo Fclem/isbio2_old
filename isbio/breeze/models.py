@@ -162,7 +162,7 @@ class Jobs(models.Model):
     sgeid = models.CharField(max_length=15, blank=True, help_text="SGE job id")
     mailing = models.CharField(max_length=3, blank=True, help_text="configuration of mailing events : (b)egin (e)nd "
                                                                     "(a)bort or empty") # TextField(name="mailing", )
-    email = models.CharField(max_length=75, help_text="mail address to send the notification to (not working ATM)")
+    email = models.CharField(max_length=75, help_text="mail address to send the notification to (not working ATM : your personal mail adress will be user instead)")
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
