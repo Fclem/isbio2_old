@@ -44,8 +44,8 @@ urlpatterns = patterns('',
     url(r'^showdetails/(?P<sid>\d+)$', views.showdetails),
     url(r'^deletecart/(?P<sid>\d+)$', views.deletecart),
     url(r'^reports/search$', views.report_search),
-    #url(r'^reports/ownreports', views.reports_owned), # incorporated into search
-    #url(r'^reports/accessreports', views.reports_accessible), # incorporated into search
+    # url(r'^reports/ownreports', views.reports_owned), # incorporated into search
+    # url(r'^reports/accessreports', views.reports_accessible), # incorporated into search
     url(r'^reports/view/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_view),
     url(r'^reports/get/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_get),
     url(r'^media/reports/(?P<rid>\d+)_(?P<rest>[^/]+)/(?P<fname>.+)?$', views.report_file_wrap),
@@ -56,16 +56,21 @@ urlpatterns = patterns('',
     url(r'^reports/shiny1/(?P<rid>\d+)/?$', views.report_shiny_view),
     url(r'^reports/shiny2/(?P<rid>\d+)/?$', views.report_shiny_view2),
     url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
+    url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
+    url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Re Run report
+    # fusion thoses lines
     url(r'^jobs/current', views.jobs, {'state': "current"}),
     url(r'^jobs/scheduled?$', views.jobs, {'state': "scheduled"}),
     url(r'^jobs/history?$', views.jobs),
     url(r'^jobs/(?P<state>[a-z]+)?$', views.jobs),
+    # url(r'^jobs/live-container', views.jobs),
     url(r'^jobs/delete/(?P<jid>\d+)(?P<state>[a-z]+)?$', views.delete_job),
     url(r'^jobs/run/(?P<jid>\d+)$', views.run_script),
-    url(r'^jobs/edit/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.edit_job),
+    url(r'^jobs/edit/jobs/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.edit_job), # ReSchedule, and Edit ?
+
     url(r'^jobs/show-code/(?P<jid>\d+)$', views.show_rcode),
     url(r'^jobs/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile),
-    #url(r'^media/jobs/(?P<rid>\d+)_(?P<rest>[^/-]+)/(?P<fname>[^/-]+)?$', views.report_file_wrap),
+    # url(r'^media/jobs/(?P<rid>\d+)_(?P<rest>[^/-]+)/(?P<fname>[^/-]+)?$', views.report_file_wrap),
     url(r'^update-jobs/(?P<jid>\d+)-(?P<item>[a-z]+)$', views.update_jobs),
     url(r'^scripts/(?P<layout>[a-z]+)?$', views.scripts),
     url(r'^scripts/delete/(?P<sid>\d+)$', views.delete_script),
