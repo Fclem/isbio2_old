@@ -2,7 +2,7 @@
 
 {% load bootstrap_toolkit %}
 
-{% block title %}Create a new report{% endblock %}
+{% block title %}{{ title|default:"Create a new report" }}{% endblock %}
 
 {% block extra_head %}
 
@@ -163,7 +163,7 @@
 
 	<!-- REPORT OVERVIEW -->
 	{% if overview %}
-
+		<!-- useless ? spacing ? -->
 		<div class="row-fluid">
 			<div class="span10 offset1">
 				<!--
@@ -176,13 +176,14 @@
 			</div>
 		</div>
 
-
+		<!-- Main block -->
 		<div class="row-fluid">
-
-			<form id="TagList" action="/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}" method="post" enctype="multipart/form-data">
+			<form id="TagList" action="" method="post" enctype="multipart/form-data">
 				{% csrf_token %}
-
-				<div class="span4 offset1">
+				<!-- Left panel : Report details
+				/reports/overview/{{ overview_info.report_type }}-{{ overview_info.instance_name }}-{{ overview_info.instance_id }}
+				-->
+				<div class="span4 offset1" style="position:fixed;">
 					<div class="row-fluid thumbnail">
 						{% if overview_info.manual != "" and overview_info.manual != None %}
 							<p class="pull-right" style="margin-right: 45px;margin-top: 20px;"><label><a href="{{ overview_info.manual }}" target="_blank"><img src="/static/pdf.png" title="Click here to download this pipeline user-manual" alt="Click here to download this pipeline user-manual" width="150" height="150"><br /><small>download</a> pipeline manual</small></label></p>
@@ -215,35 +216,55 @@
         data-target="#Submit" -->
 							<strong>Generate Report</strong>
 						</a>
-
 					</div>
 				</div>
-
-				<div class="span6">
+				<!-- Right panel : Report availiable tags/Pipeline (Rscript) -->
+				<div class="span6 offset5">
 					<div class="controls">
-						<table class="table  table-condensed">
+						<table class="table table-condensed">
 							<tbody>
 							<tr>
 								<td>Tag Name</td> <td>Customize</td> <td class="pull-right">Disable / Enable</td>
 							</tr>
 							{% for item in tags_available %}
 								<!-- the input below contains info about each tag: ID, enabled/disabled (1/0)-->
-								<input type="hidden" id="{{ item.id }}_ref" name="Section_dbID_{{ item.id }}" value="0" form="TagList"/>
-
+								<input type="hidden" id="{{ item.id }}_ref" name="Section_dbID_{{ item.id }}" value="{{ item.value }}" form="TagList"/>
+								<input type="hidden" id="{{ item.id }}_opened" name="{{ item.id }}_opened" value="{{ item.opened }}" />
 								<tr class="info">
 									<!-- tag title -->
 									<td> <strong>&nbsp;{{ item.name }}</strong> </td>
 									<!-- tag options button -->
 									<td>
-										<button id="{{ item.id }}_optbtn" disabled="disabled" type="button" class="btn btn btn-info pull-right" data-toggle="collapse" data-target="#{{ item.id }}_options">
-											<i class="icon-wrench icon-white"></i>
-										</button>
+										{% if item.value == "1" %}
+											<button id="{{ item.id }}_optbtn" type="button" data-toggle="collapse"
+													class="btn btn-primary pull-right open_close" data-target="#{{ item.id }}_options">
+												<i class="icon-wrench icon-white"></i>
+											</button>
+										{% else %}
+											<button id="{{ item.id }}_optbtn" disabled="disabled" type="button" data-toggle="collapse"
+													class="btn btn-info pull-right open_close" data-target="#{{ item.id }}_options">
+												<i class="icon-wrench icon-white"></i>
+											</button>
+										{% endif %}
 									</td>
 									<!-- tag trigger -->
 									<td>
-										<div id="{{ item.id }}_switcher" class="switch switch-small pull-right trigger" data-which="{{ item.id }}" data-on="primary" data-off="info" data-on-label="<i class='icon-ok icon-white'></i>" data-off-label="<i class='icon-remove icon-white'></i>">
-											<input type="checkbox">
-										</div>
+										{% if item.value == "1" %}
+											<div id="{{ item.id }}_switcher" class="switch switch-small pull-right trigger"
+												 data-which="{{ item.id }}" data-on="primary"
+												 data-off="info" data-on-label="<i class='icon-ok icon-white'></i>"
+												 data-off-label="<i class='icon-remove icon-white'></i>" checked="true">
+
+												<input type="checkbox" checked="checked" checked>
+											</div>
+										{% else %}
+											<div id="{{ item.id }}_switcher" class="switch switch-small pull-right trigger"
+												 data-which="{{ item.id }}" data-on="primary"
+												 data-off="info" data-on-label="<i class='icon-ok icon-white'></i>"
+												 data-off-label="<i class='icon-remove icon-white'></i>">
+												<input type="checkbox">
+											</div>
+										{% endif %}
 									</td>
 								</tr>
 								<tr>
@@ -267,14 +288,13 @@
 									<td></td><td></td>
 								</tr>
 								{% empty %}
-								<tr class="error" c><td colspan="3"> <div align="center"> No tags available for this instance. </div> </td></tr>
+								<tr class="error"><td colspan="3"> <div align="center"> No tags available for this instance. </div> </td></tr>
 							{% endfor %}
 							</tbody>
 						</table>
 					</div>
 				</div>
 			</form>
-
 		</div>
 	{% endif %}
 
@@ -309,27 +329,117 @@
 	</div>
 
 	<script type="text/javascript">
-		$(document).ready(function() {
-			// initialize Multiselect plugin
-			var multiConfigurationSet = {
-				includeSelectAllOption: true,
-				enableFiltering: true,
-				maxHeight: 450
-			};
-			$('.multiselect').multiselect(multiConfigurationSet);
-			$('.dotmatix_samples').multiselect(multiConfigurationSet);
 
+		//restore tickers, and block states
+		//removes the 'undefined' help text
+		function postProcess() {
+			// Collect ticked sections
+			$(".switch").each(function (i, e) {
+				var nb = e.attributes.getNamedItem('data-which').value;
+				if ($('#' + nb + '_opened')[0].value == "True") {
+					$('#' + nb + '_options').addClass('in');
+				}
+			});
+			// correct the 'undefined' help text displayed instead of nothing
+			$(".help-block").each(function (i, e) {
+				if (e.innerHTML == 'undefined') e.classList.add('hidden');
+			});
+		}
 
-			// OnClick Generate Report
-			$('#gen_report').click(function(ev){
+		//handle progressBar
+		var st_width = 1;
+		var ticktock;
+		function myTimer() {
+			st_width += 1;
+			var progB = document.getElementById('progressB');
+			if (progB != null) {
+				progB.style.width = st_width + "%"
+
+				if (st_width >= 90 || $("#progress-bar").hasClass('hidden')) {
+					st_width = 1;
+					progB.style.width = st_width + "%";
+				}
+				if ($("#progress-bar").hasClass('hidden')) {
+					window.clearInterval(ticktock);
+				}
+			} else {
+				window.clearInterval(ticktock);
+			}
+		}
+
+		//displaying all control-groups, even thoses which has been validated
+		function ShowAll() {
+			$(".control-group").each(function (i, e) {
+				var a = $(this)[0]
+				var id = a.parentElement.id.replace('_options', '');
+
+				if (id != '') {
+					e.style.display = 'block';
+				}
+			});
+		}
+
+		//manage triggers effect
+		function initTriggers() {
+			//trigger on/off
+			$('.trigger').on('switch-change', function (e, data) {
+				var value = data.value;
+				var which = $(this).data("which");
+				var options = $("#" + which + "_options");
+
+				if (value) {
+					$("#" + which + "_optbtn").removeClass("btn-info").addClass("btn-primary").removeAttr("disabled");
+					$("#" + which + "_ref").attr("value", "1");
+					if (!options.hasClass("in")) { //auto opening fixed
+						options.collapse('show');
+						//(very clumsy fix)
+						setTimeout(function () { if (options.hasClass('in')) options.addClass('over');}, 500);
+					}
+				} else {
+					$("#" + which + "_optbtn").removeClass("btn-primary").addClass("btn-info").attr("disabled", "disabled");
+					$("#" + which + "_ref").attr("value", "0")
+					options.removeClass('over');//(very clumsy fix)
+					if (options.hasClass("in")) { //auto closing fixed
+						options.collapse('hide');
+					}
+				}
+			});
+			//button open/close SPECIAL HACK/FIX
+			$('.open_close').click(function (ev) {
+				var id = $(this)[0].id.replace('_optbtn', '');
+				var el = $("#" + id + '_options');
+
+				if($(this).hasClass('collapsed')) {
+					//opening (very clumsy fix)
+					setTimeout(function () {  if(el.hasClass('in')) el.addClass('over');}, 500);
+				} else {
+					//closing
+					//this specific class is a bugfix (very clumsy) for dropdowns
+					el.removeClass('over');
+				}
+			});
+		}
+
+		//manage submission
+		function initSubmitBtn() {
+			// Binding OnClick Generate Report
+			$('#gen_report').unbind('click');
+			$('#gen_report').click(function (ev) {
 				ev.preventDefault();
+
+				$("#gen_report").addClass("hidden");
+				$("#floater").addClass("in");
+				//$(".table").addClass("blury");
+				$("#progress-bar").removeClass("hidden");
+				ticktock = setInterval(function () {myTimer()}, 250);
+
 				// setTimeout("$('#sub_bar').attr('style', 'width: 45%;');", 300);
 				// $('#sub_text').text('Validation...');
 
 				// Collect ticked sections
 				var section_ticks = new Array();
-				$(".switch").each(function( i ){
-					section_ticks.push( $(this).bootstrapSwitch('status') );
+				$(".switch").each(function (i) {
+					section_ticks.push($(this).bootstrapSwitch('status'));
 				});
 
 				// We dont need to submit 'multiselect-all' value
@@ -340,11 +450,11 @@
 				var groupShare = [];
 				var usersShare = [];
 
-				$('#id_Share').find("option:selected").each(function(){
-					if ($(this).parent().attr("label") == 'Groups'){
+				$('#id_Share').find("option:selected").each(function () {
+					if ($(this).parent().attr("label") == 'Groups') {
 						groupShare.push($(this).val());
 					}
-					if ($(this).parent().attr("label") == 'Individual Users'){
+					if ($(this).parent().attr("label") == 'Individual Users') {
 						usersShare.push($(this).val());
 					}
 				});
@@ -357,130 +467,119 @@
 				formData.append('Individuals', usersShare);
 
 				$.ajax({
-					type: "POST",
-					enctype: 'multipart/form-data',
-					url: url,
-					data: formData,
-					success:function(response, textStatus, jqXHR){
+					type       : "POST",
+					enctype    : 'multipart/form-data',
+					url        : url,
+					data       : formData,
+					success    : function (response, textStatus, jqXHR) {
 						//setTimeout("$('#sub_bar').attr('style', 'width: 85%;');", 450)
-						if (response == 'True'){
+						if (response == 'True') {
 							$("#progress-bar").addClass("progress-success");
 							// Clear
 							//$('#sub_text').text('Report submitted and will be compiled soon.');
-							window.location = '/jobs';
-
-						} else{
+							setTimeout(function () { window.location = '/jobs'; }, 1000);
+						} else {
 							$("#progress-bar").addClass("progress-danger");
-
-							// Not Valid
-							document.open();
+							//$("#content").replaceWith($("#content", response));
+							document.open()
 							document.write(response);
 							document.close();
 
-							// Restore ticked switchers
-							var tmp;
-							$('.switch').each(function( i ){
-								tmp = section_ticks.shift();  // get switcher status
-								$(this).bootstrapSwitch('setState', tmp);
-
-								if (tmp){
-									tmp = $(this).attr('id');
-									tmp = tmp.replace('_switcher','')
-
-									$('#' + tmp + '_options').collapse('show');
-								}
-							});
-
-							//$("#Submit").modal('hide');
+							//TODO NOT WORKING PROP
+							/*
+							var newEl = document.createElement('a');//"<a onclick='ShowAll()'>Show all elements</a>");
+							var t = $(".error");
+							if(t!=[]) {
+								$(".control-group").each(function (i, e) {
+									var a = $(this)[0]
+									//a.replace('_options');
+									var id = a.parentElement.id.replace('_options', '');
+									if (id!='') {
+										var active = $("#" + id + '_ref').value;
+										var active = document.getElementById(id + '_ref').value;
+										if (active == '1') {
+											if (!$(this).hasClass('error')) {
+												e.style.display = 'none';
+											} else {
+												e.appendChild(newEl);
+												e.style.display = 'block';
+												//e.node.add
+											}
+										}
+									}
+								});
+							} */
+							return;
 						}
 					},
-					error: function (request, status, error) {
+					error      : function (request, status, error) {
 						ShowError("AJAX: " + status + " (" + request.status + " " + error + ")<br>Please <a href=\"#\" " +
 						"onclick=\"location.reload();\" >reload the page</a> and try again");
 
-						$("#progress-bar").addClass('hidden');
-						$("#gen_report").removeClass("hidden");
+						reset();
 					},
-					cache: false,
+					cache      : false,
 					contentType: false,
 					processData: false
 				});
-
-				//setTimeout("$('#sub_bar').attr('style', 'width: 100%;');", 500)
+				return false;
 			});
+		}
 
-
-			$("input:file").each(function(){
-				if ( $(this).hasClass('TPL') ){
+		//add a file template download button to files submits
+		function initFileTPL() {
+			$("input:file").each(function () {
+				if ($(this).hasClass('TPL')) {
 					var which = $(this).attr('which');
 					$(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
 					// $(this).customFileInput({ });
 				}
 			});
+		}
 
-			//$("input:file").customFileInput({ });
+		//remove/disable/hide loading UIs
+		function reset() {
+			$("#progress-bar").addClass('hidden');
+			$("#gen_report").removeClass("hidden");
+			$("#floater").removeClass("in");
+		}
 
-
+		//manage initialization, and re-init on page load
+		function init() {
+			// initialize Multiselect plugin
+			var multiConfigurationSet = {
+				includeSelectAllOption: true,
+				enableFiltering: true,
+				maxHeight: 450
+			};
+			$('.multiselect').multiselect(multiConfigurationSet);
+			$('.dotmatix_samples').multiselect(multiConfigurationSet);
 
 			$("#opt"+"{{ overview_info.report_type }}").attr("selected", "selected");
 
-			//Progress bar management to inform user about loading
-			var st_width= 1;
-			var ticktock;
-			//$('.options').collapse('hide');
-			function myTimer() {
-				st_width+=1;
-				var progB=document.getElementById('progressB');
-				if( progB!=null ){
-					progB.style.width =  st_width +"%"
+			st_width= 1;
 
-					if(st_width>=90 || $("#progress-bar").hasClass('hidden')){
-						st_width= 1;
-						progB.style.width =  st_width +"%";
-					}
-					if($("#progress-bar").hasClass('hidden')){
-						window.clearInterval(ticktock);
-					}
-				}else{
-					window.clearInterval(ticktock);
-				}
-			}
+			initSubmitBtn();
+			initFileTPL();
+			initSubmitBtn();
+			initTriggers();
+			postProcess();
+		}
 
-			$('#gen_report').on('click',function(){
-				$("#gen_report").addClass("hidden");
-				$("#floater").addClass("in");
-				//$(".table").addClass("blury");
-				$("#progress-bar").removeClass("hidden");
-				ticktock=setInterval(function () {myTimer()}, 250);
+		// TODO : incomplet / un-used / testing ?
+		function load() {
+			//Re-execute the bootStrapMultiSelect
+			$.getScript("/static/js/bootstrap-multiselect.js", function () {
+				//Re-execute the bootStrapSwitch
+				$.getScript("/static/js/bootstrapSwitch.js", function () {
+					init();
+				});
 			});
+		}
 
+		$(document).ready(function () {
+			//load();
+			init();
 		});
-		$('.trigger').on('switch-change', function (e, data) {
-			var value = data.value;
-			var which = $(this).data("which");
-
-			if (value){
-				$("#"+which+"_optbtn").removeClass("btn-info").addClass("btn-primary").removeAttr("disabled");
-				$("#"+which+"_ref").attr("value", "1");
-				//$("#"+which+"_options").addClass("in");
-				if(!$("#"+which+"_options").hasClass("in")){ //auto opening fixed
-					$("#"+which+"_options").collapse('show');
-				}
-
-			}
-			else {
-				$("#"+which+"_optbtn").removeClass("btn-primary").addClass("btn-info").attr("disabled", "disabled");
-				$("#"+which+"_ref").attr("value", "0")
-				//$("#"+which+"_options").removeClass("in");
-				if($("#"+which+"_options").hasClass("in")){ //auto closing fixed
-					$("#"+which+"_options").collapse('hide');
-				}
-
-			}
-		});
-
-
-
 	</script>
-
 {% endblock %}
