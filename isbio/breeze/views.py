@@ -1320,7 +1320,8 @@ def edit_reportMMMMM(request, jid=None, mod=None):
 
 @login_required(login_url='/')
 def check_reports(request):
-	reports = Report.objects.all().order_by('-created')
+	#reports = Report.objects.all().order_by('-created')
+	reports = Report.objects.filter(status='succeed').order_by('-created')
 	i = 0
 	malst = list()
 	for each in reports:
