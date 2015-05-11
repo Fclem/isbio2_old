@@ -10,6 +10,9 @@ from subprocess import Popen, PIPE
 # from django.utils import timezone
 from isbio import settings
 
+from django import http
+from django.template import loader
+
 
 def updateServer_routine():
     # hotfix
@@ -431,10 +434,16 @@ def get_report_path_test(fitem, fname=None, NoFail=False):
 	return old_local_path, path_to_file, file_exists, dir_exists
 
 
-class failWith404(Exception):
-	'''raise this when there's a lookup error for my app'''
-	def __init__(self, errorMsg):
-		self.msg = errorMsg
-		#messages.error(RequestContext, self.msg)
-		raise Http404(self.msg)
+def failWith404(request, errorMsg=None):
+	'''custom 404, but raise not exeption so call it with return'''
+
+	t = loader.get_template('404.html')
+
+	if type(errorMsg) is not list:
+		errorMsg = [errorMsg]
+
+	return http.HttpResponseNotFound(t.render(RequestContext(request, {
+	'request_path': request.path if request is not None else '',
+	'messages': errorMsg,
+	})))
 

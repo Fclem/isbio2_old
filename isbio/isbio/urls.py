@@ -6,7 +6,6 @@ from breeze import views
 from django.contrib import admin
 admin.autodiscover()
 
-handler404 = 'breeze.views.custom_404_view'
 
 urlpatterns = patterns('',
     url(r'^user_list$', views.user_list),
@@ -22,7 +21,7 @@ urlpatterns = patterns('',
     url(r'^ajax-rora/action/$', views.ajax_rora_action),
     url(r'^ajax-rora-plain-screens/(?P<gid>\d+)$', views.ajax_rora_screens),
     url(r'^ajax-rora-groupname/$', views.groupName),
-    url(r'^update-user-info/$', views.update_user_info_dialog),
+    url(r'^update-user-info$', views.update_user_info_dialog),
     url(r'^update-server/$', views.updateServer),
     url(r'^help/$', views.dochelp),
     url(r'^db-policy/$', views.dbPolicy),
