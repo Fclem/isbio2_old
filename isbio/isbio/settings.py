@@ -292,4 +292,4 @@ class DevSettings(BreezeSettings):
 	if MODE_PROD:
 		DEBUG = False
 	print 'Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME
-	DEBUG = False
+	#DEBUG = False
