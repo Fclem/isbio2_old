@@ -1307,6 +1307,9 @@ def edit_report(request, jid=None, mod=None):
 
 @login_required(login_url='/')
 def edit_reportMMMMM(request, jid=None, mod=None):
+	if not settings.DEV_MODE:
+		return HttpResponseRedirect('/jobs')
+
 	report = Report.objects.get(id=jid)
 	rtype = report.type
 	iname = report.name + '_bis'
