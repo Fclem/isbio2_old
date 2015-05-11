@@ -2,7 +2,7 @@ import breeze.models
 import re, copy, os
 from datetime import datetime
 from django.db.models import Q
-from django.contrib import messages
+# from django.contrib import messages
 from django.http import Http404
 from django.template.context import RequestContext
 from subprocess import Popen, PIPE
@@ -434,6 +434,7 @@ def get_report_path_test(fitem, fname=None, NoFail=False):
 class failWith404(Exception):
 	'''raise this when there's a lookup error for my app'''
 	def __init__(self, errorMsg):
-		messages.error(RequestContext, errorMsg)
-		raise Http404(errorMsg)
+		self.msg = errorMsg
+		#messages.error(RequestContext, self.msg)
+		raise Http404(self.msg)
 

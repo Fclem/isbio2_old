@@ -13,7 +13,7 @@ from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, R
 from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.contrib import auth, messages
+from django.contrib import auth  #, messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User  # , Group
 from django.core.files import File
