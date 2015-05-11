@@ -6,6 +6,8 @@ from breeze import views
 from django.contrib import admin
 admin.autodiscover()
 
+handler404 = 'breeze.views.custom_404_view'
+
 urlpatterns = patterns('',
     url(r'^user_list$', views.user_list),
     url(r'^$', 'django_cas.views.login'),  # views.breeze),
@@ -57,7 +59,6 @@ urlpatterns = patterns('',
     url(r'^reports/shiny2/(?P<rid>\d+)/?$', views.report_shiny_view2),
     url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
     url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
-    url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Testing
     url(r'^reports/check$', views.check_reports),  # Re Run report
     # fusion thoses lines
     url(r'^jobs/current', views.jobs, {'state': "current"}),
@@ -136,6 +137,7 @@ urlpatterns = patterns('',
 if settings.DEBUG:
     urlpatterns += patterns('django.contrib.staticfiles.views',
         url(r'^static/(?P<path>.*)$', 'serve'),
+        url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Testing
     )
 
 urlpatterns += staticfiles_urlpatterns()

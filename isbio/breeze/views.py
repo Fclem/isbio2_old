@@ -30,6 +30,7 @@ from django.utils import simplejson
 from django.views.decorators.csrf import csrf_exempt
 from mimetypes import MimeTypes
 from multiprocessing import Process
+from django.template import loader
 
 # from django.contrib.auth import models
 # from django.core.context_processors import request
@@ -182,8 +183,9 @@ def home(request, state="feed"):
 
 	server, server_info = aux.updateServer_routine()
 
-	user_profile.last_active = timezone.now()
-	user_profile.save()
+	if user_info_complete:
+		user_profile.last_active = timezone.now()
+		user_profile.save()
 
 	return render_to_response('home.html', RequestContext(request, {
 		'home_status': 'active',
@@ -1338,8 +1340,7 @@ def check_reports(request):
 			'name': str(each.name),
 			'project': str(each.project),
 			'path': (local_path, path_to_file, fileE, folderE),
-			}
-			)
+			})
 			i += 1
 
 	return render_to_response('list.html', RequestContext(request, {
@@ -2428,3 +2429,14 @@ def proxy_to(request, path, target_url):
 		if settings.DEBUG: aux.uPrint(request, path + qs, proxied_request.code, str(len(content)))
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep
+
+
+def custom_404_view(request):
+	#t = loader.get_template(template_name)  # You need to create a 404.html template.
+	#return http.HttpResponseNotFound(t.render(RequestContext(request, {'request_path': request.path})))
+
+	print request
+
+	return render_to_response('404.html', RequestContext(request, {
+		'messages': request,
+	}))
