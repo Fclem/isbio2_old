@@ -13,7 +13,7 @@ from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, R
 from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.contrib import auth
+from django.contrib import auth, messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User  # , Group
 from django.core.files import File
@@ -21,7 +21,7 @@ from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.db.models import Q
-from django.http import HttpResponseRedirect, Http404, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
 from django.template.loader import render_to_string
@@ -730,7 +730,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		try:
 			report = Report.objects.get(id=iid)
 		except ObjectDoesNotExist:
-			raise Http404('There is no report with id '+ iid + ' in database')
+			raise aux.failWith404('There is no report with id '+ iid + ' in database')
 		rtype = str(report.type)
 		iname =	report.name + '_bis'
 		try:
@@ -738,7 +738,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
 			report_type=ReportType.objects.get(id=report.type_id)).order_by('order')
 		except ObjectDoesNotExist:
-			raise Http404('There is ReportType with id ' + report.type_id + ' in database')
+			raise aux.failWith404('There is ReportType with id ' + report.type_id + ' in database')
 		data = pickle.loads(report.conf_params) if report.conf_params is not None else None
 		files = json.loads(report.conf_files) if report.conf_files is not None and len(report.conf_files) > 0 else None
 		title = 'ReRun report ' + report.name
@@ -748,7 +748,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
 				report_type=ReportType.objects.get(type=rtype)).order_by('order')
 		except ObjectDoesNotExist:
-			raise Http404('There is ReportType with id ' + rtype + ' in database')
+			raise aux.failWith404('There is ReportType with id ' + rtype + ' in database')
 		data = request.POST
 		files = request.FILES if request.FILES else None
 
@@ -831,7 +831,7 @@ def showdetails(request, sid=None):
 	try:
 		tags = ReportType.objects.get(id=sid).rscripts_set.all()
 	except ObjectDoesNotExist:  # TODO protect all alike request as such
-		raise Http404('There is no object with id ' + sid + ' in database')
+		raise aux.failWith404('There is no object with id ' + sid + ' in database')
 	app_installed = request.user.users.all()
 
 	return render_to_response('store-tags.html', RequestContext(request, {
@@ -1780,7 +1780,7 @@ def send_file(request, ftype, fname):
 		try:
 			fitem = DataSet.objects.get(name=str(fname))
 		except ObjectDoesNotExist:
-			raise Http404('There is no report with id ' + str(fname) + ' in database')
+			raise aux.failWith404('There is no report with id ' + str(fname) + ' in database')
 		# TODO Enforce user access restrictions ?
 		local_path, path_to_file = aux.get_report_path(fitem)
 
@@ -1788,7 +1788,7 @@ def send_file(request, ftype, fname):
 		try:
 			fitem = Report.objects.get(id=str(fname))
 		except ObjectDoesNotExist:
-			raise Http404('There is no report with id ' + str(fname) + ' in database')
+			raise aux.failWith404('There is no report with id ' + str(fname) + ' in database')
 		#  Enforce user access restrictions
 		if request.user not in fitem.shared.all() and fitem.author != request.user:
 			raise PermissionDenied
@@ -1807,8 +1807,8 @@ def send_file(request, ftype, fname):
 def report_shiny_view(request, rid, fname=None):
 	try:
 		fitem = Report.objects.get(id=rid)
-	except:
-		raise Http404
+	except ObjectDoesNotExist:
+		raise aux.failWith404('There is no report with id '+ rid +' in DB')
 
 	# Enforce user access restrictions
 	if request.user not in fitem.shared.all() and fitem.author != request.user:
@@ -1827,8 +1827,8 @@ def report_shiny_view(request, rid, fname=None):
 def report_shiny_view2(request, rid, fname=None):
 	try:
 		fitem = Report.objects.get(id=rid)
-	except:
-		raise Http404
+	except ObjectDoesNotExist:
+		raise aux.failWith404('There is no report with id ' + rid + ' in DB')
 
 	# Enforce user access restrictions
 	if request.user not in fitem.shared.all() and fitem.author != request.user:
@@ -1847,8 +1847,8 @@ def report_shiny_view2(request, rid, fname=None):
 def report_shiny_view_tab(request, rid, fname=None):
 	try:
 		fitem = Report.objects.get(id=rid)
-	except:
-		raise Http404
+	except ObjectDoesNotExist:
+		raise aux.failWith404('There is no report with id ' + rid + ' in DB')
 
 	# Enforce user access restrictions
 	if request.user not in fitem.shared.all() and fitem.author != request.user:
@@ -1906,10 +1906,10 @@ def report_file_server(request, rid, type, fname=None):
         Serve report files, while enforcing access rights
     """
 	#
-	# try:
-	fitem = Report.objects.get(id=rid)
-	# except:
-	#	raise Http404
+	try:
+		fitem = Report.objects.get(id=rid)
+	except ObjectDoesNotExist:
+		raise aux.failWith404('There is no report with id ' + rid + ' in DB')
 
 	# Enforce user access restrictions
 	if request.user not in fitem.shared.all() and fitem.author != request.user and not request.user.is_superuser:
@@ -1935,7 +1935,7 @@ def report_file_server(request, rid, type, fname=None):
 		return response
 	except IOError:
 		print 'IOError', path_to_file
-		raise Http404
+		raise aux.failWith404('File not found in expected location')
 
 
 @login_required(login_url='/')

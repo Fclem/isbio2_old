@@ -2,7 +2,9 @@ import breeze.models
 import re, copy, os
 from datetime import datetime
 from django.db.models import Q
+from django.contrib import messages
 from django.http import Http404
+from django.template.context import RequestContext
 from subprocess import Popen, PIPE
 
 # from django.utils import timezone
@@ -384,17 +386,21 @@ def get_report_path(fitem, fname=None):
 	:return: (local_path, path_to_file)
 	'''
 
+	errorMsg = ''
 	if fname is None: fname = 'report.html'
 	local_path = fitem.home + '/' + unicode.replace(unicode(fname), '../', '')
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
 	# hack to access reports that were generated while dev was using prod folder
 	if not os.path.exists(path_to_file) and settings.DEV_MODE:
+		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
+		errorMsg = 'File ' + str(path_to_file) + ' NOT found. The folder ' + (
+			'DO NOT ' if not dir_exists else ' ') + 'exists.'
 		path_to_file = str(settings.MEDIA_ROOT).replace('-dev', '') + local_path
 
 	if not os.path.exists(path_to_file):
 		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
-		raise Http404('File ' + str(path_to_file) + ' NOT found. The folder was ' + ('NOT ' if not dir_exists else ' ') + 'existent.')
+		raise Http404(errorMsg + '<br />\n' + 'File ' + str(path_to_file) + ' NOT found. The folder ' + ('DO NOT ' if not dir_exists else ' ') + 'exists.')
 
 	return local_path, path_to_file
 
@@ -423,3 +429,11 @@ def get_report_path_test(fitem, fname=None, NoFail=False):
 		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
 
 	return old_local_path, path_to_file, file_exists, dir_exists
+
+
+class failWith404(Exception):
+	'''raise this when there's a lookup error for my app'''
+	def __init__(self, errorMsg):
+		messages.error(RequestContext, errorMsg)
+		raise Http404(errorMsg)
+

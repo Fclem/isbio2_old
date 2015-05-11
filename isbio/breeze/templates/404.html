@@ -12,6 +12,13 @@
 <div class="row-fluid">
   <div class="span10  offset1 ">
     404 Not Found
+	  {% if messages %}
+		  <ul class="messages">
+			  {% for message in messages %}
+				  <li>{{ message }}</li>
+			  {% endfor %}
+		  </ul>
+	  {% endif %}
   </div>
 </div>
 {% endblock %}
