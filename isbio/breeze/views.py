@@ -1882,7 +1882,7 @@ def report_shiny_view_tab_merged(request, rid, outside=False):
 	if not outside:
 		base_url = '/shiny/'
 		# Enforce user access restrictions
-		if outside and request.user not in fitem.shared.all() and fitem.author != request.user:
+		if request.user not in fitem.shared.all() and fitem.author != request.user:
 			raise PermissionDenied
 	else:
 		base_url = '/shiny-out/' + str(fitem.shiny_key) + '/'
