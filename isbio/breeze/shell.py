@@ -10,6 +10,7 @@ import breeze.models
 import auxiliary as aux
 import logging
 import pickle, json
+import hashlib
 
 import socket
 from breeze.models import Report, Jobs
@@ -293,7 +294,7 @@ def run_job(job, script=None):
 		#track_sge_job(job, True)
 
 		return True
-	except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
+	except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException, drmaa.NoActiveSessionException) as e:
 		# TODO improve this part
 
 		newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.name, job.jname), 'w')
@@ -307,20 +308,22 @@ def run_job(job, script=None):
 			newfile.write("InvalidArgumentException")
 		elif e == drmaa.InvalidJobException:
 			newfile.write("InvalidJobException")
+		elif e == drmaa.NoActiveSessionException:
+			newfile.write("NoActiveSessionException")
 		newfile.close()
 		s.exit()
 		return e
-	except e:
+	#except e:
 		# job.status = 'failed'
-		job.progress = 100
-		job.save()
+		#job.progress = 100
+		#job.save()
 
-		newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.juser, job.jname), 'w')
-		newfile.write("UNKNOW ERROR" + vars(e))
-		newfile.close()
+		#newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.juser, job.jname), 'w')
+		#newfile.write("UNKNOW ERROR" + vars(e))
+		#newfile.close()
 
-		s.exit()
-		return False
+		#s.exit()
+	#return False
 
 
 # TODO merge those two functions
@@ -857,7 +860,8 @@ def build_report(report_data, request_data, report_property, sections):
 		author=request_data.user,
 		progress=0,
 		project=breeze.models.Project.objects.get(id=request_data.POST.get('project')),
-		institute=insti
+		institute=insti,
+		status='init'
 		# project=breeze.models.Project.objects.get(name=report_property.cleaned_data['Project'])
 	)
 	dbitem.save()
@@ -943,13 +947,22 @@ def build_report(report_data, request_data, report_property, sections):
 	st = os.stat(loc)
 	os.chmod(loc, st.st_mode | stat.S_IRWXG)
 
-	# clem
+	# clem : saves parameters in db to be able to duplicate report
 	dbitem.conf_params = pickle.dumps(request_data.POST)
 	if request_data.FILES:
 		tmp = dict()
 		for each in request_data.FILES:
 			tmp[str(each)] = str(request_data.FILES[each])
 		dbitem.conf_files = json.dumps(tmp)
+	dbitem.save()
+
+	# generate shiny files
+	if report_data['report_type'] == 'ScreenReport':
+		m = hashlib.sha256()
+		m.update(settings.SECRET_KEY + path + str(datetime.now()))
+		dbitem.shiny_key = str(m.hexdigest())
+		dbitem.rora_id = report_data['instance_id']
+		dbitem.save()
 
 	# submit r-code
 	p = Process(target=run_report, args=(dbitem, dummy_flag))

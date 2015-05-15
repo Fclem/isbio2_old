@@ -225,13 +225,14 @@ class UserProfile(models.Model):
 
 
 class BlobField(models.Field):
-	description = "Blob"
+    description = "Blob"
 
-	def db_type(self, connection):
-		return 'blob'
+    def db_type(self, connection):
+        return 'blob'
 
-	def __unicode__(self):
-		return self.value_to_string()
+    def __unicode__(self):
+        return self.value_to_string()
+
 
 class Report(models.Model):
     type = models.ForeignKey(ReportType)
@@ -240,18 +241,23 @@ class Report(models.Model):
     author = ForeignKey(User)
     created = models.DateTimeField(auto_now_add=True)
     home = models.CharField(max_length=155, blank=True)
+    #_status = models.CharField(max_length=15, blank=True, db_column="status")
+    # TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
     status = models.CharField(max_length=15, blank=True)
-    progress = models.IntegerField()
+    progress = models.PositiveSmallIntegerField(default=0)
     sgeid = models.CharField(max_length=15)
     # store the institute info of the user who creates this report
     institute = ForeignKey(Institute)
 
     project = models.ForeignKey(Project, null=True, blank=True, default=None)
     shared = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='report_shares')  # share list
-    conf_params = models.TextField()
-    #conf_params = models.(null=True, blank=True, default=None)
-    conf_files = models.TextField()
-    #conf_files = models.CharField(null=True, blank=True, default=None)
+    conf_params = models.TextField(null=True)
+    # conf_params = models.(null=True, blank=True, default=None)
+    conf_files = models.TextField(null=True)
+
+    shiny_key = models.CharField(max_length=64, null=True)
+    rora_id = models.PositiveIntegerField(default=0)
+    # conf_files = models.CharField(null=True, blank=True, default=None)
 
     def file_name(self, filename):
         fname, dot, extension = filename.rpartition('.')
@@ -261,12 +267,22 @@ class Report(models.Model):
     rexec = models.FileField(upload_to=file_name, blank=True)
     dochtml = models.FileField(upload_to=file_name, blank=True)
 
+    # TODO way to do it (use props everywhere)
+    #@property
+    #def status(self):
+    #    if self.status == 'init':
+    #        return 'queued active'
+    #    return self.status
+
+    # @status.setter
+    # def status(self, value):
+
     def __unicode__(self):
         return self.name
         
 
 class Statistics(models.Model):
-    #script = models.CharField(max_length=55)
+    # script = models.CharField(max_length=55)
     script = ForeignKey(Rscripts)
     author = ForeignKey(User)
     istag = models.BooleanField(default=False)

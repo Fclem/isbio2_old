@@ -175,11 +175,13 @@
 			<div class="container-fluid">
 				<a class="brand" href="/breeze/">BREEZE</a>
 				<div class="navbar-content">
+					{% if is_authenticated %}
 					<div class="btn-group pull-right">
 						<p class="navbar-text">
 							<a class="btn btn-inverse" href="/logout/">logout <i class="icon-white icon-share"></i></a>
 						</p>
 					</div>
+					{% endif %}
 					<ul class="nav" >
 						<li class="{{ home_status }}">
 							<a href="/home"> <i class="icon-home"></i> Home</a>

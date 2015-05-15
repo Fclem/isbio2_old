@@ -134,7 +134,7 @@
 			<h3>Report XY content :</h3>
 			<ul>
 			{% for key, value in pages.items %}
-				<li><a href="/shiny/{{ value }}/" target="iframe_a">{{ key }}</a></li>
+				<li><a href="{{ base_url }}{{ value }}/{{ args }}" target="iframe_a">{{ key }}</a></li>
 				{% empty %}
 				<li>Nothing to display - This shouldn't happend !</li>
 			{% endfor %}

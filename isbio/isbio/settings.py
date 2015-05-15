@@ -268,6 +268,8 @@ class DevSettings(BreezeSettings):
 	# 'db' folder, containing reports, scripts, jobs, datasets, pipelines
 	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/homes/dbychkov/dev/isbio/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
+	SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
+	SHINY_TARGET_URL = 'http://127.0.0.1:3838/breeze/'
 
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	STATIC_URL = '/static/'

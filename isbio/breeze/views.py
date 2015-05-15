@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+from Bio.Sequencing.Ace import rt
 from social_auth.backends.pipeline import user
 import auxiliary as aux
 import forms as breezeForms
-import urllib, pprint, mimetypes, urllib2, glob, os, copy, tempfile, zipfile, shutil, fnmatch, rpy2, os.path, sys
+import urllib, pprint, os, copy, tempfile, zipfile, shutil, fnmatch, rpy2, os.path  # mimetypes, urllib2, glob,  sys
 import rora as rora
 import shell as rshell
 import xml.etree.ElementTree as xml
@@ -29,6 +30,7 @@ from django.template import loader
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils import simplejson
+from django.utils.http import urlencode
 from django.views.decorators.csrf import csrf_exempt
 from mimetypes import MimeTypes
 from multiprocessing import Process
@@ -729,6 +731,9 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 	tags_data_list = list()
 	files = None
 	title = None
+
+	# print rtype, iname, iid
+
 	if mod == 'reload':
 		try:
 			report = Report.objects.get(id=iid)
@@ -736,12 +741,13 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			return aux.failWith404(request, 'There is no report with id '+ iid + ' in database')
 		rtype = str(report.type)
 		iname =	report.name + '_bis'
+		iid = report.rora_id
 		try:
 			# filter tags according to report type (here we pick non-draft tags):
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
 			report_type=ReportType.objects.get(id=report.type_id)).order_by('order')
 		except ObjectDoesNotExist:
-			return aux.failWith404(request, 'There is ReportType with id ' + report.type_id + ' in database')
+			return aux.failWith404(request, 'There is ReportType with id ' + str(report.type_id) + ' in database')
 		data = pickle.loads(report.conf_params) if report.conf_params is not None and len(report.conf_params) > 0 else None
 		files = json.loads(report.conf_files) if report.conf_files is not None and len(report.conf_files) > 0 else None
 		title = 'ReRun report ' + report.name
@@ -751,7 +757,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
 				report_type=ReportType.objects.get(type=rtype)).order_by('order')
 		except ObjectDoesNotExist:
-			return aux.failWith404(request, 'There is ReportType with id ' + rtype + ' in database')
+			return aux.failWith404(request, 'There is ReportType with id ' + str(rtype) + ' in database')
 		data = request.POST
 		files = request.FILES if request.FILES else None
 
@@ -1808,6 +1814,7 @@ def send_file(request, ftype, fname):
 	return response
 
 
+# TODO delete
 @login_required(login_url='/')
 def report_shiny_view(request, rid, fname=None):
 	try:
@@ -1828,6 +1835,7 @@ def report_shiny_view(request, rid, fname=None):
 	}))
 
 
+# TODO delete
 @login_required(login_url='/')
 def report_shiny_view2(request, rid, fname=None):
 	try:
@@ -1848,21 +1856,49 @@ def report_shiny_view2(request, rid, fname=None):
 	}))
 
 
+# Shiny tab access from inside
 @login_required(login_url='/')
-def report_shiny_view_tab(request, rid, fname=None):
+def report_shiny_view_tab(request, rid):
+	return report_shiny_view_tab_merged(request, rid)
+
+
+# Shiny tab access from outside (with the key)
+def report_shiny_view_tab_out(request, key):
+	try:
+		fitem = Report.objects.get(shiny_key=key)
+		return report_shiny_view_tab_merged(request, fitem.id, True)
+	except ObjectDoesNotExist:
+		return aux.failWith404(request)
+
+
+# Shiny tab
+# DO NOT CALL THIS VIEW DIRECTLY
+def report_shiny_view_tab_merged(request, rid, outside=False):
 	try:
 		fitem = Report.objects.get(id=rid)
 	except ObjectDoesNotExist:
 		return aux.failWith404(request, 'There is no report with id ' + rid + ' in DB')
 
-	# Enforce user access restrictions
-	if request.user not in fitem.shared.all() and fitem.author != request.user:
-		raise PermissionDenied
+	if not outside:
+		base_url = '/shiny/'
+		# Enforce user access restrictions
+		if outside and request.user not in fitem.shared.all() and fitem.author != request.user:
+			raise PermissionDenied
+	else:
+		base_url = '/shiny-out/' + str(fitem.shiny_key) + '/'
 
+	pages = OrderedDict([])
+	args = ''
 	source = "Test"
 	title = fitem.name
 
-	pages = OrderedDict([
+	if fitem.rora_id > 0:
+		args = '?' + urlencode([('path', fitem.home), ('roraId', str(fitem.rora_id))])
+		# args = '?id=' + str(fitem.id)
+		pages = OrderedDict([('Test', 'screenApp1')])
+
+	# TODO should improve this part
+	pages.update(OrderedDict([
 		('Quality Control', 'blk1.1'),
 		('Quality Control (full)', 'qc_full'),
 		('Quality Control (extended)', 'qc_ext'),
@@ -1876,13 +1912,43 @@ def report_shiny_view_tab(request, rid, fname=None):
 		('Comparaison to other relevant samples', 'blk3.1'),
 		('Clinicaly relevant other drug', 'blk3.2'),
 		('Drug - Mutations - Patient', 'blk3.3')
-	])
+	]))
 
 	return render_to_response('shiny_tab.html', RequestContext(request, {
 	'source': source,
+	'args': args,
 	'pages': pages,
+	'base_url': base_url,
 	'title': title
 	}))
+
+
+# Wrapper for ShinyApp accessed from inside (login + user access to said report)
+@csrf_exempt
+@login_required(login_url='/')
+def report_shiny_in_wrapper(request, path):
+	if 'path' in request.GET and 'roraId' in request.GET:
+		try:
+			fitem = Report.objects.get(home=request.GET.get('path'))
+			# qs = urlencode([('path', fitem.home), ('roraId', str(fitem.rora_id))])
+		except ObjectDoesNotExist:
+			return aux.failWith404(request)
+		# Enforce user access restrictions
+		if request.user not in fitem.shared.all() and fitem.author != request.user:
+			raise PermissionDenied
+
+	return aux.proxy_to(request, path, settings.SHINY_TARGET_URL)
+
+
+# Wrapper for ShinyApp accessed from OUTSIDE (key needed)
+@csrf_exempt
+def report_shiny_out_wrapper(request, key, path):
+	try:
+		fitem = Report.objects.get(shiny_key=key)
+	except ObjectDoesNotExist:
+		return aux.failWith404(request)
+
+	return aux.proxy_to(request, path, settings.SHINY_TARGET_URL)
 
 
 @login_required(login_url='/')
@@ -2362,74 +2428,10 @@ def home_paginate(request):
 		return False
 
 
-DASHED_LINE = '---------------------------------------------------------------------------------------------------------------'
-
-
 @csrf_exempt
 @login_required(login_url='/')
-def proxy_to(request, path, target_url):
-	import fileinput
-
-	url = '%s%s' % (target_url, path)
-	qs = ""
-	if request.META.has_key('QUERY_STRING') and request.META['QUERY_STRING'] != "":
-		qs = '?' + request.META['QUERY_STRING']
-		url += qs
-	opener = urllib2.build_opener()
-	# copies headers
-	#for each in request.META.keys():
-	#    if each[0:4] == "HTTP":
-	#        opener.addheaders.append((each[5:], request.META[each]))
-	#copies form data
-	data = ""
-	if request.method == 'POST':
-		for each in request.POST.keys():
-			data = data + each + "=" + urllib.quote_plus(request.POST[each]) + "&"
-		data = data[:-1]
-
-	log = '/var/log/shiny-server.log'
-	log_size = os.stat(log).st_size
-	try:
-		proxied_request = opener.open(url, data or None)  # proxied_request = urllib2.urlopen(url)
-	except urllib2.HTTPError as e:
-		more = ''
-		# add the shiny-server log tail
-		if log_size < os.stat(log).st_size:
-			more = "Shiny-server.log :\n"
-			try:
-				f = open(log)
-				f.seek(log_size)
-				for line in f.readlines():
-					more += line + '\n'
-			except:
-				pass
-			finally:
-				f.close()
-			more = more[:-1] + DASHED_LINE + '\n'
-
-		# try to read the shiny app log :
-		p = '/var/log/shiny-server/' + path[:-1] + '-shiny-*'
-		for fileName in glob.glob(p):
-			more += os.path.basename(fileName) + ' : \n'
-			for line in fileinput.input(fileName, openhook=fileinput.hook_encoded("utf8")):
-				more += line + '\n'
-			fileinput.close()
-			try:
-				os.remove(fileName)
-			except:
-				pass
-			more = more[:-1] + DASHED_LINE + '\n'
-
-		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + DASHED_LINE + '\n' + more,
-		                   status=e.code,
-		                   mimetype='text/plain')
-	else:
-		status_code = proxied_request.code
-		mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
-		content = proxied_request.read()
-		if settings.DEBUG: aux.uPrint(request, path + qs, proxied_request.code, str(len(content)))
-		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
-	return rep
+def proxy_to(request, path, target_url, query_s=''):
+	return aux.proxy_to(request, path, target_url, query_s)
 
 
 def custom_404_view(request, message=None):
