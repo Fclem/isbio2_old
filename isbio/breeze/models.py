@@ -3,7 +3,8 @@ from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User
 from django.utils import timezone
-
+from django.conf import settings
+from django.core.exceptions import ValidationError
 
 CATEGORY_OPT = (
         (u'general', u'General'),
@@ -293,3 +294,45 @@ class Statistics(models.Model):
     
     class Meta:
         ordering = ['-times']
+
+
+class ShinyApp(models.Model):
+	name = models.CharField(max_length=55, unique = True, blank=False,
+	                        help_text="Will be used as the folder name")
+	label = models.CharField(max_length=64, null=True, blank=True,
+	                         help_text="The text to be displayed on the report index list")
+
+	description = models.CharField(max_length=350, blank=True,
+	              help_text = "Optional description text")
+	author = ForeignKey(User)
+	created = models.DateTimeField(auto_now_add=True)
+	# _home = models.CharField(max_length=155, unique=True, blank=False)
+	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	attached_report = models.ManyToManyField(ReportType)
+
+	# @my_attr.setter
+
+	@property
+	def home(self):
+		return str(settings.SHINY_APPS + '%s' % self.get_name)
+
+	@property
+	def get_name(self):
+		return slugify(str(self.name))
+
+	@property
+	def file_name(self, filename):		# fname, dot, extension = filename.rpartition('.')
+		return self.home
+
+	Rui = models.FileField(upload_to=str(home)+'ui.R', blank=False, null=False)
+	Rserver = models.FileField(upload_to=str(home) + 'server.R', blank=False, null=False)
+
+	def clean(self):
+		if self.attached_report.count() == 0:
+			raise ValidationError('ShinyApp must be attached to at least one ReportType')
+
+	class Meta:
+		ordering = ('name',)
+
+	def __unicode__(self):
+		return self.name

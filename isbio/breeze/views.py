@@ -9,8 +9,8 @@ import shell as rshell
 import xml.etree.ElementTree as xml
 import json, pickle
 from datetime import datetime
-from breeze.models import Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
-	Statistics, Institute, Script_categories, CartInfo  # , User_date
+from breeze.models import * # Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
+	# Statistics, Institute, Script_categories, CartInfo  # , User_date
 from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from django import http
@@ -1888,7 +1888,17 @@ def report_shiny_view_tab_merged(request, rid, outside=False):
 	else:
 		base_url = '/shiny-out/' + str(fitem.shiny_key) + '/'
 
-	pages = OrderedDict([])
+	pages = dict() #OrderedDict([])
+
+	try:
+		shiny_item = ShinyApp.objects.filter(attached_report=fitem.type_id)
+		#print shiny_item
+		for item in shiny_item:
+			print item.label
+			pages.update({item.label: item.get_name})
+	except ObjectDoesNotExist:
+		pass
+
 	args = ''
 	source = "Test"
 	title = fitem.name
@@ -1896,26 +1906,9 @@ def report_shiny_view_tab_merged(request, rid, outside=False):
 	if fitem.rora_id > 0:
 		args = '?' + urlencode([('path', fitem.home), ('roraId', str(fitem.rora_id))])
 		# args = '?id=' + str(fitem.id)
-		pages = OrderedDict([('Test', 'screenApp1')])
+		# pages = OrderedDict([('Test', 'screenApp1')])
 
 	nozzle = '/reports/view/' + str(fitem.id) + '/'
-
-	# TODO should improve this part
-	pages.update(OrderedDict([
-		('Quality Control', 'blk1.1'),
-		('Quality Control (full)', 'qc_full'),
-		('Quality Control (extended)', 'qc_ext'),
-		('QC 2', 'blk1.2'),
-		('Curve', 'blk1.3'),
-		('Curve 2', 'blk1.4'),
-		('DSS top50', 'blk2.1'),
-		('DSS top50 2', 'blk2.2'),
-		('Future Genomics', 'blk2.3'),
-		('Somatic', 'blk2.4'),
-		('Comparaison to other relevant samples', 'blk3.1'),
-		('Clinicaly relevant other drug', 'blk3.2'),
-		('Drug - Mutations - Patient', 'blk3.3')
-	]))
 
 	return render_to_response('shiny_tab.html', RequestContext(request, {
 	'nozzle': nozzle,

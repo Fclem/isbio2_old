@@ -1149,3 +1149,13 @@ def check_validity(sections):
 
 def job_summary(xml):
     pass
+
+
+class ShinyApp(forms.ModelForm):
+	class Meta:
+		model = breeze.models.ShinyApp
+		exclude = ['home', ]
+		widgets = {
+			'attached_report' : forms.CheckboxSelectMultiple(attrs={'class': 'multiselect', }),
+			'name': forms.Textarea(attrs={'cols': 80, 'rows': 20}),
+		}

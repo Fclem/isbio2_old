@@ -131,14 +131,12 @@
 	<div class="row-fluid">
 		<div class="span2 well">
 			<!--Sidebar content-->
-			<h3>Report XY content :</h3>
+			<h4>Index :</h4>
 			<ul>
 				<li><a href="{{ nozzle }}" target="iframe_a">Nozzle Report</a></li>
-			{% for key, value in pages.items %}
-				<li><a href="{{ base_url }}{{ value }}/{{ args }}" target="iframe_a">{{ key }}</a></li>
-				{% empty %}
-				<li>Nothing to display - This shouldn't happend !</li>
-			{% endfor %}
+				{% for key, value in pages.items %}
+					<li><a href="{{ base_url }}{{ value }}/{{ args }}" target="iframe_a">{{ key }}</a></li>
+				{% endfor %}
 			</ul>
 		</div>
 		<div class="span10">
