@@ -1268,8 +1268,9 @@ def edit_report_access(request, rid):
 			return HttpResponse(True)
 
 	property_form = breezeForms.EditReportSharing(instance=report_inst)
+	#property_form.
 
-	pprint.pprint(vars(property_form.fields['shared']))
+	# pprint.pprint(vars(property_form.fields['shared']))
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': property_form,
@@ -1897,6 +1898,8 @@ def report_shiny_view_tab_merged(request, rid, outside=False):
 		# args = '?id=' + str(fitem.id)
 		pages = OrderedDict([('Test', 'screenApp1')])
 
+	nozzle = '/reports/view/' + str(fitem.id) + '/'
+
 	# TODO should improve this part
 	pages.update(OrderedDict([
 		('Quality Control', 'blk1.1'),
@@ -1915,6 +1918,7 @@ def report_shiny_view_tab_merged(request, rid, outside=False):
 	]))
 
 	return render_to_response('shiny_tab.html', RequestContext(request, {
+	'nozzle': nozzle,
 	'source': source,
 	'args': args,
 	'pages': pages,

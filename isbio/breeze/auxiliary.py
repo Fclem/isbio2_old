@@ -276,7 +276,7 @@ def merge_job_history(jobs, reports):
 
     for item in pool:
         el = dict()
-
+		#automatize this part
         if 'script_id' in item.__dict__:  # job
             el['instance'] = 'script'
             el['id'] = item.id
@@ -297,6 +297,8 @@ def merge_job_history(jobs, reports):
             el['progress'] = item.progress
             el['type'] = item.script
 
+            el['shiny_key'] = ''
+
         else:                             # report
             el['instance'] = 'report'
             el['id'] = item.id
@@ -316,6 +318,8 @@ def merge_job_history(jobs, reports):
 
             el['progress'] = item.progress
             el['type'] = item.type
+
+            el['shiny_key'] = item.shiny_key
 
         merged.append( copy.deepcopy(el) )
 
