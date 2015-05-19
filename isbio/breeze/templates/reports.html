@@ -178,7 +178,7 @@
 							// activate Multiselect plugin
 							init_multi();
 
-							$("#" + target).modal('show');
+							if (!$('#' + target).hasClass('in')) $("#" + target).modal('show');
 						}
 						//form is not returned if form submission succeeded
 						else{
@@ -186,7 +186,7 @@
 							submit_form(function () {
 								//$("#" + target).modal('hide');
 							});
-							$("#" + target).modal('hide');
+							if ($('#' + target).hasClass('in'))$ ("#" + target).modal('hide');
 						}
 					},
 					error: function (request, status, error) {
@@ -202,13 +202,14 @@
 			});
 		}
 
-		function get_form(id, target){
+		function get_form(id, target, src){
 			//bind the click event
 			var urlLst = {{ url_lst|safe }};
-			$("#" + target).load(urlLst[target] + id, function () {
-				submitItemModalFormBind(urlLst[target] + id, target);
+			if(src==undefined) src = target;
+			$("#" + target).load(urlLst[src] + id, function () {
+				submitItemModalFormBind(urlLst[src] + id, target);
 				init_multi();
-				$('#'  + target).modal('show');
+				if(!$('#' + target).hasClass('in')) $('#' + target).modal('show');
 			});
 
 
