@@ -104,7 +104,7 @@
 							<div class="span4">
 								<label class="radio">
 									<input type="radio" id="radio_accessible"  name="access_filter1" value="accessible">
-									Show only the reports I can access
+									Show only the reports I can access<br /><small style="color:grey">(bug : shows duplicated reports)</small>
 								</label>
 							</div>
 						</div>
@@ -152,11 +152,13 @@
 		</div>
 	</div>
 
-	<div id="Edit" class="modal fade" role="dialog"  aria-hidden="true"></div>
+	<div id="Edit" class="modal fade" role="dialog" aria-hidden="true"></div>
+	<div id="Send" class="modal fade" role="dialog" aria-hidden="true"></div>
+	<div id="Add" class="modal fade" role="dialog" aria-hidden="true"></div>
 
 	<!-- User Access edit form management and User name conversion -->
 	<script type="text/javascript">
-		function submitItemModalFormBind(url){
+		function submitItemModalFormBind(url, target){
 			$('#form_modal_apply').submit(function(ev){
 				$(".multiselect option[value='multiselect-all']").remove();
 				var formData = new FormData($('#form_modal_apply')[0]);
@@ -176,15 +178,15 @@
 							// activate Multiselect plugin
 							init_multi();
 
-							$("#Edit").modal('show');
+							$("#" + target).modal('show');
 						}
 						//form is not returned if form submission succeeded
 						else{
 							//window.location.href = '/reports/';
 							submit_form(function () {
-								//$("#Edit").modal('hide');
+								//$("#" + target).modal('hide');
 							});
-							$("#Edit").modal('hide');
+							$("#" + target).modal('hide');
 						}
 					},
 					error: function (request, status, error) {
@@ -200,14 +202,16 @@
 			});
 		}
 
-		function get_form(id){
+		function get_form(id, target){
 			//bind the click event
-
-			$("#Edit").load('/reports/edit_access/'+id, function() {
-				submitItemModalFormBind('/reports/edit_access/'+id);
+			var urlLst = {{ url_lst|safe }};
+			$("#" + target).load(urlLst[target] + id, function () {
+				submitItemModalFormBind(urlLst[target] + id, target);
 				init_multi();
-				$('#Edit').modal('show');
+				$('#'  + target).modal('show');
 			});
+
+
 
 		};
 
@@ -262,6 +266,7 @@
 			/*	Clement Fiere 30/04/2015
 			 Provide username translation into full names after form generation
 			 */
+			if (!(MainObj != undefined && MainObj.length > 0)) return null;
 			var obj = MainObj[0];
 
 			for (var i = 0; i < obj.length; i++) {
