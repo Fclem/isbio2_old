@@ -8,7 +8,7 @@
 			<th>Report Name</th>
 			<th>Author</th>
 			<th>Project</th>
-			<th colspan="4">Actions</th>
+			<th colspan="5">Actions</th>
 		</tr>
 		</thead>
 	{% endif %}
@@ -22,6 +22,7 @@
 			<td data-toggle="tooltip" title="{{ report.name }}"> {{ report.name|truncatechars:40 }} </td>
 			<td> {% firstof report.author.get_full_name report.author %} </td>
 			<td class="Glyph" data-toggle="tooltip" title="{{ report.project }}"> {{ report.project|truncatechars:19 }} </td>
+			<!-- View button (only if user has access or is super-user) -->
 			<td>
 				{% if report.user_has_access or user.is_superuser %}
 					<a class="Glyph" data-toggle="tooltip" title="View the Report" href="/reports/view/{{ report.id }}/report.html" target="_blank">
@@ -31,6 +32,7 @@
 					<!-- <i class="icon-minus-sign"></i> -->
 				{% endif %}
 			</td>
+			<!-- Download button (only if user has access) -->
 			<td>
 				{% if report.user_has_access %}
 					<a class="Glyph" data-toggle="tooltip" title="Download HTML<br>NB: Embedded links won't work" href="/reports/get/{{ report.id }}">
@@ -40,19 +42,30 @@
 					<!-- <i class="icon-minus-sign"></i> -->
 				{% endif %}
 			</td>
+			<!-- Following buttons for owner of report only -->
 			{% if report.user_is_owner %}
+				<!-- Send (to off-site users) button -->
 				<td>
-					<a class="Glyph" href="#" data-toggle="modal" data-toggle="tooltip" title="Edit sharing" data-target="#Edit" class="btn btn-inverse apply" data-param="{{ report.id }}" onclick="get_form({{ report.id }});">
+					<a class="Glyph" href="#" data-toggle="modal" data-toggle="tooltip" title="Send report" data-target="#Send"
+					   class="btn btn-inverse apply" data-param="{{ report.id }}" onclick="get_form({{ report.id }}, 'Send');">
+						<i class="icon-envelope"></i>
+					</a>
+				</td>
+				<!-- Edit sharing button -->
+				<td>
+					<a class="Glyph" href="#" data-toggle="modal" data-toggle="tooltip" title="Edit sharing" data-target="#Edit" class="btn btn-inverse apply" data-param="{{ report.id }}" onclick="get_form({{ report.id }}, 'Edit');">
 						<i class="icon-user"></i>
 					</a>
 				</td>
+				<!-- Delete button -->
 				<td>
 					<a class="Glyph" href="#" data-toggle="modal" data-toggle="tooltip" title="Delete report" data-target="#Del" onclick="$('#del_btn').attr('href', '/reports/delete/{{ report.id }}'); $('#del_title').text('Delete \'{{ report.name }}\' ?');" >
 						<i class="icon-trash"></i>
 					</a>
 				</td>
 			{% else %}
-				<td colspan="2">
+				<!-- empty -->
+				<td colspan="3">
 					<!-- <i class="icon-minus-sign"></i> -->
 				</td>
 			{% endif %}
