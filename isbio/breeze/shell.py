@@ -477,6 +477,7 @@ def track_sge_job(job, force_refresh=False):
 	drmaa.JobState.DONE: 'job finished normally',
 	'succeed': 'job finished normally',
 	drmaa.JobState.FAILED: 'job finished, but failed',
+	'aborted' : 'job has been aborted',
 	}
 
 	# TODO : optimize refactor code
