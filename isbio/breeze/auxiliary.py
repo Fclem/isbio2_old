@@ -203,18 +203,18 @@ def normalize_query(query_string,
         >>> normalize_query('  some random  words "with   quotes  " and   spaces')
         ['some', 'random', 'words', 'with quotes', 'and', 'spaces']
     '''
-    return [normspace(' ', (t[0] or t[1]).strip()) for t in findterms(query_string)]
+    return [normspace(' ', (t[0] or t[1]).strip()) for t in findterms(str(query_string))]
 
-def get_query(query_string, search_fields):
+def get_query(query_string, search_fields, exact=True):
     ''' Returns a query, that is a combination of Q objects. That combination
         aims to search keywords within a model by testing the given search fields.
     '''
-    query = None # Query to search for every search term
-    terms = normalize_query(query_string)
+    query = None  # Query to search for every search term
+    terms = normalize_query(query_string) if query_string else []
     for term in terms:
-        or_query = None # Query to search for a given term in each field
+        or_query = None  # Query to search for a given term in each field
         for field_name in search_fields:
-            q = Q(**{"%s__icontains" % field_name: term})
+            q = Q(**{"%s" % field_name: term}) if exact else Q(**{"%s__icontains" % field_name: term})
             if or_query is None:
                 or_query = q
             else:
@@ -224,26 +224,7 @@ def get_query(query_string, search_fields):
         else:
             query = query & or_query
     return query
-    
-def get_query_new(query_string, search_fields):
-    ''' Returns a query, that is a combination of Q objects. That combination
-        aims to search keywords within a model by testing the given search fields.
-    '''
-    query = None # Query to search for every search term
-    terms = normalize_query(query_string)
-    for term in terms:
-        or_query = None # Query to search for a given term in each field
-        for field_name in search_fields:
-            q = Q(**{"%s" % field_name: term})
-            if or_query is None:
-                or_query = q
-            else:
-                or_query = or_query | q
-        if query is None:
-            query = or_query
-        else:
-            query = query & or_query
-    return query
+
 
 def extract_users(groups, users):
     ''' Produce a unique list of users from 2 lists.
@@ -266,6 +247,7 @@ def extract_users(groups, users):
         people = list(set(people) | set(ref))
 
     return people
+
 
 def merge_job_history(jobs, reports):
     ''' Merge reports and jobs in a unified object (list)
@@ -342,6 +324,7 @@ def merge_job_lst(item1, item2):
 
     return merged
 
+
 # 28/04/2015 Clem
 def makeHTTP_query(request):
 	''' serialize GET or POST data from a query into a dict string
@@ -366,23 +349,35 @@ def makeHTTP_query(request):
 
 	return queryS
 
+
 # 10/03/2015 Clem
-def report_common(request, max=18):
-	if 'page' in request.REQUEST:
-		page_index = request.REQUEST['page']
+def report_common(request, max=15):
+	"""
+	:type request: django.core.handlers.wsgi.WSGIRequest
+	:type max: int
+	:return: page_index, entries_nb
+		page_index: int
+			current page number to display
+		entries_nb: int
+			number of item to display in a page
+	"""
+	if request.REQUEST.get('page'):  # and type(request.REQUEST.get('page') == 'int'):
+		page_index = int(request.REQUEST['page'])
 	else:
 		page_index = 1
 
-	if 'entries' in request.REQUEST:
-		entries_nb = request.REQUEST['entries']
+	if request.REQUEST.get('entries'):
+		entries_nb = int(request.REQUEST['entries'])
 	else:
 		entries_nb = max
 	return page_index, entries_nb
+
 
 # 10/03/2015 Clem / ShinyProxy
 def uPrint(request, url, code=None, size=None):
 	print "[" + dateT() + "] \"PROX " + request.method + "   " + url + " " + request.META[
 		'SERVER_PROTOCOL'] + "\" " + str(code) + " " + str(size)
+
 
 # 10/03/2015 Clem / ShinyProxy
 def dateT():

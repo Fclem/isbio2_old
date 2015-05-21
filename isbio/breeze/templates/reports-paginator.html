@@ -1,4 +1,14 @@
-<p></p>
+<p>
+{% if reports %}
+	<small>
+		<h4>Report
+			<strong>{{ count.first }}</strong> -
+			<strong>{{ count.last }}</strong> out of
+			<strong>{{ count.total }}</strong> reports found
+		</h4>
+	</small>
+{% endif %}
+</p>
 <table class="table table-striped table-hover" id="main_table">
 	{% if reports %}
 		<thead>
@@ -46,8 +56,8 @@
 			{% if report.user_is_owner %}
 				<!-- Send (to off-site users) button -->
 				<td>
-					<a class="Glyph" href="#" data-toggle="modal" data-toggle="tooltip" title="Send report" data-target="#Send"
-					   class="btn btn-inverse apply" data-param="{{ report.id }}" onclick="get_form({{ report.id }}, 'Send');">
+					<a class="Glyph" href="#" data-toggle="tooltip" title="Send report"
+					   class="btn btn-inverse apply" data-param="{{ report.id }}" onclick="get_form({{ report.id }}, 'Send');"><!-- data-toggle="modal"  data-target="#Send" -->
 						<i class="icon-envelope"></i>
 					</a>
 				</td>
