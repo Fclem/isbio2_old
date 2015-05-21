@@ -273,6 +273,8 @@ class Report(models.Model):
 	
 	shiny_key = models.CharField(max_length=64, null=True, help_text="!! DO NOT EDIT !!")
 	rora_id = models.PositiveIntegerField(default=0)
+
+	# offsite_user_access = models.ManyToManyField(OffsiteUser)
 	# conf_files = models.CharField(null=True, blank=True, default=None)
 	
 	def file_name(self, filename):
@@ -354,14 +356,14 @@ class ShinyApp(models.Model):
 
 
 class OffsiteUser(models.Model):
-	first_name = models.CharField(max_length=32, blank=False,
-								 help_text="First name of the off-site person to add")
-	last_name = models.CharField(max_length=32, blank=False,
-								help_text="Last name of the off-site person to add")
-	email = models.CharField(max_length=64, null=False, blank=False, unique=True,
-							help_text="valid email address of the off-site user")
-	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True,
-	                            help_text="!! DO NOT EDIT !!")
+	first_name = models.CharField(max_length=32, blank=False, help_text="First name of the off-site user to add")
+	last_name = models.CharField(max_length=32, blank=False, help_text="Last name of the off-site user to add")
+	email = models.CharField(max_length=64, blank=False, unique=True, help_text="Valid email address of the off-site user")
+	institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
+	role = models.CharField(max_length=32, blank=True, help_text="Role of this off-site user")
+	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True, help_text="!! DO NOT EDIT !!")
+	added_by = ForeignKey(User, related_name='owner', help_text="!! DO NOT EDIT !!")
+	belongs_to = models.ManyToManyField(User, related_name='display', help_text="!! DO NOT EDIT !!")
 
 	created = models.DateTimeField(auto_now_add=True)
 	shiny_access = models.ManyToManyField(Report)
@@ -369,10 +371,6 @@ class OffsiteUser(models.Model):
 	@property
 	def full_name(self):
 		return str(self.first_name + ' ' + self.last_name)
-
-	def clean(self):
-		if not ['.', '@'] in self.email:
-			raise ValidationError('email field must have a valid email-address')
 
 	class Meta:
 		ordering = ('first_name',)
