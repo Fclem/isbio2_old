@@ -17,7 +17,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-primary" id="submit-btn" type="submit" >{{ submit }}</button>
-      <button class="btn btn-inverse" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-inverse" id="cancel-btn" type="cancel" >Cancel</button>
     </div>
   </div>
 </form>
@@ -29,8 +29,22 @@
 			$("#form_modal_apply").submit();
 			return true;
 		});
+		$('#cancel-btn').on('click', function (ev) {
+			ev.preventDefault();
+			get_form({{ id }}, 'Send')
+			/*
+			var url = '{{ back }}';
+			//load and displays a form inside a modal form
+			$("#Send").load(url, function () {
+				submitItemModalFormBind(url, "#Send");
+				init_multi();
+			});
+			*/
+
+			return false;
+		});
 	}
-  $(document).ready(while_sending());
+	$(document).ready(while_sending());
 </script>
 
 

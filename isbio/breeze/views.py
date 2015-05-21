@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from Bio.Sequencing.Ace import rt
+from openid.yadis.parsehtml import ent_pat
 from social_auth.backends.pipeline import user
 import auxiliary as aux
 import forms as breezeForms
@@ -22,6 +23,7 @@ from django.core.files import File
 from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
+from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render_to_response
@@ -34,6 +36,8 @@ from django.utils.http import urlencode
 from django.views.decorators.csrf import csrf_exempt
 from mimetypes import MimeTypes
 from multiprocessing import Process
+import hashlib
+
 
 # from django.contrib.auth import models
 # from django.core.context_processors import request
@@ -375,25 +379,39 @@ def reports(request):
 
 	# report_type_lst = ReportType.objects.filter(access=request.user)
 	all_projects = Project.objects.filter(institute=insti)
-	paginator = Paginator(all_reports, entries_nb)  # show 30 items per page
+	count = {'total': all_reports.count()}
+	paginator = Paginator(all_reports, entries_nb)  # show 18 items per page
 
 	# If AJAX - check page from the request
 	# Otherwise return the first page
 	if request.is_ajax() and request.method == 'GET':
+		# this section is likely duplicated code.
+		# TODO integrate it with report_search
+		# There should not be 2 views rendering template reports-paginator.html
 		try:
 			reports = paginator.page(page_index)
 		except PageNotAnInteger:  # if page isn't an integer
-			reports = paginator.page(1)
+			page_index = 1
+			reports = paginator.page(page_index)
 		except EmptyPage:  # if page out of bounds
-			reports = paginator.page(paginator.num_pages)
+			page_index = paginator.num_pages
+			reports = paginator.page(page_index)
 		# access rights
 		for each in reports:
 			each.user_is_owner = each.author == request.user
 			each.user_has_access = request.user in each.shared.all() or each.user_is_owner
 
-		return render_to_response('reports-paginator.html', RequestContext(request, {'reports': reports,
-		                                                                             'pagination_number': paginator.num_pages,
-		                                                                             'page': page_index}))
+		count.update({
+			'first': (page_index-1) * entries_nb + 1,
+			'last': min(page_index * entries_nb, count['total'])
+		})
+
+		return render_to_response('reports-paginator.html', RequestContext(request, {
+			'reports': reports,
+			'pagination_number': paginator.num_pages,
+			'count': count,
+			'page': page_index
+		}))
 	else:
 		reports = paginator.page(1)
 		# access rights
@@ -402,6 +420,17 @@ def reports(request):
 			each.user_has_access = request.user in each.shared.all() or each.user_is_owner
 		user_profile = UserProfile.objects.get(user=request.user)
 		db_access = user_profile.db_agreement
+		url_lst = {
+			'Edit': '/reports/edit_access/',
+			'Add': '/reports/add-offsite-user/',
+			'Send': '/reports/send/'
+		}
+
+		count.update({
+			'first': 1,
+			'last': min(entries_nb, count['total'])
+		})
+
 		return render_to_response('reports.html', RequestContext(request, {
 			'reports_status': 'active',
 			'reports': reports,
@@ -411,8 +440,154 @@ def reports(request):
 			'projects': all_projects,
 			'pagination_number': paginator.num_pages,
 			'page': page_index,
-			'db_access': db_access
+			'db_access': db_access,
+			'count': count,
+			'url_lst': url_lst
 		}))
+
+
+@login_required(login_url='/')
+def send_report(request, rid):
+
+	report_inst = Report.objects.get(id=rid)  # only for auth
+	# offsite_u = OffsiteUser.objects.filter(belongs_to=request.user)
+	form_action = reverse(send_report, kwargs={'rid': rid})  # we need the email since the form is AJAX loaded, and thus cannot just send to url #
+	# form_action = "get_form(" + str(rid) + ", 'Send', 'Send');"
+	form_title = 'Send "' + report_inst.name + ' to Off-Site users'
+
+	# Enforce access rights
+	if report_inst.author != request.user:
+		raise PermissionDenied
+
+	if request.method == 'POST':
+		send_form = breezeForms.SendReportTo(request.POST, request=request)
+		# Validates input info and send the mails
+		if send_form.is_valid():
+			from django.db import IntegrityError
+			# from django.core.mail import send_mail
+			from django.core.mail import EmailMessage
+			# send_form
+			msg_blocks = []
+			# TODO wrap the sending into try
+			for each in send_form.cleaned_data['recipients']:
+				try:
+					report_inst.offsiteuser_set.add(each)
+				except IntegrityError:
+					pass
+				off_user = report_inst.offsiteuser_set.get(pk=each)
+				data = {
+					'recipient': str(off_user.full_name),
+					'sender': str(request.user.get_full_name()),
+					'report_name': str(report_inst.name),
+					'url': str('http://breeze-dev.giu.fi/shiny-out/' + str(report_inst.shiny_key) + '/' + str(off_user.user_key))
+				}
+				msg_html = loader.render_to_string('mail.html', RequestContext(request, data))
+				msg = EmailMessage('Access "' + report_inst.name + '" on Tumor Virtual Board right now !', msg_html, 'Breeze PMS', [off_user.email])
+				msg.content_subtype = "html"  # Main content is now text/html
+				result = msg.send()
+				status = 'Success' if result == 1 else 'Failed'
+				msg_blocks.append(off_user.email + ' : ' + status)
+
+			#success
+			msg_blocks = [str(len(msg_blocks)) + ' mails has been sent to :'] + msg_blocks
+			return render_to_response('forms/basic_modal_dialog.html', RequestContext(request, {
+				'header': 'Success',
+				'msg_blocks': msg_blocks
+			}))
+	else:
+		send_form = breezeForms.SendReportTo(request=request)
+
+	return render_to_response('forms/send_form_dialog.html', RequestContext(request, {
+		'form': send_form,
+		'id': rid,
+		'action': form_action,
+		'header': form_title,
+		'layout': 'horizontal',
+		'submit': 'Send'
+	}))
+
+
+# Modal view to add an off-site user email address, and either attach it to the user or go to the add off-site user page
+@login_required(login_url='/')
+def add_offsite_user_dialog(request, rid=None):
+
+	form_action = '/reports/add-offsite-user/' + rid if rid is not None else '' # reverse(add_offsite_user_dialog, kwargs={'rid': rid})
+	form_title = 'Add an offsite user'
+
+	if request.method == 'POST':
+		offsite_user_form = breezeForms.AddOffsiteUserDialog(request.POST)
+		if offsite_user_form.is_valid():
+			owned_offsite_u = OffsiteUser.objects.filter(belongs_to=request.user)
+			email = offsite_user_form.cleaned_data['email']
+			# Check if email address is already in DB
+			try:
+				offone = OffsiteUser.objects.get(email=email)
+			except ObjectDoesNotExist:
+				# else redirects to the new user form
+				return HttpResponse('/reports/add-offsite-user/next/' + str(email))
+			# this email is already in DB
+			# check if not already in owned off-site user list
+			if not owned_offsite_u.filter(pk=offone.pk).exists():  # if offone not in owned_offsite_u:
+				# add this off-site user to the list of owned off-site users
+				offone.belongs_to.add(request.user)
+				# offone.save()
+				request.method = 'GET'
+				return send_report(request, rid)
+			else:
+				# fail with standard form error
+				from django.forms.util import ErrorList
+				errors = offsite_user_form._errors.setdefault("email", ErrorList())
+				errors.append(u"This email address already in your list!")
+	else:
+		offsite_user_form = breezeForms.AddOffsiteUserDialog()
+
+	return render_to_response('forms/add_form_dialog.html', RequestContext(request, {
+		'back':  reverse(send_report, kwargs={'rid': rid}),  # " onclick=\"get_form(" + str(rid) + ", 'Send')\"",
+		'form': offsite_user_form,
+		'id': rid,
+		'action': form_action,
+		'header': form_title,
+		'layout': 'horizontal',
+		'submit': 'Add'
+	}))
+
+
+# Form page to add, or list off-site users
+@login_required(login_url='/')
+def add_offsite_user(request, email=None):
+	# off_site_u = OffsiteUser.objects.filter(belongs_to=request.user)
+	form_action = reverse(add_offsite_user)
+
+	if request.method == 'POST' and email is None:
+		off_site_user_form = breezeForms.AddOffsiteUser(request.user, request.POST)
+		if off_site_user_form.is_valid():
+			data = off_site_user_form.save(commit=False)
+			data.added_by = request.user
+			m = hashlib.md5()
+			m.update(settings.SECRET_KEY + data.email + str(datetime.now()))
+			data.user_key = str(m.hexdigest())
+			data.save()
+			data.belongs_to.add(request.user)
+
+			if isinstance(data, OffsiteUser):
+				off_site_user = data
+			else:
+				off_site_user = OffsiteUser(id=data.id)
+			off_site_user_form_bis = breezeForms.AddOffsiteUser(request.user, request.POST, instance=off_site_user)
+			# use this trick to populate accessible reports directly through Django back-end
+			if off_site_user_form_bis.is_valid():
+				off_site_user_form_bis.save()
+
+			return reports(request)
+	else:
+		off_site_user_form = breezeForms.AddOffsiteUser(request.user, initial={'email': email})
+
+	return render_to_response('new_off-site_user.html', RequestContext(request, {
+		'form': off_site_user_form,
+		'action': form_action,
+		'layout': 'horizontal',
+		'submit': 'Add'
+	}))
 
 
 @login_required(login_url='/')
@@ -700,22 +875,6 @@ def groupName(request):
 		'layout': 'horizontal',
 		'submit': 'Save'
 	}))
-
-
-def reports_search(request):
-	# TODO is this still in use/ finished ?
-	query_string = ''
-	found_entries = None
-	if ('q' in request.GET) and request.GET['q'].strip():
-		query_string = request.GET['q']
-
-		entry_query = aux.get_query(query_string, ['title', 'body', ])
-
-	# found_entries = Entry.objects.filter(entry_query).order_by('-pub_date')
-
-	return render_to_response('search/search_results.html',
-	                          {'query_string': query_string, 'found_entries': found_entries},
-	                          context_instance=RequestContext(request))
 
 
 @login_required(login_url='/')
@@ -1253,7 +1412,7 @@ def delete_report(request, rid, redir):
 @login_required(login_url='/')
 def edit_report_access(request, rid):
 	report_inst = Report.objects.get(id=rid)
-	form_action = 'reports/edit_access/' + str(rid)
+	form_action = reverse(edit_report_access, kwargs={'rid': rid})
 	form_title = 'Edit "' + report_inst.name + '" access'
 
 	# Enforce access rights
@@ -1261,12 +1420,12 @@ def edit_report_access(request, rid):
 		raise PermissionDenied
 
 	if request.method == 'POST':
-		# Validates input info and creates (submits) a report
+		# Validates input info and commit the changes to report_inst instance direclty through Django back-end
 		property_form = breezeForms.EditReportSharing(request.POST, instance=report_inst)
 		if property_form.is_valid():
 			property_form.save()
 			return HttpResponse(True)
-
+	# TODO check if else is no needed here
 	property_form = breezeForms.EditReportSharing(instance=report_inst)
 	#property_form.
 
@@ -2314,75 +2473,66 @@ def ajax_user_stat(request):
 
 
 @login_required(login_url='/')
-def report_search(request):
-	if 'reset' in request.REQUEST:
-		return HttpResponseRedirect('/reports/')  # Redirects to the default view
+def report_search(request):   # TODO optimize that (very slow)
+	search = request.REQUEST.get('filt_name', '') + request.REQUEST.get('filt_type', '') + \
+	         request.REQUEST.get('filt_author', '') + request.REQUEST.get('filt_project', '') + \
+	         request.REQUEST.get('access_filter1', '')
+	if request.REQUEST.get('reset') or search.strip() == '':
+		request.method = 'GET'
+		return reports(request)  # Redirects to the default view (internaly : no new HTTP request)
+		# return HttpResponseRedirect('/reports/')  # Redirects to the default view
 	else:
 		entry_query = None
 		owned_filter = False
 
 		page_index, entries_nb = aux.report_common(request)
 
-		if ('filt_name' in request.REQUEST) and request.REQUEST['filt_name'].strip():
-			query_type = '"' + request.REQUEST['filt_name'] + '"'
-			entry_query = aux.get_query(query_type, ['name'])
+		def query_concat(request, entry_query, rq_name, cols, user_name=False, exact=True):
+			# like_a = '%' if like else ''
+			query_type = (request.REQUEST.get(rq_name, '') if not user_name else request.user.id)
+			tmp_query = aux.get_query(query_type, cols, exact)
+			if not tmp_query:
+				return entry_query
+			return (entry_query & tmp_query) if entry_query else tmp_query
+
+		# TODO make a sub function to reduce code duplication
+		# filter by report name
+		entry_query = query_concat(request, entry_query, 'filt_name', ['name'], exact=False)
 		# filter by type
-		if ('filt_type' in request.REQUEST) and request.REQUEST['filt_type']:
-			query_type = '"' + request.REQUEST['filt_type'] + '"'
-			if entry_query:
-				entry_query = entry_query & aux.get_query_new(query_type, ['type__type'])
-			else:
-				entry_query = aux.get_query_new(query_type, ['type__type'])
-		# filter by author
-		if ('filt_author' in request.REQUEST) and request.REQUEST['filt_author']:
-			query_type = '"' + request.REQUEST['filt_author'] + '"'
-			if entry_query:
-				entry_query = entry_query & aux.get_query_new(query_type, ['author__username'])
-			else:
-				entry_query = aux.get_query_new(query_type, ['author__username'])
-		# filter by project
-		if ('filt_project' in request.REQUEST) and request.REQUEST['filt_project']:
-			query_type = '"' + request.REQUEST['filt_project'] + '"'
-			if entry_query:
-				entry_query = entry_query & aux.get_query_new(query_type, ['project__name'])
-			else:
-				entry_query = aux.get_query_new(query_type, ['project__name'])
+		entry_query = query_concat(request, entry_query, 'filt_type', ['type_id'])
+		# filter by author name
+		entry_query = query_concat(request, entry_query, 'filt_author', ['author_id'])
+		# filter by project name
+		entry_query = query_concat(request, entry_query, 'filt_project', ['project_id'])
 		# filter by owned reports
-		if ('access_filter1' in request.REQUEST) and request.REQUEST['access_filter1']:
+		if request.REQUEST.get('access_filter1'):
+			owned_filter = True
 			if request.REQUEST['access_filter1'] == 'owned':
-				query_type = '"' + request.user.username + '"'
-				tmp_query = aux.get_query_new(query_type, ['author__username'])
-				if entry_query:
-					entry_query = entry_query & tmp_query
-				else:
-					entry_query = tmp_query
-				owned_filter = True
+				entry_query = query_concat(request, entry_query, 'access_filter1', ['author_id'], True)
 			# filter by accessible reports
 			elif request.REQUEST['access_filter1'] == 'accessible':
-				query_type = '"' + request.user.username + '"'
-				# TODO : fix that, not working as expected
-				tmp_query = (aux.get_query_new(query_type, ['author__username']) | aux.get_query_new(
-					query_type, ['shared__username']))
-				if entry_query:
-					entry_query = entry_query & tmp_query
-				else:
-					entry_query = tmp_query
+				entry_query = query_concat(request, entry_query, 'access_filter1', ['author_id', 'shared'], True)
 		# Process the query
 		if entry_query is None:
-			found_entries = Report.objects.filter(status="succeed").order_by('-created')
+			found_entries = Report.objects.filter(status="succeed").order_by('-created')  # .distinct()
 		else:
-			found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created')
+			found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created').distinct()
+			print entry_query
+		count = {'total': found_entries.count()}
 	# just a shortcut for the template
 	for each in found_entries:
 		each.user_is_owner = each.author == request.user
 		each.user_has_access = request.user in each.shared.all() or each.user_is_owner
-
 	# apply pagination
 	paginator = Paginator(found_entries, entries_nb)
 	found_entries = paginator.page(page_index)
-
 	# Copy the query for the paginator to work with filtering
 	queryS = aux.makeHTTP_query(request)
+
+	count.update({
+		'first': (page_index - 1) * entries_nb + 1,
+		'last': min(page_index * entries_nb, count['total'])
+	})
 
 	return render_to_response('reports-paginator.html', RequestContext(request, {
 		'reports': found_entries,
@@ -2390,6 +2540,7 @@ def report_search(request):
 		'page': page_index,
 		'url': 'search?',
 		'search': queryS,
+		'count': count,
 		'owned_filter': owned_filter
 	}))
 

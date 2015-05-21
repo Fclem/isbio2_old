@@ -366,7 +366,7 @@ class OffsiteUser(models.Model):
 	belongs_to = models.ManyToManyField(User, related_name='display', help_text="!! DO NOT EDIT !!")
 
 	created = models.DateTimeField(auto_now_add=True)
-	shiny_access = models.ManyToManyField(Report)
+	shiny_access = models.ManyToManyField(Report, blank=True)
 
 	@property
 	def full_name(self):

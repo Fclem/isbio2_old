@@ -221,20 +221,20 @@ class AddOffsiteUserDialog(forms.Form):
 	"""
 
 class AddOffsiteUser(forms.ModelForm):
-	def __init__(self, *args, **kwargs):
+	def __init__(self, user, *args, **kwargs):
 		super(AddOffsiteUser, self).__init__(*args, **kwargs)
-		self.fields['shiny_access'].queryset = self.fields['shiny_access'].queryset = breeze.models.Report.objects.filter(type__type='ScreenReport')
+		# self.fields['shiny_access'].queryset = self.fields['shiny_access'].queryset = breeze.models.Report.objects.filter(type__type='ScreenReport', author_id=user.id)
 
 	class Meta:
 		model = breeze.models.OffsiteUser
-		exclude = ['belongs_to', 'user_key', 'added_by']
+		exclude = ['belongs_to', 'user_key', 'added_by', 'shiny_access']
 
 		def clean(self):
 			return self.cleaned_data
 
 	widgets = {
 		'email': forms.EmailField(label=u'Email Address', required=True),
-		'shiny_access': forms.SelectMultiple(attrs={'class': 'multiselect' }),
+		# 'shiny_access': forms.SelectMultiple(attrs={'class': 'multiselect' }),
 	}
 	#queryset = breeze.models.User.objects.all(),
 

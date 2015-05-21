@@ -56,10 +56,12 @@
 			{% if report.user_is_owner %}
 				<!-- Send (to off-site users) button -->
 				<td>
+					{% if report.shiny_key %}
 					<a class="Glyph" href="#" data-toggle="tooltip" title="Send report"
 					   class="btn btn-inverse apply" data-param="{{ report.id }}" onclick="get_form({{ report.id }}, 'Send');"><!-- data-toggle="modal"  data-target="#Send" -->
 						<i class="icon-envelope"></i>
 					</a>
+					{% endif %}
 				</td>
 				<!-- Edit sharing button -->
 				<td>

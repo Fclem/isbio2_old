@@ -43,9 +43,9 @@
 			float: right;
 			z-index: 200;
 		}
-	#demo {
-		z-index: 150;
-	}
+		#demo {
+			z-index: 150;
+		}
 	</style>
 
 {% endblock %}
@@ -67,7 +67,7 @@
 			<div class="span10 offset1">
 				<!-- FILTERS Collapse -->
 				<div class="offset1">
-					<form id="filter_form" class="form-inline span8 offset2" method="post" onsubmit="return false;" onchange="submit_form()">
+					<form id="filter_form" class="form-inline span8 offset2" method="post" onsubmit="return false;" onchange="submit_filter_form()">
 						<div class="row-fluid">
 							{% csrf_token %}
 							<select id="filt_type" name="filt_type" class="input-medium">
@@ -176,7 +176,6 @@
 					success:function(response, textStatus, jqXHR){
 						if (response.length > 64 || response=='True') { // TODO very poor implementation
 							var form = $("#form_modal_apply_div", response);
-							while_sending();
 							//form is returned if it is not valid. update modal with returned form
 							//change this "if" to check for a specific return code which should be set in the view
 							if (form.html()) {
@@ -184,15 +183,19 @@
 								$('#form_modal_apply_div').html(form);
 								// activate Multiselect plugin
 								init_multi();
+								while_sending(); //forn insider specific init
 								//displays the modal form if not yet visible
 								if (!$('#' + target).hasClass('in')) $("#" + target).modal('show');
-							}
-							//form is not returned if form submission succeeded
-							else {
+							}else { //form is not returned if form submission succeeded
+								var diag = $("#diag_modal_apply", response);
+								if(response != 'True') {
+									$('#form_modal_apply_div').html(response);
+								}else {
 									//triggers reports list refresh
-									submit_form();
+									submit_filter_form();
 									//hide the modal form
 									if ($('#' + target).hasClass('in'))$("#" + target).modal('hide');
+								}
 							}
 						}else {
 							console.log("moved");
@@ -291,8 +294,8 @@
 	</script>
 	<!-- Pagination, research, filtering management, popover -->
 	<script type="text/javascript">
-	  //AJAX submission of the filtering form (triggers reports list refresh)
-		function submit_form(e) {
+		//AJAX submission of the filtering form (triggers reports list refresh)
+		function submit_filter_form(e) {
 			$("#pagination-content").fadeTo(0, 0.33);
 			var formData = $('#filter_form').serialize();
 			$.ajax({

@@ -1,0 +1,21 @@
+{% load bootstrap_toolkit %}
+<!-- Basic FORM Modal -->
+
+<form id="diag_modal_apply" class="form-horizontal" action="" method="post" enctype="multipart/form-data" >
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+		<h3 id="del_title">{{ header }}</h3>
+	</div>
+	<div class="modal-body">
+		{% for item in msg_blocks %}
+			<p>
+			{{ item }}
+			</p>
+		{% endfor %}
+	</div>
+	<div class="modal-footer">
+		<a href="#" class="btn btn-primary" data-dismiss="modal" aria-hidden="true">{{ valid|default:"OK" }}</a>
+	</div>
+</form>
+
+

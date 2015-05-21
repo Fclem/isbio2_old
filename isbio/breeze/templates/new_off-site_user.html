@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+
+{% block title %}Add an off-site user{% endblock %}
+
+{% block extra_head %}
+	<script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
+	<link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
+	<style type="text/css">
+		.span12, .span6{
+
+		}
+		iframe{
+			height: 80%;
+			/* height: inherit; */
+			/* margin-top: 50px; */
+			/* padding-bottom: 70px; */
+			margin-left: 50px;
+			position: absolute;
+			bottom: 70px;
+			top: 50px;
+			border:0;
+			resize: vertical;
+			right: 5px;
+			width: inherit;
+
+		}
+		/*
+		.container-fluid{
+			padding-left: 0px;
+			padding-right: 0px;
+		}
+		*/
+	</style>
+{% endblock %}
+
+{% block content %}
+
+	<div class="row-fluid">
+		<div class="span2 well">
+
+		</div>
+		<div class="span5">
+			<form id="form_apply" class="form-horizontal" action="{{ action }}" method="post"
+				  enctype="multipart/form-data">
+				<div id="form_modal_apply_div">
+					<div class="body">
+						{% csrf_token %}
+
+						{% for item in form %}
+							{{ item|as_bootstrap:layout }}
+						{% endfor %}
+					</div>
+				</div>
+				<button class="btn btn-primary pull-right" type="submit" id="submit-btn">{{ submit }}</button>
+			</form>
+		</div>
+	</div>
+	<script type="text/javascript">
+		$(document).ready(function () {
+			$('#id_shiny_access').addClass('multiselect');
+			var multiConfigurationSet = {
+				includeSelectAllOption: true,
+				enableFiltering       : true,
+				maxHeight             : 450
+			};
+			$('.multiselect').multiselect(multiConfigurationSet);
+		});
+	</script>
+
+
+
+{% endblock %}
