@@ -104,7 +104,7 @@
 							<div class="span4">
 								<label class="radio">
 									<input type="radio" id="radio_accessible"  name="access_filter1" value="accessible">
-									Show only the reports I can access<br /><small style="color:grey">(bug : shows duplicated reports)</small>
+									Show only the reports I can access<br />
 								</label>
 							</div>
 						</div>
@@ -161,47 +161,65 @@
 		function submitItemModalFormBind(url, target){
 			$('#form_modal_apply').submit(function(ev){
 				$(".multiselect option[value='multiselect-all']").remove();
-				var formData = new FormData($('#form_modal_apply')[0]);
+				var formData = $(this).serialize()// new FormData($('#form_modal_apply')[0]);
+
+				$("#submit-btn").attr("disabled", "disabled");
 
 				$.ajax({
 					type: "POST",
 					url: url,
 					enctype: 'multipart/form-data',
 					data: formData,
-					success:function(response, textStatus, jqXHR){
-						var form = $("#form_modal_apply_div", response);
-						//form is returned if it is not valid. update modal with returned form
-						//change this "if" to check for a specific return code which should be set in the view
-						if (form.html()) {
-							$('#form_modal_apply_div').html(form);
-
-							// activate Multiselect plugin
-							init_multi();
-
-							if (!$('#' + target).hasClass('in')) $("#" + target).modal('show');
-						}
-						//form is not returned if form submission succeeded
-						else{
-							//window.location.href = '/reports/';
-							submit_form(function () {
-								//$("#" + target).modal('hide');
-							});
-							if ($('#' + target).hasClass('in'))$ ("#" + target).modal('hide');
+					statusCode: {
+						302: function (request, status, error) {
+							console.log("moved");
+							console.log(request.responseText);
+							window.location.href = request.responseText;
 						}
 					},
+					success:function(response, textStatus, jqXHR){
+						if (response.length > 64 || response=='True') { // TODO very poor implementation
+							var form = $("#form_modal_apply_div", response);
+							while_sending();
+							//form is returned if it is not valid. update modal with returned form
+							//change this "if" to check for a specific return code which should be set in the view
+							if (form.html()) {
+								//replace form inner HTML
+								$('#form_modal_apply_div').html(form);
+								// activate Multiselect plugin
+								init_multi();
+								//displays the modal form if not yet visible
+								if (!$('#' + target).hasClass('in')) $("#" + target).modal('show');
+							}
+							//form is not returned if form submission succeeded
+							else {
+									//triggers reports list refresh
+									submit_form();
+									//hide the modal form
+									if ($('#' + target).hasClass('in'))$("#" + target).modal('hide');
+							}
+						}else {
+							console.log("moved");
+							console.log(response);
+							window.location.href = response;
+						}
+					},
+					always:function(response, textStatus, jqXHR){
+						//console.log(jqXHR.getAllResponseHeaders());
+					},
 					error: function (request, status, error) {
-						//implement proper error handling
+						//implements proper error handling
 						console.log("failure");
 						console.log(request.responseText);
 					},
 					cache: false,
-					contentType: false,
+					contentType: 'html',
 					processData: false
 				});
 				return false;
 			});
 		}
-
+		//load and displays a form inside a modal form
 		function get_form(id, target, src){
 			//bind the click event
 			var urlLst = {{ url_lst|safe }};
@@ -211,9 +229,6 @@
 				init_multi();
 				if(!$('#' + target).hasClass('in')) $('#' + target).modal('show');
 			});
-
-
-
 		};
 
 		var multiConfigurationSet = {
@@ -221,17 +236,16 @@
 			enableFiltering: true,
 			maxHeight: 450
 		};
-
+		// initialize Multiselect plugin
 		function init_multi(){
-			// initialize Multiselect plugin
+
 
 			$('#id_shared').addClass('multiselect');
 
 
-			var obj = $('.multiselect');
+			var obj = $('#id_shared');
 			NameTranslate(  obj );
-
-			//$('.multiselect').multiselect(multiConfigurationSet);
+			$('#id_recipients').multiselect(multiConfigurationSet);
 		}
 
 		var nameDict = null;
@@ -281,7 +295,7 @@
 	</script>
 	<!-- Pagination, research, filtering management, popover -->
 	<script type="text/javascript">
-	  //AJAX submission of the form
+	  //AJAX submission of the filtering form (triggers reports list refresh)
 		function submit_form(e) {
 			$("#pagination-content").fadeTo(0, 0.33);
 			var formData = $('#filter_form').serialize();
