@@ -63,8 +63,8 @@ urlpatterns = patterns('',
     url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
     #sub-level
     url(r'^shiny/(?P<path>.*)$', views.report_shiny_in_wrapper),
-    url(r'^shiny-out/(?P<key>[a-z0-9]+)/$', views.report_shiny_view_tab_out),
-    url(r'^shiny-out/(?P<key>[a-z0-9]+)/(?P<path>.*)$', views.report_shiny_out_wrapper),
+    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out),
+    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/(?P<path>.*)$', views.report_shiny_out_wrapper),
     url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
     url(r'^reports/check$', views.check_reports),  # Re Run report
     # fusion thoses lines

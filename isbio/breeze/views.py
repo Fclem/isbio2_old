@@ -482,12 +482,11 @@ def send_report(request, rid):
 					'url': str('http://breeze-dev.giu.fi/shiny-out/' + str(report_inst.shiny_key) + '/' + str(off_user.user_key))
 				}
 				msg_html = loader.render_to_string('mail.html', RequestContext(request, data))
-				msg = EmailMessage('Access "' + report_inst.name + '" on Tumor Virtual Board right now !', msg_html, 'Breeze PMS', [off_user.email])
+				msg = EmailMessage('Check out "' + report_inst.name + '" on Tumor Virtual Board right now !', msg_html, 'Breeze PMS', [off_user.email])
 				msg.content_subtype = "html"  # Main content is now text/html
 				result = msg.send()
 				status = 'Success' if result == 1 else 'Failed'
 				msg_blocks.append(off_user.email + ' : ' + status)
-
 			#success
 			msg_blocks = [str(len(msg_blocks)) + ' mails has been sent to :'] + msg_blocks
 			return render_to_response('forms/basic_modal_dialog.html', RequestContext(request, {
@@ -2023,17 +2022,22 @@ def report_shiny_view_tab(request, rid):
 
 
 # Shiny tab access from outside (with the key)
-def report_shiny_view_tab_out(request, key):
-	try:
-		fitem = Report.objects.get(shiny_key=key)
-		return report_shiny_view_tab_merged(request, fitem.id, True)
+def report_shiny_view_tab_out(request, s_key, u_key):
+	try: # TODO merge with out wrapper
+		# Enforces access control
+		# both request will fail if the object is not found
+		# we fetch the report
+		fitem = Report.objects.get(shiny_key=s_key)
+		# and if found, check the user with this key is in the share list of this report
+		fitem.offsiteuser_set.get(user_key=u_key)
+		return report_shiny_view_tab_merged(request, fitem.id, True, u_key=u_key)
 	except ObjectDoesNotExist:
 		return aux.failWith404(request)
 
 
 # Shiny tab
 # DO NOT CALL THIS VIEW DIRECTLY
-def report_shiny_view_tab_merged(request, rid, outside=False):
+def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 	try:
 		fitem = Report.objects.get(id=rid)
 	except ObjectDoesNotExist:
@@ -2041,11 +2045,12 @@ def report_shiny_view_tab_merged(request, rid, outside=False):
 
 	if not outside:
 		base_url = '/shiny/'
-		# Enforce user access restrictions
+		# Enforce user access restrictions for Breeze users
 		if request.user not in fitem.shared.all() and fitem.author != request.user:
 			raise PermissionDenied
 	else:
-		base_url = '/shiny-out/' + str(fitem.shiny_key) + '/'
+		# TODO proxy nozzle report
+		base_url = '/shiny-out/' + str(fitem.shiny_key) + '/' + u_key + '/'
 
 	pages = dict() #OrderedDict([])
 
@@ -2098,9 +2103,12 @@ def report_shiny_in_wrapper(request, path):
 
 # Wrapper for ShinyApp accessed from OUTSIDE (key needed)
 @csrf_exempt
-def report_shiny_out_wrapper(request, key, path):
+def report_shiny_out_wrapper(request, s_key, u_key, path):
 	try:
-		fitem = Report.objects.get(shiny_key=key)
+		# Enforces access control
+		fitem = Report.objects.get(shiny_key=s_key)
+		# and if found, check the user with this key is in the share list of this report
+		fitem.offsiteuser_set.get(user_key=u_key)
 	except ObjectDoesNotExist:
 		return aux.failWith404(request)
 
