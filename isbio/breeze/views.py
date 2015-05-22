@@ -476,7 +476,7 @@ def send_report(request, rid):
 					pass
 				off_user = report_inst.offsiteuser_set.get(pk=each)
 				data = {
-					'recipient': str(off_user.full_name),
+					'recipient': off_user.full_name,
 					'sender': str(request.user.get_full_name()),
 					'report_name': str(report_inst.name),
 					'url': 'http://' + settings.FULL_HOST_NAME + reverse(report_shiny_view_tab_out, kwargs={'s_key': report_inst.shiny_key, 'u_key': off_user.user_key})
