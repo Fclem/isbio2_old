@@ -370,7 +370,7 @@ class OffsiteUser(models.Model):
 
 	@property
 	def full_name(self):
-		return str(self.first_name + ' ' + self.last_name)
+		return unicode(self.first_name) + ' ' + unicode(self.last_name)
 
 	class Meta:
 		ordering = ('first_name',)
