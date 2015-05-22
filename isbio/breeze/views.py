@@ -420,9 +420,9 @@ def reports(request):
 			each.user_has_access = request.user in each.shared.all() or each.user_is_owner
 		user_profile = UserProfile.objects.get(user=request.user)
 		db_access = user_profile.db_agreement
-		url_lst = {
+		url_lst = {  # TODO remove static url mappings
 			'Edit': '/reports/edit_access/',
-			'Add': '/reports/add-offsite-user/',
+			'Add': '/off_user/add/',
 			'Send': '/reports/send/'
 		}
 
@@ -479,6 +479,7 @@ def send_report(request, rid):
 					'recipient': str(off_user.full_name),
 					'sender': str(request.user.get_full_name()),
 					'report_name': str(report_inst.name),
+					# TODO remove static url mappings
 					'url': str('http://breeze-dev.giu.fi/shiny-out/' + str(report_inst.shiny_key) + '/' + str(off_user.user_key))
 				}
 				msg_html = loader.render_to_string('mail.html', RequestContext(request, data))
@@ -486,7 +487,7 @@ def send_report(request, rid):
 				msg.content_subtype = "html"  # Main content is now text/html
 				result = msg.send()
 				status = 'Success' if result == 1 else 'Failed'
-				msg_blocks.append(off_user.email + ' : ' + status)
+				msg_blocks.append(status + ' : ' + off_user.email)
 			#success
 			msg_blocks = [str(len(msg_blocks)) + ' mails has been sent to :'] + msg_blocks
 			return render_to_response('forms/basic_modal_dialog.html', RequestContext(request, {
@@ -509,8 +510,8 @@ def send_report(request, rid):
 # Modal view to add an off-site user email address, and either attach it to the user or go to the add off-site user page
 @login_required(login_url='/')
 def add_offsite_user_dialog(request, rid=None):
-
-	form_action = '/reports/add-offsite-user/' + rid if rid is not None else '' # reverse(add_offsite_user_dialog, kwargs={'rid': rid})
+	# form_action = '/reports/add-offsite-user/' + rid if rid is not None else ''
+	form_action = reverse(add_offsite_user_dialog, kwargs={'rid': rid}) # TODO check if it works as expected
 	form_title = 'Add an offsite user'
 
 	if request.method == 'POST':
@@ -523,7 +524,8 @@ def add_offsite_user_dialog(request, rid=None):
 				offone = OffsiteUser.objects.get(email=email)
 			except ObjectDoesNotExist:
 				# else redirects to the new user form
-				return HttpResponse('/reports/add-offsite-user/next/' + str(email))
+				# return HttpResponse('/reports/add-offsite-user/next/' + str(email))
+				return HttpResponse(reverse(add_offsite_user, kwargs={'email': str(email)}))  # TODO check if it works as expected
 			# this email is already in DB
 			# check if not already in owned off-site user list
 			if not owned_offsite_u.filter(pk=offone.pk).exists():  # if offone not in owned_offsite_u:
@@ -554,7 +556,7 @@ def add_offsite_user_dialog(request, rid=None):
 # Form page to add, or list off-site users
 @login_required(login_url='/')
 def add_offsite_user(request, email=None):
-	# off_site_u = OffsiteUser.objects.filter(belongs_to=request.user)
+	off_site_u = OffsiteUser.objects.all()
 	form_action = reverse(add_offsite_user)
 
 	if request.method == 'POST' and email is None:
@@ -580,9 +582,19 @@ def add_offsite_user(request, email=None):
 			return reports(request)
 	else:
 		off_site_user_form = breezeForms.AddOffsiteUser(request.user, initial={'email': email})
+	user_list = []
+	user_list_ex = []
+	for usr in off_site_u:
+		# print 'vals', usr.belongs_to.all()
+		if request.user in usr.belongs_to.all() :
+			user_list += [usr]  # + ' (' + usr.email + ')'
+		else:
+			user_list_ex += [usr]  # + ' (' + usr.email + ')'
 
 	return render_to_response('new_off-site_user.html', RequestContext(request, {
 		'form': off_site_user_form,
+		'user_list': user_list,
+		'user_list_ex': user_list_ex,
 		'action': form_action,
 		'layout': 'horizontal',
 		'submit': 'Add'
@@ -1036,6 +1048,7 @@ def search(request, what=None):
 				# if not searchable - redirects directly to overview
 				if (len(query_val) == 0):
 					query_val = "Noname"
+				# TODO use reveser : NO hardcoded url
 				res = '/reports/overview/%s-%s-00000' % (report_type, query_val)
 				return HttpResponseRedirect(res)
 
@@ -1973,48 +1986,6 @@ def send_file(request, ftype, fname):
 	return response
 
 
-# TODO delete
-@login_required(login_url='/')
-def report_shiny_view(request, rid, fname=None):
-	try:
-		fitem = Report.objects.get(id=rid)
-	except ObjectDoesNotExist:
-		return aux.failWith404(request, 'There is no report with id '+ rid +' in DB')
-
-	# Enforce user access restrictions
-	if request.user not in fitem.shared.all() and fitem.author != request.user:
-		raise PermissionDenied
-
-	source = "Test"
-	title = fitem.name
-
-	return render_to_response('shiny.html', RequestContext(request, {
-		'source': source,
-		'title': title
-	}))
-
-
-# TODO delete
-@login_required(login_url='/')
-def report_shiny_view2(request, rid, fname=None):
-	try:
-		fitem = Report.objects.get(id=rid)
-	except ObjectDoesNotExist:
-		return aux.failWith404(request, 'There is no report with id ' + rid + ' in DB')
-
-	# Enforce user access restrictions
-	if request.user not in fitem.shared.all() and fitem.author != request.user:
-		raise PermissionDenied
-
-	source = "Test"
-	title = fitem.name
-
-	return render_to_response('shiny2.html', RequestContext(request, {
-	'source': source,
-	'title': title
-	}))
-
-
 # Shiny tab access from inside
 @login_required(login_url='/')
 def report_shiny_view_tab(request, rid):
@@ -2023,43 +1994,79 @@ def report_shiny_view_tab(request, rid):
 
 # Shiny tab access from outside (with the key)
 def report_shiny_view_tab_out(request, s_key, u_key):
-	try: # TODO merge with out wrapper
+	try: # TODO merge ACL with out wrapper in a new func
 		# Enforces access control
 		# both request will fail if the object is not found
 		# we fetch the report
 		fitem = Report.objects.get(shiny_key=s_key)
 		# and if found, check the user with this key is in the share list of this report
 		fitem.offsiteuser_set.get(user_key=u_key)
-		return report_shiny_view_tab_merged(request, fitem.id, True, u_key=u_key)
+
+		print 'list', bool(request.GET.get('list'))
+
+		if 'list' in request.GET:
+			page_index, entries_nb = aux.report_common(request)
+
+			off_user = OffsiteUser.objects.get(user_key=u_key)
+			# all_reports = off_user.shiny_access.exclude()fitem.shiny_key
+			all_reports = off_user.shiny_access.exclude(shiny_key=None)
+			#rint all_reports
+			for each in all_reports:
+				each.url = reverse(report_shiny_view_tab_out, kwargs={'s_key': each.shiny_key, 'u_key': u_key})
+
+			count = {'total': all_reports.count()}
+			paginator = Paginator(all_reports, entries_nb)  # show 18 items per page
+			try:
+				reports = paginator.page(page_index)
+			except PageNotAnInteger:  # if page isn't an integer
+				page_index = 1
+				reports = paginator.page(page_index)
+			except EmptyPage:  # if page out of bounds
+				page_index = paginator.num_pages
+				reports = paginator.page(page_index)
+
+			count.update({
+				'first': (page_index - 1) * entries_nb + 1,
+				'last': min(page_index * entries_nb, count['total'])
+			})
+			base_url = reverse(report_shiny_view_tab_out, kwargs={'s_key': fitem.shiny_key, 'u_key': u_key})
+			return render_to_response('out_reports-paginator.html', RequestContext(request, {
+				'reports': reports,
+				'pagination_number': paginator.num_pages,
+				'count': count,
+				'base_url': base_url,
+				'page': page_index
+			}))
+			#return report_shiny_view_tab_merged(request, fitem.id, outside=True, u_key=u_key)
+		return report_shiny_view_tab_merged(request, fitem.id, outside=True, u_key=u_key)
 	except ObjectDoesNotExist:
 		return aux.failWith404(request)
 
 
 # Shiny tab
-# DO NOT CALL THIS VIEW DIRECTLY
+# DO NOT CALL THIS VIEW FROM URL
 def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 	try:
 		fitem = Report.objects.get(id=rid)
 	except ObjectDoesNotExist:
 		return aux.failWith404(request, 'There is no report with id ' + rid + ' in DB')
 
-	if not outside:
-		base_url = '/shiny/'
-		# Enforce user access restrictions for Breeze users
-		if request.user not in fitem.shared.all() and fitem.author != request.user:
-			raise PermissionDenied
+	if outside:
+		nozzle = reverse(report_nozzle_out_wrapper, kwargs={'s_key': fitem.shiny_key, 'u_key': u_key})
+		base_url = reverse(report_shiny_view_tab_out, kwargs={'s_key': fitem.shiny_key, 'u_key': u_key})
 	else:
-		# TODO proxy nozzle report
-		base_url = '/shiny-out/' + str(fitem.shiny_key) + '/' + u_key + '/'
+		# Enforce user access restrictions for Breeze users
+		if not request.user or (request.user not in fitem.shared.all() and fitem.author != request.user):
+			raise PermissionDenied
+		nozzle = reverse(report_file_view, kwargs={'rid': fitem.id})
+		base_url = '/shiny/'  # TODO no static
 
 	pages = dict() #OrderedDict([])
 
 	try:
 		shiny_item = ShinyApp.objects.filter(attached_report=fitem.type_id)
-		#print shiny_item
 		for item in shiny_item:
-			print item.label
-			pages.update({item.label: item.get_name})
+			pages.update({item.label: 'apps/' + item.get_name})
 	except ObjectDoesNotExist:
 		pass
 
@@ -2069,29 +2076,28 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 
 	if fitem.rora_id > 0:
 		args = '?' + urlencode([('path', fitem.home), ('roraId', str(fitem.rora_id))])
-		# args = '?id=' + str(fitem.id)
-		# pages = OrderedDict([('Test', 'screenApp1')])
-
-	nozzle = '/reports/view/' + str(fitem.id) + '/'
 
 	return render_to_response('shiny_tab.html', RequestContext(request, {
-	'nozzle': nozzle,
-	'source': source,
-	'args': args,
-	'pages': pages,
-	'base_url': base_url,
-	'title': title
+		'nozzle': nozzle,
+		'source': source,
+		'args': args,
+		'pages': pages,
+		'base_url': base_url,
+		'outside': outside,
+		'title': title
 	}))
 
 
 # Wrapper for ShinyApp accessed from inside (login + user access to said report)
+# Proxy access manager
 @csrf_exempt
 @login_required(login_url='/')
 def report_shiny_in_wrapper(request, path):
-	if 'path' in request.GET and 'roraId' in request.GET:
+	if not path or path == '':
+		return aux.failWith404(request)
+	if request.GET.get('path') and request.GET.get('roraId'):  # 'path' in request.GET and 'roraId' in request.GET:
 		try:
 			fitem = Report.objects.get(home=request.GET.get('path'))
-			# qs = urlencode([('path', fitem.home), ('roraId', str(fitem.rora_id))])
 		except ObjectDoesNotExist:
 			return aux.failWith404(request)
 		# Enforce user access restrictions
@@ -2101,7 +2107,8 @@ def report_shiny_in_wrapper(request, path):
 	return aux.proxy_to(request, path, settings.SHINY_TARGET_URL)
 
 
-# Wrapper for ShinyApp accessed from OUTSIDE (key needed)
+# Wrapper for ShinyApp access from OUTSIDE (key needed)
+# Proxy access manager
 @csrf_exempt
 def report_shiny_out_wrapper(request, s_key, u_key, path):
 	try:
@@ -2113,6 +2120,20 @@ def report_shiny_out_wrapper(request, s_key, u_key, path):
 		return aux.failWith404(request)
 
 	return aux.proxy_to(request, path, settings.SHINY_TARGET_URL)
+
+
+# Wrapper for Nozzle access from OUTSIDE (key needed)
+# Proxy access manager
+def report_nozzle_out_wrapper(request, s_key, u_key):
+	try:
+		# Enforces access control
+		fitem = Report.objects.get(shiny_key=s_key)
+		# and if found, check the user with this key is in the share list of this report
+		fitem.offsiteuser_set.get(user_key=u_key)
+	except ObjectDoesNotExist:
+		return aux.failWith404(request)
+
+	return report_file_server_out(request, fitem.id, 'view', u_key)
 
 
 @login_required(login_url='/')
@@ -2140,7 +2161,6 @@ def report_file_server(request, rid, type, fname=None):
 	"""
         Serve report files, while enforcing access rights
     """
-	#
 	try:
 		fitem = Report.objects.get(id=rid)
 	except ObjectDoesNotExist:
@@ -2149,6 +2169,28 @@ def report_file_server(request, rid, type, fname=None):
 	# Enforce user access restrictions
 	if request.user not in fitem.shared.all() and fitem.author != request.user and not request.user.is_superuser:
 		raise PermissionDenied
+
+	return report_file_server_sub(request, rid, type, fname=None, fitem=fitem)
+
+
+# access from outside
+def report_file_server_out(request, rid, type, u_key, fname=None ):
+	try:
+		fitem = Report.objects.get(id=rid)
+		fitem.offsiteuser_set.get(user_key=u_key)
+	except ObjectDoesNotExist:
+		return aux.failWith404(request, 'There is no such report')
+	return report_file_server_sub(request, rid, type, fname=None, fitem=fitem)
+
+
+# DO NOT CALL THIS VIEW FROM url.py
+def report_file_server_sub(request, rid, type, fitem=None, fname=None):
+	"""
+        Serve report files
+    """
+	# SAFTY FIRST
+	if not fitem:
+		aux.failWith404(request, 'Bad function call : missing or invalid argument')
 
 	local_path, path_to_file = aux.get_report_path(fitem, fname)
 

@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.conf.urls import patterns, include, url
 from breeze import views
-# Uncomment the next two lines to enable the admin:
+# Uncomment/comment the next two lines to enable/disable the admin:
 from django.contrib import admin
 admin.autodiscover()
 
@@ -25,8 +25,8 @@ urlpatterns = patterns('',
     url(r'^update-server/$', views.updateServer),
     url(r'^help/$', views.dochelp),
     url(r'^db-policy/$', views.dbPolicy),
-    #url(r'^store/deletefree/$', views.deletefree),
-    #url(r'^store/installfree/$', views.installfree),
+    # url(r'^store/deletefree/$', views.deletefree),
+    # url(r'^store/installfree/$', views.installfree),
     url(r'^store/$', views.store),
     url(r'^store/deletefree/$', views.deletefree),
     url(r'^installscripts/(?P<sid>\d+)$', views.install),
@@ -41,32 +41,32 @@ urlpatterns = patterns('',
     url(r'^patient-data/(?P<which>\d+)?$', views.ajax_patients),
     url(r'^patient-new/$', views.ajax_patients_new),
     url(r'^screen-data/(?P<which>\d+)?$', views.screen_data),
-    url(r'^reports/$', views.reports),
     url(r'^showdetails/(?P<sid>\d+)$', views.showdetails),
     url(r'^deletecart/(?P<sid>\d+)$', views.deletecart),
+    url(r'^reports/$', views.reports),
     url(r'^reports/search$', views.report_search),
-    # url(r'^reports/ownreports', views.reports_owned), # incorporated into search
-    # url(r'^reports/accessreports', views.reports_accessible), # incorporated into search
-    url(r'^reports/view/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_view),
+    url(r'^reports/view/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_view, name='report.view'),
     url(r'^reports/get/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_get),
     url(r'^media/reports/(?P<rid>\d+)_(?P<rest>[^/]+)/(?P<fname>.+)?$', views.report_file_wrap),
     url(r'^media/reports/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_wrap2),
     url(r'^reports/delete/(?P<rid>\d+)(?P<redir>-[a-z]+)?$', views.delete_report),
     url(r'^reports/edit_access/(?P<rid>\d+)$', views.edit_report_access),
-    url(r'^reports/send/(?P<rid>\d+)$', views.send_report),
-    url(r'^reports/add-offsite-user/(?P<rid>\d*)$', views.add_offsite_user_dialog),
-    url(r'^reports/add-offsite-user/next/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*)$', views.add_offsite_user),
-    url(r'^reports/add-offsite-user/next/$', views.add_offsite_user),
     url(r'^reports/overview/(?P<rtype>[A-Za-z]+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
-    url(r'^reports/shiny1/(?P<rid>\d+)/?$', views.report_shiny_view),
-    url(r'^reports/shiny2/(?P<rid>\d+)/?$', views.report_shiny_view2),
-    url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
-    #sub-level
-    url(r'^shiny/(?P<path>.*)$', views.report_shiny_in_wrapper),
-    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out),
-    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/(?P<path>.*)$', views.report_shiny_out_wrapper),
     url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
     url(r'^reports/check$', views.check_reports),  # Re Run report
+    url(r'^reports/send/(?P<rid>\d+)$', views.send_report),
+    url(r'^off_user/add/(?P<rid>\d*)$', views.add_offsite_user_dialog),
+    url(r'^off_user/add/form/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*)$', views.add_offsite_user),
+    url(r'^off_user/add/form/$', views.add_offsite_user),
+    # Shiny page in
+    url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
+    # Shiny page out
+    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out, name='shiny.tab.out'),
+    # sub-level access control wrapper (in)
+    url(r'^shiny/apps/(?P<path>.*)$', views.report_shiny_in_wrapper),
+    # sub-level access control wrapper (out)
+    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/apps/(?P<path>.*)$', views.report_shiny_out_wrapper),
+    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/nozzle$', views.report_nozzle_out_wrapper),
     # fusion thoses lines
     url(r'^jobs/current', views.jobs, {'state': "current"}),
     url(r'^jobs/scheduled?$', views.jobs, {'state': "scheduled"}),
@@ -76,7 +76,6 @@ urlpatterns = patterns('',
     url(r'^jobs/delete/(?P<jid>\d+)(?P<state>[a-z]+)?$', views.delete_job),
     url(r'^jobs/run/(?P<jid>\d+)$', views.run_script),
     url(r'^jobs/edit/jobs/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.edit_job), # ReSchedule, and Edit ?
-
     url(r'^jobs/show-code/(?P<jid>\d+)$', views.show_rcode),
     url(r'^jobs/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile),
     # url(r'^media/jobs/(?P<rid>\d+)_(?P<rest>[^/-]+)/(?P<fname>[^/-]+)?$', views.report_file_wrap),
@@ -124,7 +123,7 @@ urlpatterns = patterns('',
     url(r'^media/mould/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': settings.MEDIA_ROOT + 'mould/'}),
 
-    #url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
+    # url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
     #             {'document_root': settings.MEDIA_ROOT}),
     # TODO test for completition of the access-enforced static files serving
     # Examples:
@@ -135,11 +134,11 @@ urlpatterns = patterns('',
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 
-    # Uncomment the next line to enable the admin:
+    # Uncomment/comment the next line to enable/disable the admin:
     url(r'^admin/', include(admin.site.urls)),
 )
 
-if settings.DEBUG:
+if settings.DEBUG and settings.DEV_MODE:
     urlpatterns += patterns('django.contrib.staticfiles.views',
         url(r'^static/(?P<path>.*)$', 'serve'),
         url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Testing

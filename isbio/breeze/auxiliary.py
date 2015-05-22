@@ -445,8 +445,8 @@ def failWith404(request, errorMsg=None):
 		errorMsg = [errorMsg]
 
 	return http.HttpResponseNotFound(t.render(RequestContext(request, {
-	'request_path': request.path if request is not None else '',
-	'messages': errorMsg,
+        'request_path': request.path if request is not None else '',
+        'messages': errorMsg,
 	})))
 
 
@@ -455,11 +455,13 @@ DASHED_LINE = '-----------------------------------------------------------------
 
 def proxy_to(request, path, target_url, query_s=''):
 	import fileinput
-	# TODO deploy on prod and thus remove
+	# TODO deploy on prod and then remove
 	if not settings.DEV_MODE:
 		raise PermissionDenied
 	qs = ''
 	url = '%s%s' % (target_url, path)
+	# TODO log that : url
+	# print 'prox url : ', url, ' qs : ', qs
 	if query_s and query_s != '':
 		qs = '?' + query_s
 		url += qs
@@ -471,7 +473,7 @@ def proxy_to(request, path, target_url, query_s=''):
 	# for each in request.META.keys():
 	#    if each[0:4] == "HTTP":
 	#        opener.addheaders.append((each[5:], request.META[each]))
-	#copies form data
+	# copies form data
 	data = ""
 	if request.method == 'POST':
 		for each in request.POST.keys():
@@ -512,12 +514,13 @@ def proxy_to(request, path, target_url, query_s=''):
 			more = more[:-1] + DASHED_LINE + '\n'
 
 		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + DASHED_LINE + '\n' + more,
-		                   status=e.code,
-		                   mimetype='text/plain')
+								status=e.code, mimetype='text/plain')
 	else:
 		status_code = proxied_request.code
 		mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
 		content = proxied_request.read()
+		if proxied_request.code != 200:
+			print 'PROX::', proxied_request.code
 		if settings.DEBUG: uPrint(request, path + str(qs), proxied_request.code, str(len(content)))
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep

@@ -1,0 +1,72 @@
+<p>
+{% if reports %}
+	<small>
+		<h4>Report
+			<strong>{{ count.first }}</strong> -
+			<strong>{{ count.last }}</strong> out of
+			<strong>{{ count.total }}</strong> reports found
+		</h4>
+	</small>
+{% endif %}
+</p>
+<table class="table table-striped table-hover" id="main_table">
+	{% if reports %}
+		<thead>
+		<tr>
+			<th>Created</th>
+			<th>Shared</th>
+			<!--<th>Report Type</th>-->
+			<th>Report Name</th>
+			<th>Author</th>
+			<th>Project</th>
+			<th>View</th>
+		</tr>
+		</thead>
+	{% endif %}
+	<tbody id="">
+	{% for report in reports %}
+		<tr>
+			<td> {{ report.created }} </td>
+			<td> {{ null }} </td>
+			<!--<td> {{ report.type }} </td>  Implement TYPE in colors depending on report type =)  -->
+			<td data-toggle="tooltip" title="{{ report.name }}"> {{ report.name|truncatechars:40 }} </td>
+			<td> {% firstof report.author.get_full_name report.author %} </td>
+			<td class="Glyph" data-toggle="tooltip" title="{{ report.project }}"> {{ report.project|truncatechars:19 }} </td>
+			<td>
+				<a class="Glyph" data-toggle="tooltip" title="View the Report" href="{{ report.url }}" target="_parent">
+				<i class="icon-eye-open"></i>
+			</a>
+			</td>
+		</tr>
+		{% empty %}
+		<tr> <td colspan="6">There is no other reports yet... </td> </tr>
+	{% endfor %}
+	</tbody>
+</table>
+<p><br>&nbsp;</p>
+<div id="paginator_control"></div>
+<script type="text/javascript">
+	$(document).ready(function () {
+		var searchQ = {	{{ search|safe }} };
+		// new paginator setup
+		var pagOptions = {
+			currentPage  : {{ page|default:"1" }},
+			numberOfPages: 5,
+			loop         : true,
+			totalPages   : {{ pagination_number|default:"1" }},
+			alignment    : 'center',
+			onPageChanged: function (e, oldPage, newPage) {
+				if (oldPage == newPage || !refresh) return;
+				$("#pagination-content").fadeTo('', 0.33);
+				$.extend(searchQ, {page: newPage});
+				$.get("{{ base_url }}?list" ,  searchQ , function (data) {
+					//$('#pagination-content').html('');
+					$("#pagination-content").fadeTo(0, 1);
+					$('#pagination-content').html(data);
+				});
+			}
+		}
+		//call refresh
+		apply_pg(pagOptions);
+	});
+</script>

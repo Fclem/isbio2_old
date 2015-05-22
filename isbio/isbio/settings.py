@@ -270,6 +270,7 @@ class DevSettings(BreezeSettings):
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
 	SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
 	SHINY_TARGET_URL = 'http://127.0.0.1:3838/breeze/'
+	# NOZZLE_TARGET_URL = 'http://' + FULL_HOST_NAME + '/'
 
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	STATIC_URL = '/static/'
