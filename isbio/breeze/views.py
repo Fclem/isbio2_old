@@ -479,8 +479,7 @@ def send_report(request, rid):
 					'recipient': str(off_user.full_name),
 					'sender': str(request.user.get_full_name()),
 					'report_name': str(report_inst.name),
-					# TODO remove static url mappings
-					'url': str('http://breeze-dev.giu.fi/shiny-out/' + str(report_inst.shiny_key) + '/' + str(off_user.user_key))
+					'url': 'http://' + settings.FULL_HOST_NAME + reverse(report_shiny_view_tab_out, kwargs={'s_key': report_inst.shiny_key, 'u_key': off_user.user_key})
 				}
 				msg_html = loader.render_to_string('mail.html', RequestContext(request, data))
 				msg = EmailMessage('Check out "' + report_inst.name + '" on Tumor Virtual Board right now !', msg_html, 'Breeze PMS', [off_user.email])
@@ -511,7 +510,7 @@ def send_report(request, rid):
 @login_required(login_url='/')
 def add_offsite_user_dialog(request, rid=None):
 	# form_action = '/reports/add-offsite-user/' + rid if rid is not None else ''
-	form_action = reverse(add_offsite_user_dialog, kwargs={'rid': rid}) # TODO check if it works as expected
+	form_action = reverse(add_offsite_user_dialog, kwargs={'rid': rid})
 	form_title = 'Add an offsite user'
 
 	if request.method == 'POST':
@@ -525,7 +524,7 @@ def add_offsite_user_dialog(request, rid=None):
 			except ObjectDoesNotExist:
 				# else redirects to the new user form
 				# return HttpResponse('/reports/add-offsite-user/next/' + str(email))
-				return HttpResponse(reverse(add_offsite_user, kwargs={'email': str(email)}))  # TODO check if it works as expected
+				return HttpResponse(reverse(add_offsite_user, kwargs={'email': str(email)}))
 			# this email is already in DB
 			# check if not already in owned off-site user list
 			if not owned_offsite_u.filter(pk=offone.pk).exists():  # if offone not in owned_offsite_u:
@@ -2523,7 +2522,7 @@ def ajax_user_stat(request):
 
 
 @login_required(login_url='/')
-def report_search(request):   # TODO optimize that (very slow)
+def report_search(request):   # TODO check performance
 	search = request.REQUEST.get('filt_name', '') + request.REQUEST.get('filt_type', '') + \
 	         request.REQUEST.get('filt_author', '') + request.REQUEST.get('filt_project', '') + \
 	         request.REQUEST.get('access_filter1', '')
