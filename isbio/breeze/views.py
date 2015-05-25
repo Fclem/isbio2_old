@@ -2169,7 +2169,7 @@ def report_file_server(request, rid, type, fname=None):
 	if request.user not in fitem.shared.all() and fitem.author != request.user and not request.user.is_superuser:
 		raise PermissionDenied
 
-	return report_file_server_sub(request, rid, type, fname=None, fitem=fitem)
+	return report_file_server_sub(request, rid, type, fname=fname, fitem=fitem)
 
 
 # access from outside
@@ -2179,7 +2179,7 @@ def report_file_server_out(request, rid, type, u_key, fname=None ):
 		fitem.offsiteuser_set.get(user_key=u_key)
 	except ObjectDoesNotExist:
 		return aux.failWith404(request, 'There is no such report')
-	return report_file_server_sub(request, rid, type, fname=None, fitem=fitem)
+	return report_file_server_sub(request, rid, type, fname=fname, fitem=fitem)
 
 
 # DO NOT CALL THIS VIEW FROM url.py
