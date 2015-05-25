@@ -2060,12 +2060,13 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 		nozzle = reverse(report_file_view, kwargs={'rid': fitem.id})
 		base_url = '/shiny/'  # TODO no static
 
-	pages = dict() #OrderedDict([])
+	pages = OrderedDict([])
 
 	try:
-		shiny_item = ShinyApp.objects.filter(attached_report=fitem.type_id)
+		shiny_item = ShinyApp.objects.filter(attached_report=fitem.type_id).order_by('order')
 		for item in shiny_item:
-			pages.update({item.label: 'apps/' + item.get_name})
+			# pages.update({item.label: 'apps/' + item.get_name})
+			pages.update([(item.label, 'apps/' + item.get_name)])
 	except ObjectDoesNotExist:
 		pass
 
@@ -2173,7 +2174,7 @@ def report_file_server(request, rid, type, fname=None):
 
 
 # access from outside
-def report_file_server_out(request, rid, type, u_key, fname=None ):
+def report_file_server_out(request, rid, type, u_key, fname=None):
 	try:
 		fitem = Report.objects.get(id=rid)
 		fitem.offsiteuser_set.get(user_key=u_key)
