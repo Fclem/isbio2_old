@@ -1,3 +1,4 @@
+from django.template.defaulttags import now
 import os, shutil, re, stat, copy
 from datetime import datetime
 from multiprocessing import Process
@@ -11,7 +12,8 @@ import auxiliary as aux
 import logging
 import pickle, json
 import hashlib
-
+from django.utils import timezone
+from datetime import timedelta
 import socket
 from breeze.models import Report, Jobs
 
@@ -464,6 +466,8 @@ def abort_report(report):
 
 
 def track_sge_job(job, force_refresh=False):
+	from datetime import datetime, time
+
 	decodestatus = {
 	drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
 	drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
@@ -502,7 +506,18 @@ def track_sge_job(job, force_refresh=False):
 			except drmaa.AlreadyActiveSessionException:  # this is OK, since a child process is in a drmaa session monitoring the job
 				if settings.DEBUG: print("AlreadyActiveSessionException")
 	else:
+		now_t = timezone.now()  # .time()
 		if settings.DEBUG: print("JobID is empty !")
+		if isinstance(job, Jobs):
+			crea = job.staged
+		elif isinstance(job, Report):
+			crea = job.created
+		tdelta = now_t - crea
+		assert isinstance(tdelta, timedelta)
+		# print 'delta : ', tdelta > timedelta(seconds=30, hours=2, minutes=13), tdelta
+		if tdelta > timedelta(seconds=60):
+			status = 'aborted'
+			job.progress = 100
 
 	job.status = status
 
@@ -859,7 +874,7 @@ def build_report(report_data, request_data, report_property, sections):
 		type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
 		name=str(report_data['instance_name']),
 		author=request_data.user,
-		progress=0,
+		progress=1,
 		project=breeze.models.Project.objects.get(id=request_data.POST.get('project')),
 		institute=insti,
 		status='init'
