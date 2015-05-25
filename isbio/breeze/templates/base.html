@@ -57,7 +57,6 @@
     {% bootstrap_javascript_tag "affix" %}
     {% bootstrap_javascript_tag "popover" %} -->
 
-	{% block extra_head %}{% endblock %}
 	<style type="text/css">
 		/* Override some defaults */
 		html, body {
@@ -110,7 +109,9 @@
 		.modal-body {
 			overflow-x: hidden;
 		}
-		#NewGroup .modal-body, #UpdateInfo .modal-body{
+		/* #NewGroup .modal-body, #UpdateInfo .modal-body{ */
+		.modal-body{
+			overflow-x: visible !important;
 			overflow-y: visible !important;
 		}
 		.multiselect-container{
@@ -153,7 +154,7 @@
       #wrapper { height:100%; } /* Footnote as a real footer compatibility for IE<7 */
     </style>
     <![endif]-->
-
+			{% block extra_head %}{% endblock %}
 </head>
 <body>
 <div id="wrapper">
@@ -283,6 +284,7 @@
 			}
 		}
 	}
+
 	$(document).ready(function () {
 		var x = document.getElementById("error_msg_holder");
 		if (x.innerHTML != "" && x.innerHTML != "<p></p>") {
@@ -290,6 +292,34 @@
 		}
 
 	});
+
+	function fixDropDownSub(item) {
+
+	}
+
+	function fixDropDown() {
+		//drop down
+		var el=$('button.dropdown-toggle')
+		for (var i = 0; i < el.length; i++) {
+			el.eq(i).on("click", function () {
+				var tg = $(this);
+				var btGrp = tg.parents('div.btn-group').first();
+				var modal = tg.parents('div.modal-body').first();
+				if (btGrp.hasClass('open')) {
+					//modal.(modal.height() - 450);
+					modal.height(modal.height() - 450);
+				} else {
+					modal.height(modal.height() + 450);
+				}
+			});
+		}
+
+
+
+
+	}
+
+
 	// prevents click on a submit button
 	function disableObj(name) {
 		clkBtn = $('#' + name + '')[0];
