@@ -372,11 +372,23 @@ class OffsiteUser(models.Model):
 	shiny_access = models.ManyToManyField(Report, blank=True)
 
 	@property
+	def firstname(self):
+		return unicode(self.first_name).capitalize()
+
+	@property
+	def lastname(self):
+		return unicode(self.last_name).capitalize()
+
+	@property
 	def full_name(self):
-		return unicode(self.first_name) + ' ' + unicode(self.last_name)
+		return self.firstname + ' ' + self.lastname
+
+	@property
+	def fullname(self):
+		return self.full_name
 
 	class Meta:
 		ordering = ('first_name',)
 
 	def __unicode__(self):
-		return str(self.full_name)
+		return unicode(self.full_name)
