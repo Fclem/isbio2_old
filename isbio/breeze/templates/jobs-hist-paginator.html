@@ -22,23 +22,25 @@
 					<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>
 					<li class="divider"></li>
 					<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li>
-						<li class="divider"></li>
-						<li align="right">
-							{% if job.instance == "report" %}
-							<a href="{{ job.reschedhref }}">
-							{% else %}
-							<a href="#" data-toggle="modal" data-target="#Apply" class="apply" data-param="{{ job.reschedhref }}">
-							{% endif %}
-								Re-Run / Duplicate
-								<i class="icon-repeat"></i>
-							</a>
-						</li>
-					{% if job.instance == "report" %}
+					<!-- Re-Run -->
 					<li class="divider"></li>
 					<li align="right">
-							<a href="/reports/shiny-tab/{{ job.id }}">
-						Shiny report
-						<i class="icon-eye-open"></i>
+						{% if job.instance == "report" %}
+							<a href="{{ job.reschedhref }}">
+						{% else %}
+							<a href="#" data-toggle="modal" data-target="#Apply" class="apply" data-param="{{ job.reschedhref }}">
+						{% endif %}
+						Re-Run / Duplicate
+						<i class="icon-repeat"></i>
+						</a>
+					</li>
+					<!-- Shiny tab -->
+					{% if job.instance == "report" and job.status == "succeed" %}
+					<li class="divider"></li>
+					<li align="right">
+						<a href="/reports/shiny-tab/{{ job.id }}">
+							Shiny report
+							<i class="icon-eye-open"></i>
 						</a>
 					</li>
 					{% endif %}
@@ -50,23 +52,22 @@
 		<!-- <td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param={{ job.id }}><i class="icon-
     white icon-file"></i></a></td>   -->
 
-		<!-- Reschesule Button -->
+		<!-- View Button -->
 		<td>
 			{% if job.instance == 'script' %}
-				{% if job.status == 'failed' or job.status == 'aborted' %}
-					<a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.reschedhref }}" >
-				{% else %}
+				<!-- { if job.status == 'failed' or job.status == 'aborted' } -->
+				<a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.reschedhref }}" >
+					<!--{ else %}
 					<a href="#"class="btn btn-inverse disabled" disabled>
-				{% endif %}
+				{ endif %}-->
 					<i class="icon-white icon-repeat"></i>
 				</a>
-			{% elif job.instance == 'report' and job.status == 'failed' %}
-				<a href="#" class="btn btn-inverse" disabled><!-- href="{{ job.reschedhref }}" -->
-					<!-- <i class="icon-white icon-repeat"></i>-->
-					<i class="icon-white icon-eye-open"></i>
+			{% elif job.status == 'failed' or job.status == 'aborted' %}
+				<a class="btn btn-inverse" href="{{ job.reschedhref }}">
+					<i class="icon-white icon-repeat"></i>
 				</a>
 			{% else %}
-				<a class="btn btn-inverse" href="/reports/view/{{ job.id }}/" target="_blank" >
+				<a class="btn btn-info" href="/reports/view/{{ job.id }}/" target="_blank" >
 					<i class="icon-white icon-eye-open"></i>
 				</a>
 			{% endif %}
