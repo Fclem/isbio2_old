@@ -327,7 +327,7 @@ class ShinyApp(models.Model):
 	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
 
 	order = models.PositiveIntegerField(default=0, help_text="index number (0 is the topmost)")
-	attached_report = models.ManyToManyField(ReportType)
+
 	
 	# @my_attr.setter
 	
@@ -346,10 +346,11 @@ class ShinyApp(models.Model):
 	Rui = models.FileField(upload_to=str(home) + 'ui.R', blank=False, null=False)
 	Rserver = models.FileField(upload_to=str(home) + 'server.R', blank=False, null=False)
 
+	attached_report = models.ManyToManyField(ReportType)
 
-	def clean(self):
-		if self.attached_report.count() == 0:
-			raise ValidationError('ShinyApp must be attached to at least one ReportType')
+	#def clean(self):
+	#	if self.attached_report.count() == 0:
+	#	raise ValidationError('ShinyApp must be attached to at least one ReportType')
 	
 	class Meta:
 		ordering = ('name',)
