@@ -328,29 +328,29 @@ class ShinyApp(models.Model):
 
 	order = models.PositiveIntegerField(default=0, help_text="index number (0 is the topmost)")
 
-	
-	# @my_attr.setter
-	
 	@property
 	def home(self):
-		return str(settings.SHINY_APPS + '%s' % self.get_name)
-	
+		return str(settings.SHINY_APPS + '%s' % slugify(str(self.name)))
+
 	@property
 	def get_name(self):
 		return slugify(str(self.name))
+
+	def file_name_ui(self, filename):
+		return str(settings.SHINY_APPS + '%s'%slugify(str(self.name)) + '/ui.R')
+
+	def file_name_server(self, filename):
+		return str(settings.SHINY_APPS + '%s'%slugify(str(self.name)) + '/server.R')
 	
-	@property
-	def file_name(self, filename):  # fname, dot, extension = filename.rpartition('.')
-		return self.home
-	
-	Rui = models.FileField(upload_to=str(home) + 'ui.R', blank=False, null=False)
-	Rserver = models.FileField(upload_to=str(home) + 'server.R', blank=False, null=False)
+	Rui = models.FileField(upload_to=file_name_ui, blank=False, null=False)
+	Rserver = models.FileField(upload_to=file_name_server, blank=False, null=False)
 
 	attached_report = models.ManyToManyField(ReportType)
 
-	#def clean(self):
-	#	if self.attached_report.count() == 0:
-	#	raise ValidationError('ShinyApp must be attached to at least one ReportType')
+	def clean(self):
+		pass
+		# if self.attached_report.count() == 0:
+		# raise ValidationError('ShinyApp must be attached to at least one ReportType')
 	
 	class Meta:
 		ordering = ('name',)
