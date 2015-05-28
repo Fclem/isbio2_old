@@ -35,7 +35,7 @@
 						</a>
 					</li>
 					<!-- Shiny tab -->
-					{% if job.instance == "report" and job.status == "succeed" %}
+					{% if job.instance == "report" and job.status == "succeed" and  job.shiny_key %}
 					<li class="divider"></li>
 					<li align="right">
 						<a href="/reports/shiny-tab/{{ job.id }}">
@@ -67,14 +67,14 @@
 					<i class="icon-white icon-repeat"></i>
 				</a>
 			{% else %}
-				<a class="btn btn-info" href="/reports/view/{{ job.id }}/" target="_blank" >
+				<a class="btn btn-primary" href="/reports/view/{{ job.id }}/" target="_blank" >
 					<i class="icon-white icon-eye-open"></i>
 				</a>
 			{% endif %}
 		</td>
 
 		<!-- Delete Button -->
-		<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '{{ job.delhref }}'); $('#del_title').text('{{ job.jname }}');" ><i class="icon-trash"></i></a></td>
+		<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '{{ job.delhref }}?page={{ page }}'); $('#del_title').text('{{ job.jname }}');" ><i class="icon-trash"></i></a></td>
 	</tr>
 	{% empty %}
 	<tr>

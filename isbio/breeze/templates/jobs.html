@@ -50,18 +50,23 @@
 	</div>
 	<!-- TODO redesign due to : very poor design :: (too much) duplicated code -->
 	<script type="text/javascript">
+		function changePage(e, oldPage, newPage, callback) {
+			$.get("/jobs/", {page: newPage}, function (data) {
+				$('#history_top').html(data);
+				if('function'==typeof callback) {
+					callback();
+				}
+			});
+		}
 		$(document).ready(function() {
 			// paginator setup
 			var pagOptions = {
-				currentPage: 1,
+				currentPage: {{ page|default:1 }},
 				numberOfPages:5,
 				totalPages: "{{ pagination_number }}",
 				alignment:'center',
-				onPageChanged: function(e,oldPage,newPage){
-					//console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
-					$.get("/jobs/", { page: newPage }, function(data){
-						$('#history_top').html(data);
-					});
+				onPageChanged: function (e, oldPage, newPage) {
+					changePage(e, oldPage, newPage);
 				}
 			}
 
@@ -191,11 +196,12 @@
 			});
 		}
 
+		/*
 		var fake_progress = 0;
 		var counter = 0;
 		var increment = 2;
 		var last_val = 0;
-		var fake = false;
+		var fake = false; */
 		var last_state = [];
 
 		function updateJobs(jid, item) {
@@ -232,11 +238,12 @@
 					$("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
 					$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
 
-					if (msg.status != "active" && msg.status != "queued_active") {
-						window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
+					if (msg.status != "active" && msg.status != "queued_active" && msg.status != "init") {
+						//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
+						changePage(null, 1, 1, modalConnect);
 
-						var jstatus = ''
-						var jbar = ''
+						var jstatus = '';
+						var jbar = '';
 						if (msg.status == "succeed") { jstatus = "success"; jbar = "success"; }
 						if (msg.status == "failed") { jstatus = "error"; jbar = "danger"; }
 						if (msg.status == "aborted") { jstatus = "error"; jbar = "warning"; }
@@ -244,33 +251,27 @@
 						$("#" + jid.toString() + "_tr1").attr('class', jstatus);
 						$("#" + jid.toString() + "_tr2").attr('class', jstatus);
 						$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
-						$('#history_top').prepend(appendToHistory(msg));
 
 						modalConnect();
-						$(".rtext").click(function(ev) {
-							ev.preventDefault(); // prevent navigation
-							var par = $(this).data("param");
-							$("#script").load("/jobs/show-code/"+par, function() {
-								$('#collapseOne').collapse('hide');
-								$(this).modal('show');
-							});
-							return false; // prevent the click propagation
-						});
-						$("#new_" + jid.toString() + "_del").click(function() { // TODO FIX
-							$("#del_btn").attr("href", "/jobs/delete/" + jid.toString());
-							$("#del_title").text(msg.name.toString());
-						});
 
+						// Remove line from 'In progress tab'
 						$("#" + jid.toString() + "_list_tr").remove();
+						// Decrease or remove the counter
+						var a = parseInt($("#current_tab_li_a .badge").html()) - 1 ;
+						if(a>0){
+							$("#current_tab_li_a .badge").html(a.toString())
+						}else {
+							$("#current_tab_li_a .badge").remove();
+						}
 					}else{
 						if(msg.status!= last_state[jid]) {
-							var jstatus = ''
-							var jbar = ''
+							var jstatus = '';
+							var jbar = '';
 							if (msg.status == "active") {
 								jstatus = "success";
 								jbar = "info";
 							}
-							if (msg.status == "queued_active") {
+							if (msg.status == "queued_active" || msg.status == "init") {
 								jstatus = "success";
 								jbar = "warning";
 							}
@@ -292,6 +293,7 @@
 				}
 			});
 		};
+		/*
 		function appendToHistory(job){
 			var jstatus = ''
 			if (job.status.toString() == "succeed") { jstatus = "success"; }
@@ -308,7 +310,7 @@
 			new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-repeat"></i></a></td>'
 			new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$(\\"#del_btn\\").attr(\\"href\\", \\"{{ job.delhref }}\\"); $(\\"#del_title\\").text(\\"{{ job.jname }}\\");" ><i class="icon-trash"></i></a></td>  </tr>'
 			return new_row;
-		} ;
+		} ; */
 	</script>
 	<!-- New design attempt -->
 	<script type="text/javascript">
@@ -321,6 +323,7 @@
 		var refresh = true;
 
 		// not finished, WIP
+		/*
 		function reload () {
 			//window.setTimeout(updateJobs, delay, jid, item);
 			//$("#pagination-content").fadeTo(0, 0.33);
@@ -337,7 +340,7 @@
 			});
 			//call refresh
 			//apply_pg(pagOptions);
-		}
+		} */
 	</script>
 {% endblock %}
 

@@ -3,7 +3,7 @@
 	<li class="{{ history_tab }}"><a href="#history" data-toggle="tab">History</a></li>
 	<li class="{{ scheduled_tab }}"><a href="#scheduled" data-toggle="tab">
 		Scheduled {% if scheduled.count > 0 %}<span class="badge">{{ scheduled.count }}</span>{% endif %}</a></li>
-	<li class="{{ current_tab }}"><a href="#current" data-toggle="tab">
+	<li class="{{ current_tab }}"><a href="#current" data-toggle="tab" id="current_tab_li_a">
 		In Progress {% if current_nb > 0 %}<span class="badge">{{ current_nb }}</span>{% endif %}</a></li>
 </ul>
 <!-- Tabs' Content -->
