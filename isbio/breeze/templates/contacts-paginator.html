@@ -1,0 +1,23 @@
+{% for user in contacts %}
+	<tr>
+		<td> {{ user.firstname }} </td>
+		<td> {{ user.lastname }} </td>
+		<td> {{ user.email }} </td>
+		<td> {{ user.role }} </td>
+		<td> {{ user.institute }} </td>
+		<td> <!-- Edit -->+
+			<a href="#" class="hcalls" data-toggle="modal" data-target="#EditOffSiteUser" data-param="/off_user/edit/{{ user.id }}" >
+				<i class="icon-edit"></i>
+			</a>
+		</td>
+		<td> <!-- Delete -->
+			<a href="#" data-toggle="modal" data-target="#DeleteItem" onclick="$('#del_item_btn').attr('href', '/off_user/del/{{ user.id }}'); $('#del_title').text('Delete contact \'{{ user.full_name }}\' ?'); $('#del_body').html('This user will not be able to access reports anymore, are you sure you want to proceed ?!');" >
+				<i class="icon-trash"></i>
+			</a>
+		</td>
+	</tr>
+	{% empty %}
+	<tr>
+		<td colspan="7">No Contacts found in the data base...</td>
+	</tr>
+{% endfor %}
