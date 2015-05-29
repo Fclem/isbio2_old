@@ -510,8 +510,6 @@ def track_sge_job(job, force_refresh=False):
 				s.initialize()
 
 				status = str(s.jobStatus(job.sgeid))
-				s.exit()
-
 			except drmaa.InvalidArgumentException:
 				log.exception(type + str(job.id) + ' : drmaa InvalidArgumentException')
 				if settings.DEBUG: print("InvalidArgumentException")
@@ -522,6 +520,11 @@ def track_sge_job(job, force_refresh=False):
 			except drmaa.AlreadyActiveSessionException:  # this is OK, since a child process is in a drmaa session monitoring the job
 				if settings.DEBUG: print("AlreadyActiveSessionException")
 				log.warning(type + str(job.id) + ' : drmaa AlreadyActiveSessionException')
+			else:
+				try:
+					s.exit()
+				except Exception as e:
+					pass
 	elif job.status!='scheduled':
 		now_t = timezone.now()  # .time()
 		if isinstance(job, Jobs):
@@ -558,11 +561,6 @@ def track_sge_job(job, force_refresh=False):
 	if changed:
 		job.save()
 		# job.update(progress=job.progress, status=job.status, sgeid=job.sgeid)
-
-	try:
-		s.exit()
-	except:
-		pass
 
 	return decodestatus[job.status]
 
