@@ -336,11 +336,27 @@ class ShinyApp(models.Model):
 	def get_name(self):
 		return slugify(str(self.name))
 
+	@staticmethod
+	def check_file_exist(fname):
+		import os.path
+		try:
+			if os.path.isfile(fname):
+				os.remove(fname)
+		except:
+			pass
+
+	def file_name_gen(self):
+		return str(settings.SHINY_APPS + '%s'%slugify(str(self.name)))
+
 	def file_name_ui(self, filename):
-		return str(settings.SHINY_APPS + '%s'%slugify(str(self.name)) + '/ui.R')
+		name = str(settings.SHINY_APPS + '%s/%s' % (slugify(str(self.name)), 'ui.R'))
+		self.check_file_exist(name)
+		return str(name)
 
 	def file_name_server(self, filename):
-		return str(settings.SHINY_APPS + '%s'%slugify(str(self.name)) + '/server.R')
+		name = str(settings.SHINY_APPS + '%s/%s' % (slugify(str(self.name)), 'server.R'))
+		self.check_file_exist(name)
+		return str(name)
 	
 	Rui = models.FileField(upload_to=file_name_ui, blank=False, null=False)
 	Rserver = models.FileField(upload_to=file_name_server, blank=False, null=False)
