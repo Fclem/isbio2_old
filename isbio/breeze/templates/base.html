@@ -177,13 +177,12 @@
 			<div class="container-fluid">
 				<a class="brand" href="/breeze/">BREEZE</a>
 				<div class="navbar-content" id="navbar-content">
-					{% if is_authenticated %}
-					<div class="btn-group pull-right">
-						<p class="navbar-text">
-							<a class="btn btn-inverse" href="/logout/">logout <i class="icon-white icon-share"></i></a>
-						</p>
-					</div>
-					{% endif %}
+					{% if user.is_authenticated %}
+					<ul class="nav pull-right">
+						<li>
+							<a class=" " href="/logout/">logout <i class="icon-white icon-share"></i></a>
+						</li>
+					</ul>
 					<ul class="nav" >
 						<li class="{{ home_status }}">
 							<a href="/home"> <i class="icon-home"></i> Home</a>
@@ -205,16 +204,17 @@
 								<a href="/resources" id="resources"> <i class="icon-wrench"></i> Manage Resources</a>
 							</li>
 						{% endif %}
-
 						<li class="{{ store_status }}">
 							<a href="/store" id="store"> <i class=" icon-cog"></i>Markets </a>
 						</li>
 						<li class="{{ help_status }}">
 							<a href="/help" id="help"> <i class="icon-question-sign"></i> Help</a>
 						</li>
+						<!--
 						<ul class="nav nav-tabs"></ul>
-						<ul class="nav pull-right"></ul>
+						<ul class="nav pull-right"></ul>-->
 					</ul>
+					{% endif %}
 				</div>
 			</div>
 		</div>
