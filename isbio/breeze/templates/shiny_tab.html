@@ -88,11 +88,11 @@
 						console.
 						  log('oldSize=' + oldSize);
 						console.log('s2=' + s2.
-						  toString());
+							toString());
 						var size = our_frame.
 						  contentDocument.body.innerHTML.length;
 						console.log('Bsize=' + size.
-						  toString());
+							toString());
 //o2.onPageChanged = watch(s2);// setTimeout("watch(" + s2 + ")", 500);
 						if (size > 1056 && s2>78 && s2 != oldSize) {
 //duplicate();
@@ -125,16 +125,18 @@
 {% block content %}
 	<div class="row-fluid">
 		<div class="span2 well">
-			<!--Sidebar content-->
-		  {% if outside %}
-			<h5><a onclick="show_list();" href="#">Reports shared with me</a></h5>
-		  {% endif %}
+			<!-- Sidebar content -->
+
 			<h4>Index :</h4>
 			<ul>
-				<li><a href="{{ nozzle }}" onclick="restoreI()" target="iframe_a">Nozzle Report</a></li>
 				{% for key, value in pages.items %}
-					<li><a href="{{ base_url }}{{ value }}/{{ args }}" onclick="restoreI()" target="iframe_a">{{ key }}</a></li>
+					<li><a class="index_list_link" id="link{{ forloop.counter }}" href="{{ base_url }}{{ value }}/{{ args }}" onclick="restoreI()" target="iframe_a">{{ key }}</a></li>
 				{% endfor %}
+				<li>--------</li>
+				<li><a href="{{ nozzle }}" onclick="restoreI()" target="iframe_a">Nozzle Report</a></li>
+				{% if outside %}
+					<li><a onclick="show_list();" href="#">My reports</a></li>
+				{% endif %}
 			</ul>
 		</div>
 		<div class="span10">
@@ -145,33 +147,34 @@
 
 			</div>
 
-				{% if outside %}
+			{% if outside %}
 				<!-- LIST OF EXISTING REPORTS -->
 				<div class="row-fluid" style="padding-top: 0pt;">
-				<div id="pagination-content" class="span10 offset1">
+					<div id="pagination-content" class="span10 offset1">
+					</div>
 				</div>
-				</div>
-				{% endif %}
-				<iframe id="iframe_a" name="iframe_a"></iframe>
+			{% endif %}
+			<iframe id="iframe_a" name="iframe_a"></iframe>
 		</div>
 	</div>
-<script type="text/javascript">
-$(document).ready(function () {
-	$('#navbar-content').html('');
-});
+	<script type="text/javascript">
+		$(document).ready(function () {
+			$('#navbar-content').html('');
+			$('.index_list_link')[0].click();
+		});
 
-function restoreI() {
-	$('#pagination-content').hide()
-	if ($('#report_div')[0].style.display=='none') $('#report_div').show();
-	if ($('#iframe_a')[0].style.display=='none') $('#iframe_a').show();
-}
+		function restoreI() {
+			$('#pagination-content').hide()
+			if ($('#report_div')[0].style.display=='none') $('#report_div').show();
+			if ($('#iframe_a')[0].style.display=='none') $('#iframe_a').show();
+		}
 
-function show_list() {
-	$('#report_div').hide();
-	$('#iframe_a').hide();
-	$('#pagination-content').load('{{ base_url }}?list');
-	if ($('#pagination-content')[0].style.display == 'none') $('#pagination-content').show();
-}
+		function show_list() {
+			$('#report_div').hide();
+			$('#iframe_a').hide();
+			$('#pagination-content').load('{{ base_url }}?list');
+			if ($('#pagination-content')[0].style.display == 'none') $('#pagination-content').show();
+		}
 
-</script>
+	</script>
 {% endblock %}
