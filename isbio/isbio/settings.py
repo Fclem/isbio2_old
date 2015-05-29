@@ -22,7 +22,7 @@ class BreezeSettings(Settings):
 	DEBUG = True
 	TEMPLATE_DEBUG = DEBUG
 
-	logging.basicConfig(level=logging.DEBUG,
+	logging.basicConfig(level=logging.INFO,
 	                    format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
 	                    datefmt='%a, %d %b %Y %H:%M:%S',
 	                    filename='/tmp/BREEZE.log', filemode='w')
@@ -121,6 +121,7 @@ class BreezeSettings(Settings):
 		#     'django.template.loaders.eggs.Loader',
 	)
 
+
 	MIDDLEWARE_CLASSES = (
 		'django.middleware.common.CommonMiddleware',
 		'django.contrib.sessions.middleware.SessionMiddleware',
@@ -128,6 +129,7 @@ class BreezeSettings(Settings):
 		'django.contrib.auth.middleware.AuthenticationMiddleware',
 		'django.contrib.messages.middleware.MessageMiddleware',
 		'django.middleware.doc.XViewMiddleware',
+		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
 		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 	)
@@ -210,6 +212,8 @@ class BreezeSettings(Settings):
 
 class DevSettings(BreezeSettings):
 	DEBUG = True
+	VERBOSE = False
+	SQL_DUMP = False
 
 	ADMINS = (
 	('Clement FIERE', 'clement.fiere@helsinki.fi'),  # ('Dmitrii Bychkov', 'piter.dmitry@gmail.com'),
@@ -244,6 +248,7 @@ class DevSettings(BreezeSettings):
 	# auto-sensing if running on dev or prod, for dynamic environment configuration
 	FULL_HOST_NAME = socket.gethostname()
 	HOST_NAME = str.split(FULL_HOST_NAME, '.')[0]
+	# automatically setting RUN_MODE depending on the host name
 	RUN_MODE = 'dev' if HOST_NAME.endswith('dev') else 'prod'
 	DEV_MODE = RUN_MODE == 'dev'
 	MODE_PROD = RUN_MODE == 'prod'
@@ -276,10 +281,18 @@ class DevSettings(BreezeSettings):
 	STATIC_URL = '/static/'
 	MEDIA_URL = '/media/'
 
+	# number of seconds after witch a job that has not received a sgeid should be marked as aborted
+	NO_SGEID_EXPIRY = 60
+
 	# Additional locations of static files
 	STATICFILES_DIRS = (
 		"",
 	)
+
+	logging.basicConfig(level=logging.DEBUG,
+						format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
+						datefmt='%a, %d %b %Y %H:%M:%S',
+						filename=TEMP_FOLDER + 'breeze.log', filemode='w')
 
 	# mail config
 	EMAIL_HOST = 'smtp.gmail.com'
@@ -291,8 +304,14 @@ class DevSettings(BreezeSettings):
 
 	if DEBUG:
 		print 'source home : ' + SOURCE_ROOT
+		logging.info('source home : ' + SOURCE_ROOT)
 		print 'project home : ' + PROJECT_PATH
+		logging.info('project home : ' + PROJECT_PATH)
+	else:
+		VERBOSE = False
+	# if dev mode then auto disable DEBUG, for safety
 	if MODE_PROD:
 		DEBUG = False
+		VERBOSE = False
 	print 'Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME
-	#DEBUG = False
+	logging.info('Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME)
