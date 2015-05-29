@@ -166,6 +166,7 @@
 				return false;
 			});
 		}
+
 		function modalConnect(){
 			$(".apply").unbind('click');
 			//bind the click event
@@ -238,6 +239,7 @@
 					$("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
 					$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
 
+					//A job is not running anymore
 					if (msg.status != "active" && msg.status != "queued_active" && msg.status != "init") {
 						//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
 						changePage(null, 1, 1, modalConnect);
@@ -245,8 +247,8 @@
 						var jstatus = '';
 						var jbar = '';
 						if (msg.status == "succeed") { jstatus = "success"; jbar = "success"; }
-						if (msg.status == "failed") { jstatus = "error"; jbar = "danger"; }
-						if (msg.status == "aborted") { jstatus = "error"; jbar = "warning"; }
+						else if (msg.status == "failed") { jstatus = "error"; jbar = "danger"; }
+						else if (msg.status == "aborted") { jstatus = "error"; jbar = "warning"; }
 
 						$("#" + jid.toString() + "_tr1").attr('class', jstatus);
 						$("#" + jid.toString() + "_tr2").attr('class', jstatus);
@@ -271,7 +273,7 @@
 								jstatus = "success";
 								jbar = "info";
 							}
-							if (msg.status == "queued_active" || msg.status == "init") {
+							else if (msg.status == "queued_active" || msg.status == "init") {
 								jstatus = "success";
 								jbar = "warning";
 							}
@@ -285,11 +287,16 @@
 						}else {
 							delay = 300
 						}
-
-						console.log(item);
 						window.setTimeout(updateJobs, delay, jid, item);
 					}
 					last_state[jid] = msg.status;
+				},
+				error: function (request, status, error) {
+					//implement proper error handling
+					$("#" + jid.toString() + "_tr1").attr('class', 'error');
+					$("#" + jid.toString() + "_tr2").attr('class', 'error');
+					$("#" + jid.toString() + "_div").attr('class', "progress progress-warning");
+					$("#" + jid.toString() + "_SGEstatus").text("ERROR while checking status ! (Reload the page)");
 				}
 			});
 		};
