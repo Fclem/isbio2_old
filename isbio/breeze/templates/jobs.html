@@ -86,7 +86,7 @@
 				var itm = $(this).data("inst");
 				updateJobs(par, itm);
 			});
-
+			//updateAllJobs();
 		});
 
 
@@ -197,12 +197,6 @@
 			});
 		}
 
-		/*
-		var fake_progress = 0;
-		var counter = 0;
-		var increment = 2;
-		var last_val = 0;
-		var fake = false; */
 		var last_state = [];
 
 		function updateJobs(jid, item) {
@@ -211,28 +205,6 @@
 				url: "/update-jobs/"+jid+"-"+item,
 				dataType : 'json',
 				success: function (msg) {
-					//var arg = "width: " + msg.progress.toString() + "%";
-					// faking progression, just for user friendlyness
-					// TODO finish
-					/*
-					 counter++;
-					 var w = document.getElementById(jid.toString() + "_bar").style.width;
-					 if(last_val!=msg.progress){
-					 last_val = msg.progress;
-					 fake_progress = last_val;
-					 }
-					 var arg = "width: " + last_val.toString() + "%";
-					 if(fake && fake_progress<100 && ( w == last_val.toString()+ "%" || w == fake_progress + "%")){
-					 fake_progress+= Math.floor(counter / increment) ;
-					 if(Math.floor(counter / increment)>=1){
-					 counter = 0;
-					 }
-					 if(fake_progress>=85){
-					 fake_progress = last_val;
-					 }
-					 arg = "width: " + fake_progress.toString() + "%";
-					 }
-					 */
 					var arg = "width: " + msg.progress.toString() + "%";
 
 					$("#" + jid.toString() + "_bar").attr('style', arg);
@@ -300,24 +272,109 @@
 				}
 			});
 		};
-		/*
-		function appendToHistory(job){
-			var jstatus = ''
-			if (job.status.toString() == "succeed") { jstatus = "success"; }
-			else if (job.status.toString() == "failed") { jstatus = "important"; }
-			else if (job.status.toString() == "aborted") { jstatus = "warning"; }
 
-			var new_row = '<tr> <td>  NOW!</p></td> <td>' + job.name + '</td> <td></td>';
-			new_row += '<td> <span class="label label-' + jstatus + '">' + job.status.toString().toUpperCase() + '</span> </td>'
-			new_row += '<td><div class="btn-group"><a class="btn btn-inverse" href="{{ job.rdownhref }}"><i class="icon-white icon-download-alt"></i> Results</a>'
-			new_row += '<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button><ul class="dropdown-menu">'
-			new_row += '<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>'
-			new_row += '<li class="divider"></li>'
-			new_row += '<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li></ul></div></td>'
-			new_row += '<td><a id="new_' + job.id + '_sum" href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script"  data-param="' + job.id + '"><i class="icon-white icon-repeat"></i></a></td>'
-			new_row += '<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$(\\"#del_btn\\").attr(\\"href\\", \\"{{ job.delhref }}\\"); $(\\"#del_title\\").text(\\"{{ job.jname }}\\");" ><i class="icon-trash"></i></a></td>  </tr>'
-			return new_row;
-		} ; */
+		function updateAllJobs() {
+			$.ajax({
+				type: "GET",
+				url: "/update-all-jobs/",
+				dataType: 'json',
+				success: function (msgZ) {
+					//for (var msg in msgZ) {
+					//console.log($(".bar.jbar"));
+					$(".bar.jbar").each(function (id, el) {
+						var jid = parseInt(el.id);
+
+						if ( msgZ[jid] ) {
+							var msg = msgZ[jid];
+
+							var arg = "width: " + msg.progress.toString() + "%";
+
+							$("#" + jid.toString() + "_bar").attr('style', arg);
+							$("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
+							$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
+
+							//A job is not running anymore
+							if (msg.status != "active" && msg.status != "queued_active" && msg.status != "init") {
+								//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
+								changePage(null, 1, 1, modalConnect);
+
+								var jstatus = '';
+								var jbar = '';
+								if (msg.status == "succeed") {
+									jstatus = "success";
+									jbar = "success";
+								}
+								else if (msg.status == "failed") {
+									jstatus = "error";
+									jbar = "danger";
+								}
+								else if (msg.status == "aborted") {
+									jstatus = "error";
+									jbar = "warning";
+								}
+
+								$("#" + jid.toString() + "_tr1").attr('class', jstatus);
+								$("#" + jid.toString() + "_tr2").attr('class', jstatus);
+								$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+
+								modalConnect();
+
+								// Remove line from 'In progress tab'
+								$("#" + jid.toString() + "_list_tr").remove();
+								// Decrease or remove the counter
+								var a = parseInt($("#current_tab_li_a .badge").html()) - 1;
+								if (a > 0) {
+									$("#current_tab_li_a .badge").html(a.toString())
+								} else {
+									$("#current_tab_li_a .badge").remove();
+								}
+							} else {
+								if (msg.status != last_state[jid]) {
+									var jstatus = '';
+									var jbar = '';
+									if (msg.status == "active") {
+										jstatus = "success";
+										jbar = "info";
+									}
+									else if (msg.status == "queued_active" || msg.status == "init") {
+										jstatus = "success";
+										jbar = "warning";
+									}
+
+									$("#" + jid.toString() + "_tr1").attr('class', jstatus);
+									$("#" + jid.toString() + "_tr2").attr('class', jstatus);
+									$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+								}
+								if (msg.status == "queued_active") {
+									delay = 1000
+								} else {
+									delay = 300
+								}
+
+							}
+							last_state[jid] = msg.status;
+
+						}else {
+							//element not returned by the server
+							// job is done or failed, but we need to ask again
+							updateJobs(id, el.data("inst"));
+						}
+					});
+					window.setTimeout(updateAllJobs, delay);
+				},
+				error: function (request, status, error) {
+					$(".bar.jbar").each(function (id, el) {
+						var jid = parseInt(el.id);
+						//implement proper error handling
+						$("#" + jid.toString() + "_tr1").attr('class', 'error');
+						$("#" + jid.toString() + "_tr2").attr('class', 'error');
+						$("#" + jid.toString() + "_div").attr('class', "progress progress-warning");
+						$("#" + jid.toString() + "_SGEstatus").text("ERROR while checking status ! (Reload the page)");
+					});
+
+				}
+			});
+		}
 	</script>
 	<!-- New design attempt -->
 	<script type="text/javascript">
