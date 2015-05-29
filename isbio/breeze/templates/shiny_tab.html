@@ -45,81 +45,8 @@
 		//-->
 	</script>
 	<script type="text/javascript">
-		var our_frame = null;
-		var url = '';
 
-		$(document).ready(function () {
-			our_frame = document.getElementById('iframe_a');
 
-			/*
-			 url = document.location.origin + '/shiny/all-in-one/';
-
-			 our_frame.onloadend = setTimeout("checkReady()",  150);
-			 our_frame.src = url;
-			 */
-		});
-		function checkReady() {
-//console.log(our_frame.contentDocument.body);
-			if (our_frame.contentDocument['body']==undefined || our_frame.contentDocument.
-				body == null) {
-				setTimeout("checkReady()", 500);
-			}else {
-
-//our_frame.contentDocument.body.onchange = watch();
-				watch();
-			}
-		}
-
-		function watch(oldSize){
-			console.log('watch');
-			var s2 = 0;
-			var o2 = our_frame.contentDocument.body
-			  ;
-			if(not_empty(o2
-				, 'children')){
-				o2 = o2.
-				  children[0];
-				if (
-				  not_empty(o2, 'children')) {
-					o2 = o2.children[0]
-					;
-					if (o2 != undefined) {
-						s2 = o2.innerHTML.length;
-						console.
-						  log('oldSize=' + oldSize);
-						console.log('s2=' + s2.
-							toString());
-						var size = our_frame.
-						  contentDocument.body.innerHTML.length;
-						console.log('Bsize=' + size.
-							toString());
-//o2.onPageChanged = watch(s2);// setTimeout("watch(" + s2 + ")", 500);
-						if (size > 1056 && s2>78 && s2 != oldSize) {
-//duplicate();
-							autoResize(our_frame.id)
-
-						}
-						if (s2 == oldSize)  return;
-//return;
-					}
-				}
-			}
-			setTimeout("watch(" + s2 + ")", 250);//
-		}
-		function duplicate(){
-			console.log(
-			  'duplicate');
-			var obj = our_frame.
-			  contentDocument.body.innerHTML;
-			our_frame.visible = false;
-			var target
-			  = document.getElementById('1.1');
-			target.innerHTML = obj;
-		}
-		function not_empty
-		(obj, prop_name){
-			return obj!=undefined && obj[prop_name]!=undefined && obj[prop_name].length>0;
-		}
 	</script>
 {% endblock %}
 {% block content %}
@@ -159,22 +86,26 @@
 	</div>
 	<script type="text/javascript">
 		$(document).ready(function () {
-			$('#navbar-content').html('');
+			//$('#navbar-content').html('');
 			$('.index_list_link')[0].click();
 		});
 
+		//returns true if obj is defined, contains element prop_name, and obj[prop_name] is not null
+		function not_empty(obj, prop_name) {
+			return obj != undefined && obj[prop_name] != undefined && obj[prop_name].length > 0;
+		}
+		//hide the dynamic block content and shows the Iframe
 		function restoreI() {
 			$('#pagination-content').hide()
 			if ($('#report_div')[0].style.display=='none') $('#report_div').show();
 			if ($('#iframe_a')[0].style.display=='none') $('#iframe_a').show();
 		}
-
+		//hide the Iframe and shows the dynamic block content
 		function show_list() {
 			$('#report_div').hide();
 			$('#iframe_a').hide();
 			$('#pagination-content').load('{{ base_url }}?list');
 			if ($('#pagination-content')[0].style.display == 'none') $('#pagination-content').show();
 		}
-
 	</script>
 {% endblock %}
