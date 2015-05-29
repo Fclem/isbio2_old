@@ -24,10 +24,11 @@
 <script type="text/javascript">
 	//prevents multiple submission of the form (i.e. if the server is slow and take time to respond, or do not respond)
 	function while_sending() {
-		$('#submit-btn').on('click', function () {
-			$("#submit-btn").attr("disabled", "disabled");
-			$("#form_modal_apply").submit();
-			return true;
+		$('#submit-btn').on('click', function (e) {
+			e.preventDefault();
+			$(this).attr("disabled", "disabled");
+			$(this).parents('form').first().submit();
+			return false;
 		});
 		$('#cancel-btn').on('click', function (ev) {
 			ev.preventDefault();
