@@ -3,7 +3,7 @@
 	{% for job in current %}
 		{% if job.status == "active" %}
 			<tr id="{{ job.id }}_tr1" class="info">
-				<td id="{{ job.id }}_SGEstatus">{{ job.jname }} - {{ job.staged }}</td>
+				<td id="{{ job.id }}_SGEstatus"><strong>{{ job.jname }}</strong> - checking status... - {{ job.staged }}</td>
 			</tr>
 			<tr id="{{ job.id }}_tr2" class="info">
 				<td>
@@ -15,7 +15,7 @@
 			</tr>
 		{% elif job.status == "queued_active" or job.status == "init" %}
 			<tr id="{{ job.id }}_tr1" class="info">
-				<td id="{{ job.id }}_SGEstatus">{{ job.jname }} - initialization... - {{ job.staged }}</td>
+				<td id="{{ job.id }}_SGEstatus"><strong>{{ job.jname }}</strong> - checking status... - {{ job.staged }}</td>
 			</tr>
 			<tr id="{{ job.id }}_tr2" class="info">
 				<td>

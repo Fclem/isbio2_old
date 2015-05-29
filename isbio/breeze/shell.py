@@ -486,7 +486,7 @@ decodestatus = {
 	'succeed': 'job finished normally',
 	drmaa.JobState.FAILED: 'job finished, but failed',
 	'aborted': 'job has been aborted',
-	'init': 'job instance is being generated',
+	'init': 'job instance is being generated (if you see this more than 1 min please contact admin)',
 	'scheduled': 'job is saved for later submission'
 }
 

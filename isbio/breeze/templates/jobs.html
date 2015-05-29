@@ -208,7 +208,7 @@
 					var arg = "width: " + msg.progress.toString() + "%";
 
 					$("#" + jid.toString() + "_bar").attr('style', arg);
-					$("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
+					$("#" + jid.toString() + "_SGEstatus").html("<strong>" + msg.name.toString() + "</strong> - " + msg.sge.toString());
 					$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
 
 					//A job is not running anymore
@@ -268,7 +268,8 @@
 					$("#" + jid.toString() + "_tr1").attr('class', 'error');
 					$("#" + jid.toString() + "_tr2").attr('class', 'error');
 					$("#" + jid.toString() + "_div").attr('class', "progress progress-warning");
-					$("#" + jid.toString() + "_SGEstatus").text("ERROR while checking status ! (Reload the page)");
+					$("#" + jid.toString() + "_SGEstatus").html($("#" + jid.toString() + "_SGEstatus strong").text() +
+					  " - <strong>ERROR</strong> while checking status ! (try reloading)");
 				}
 			});
 		};
