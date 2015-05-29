@@ -34,9 +34,11 @@ from django.utils import timezone
 from django.utils import simplejson
 from django.utils.http import urlencode
 from django.views.decorators.csrf import csrf_exempt
+import logging
 from mimetypes import MimeTypes
 from multiprocessing import Process
 import hashlib
+import sys
 
 
 # from django.contrib.auth import models
@@ -49,6 +51,8 @@ import hashlib
 # import sys, traceback
 # from six.moves.urllib import request, request, request
 # from breeze import auxiliary
+
+logger = logging.getLogger(__name__)
 
 
 class RequestStorage():
@@ -153,6 +157,15 @@ def home(request, state="feed"):
 		pref_pane = 'show_usergroups'
 		stat_tab = 'analysis_stat_tab'
 		stat_pane = 'show_analysis_stat'
+	elif state == 'contacts':
+		menu = 'preferences_menu'
+		show_menu = 'show_preferences'
+		explorer_tab = 'datasets_tab'
+		explorer_pane = 'show_datasets'
+		pref_tab = 'contacts_tab'
+		pref_pane = 'show_contacts'
+		stat_tab = 'analysis_stat_tab'
+		stat_pane = 'show_analysis_stat'
 
 	projects = Project.objects.exclude(~Q(author__exact=request.user) & Q(collaborative=False)).order_by("name")
 	groups = Group.objects.filter(author__exact=request.user).order_by("name")
@@ -169,6 +182,7 @@ def home(request, state="feed"):
 
 	occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
 	occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
+	contacts = OffsiteUser.objects.filter(belongs_to=request.user).order_by('-created')
 
 	# Get Screens
 	screens = dict()  # rora.get_screens_info()
@@ -205,6 +219,7 @@ def home(request, state="feed"):
 		str(stat_tab): 'active',
 		str(stat_pane): 'active',
 		'dbStat': occurrences,
+		'contacts': contacts,
 		'projects': projects,
 		'groups': groups,
 		'posts': posts,
@@ -225,9 +240,9 @@ def updateServer(request):
 	                    mimetype='application/json')
 
 
+# TODO redesign / rewrite
 @login_required(login_url='/')
 def jobs(request, state="", error_msg=""):
-	#if settings.DEBUG: print("State says : " + str(state))
 	if state == "scheduled":
 		tab = "scheduled_tab"
 		show_tab = "show_sched"
@@ -235,84 +250,100 @@ def jobs(request, state="", error_msg=""):
 		tab = "current_tab"
 		show_tab = "show_curr"
 	else:
-		state == "history"
+		state = "history"
 		tab = "history_tab"
 		show_tab = "show_hist"
 
 	scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
 	history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(
-		status__exact="active").exclude(status__exact="queued_active").order_by("-id")
+		status__exact="active").exclude(status__exact="queued_active").exclude(status__exact="init").order_by("-id")
 	active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
+	init_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="init").order_by("-id")
 	queued_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="queued_active").order_by("-id")
 
+	no_id_jobs = Jobs.objects.filter(juser__exact=request.user).filter(sgeid="").order_by("-id")
+	no_id_reports = Report.objects.filter(sgeid="").filter(author__exact=request.user).order_by('-created')
+
 	active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
+	init_reports = Report.objects.filter(status="init").filter(author__exact=request.user).order_by('-created')
 	queued_reports = Report.objects.filter(status="queued_active").filter(author__exact=request.user).order_by(
 		'-created')
 
 	queued_merged = aux.merge_job_history(queued_jobs, queued_reports)
 	merged_active = aux.merge_job_history(active_jobs, active_reports)
+	merged_init = aux.merge_job_history(init_jobs, init_reports)
+	# no_ids = aux.merge_job_history(no_id_jobs, no_id_reports)
 	merged_active = aux.merge_job_lst(merged_active, queued_merged)
+	merged_active = aux.merge_job_lst(merged_active, merged_init)
 
-	ready_reports = Report.objects.exclude(status="active").exclude(status="queued_active").filter(
-		author__exact=request.user).order_by('-created')
+	ready_reports = Report.objects.exclude(status="active").exclude(status="queued_active").exclude(
+		status__exact="init").filter(author__exact=request.user).order_by('-created')
 
 	merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
 	paginator = Paginator(merged_history, 15)  # show 15 items per page
 
-	# If AJAX - check page from the request
-	# Otherwise return the first page
-	if request.is_ajax() and request.method == 'GET':
-		if 'get-live' in request.GET:
-			hist_jobs = paginator.page(1)
-
-			return render_to_response('jobs-live.html', RequestContext(request, {
-			'dash_history': hist_jobs[0:3],
-			'current': merged_active,
-			}))
-		else:
-			page = request.GET.get('page')
-			try:
-				hist_jobs = paginator.page(page)
-			except PageNotAnInteger:  # if page isn't an integer
-				hist_jobs = paginator.page(1)
-			except EmptyPage:  # if page out of bounds
-				hist_jobs = paginator.page(paginator.num_pages)
-
-			return render_to_response('jobs-hist-paginator.html', RequestContext(request, {'history': hist_jobs}))
-	else:
-		for jobitem in active_jobs:
-			rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-		for jobitem in queued_jobs:
-			rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-		for jobitem in active_reports:
-			rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-		for jobitem in queued_reports:
-			rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-
-		user_profile = UserProfile.objects.get(user=request.user)
-		db_access = user_profile.db_agreement
+	page = request.REQUEST.get('page') or 1
+	try:
+		hist_jobs = paginator.page(page)
+	except PageNotAnInteger:  # if page isn't an integer
 		hist_jobs = paginator.page(1)
+		page = 1
+	except EmptyPage:  # if page out of bounds
+		hist_jobs = paginator.page(paginator.num_pages)
+		page = paginator.num_pages
 
-		if state is None and len(merged_active) > 0:
-			tab = "current_tab"
-			show_tab = "show_curr"
-			state = 'current'
+	if request.method == 'GET':
+		# If AJAX - check page from the request
+		# Otherwise return the first page
+		if request.is_ajax():
+			if 'get-live' in request.GET:
+				#hist_jobs = paginator.page(1)
 
-		return render_to_response('jobs.html', RequestContext(request, {
-			str(tab): 'active',
-			str(show_tab): 'active',
-			'active_tab': state,
-			'jobs_status': 'active',
-			'dash_history': hist_jobs[0:3],
-			'scheduled': scheduled_jobs,
-			'history': hist_jobs,
-			'current': merged_active,
-			'pagination_number': paginator.num_pages,
-			'db_access': db_access,
-			'error_message': error_msg,
-			'current_nb': merged_active.__len__()
-		}))
+				return render_to_response('jobs-live.html', RequestContext(request, {
+					'dash_history': paginator.page(1)[0:3],
+					'current': merged_active,
+				}))
+			else:
+				return render_to_response('jobs-hist-paginator.html', RequestContext(request, {'history': hist_jobs, 'page': page}))
+
+	for jobitem in active_jobs:
+		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+	for jobitem in queued_jobs:
+		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+	for jobitem in active_reports:
+		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+	for jobitem in queued_reports:
+		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+	for jobitem in no_id_jobs:
+		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+	for jobitem in no_id_reports:
+		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+
+	user_profile = UserProfile.objects.get(user=request.user)
+	db_access = user_profile.db_agreement
+	# hist_jobs = paginator.page(1)
+
+	if state is None and len(merged_active) > 0:
+		tab = "current_tab"
+		show_tab = "show_curr"
+		state = 'current'
+
+	return render_to_response('jobs.html', RequestContext(request, {
+		str(tab): 'active',
+		str(show_tab): 'active',
+		'active_tab': state,
+		'jobs_status': 'active',
+		'dash_history': paginator.page(1)[0:3],
+		'scheduled': scheduled_jobs,
+		'history': hist_jobs,
+		'current': merged_active,
+		'pagination_number': paginator.num_pages,
+		'page': page,
+		'db_access': db_access,
+		'error_message': error_msg,
+		'current_nb': merged_active.__len__()
+	}))
 
 
 @login_required(login_url='/')
@@ -448,10 +479,10 @@ def reports(request):
 
 @login_required(login_url='/')
 def send_report(request, rid):
-
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
 	report_inst = Report.objects.get(id=rid)  # only for auth
 	# offsite_u = OffsiteUser.objects.filter(belongs_to=request.user)
-	form_action = reverse(send_report, kwargs={'rid': rid})  # we need the email since the form is AJAX loaded, and thus cannot just send to url #
+	form_action = reverse(__self__, kwargs={'rid': rid})  # we need the email since the form is AJAX loaded, and thus cannot just send to url #
 	# form_action = "get_form(" + str(rid) + ", 'Send', 'Send');"
 	form_title = 'Send "' + report_inst.name + ' to Off-Site users'
 
@@ -509,8 +540,8 @@ def send_report(request, rid):
 # Modal view to add an off-site user email address, and either attach it to the user or go to the add off-site user page
 @login_required(login_url='/')
 def add_offsite_user_dialog(request, rid=None):
-	# form_action = '/reports/add-offsite-user/' + rid if rid is not None else ''
-	form_action = reverse(add_offsite_user_dialog, kwargs={'rid': rid})
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
+	form_action = reverse(__self__, kwargs={'rid': rid})
 	form_title = 'Add an offsite user'
 
 	if request.method == 'POST':
@@ -523,7 +554,6 @@ def add_offsite_user_dialog(request, rid=None):
 				offone = OffsiteUser.objects.get(email=email)
 			except ObjectDoesNotExist:
 				# else redirects to the new user form
-				# return HttpResponse('/reports/add-offsite-user/next/' + str(email))
 				return HttpResponse(reverse(add_offsite_user, kwargs={'email': str(email)}))
 			# this email is already in DB
 			# check if not already in owned off-site user list
@@ -552,11 +582,12 @@ def add_offsite_user_dialog(request, rid=None):
 	}))
 
 
-# Form page to add, or list off-site users
+# TODO fusion with Edit offsite user
+# Form to add an user
 @login_required(login_url='/')
 def add_offsite_user(request, email=None):
-	off_site_u = OffsiteUser.objects.all()
-	form_action = reverse(add_offsite_user)
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
+	form_action = reverse(__self__)
 
 	if request.method == 'POST' and email is None:
 		off_site_user_form = breezeForms.AddOffsiteUser(request.user, request.POST)
@@ -578,25 +609,45 @@ def add_offsite_user(request, email=None):
 			if off_site_user_form_bis.is_valid():
 				off_site_user_form_bis.save()
 
-			return reports(request)
+			return HttpResponseRedirect(reverse(home, kwargs={'state': 'contacts'}))
 	else:
 		off_site_user_form = breezeForms.AddOffsiteUser(request.user, initial={'email': email})
-	user_list = []
-	user_list_ex = []
-	for usr in off_site_u:
-		# print 'vals', usr.belongs_to.all()
-		if request.user in usr.belongs_to.all() :
-			user_list += [usr]  # + ' (' + usr.email + ')'
-		else:
-			user_list_ex += [usr]  # + ' (' + usr.email + ')'
 
-	return render_to_response('new_off-site_user.html', RequestContext(request, {
+	return render_to_response('forms/off-site_user_modal.html', RequestContext(request, {
 		'form': off_site_user_form,
-		'user_list': user_list,
-		'user_list_ex': user_list_ex,
 		'action': form_action,
 		'layout': 'horizontal',
+		'title': 'Add a contact',
 		'submit': 'Add'
+	}))
+
+
+# TODO fusion with add
+@login_required(login_url='/')
+def edit_offsite_user(request, uid):
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
+	form_action = reverse(__self__, kwargs={'uid': uid})
+	try:
+		edit_u = OffsiteUser.objects.filter(belongs_to=request.user).get(id=uid)
+	except ObjectDoesNotExist:
+		raise PermissionDenied
+
+	if request.method == 'POST':
+		off_site_user_form = breezeForms.AddOffsiteUser(request.user, request.POST, instance=edit_u)
+		if off_site_user_form.is_valid():
+			off_site_user_form.save()
+			return HttpResponseRedirect(reverse(home, kwargs={'state': 'contacts'}))
+	else:
+		off_site_user_form = breezeForms.AddOffsiteUser(request.user, instance=edit_u)
+
+	return render_to_response('forms/off-site_user_modal.html', RequestContext(request, {
+		'form': off_site_user_form,
+		# 'user_list': user_list,
+		# 'user_list_ex': user_list_ex,
+		'action': form_action,
+		'layout': 'horizontal',
+		'title': 'Edit "' + edit_u.full_name + '"',
+		'submit': 'Save'
 	}))
 
 
@@ -907,7 +958,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		try:
 			report = Report.objects.get(id=iid)
 		except ObjectDoesNotExist:
-			return aux.failWith404(request, 'There is no report with id '+ iid + ' in database')
+			return aux.fail_with404(request, 'There is no report with id '+ iid + ' in database')
 		rtype = str(report.type)
 		iname =	report.name + '_bis'
 		iid = report.rora_id
@@ -916,7 +967,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
 			report_type=ReportType.objects.get(id=report.type_id)).order_by('order')
 		except ObjectDoesNotExist:
-			return aux.failWith404(request, 'There is ReportType with id ' + str(report.type_id) + ' in database')
+			return aux.fail_with404(request, 'There is ReportType with id ' + str(report.type_id) + ' in database')
 		data = pickle.loads(report.conf_params) if report.conf_params is not None and len(report.conf_params) > 0 else None
 		files = json.loads(report.conf_files) if report.conf_files is not None and len(report.conf_files) > 0 else None
 		title = 'ReRun report ' + report.name
@@ -926,7 +977,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
 				report_type=ReportType.objects.get(type=rtype)).order_by('order')
 		except ObjectDoesNotExist:
-			return aux.failWith404(request, 'There is ReportType with id ' + str(rtype) + ' in database')
+			return aux.fail_with404(request, 'There is ReportType with id ' + str(rtype) + ' in database')
 		data = request.POST
 		files = request.FILES if request.FILES else None
 
@@ -1009,7 +1060,7 @@ def showdetails(request, sid=None):
 	try:
 		tags = ReportType.objects.get(id=sid).rscripts_set.all()
 	except ObjectDoesNotExist:  # TODO protect all alike request as such
-		return aux.failWith404(request, 'There is no object with id ' + sid + ' in database')
+		return aux.fail_with404(request, 'There is no object with id ' + sid + ' in database')
 	app_installed = request.user.users.all()
 
 	return render_to_response('store-tags.html', RequestContext(request, {
@@ -1369,20 +1420,39 @@ def get_rcode(request, sid=None, sfile=None):
 	return HttpResponse(rcode)
 
 
+def dash_redir(request, job=None, state=None):
+	ref = request.META.get('HTTP_REFERER')
+	if ref:
+		# return HttpResponse(True)
+		return HttpResponseRedirect(ref)
+
+	tab = "history"
+	if job:
+		if job.status == "scheduled":
+			tab = "scheduled"
+		elif job.status == "active" or job.status == "queued_active":
+			tab = "current"
+
+	page = request.GET.get('page')
+	page = page if page else 1
+	return HttpResponseRedirect('/jobs/' + tab + '?page=' + page)
+
+
 @login_required(login_url='/')
 def delete_job(request, jid, state):
-	job = Jobs.objects.get(id=jid)
-	# Enforce access rights
-	if job.juser != request.user:
-		raise PermissionDenied
-	if job.status == "scheduled":
-		tab = "scheduled"
-	elif job.status == "active" or job.status == "queued_active":
-		tab = "current"
-	else:
-		tab = "history"
-	rshell.del_job(job)
-	return HttpResponseRedirect('/jobs/' + tab)
+	job = None
+	try:
+		job = Jobs.objects.get(id=jid)
+		# Enforce access rights
+		if job.juser != request.user:
+			raise PermissionDenied
+		rshell.del_job(job)
+	except ObjectDoesNotExist:
+		return aux.fail_with404(request, 'There is no job with id ' + str(jid) + ' in database')
+	except Exception as e:
+		pass
+
+	return dash_redir(request, job)
 
 
 @login_required(login_url='/')
@@ -1407,23 +1477,28 @@ def delete_pipe(request, pid):
 
 @login_required(login_url='/')
 def delete_report(request, rid, redir):
-	if redir == '-dash':
-		redir = '/jobs/history'
-	else:
-		redir = '/reports/'
+	report = None
+	try:
+		report = Report.objects.get(id=rid)
+		# Enforce access rights
+		if report.author != request.user:
+			raise PermissionDenied
+		rshell.del_report(report)
+	except ObjectDoesNotExist:
+		return aux.fail_with404(request, 'There is no report with id ' + str(rid) + ' in database')
+	except Exception as e:
+		pass
 
-	report = Report.objects.get(id=rid)
-	# Enforce access rights
-	if report.author != request.user:
-		raise PermissionDenied
-	rshell.del_report(report)
-	return HttpResponseRedirect(redir)
+	if redir == '-dash':
+		return dash_redir(request, report)
+	return HttpResponseRedirect('/reports/')
 
 
 @login_required(login_url='/')
 def edit_report_access(request, rid):
 	report_inst = Report.objects.get(id=rid)
-	form_action = reverse(edit_report_access, kwargs={'rid': rid})
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
+	form_action = reverse(__self__, kwargs={'rid': rid})
 	form_title = 'Edit "' + report_inst.name + '" access'
 
 	# Enforce access rights
@@ -1438,9 +1513,6 @@ def edit_report_access(request, rid):
 			return HttpResponse(True)
 	# TODO check if else is no needed here
 	property_form = breezeForms.EditReportSharing(instance=report_inst)
-	#property_form.
-
-	# pprint.pprint(vars(property_form.fields['shared']))
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': property_form,
@@ -1530,7 +1602,8 @@ def check_reports(request):
 
 @login_required(login_url='/')
 def edit_job(request, jid=None, mod=None):
-	job = Jobs.objects.get(id=jid)
+	job = aux.get_job_safe(request, jid)
+
 	tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
 	user_info = User.objects.get(username=request.user)
 
@@ -1594,6 +1667,7 @@ def edit_job(request, jid=None, mod=None):
 	}))
 
 
+# TODO rewrite
 @login_required(login_url='/')
 def create_job(request, sid=None):
 	script = Rscripts.objects.get(id=sid)
@@ -1701,12 +1775,15 @@ def run_script(request, jid):
 
 @login_required(login_url='/')
 def abort_sge(request, id, type):
+	log = logger.getChild('abort_sge')
+	assert isinstance(log, logging.getLoggerClass())
 	try:
 		if type == "report":
 			item = Report.objects.get(id=id)
 		elif type == "job":
 			item = Jobs.objects.get(id=id)
 	except (Report.DoesNotExist, Jobs.DoesNotExist):
+		log.exception("job/report " + id + " does not exists")
 		return jobs(request, error_msg="job/report " + id + " does not exists\nPlease contact Breeze support")
 
 	s = rshell.abort_report(item)
@@ -1714,6 +1791,7 @@ def abort_sge(request, id, type):
 	if s == True:
 		return HttpResponseRedirect('/jobs/')
 	else:
+		log.error("aborting job/report " + id + " failed")
 		return jobs(request, error_msg=s + "\nOn DRMAA job/report id " + id + "\nPlease contact Breeze support")
 
 
@@ -1962,7 +2040,7 @@ def send_file(request, ftype, fname):
 		try:
 			fitem = DataSet.objects.get(name=str(fname))
 		except ObjectDoesNotExist:
-			return aux.failWith404(request, 'There is no report with id ' + str(fname) + ' in database')
+			return aux.fail_with404(request, 'There is no report with id ' + str(fname) + ' in database')
 		# TODO Enforce user access restrictions ?
 		local_path, path_to_file = aux.get_report_path(fitem)
 
@@ -1970,7 +2048,7 @@ def send_file(request, ftype, fname):
 		try:
 			fitem = Report.objects.get(id=str(fname))
 		except ObjectDoesNotExist:
-			return aux.failWith404(request, 'There is no report with id ' + str(fname) + ' in database')
+			return aux.fail_with404(request, 'There is no report with id ' + str(fname) + ' in database')
 		#  Enforce user access restrictions
 		if request.user not in fitem.shared.all() and fitem.author != request.user:
 			raise PermissionDenied
@@ -1993,7 +2071,8 @@ def report_shiny_view_tab(request, rid):
 
 # Shiny tab access from outside (with the key)
 def report_shiny_view_tab_out(request, s_key, u_key):
-	try: # TODO merge ACL with out wrapper in a new func
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
+	try:  # TODO merge ACL with out wrapper in a new func
 		# Enforces access control
 		# both request will fail if the object is not found
 		# we fetch the report
@@ -2011,7 +2090,7 @@ def report_shiny_view_tab_out(request, s_key, u_key):
 			all_reports = off_user.shiny_access.exclude(shiny_key=None)
 			#rint all_reports
 			for each in all_reports:
-				each.url = reverse(report_shiny_view_tab_out, kwargs={'s_key': each.shiny_key, 'u_key': u_key})
+				each.url = reverse(__self__, kwargs={'s_key': each.shiny_key, 'u_key': u_key})
 
 			count = {'total': all_reports.count()}
 			paginator = Paginator(all_reports, entries_nb)  # show 18 items per page
@@ -2028,7 +2107,7 @@ def report_shiny_view_tab_out(request, s_key, u_key):
 				'first': (page_index - 1) * entries_nb + 1,
 				'last': min(page_index * entries_nb, count['total'])
 			})
-			base_url = reverse(report_shiny_view_tab_out, kwargs={'s_key': fitem.shiny_key, 'u_key': u_key})
+			base_url = reverse(__self__, kwargs={'s_key': fitem.shiny_key, 'u_key': u_key})
 			return render_to_response('out_reports-paginator.html', RequestContext(request, {
 				'reports': reports,
 				'pagination_number': paginator.num_pages,
@@ -2039,7 +2118,7 @@ def report_shiny_view_tab_out(request, s_key, u_key):
 			#return report_shiny_view_tab_merged(request, fitem.id, outside=True, u_key=u_key)
 		return report_shiny_view_tab_merged(request, fitem.id, outside=True, u_key=u_key)
 	except ObjectDoesNotExist:
-		return aux.failWith404(request)
+		return aux.fail_with404(request)
 
 
 # Shiny tab
@@ -2048,7 +2127,7 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 	try:
 		fitem = Report.objects.get(id=rid)
 	except ObjectDoesNotExist:
-		return aux.failWith404(request, 'There is no report with id ' + rid + ' in DB')
+		return aux.fail_with404(request, 'There is no report with id ' + rid + ' in DB')
 
 	if outside:
 		nozzle = reverse(report_nozzle_out_wrapper, kwargs={'s_key': fitem.shiny_key, 'u_key': u_key})
@@ -2094,12 +2173,12 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 @login_required(login_url='/')
 def report_shiny_in_wrapper(request, path):
 	if not path or path == '':
-		return aux.failWith404(request)
+		return aux.fail_with404(request)
 	if request.GET.get('path') and request.GET.get('roraId'):  # 'path' in request.GET and 'roraId' in request.GET:
 		try:
 			fitem = Report.objects.get(home=request.GET.get('path'))
 		except ObjectDoesNotExist:
-			return aux.failWith404(request)
+			return aux.fail_with404(request)
 		# Enforce user access restrictions
 		if request.user not in fitem.shared.all() and fitem.author != request.user:
 			raise PermissionDenied
@@ -2117,7 +2196,7 @@ def report_shiny_out_wrapper(request, s_key, u_key, path):
 		# and if found, check the user with this key is in the share list of this report
 		fitem.offsiteuser_set.get(user_key=u_key)
 	except ObjectDoesNotExist:
-		return aux.failWith404(request)
+		return aux.fail_with404(request)
 
 	return aux.proxy_to(request, path, settings.SHINY_TARGET_URL)
 
@@ -2131,7 +2210,7 @@ def report_nozzle_out_wrapper(request, s_key, u_key):
 		# and if found, check the user with this key is in the share list of this report
 		fitem.offsiteuser_set.get(user_key=u_key)
 	except ObjectDoesNotExist:
-		return aux.failWith404(request)
+		return aux.fail_with404(request)
 
 	return report_file_server_out(request, fitem.id, 'view', u_key)
 
@@ -2164,7 +2243,7 @@ def report_file_server(request, rid, type, fname=None):
 	try:
 		fitem = Report.objects.get(id=rid)
 	except ObjectDoesNotExist:
-		return aux.failWith404(request, 'There is no report with id ' + rid + ' in DB')
+		return aux.fail_with404(request, 'There is no report with id ' + rid + ' in DB')
 
 	# Enforce user access restrictions
 	if request.user not in fitem.shared.all() and fitem.author != request.user and not request.user.is_superuser:
@@ -2179,18 +2258,26 @@ def report_file_server_out(request, rid, type, u_key, fname=None):
 		fitem = Report.objects.get(id=rid)
 		fitem.offsiteuser_set.get(user_key=u_key)
 	except ObjectDoesNotExist:
-		return aux.failWith404(request, 'There is no such report')
+		return aux.fail_with404(request, 'There is no such report')
 	return report_file_server_sub(request, rid, type, fname=fname, fitem=fitem)
 
 
 # DO NOT CALL THIS VIEW FROM url.py
 def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 	"""
-        Serve report files
-    """
+		Serve report files
+		:param rid: a Report id
+		:type rid: int
+		:param fitem: a Report class instance from db
+		:type fitem: Report
+		:param fname: a specified file name (optional, default is report.html)
+		:type fname: str
+		:return: (local_path, path_to_file)
+		:rtype: (str, str)
+	"""
 	# SAFTY FIRST
 	if not fitem:
-		aux.failWith404(request, 'Bad function call : missing or invalid argument')
+		aux.fail_with404(request, 'Bad function call : missing or invalid argument')
 
 	local_path, path_to_file = aux.get_report_path(fitem, fname)
 
@@ -2212,23 +2299,37 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 		return response
 	except IOError:
 		print 'IOError', path_to_file
-		return aux.failWith404(request, 'File not found in expected location')
+		return aux.fail_with404(request, 'File not found in expected location')
 
 
 @login_required(login_url='/')
 def update_jobs(request, jid, item):
 	if item == 'script':
-		job = Jobs.objects.get(id=jid)
-		sge_status = rshell.track_sge_job(job)
-		# request job instance again to be sure that the data is updated
-		response = dict(id=job.id, name=str(job.jname), staged=str(job.staged), status=str(job.status),
-		                progress=job.progress, sge=sge_status)
+		obj = Jobs.objects.get(id=jid)
+		date = obj.staged
+		name = str(obj.jname)
 	else:
-		report = Report.objects.get(id=jid)
-		sge_status = rshell.track_sge_job(report)
-		# request job instance again to be sure that the data is updated
-		response = dict(id=report.id, name=str(report.name), staged=str(report.created), status=str(report.status),
-		                progress=report.progress, sge=sge_status)
+		obj = Report.objects.get(id=jid)
+		date = obj.created
+		name = str(obj.name)
+
+	sge_status = rshell.track_sge_job(obj)
+	# request job instance again to be sure that the data is updated
+	response = dict(id=obj.id, name=name, staged=str(date), status=str(obj.status),
+					progress=obj.progress, sge=sge_status)
+
+	return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
+
+# 29/05/2015 TOOOOOOOO SLOW
+@login_required(login_url='/')
+def update_all_jobs(request):
+	j_objs = Jobs.objects.filter(juser=request.user).exclude(status='succeed').exclude(status='failed').exclude(
+		status='scheduled').exclude(status='aborted')
+	r_objs = Report.objects.filter(author=request.user).exclude(status='succeed').exclude(status='failed').exclude(
+		status='scheduled').exclude(status='aborted')
+
+	response = aux.update_all_jobs_sub(j_objs, r_objs)
 
 	return HttpResponse(simplejson.dumps(response), mimetype='application/json')
 
@@ -2375,6 +2476,7 @@ def new_group_dialog(request):
 	"""
 		This view provides a dialog to create a new Group in DB.
 	"""
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
 	group_form = breezeForms.GroupForm(request.POST or None)
 
 	if group_form.is_valid():
@@ -2383,7 +2485,7 @@ def new_group_dialog(request):
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': group_form,
-		'action': '/groups/create',
+		'action': reverse(__self__),
 		'header': 'Create New Group',
 		'layout': 'horizontal',
 		'submit': 'Save'
@@ -2392,18 +2494,21 @@ def new_group_dialog(request):
 
 @login_required(login_url='/')
 def edit_project_dialog(request, pid):
+	# TODO add user right management
 	"""
 		This view provides a dialog to create a new Project in DB.
 	"""
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
 	project_data = Project.objects.get(id=pid)
-	form_action = '/projects/edit/' + str(pid)
+	form_action = reverse(__self__, kwargs={'pid': pid})  # '/projects/edit/' + str(pid)
 	form_title = 'Edit Project: ' + str(project_data.name)
 
 	if request.method == 'POST':
 		project_form = breezeForms.EditProjectForm(request.POST)
 		if project_form.is_valid():
 			aux.edit_project(project_form, project_data)
-			return HttpResponseRedirect('/home/projects')
+			# return HttpResponseRedirect('/home/projects')
+			return HttpResponseRedirect(reverse(home, kwargs={'state': 'projects'}))
 	else:
 		project_form = breezeForms.EditProjectForm(
 			initial={'eid': project_data.external_id, 'wbs': project_data.wbs, 'description': project_data.description}
@@ -2424,14 +2529,15 @@ def edit_group_dialog(request, gid):
 		This view provides a dialog to edit an existing Group in DB.
 	"""
 	group_data = Group.objects.get(id=gid)
-	form_action = '/groups/edit/' + str(gid)
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
+	form_action = reverse(__self__, kwargs={'gid': gid})
 	form_title = 'Edit Group: ' + str(group_data.name)
 
 	if request.method == 'POST':
 		group_form = breezeForms.EditGroupForm(request.POST)
 		if group_form.is_valid():
 			aux.edit_group(group_form, group_data, request.POST)
-			return HttpResponseRedirect('/home/groups')
+			return HttpResponseRedirect(reverse(home, kwargs={'state': 'groups'}))
 	else:
 		team = {}
 		for arr in group_data.team.all():
@@ -2450,6 +2556,7 @@ def edit_group_dialog(request, gid):
 
 @login_required(login_url='/')
 def update_user_info_dialog(request):
+	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
 	user_info = User.objects.get(username=request.user)
 
 	if request.method == 'POST':
@@ -2487,7 +2594,8 @@ def update_user_info_dialog(request):
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': personal_form,
-		'action': '/update-user-info/',
+		# 'action': '/update-user-info/', update_user_info_dialog
+		'action': reverse(__self__),
 		'header': 'Update Personal Info',
 		'layout': 'horizontal',
 		'submit': 'Save'
