@@ -376,7 +376,7 @@ def run_report(report, fmFlag):
 		jt.joinFiles = True
 		jt.nativeSpecification = "-m bea"
 
-		log.info('r' + str(report.id) + ' : triggering runJob')
+		log.info('r' + str(report.id) + ' : triggering dramaa.runJob')
 		report.sgeid = s.runJob(jt)
 		log.info('r' + str(report.id) + ' : returned sgedid "' + str(report.sgeid) + '"')
 		report.progress = 30
@@ -389,11 +389,11 @@ def run_report(report, fmFlag):
 		report.save()
 
 		if retval.hasExited and retval.exitStatus == 0:
-			log.info('r' + str(report.id) + ' : sgeid ended with exit code 0 !')
+			log.info('r' + str(report.id) + ' : dramaa.runJob ended with exit code 0 !')
 			report.status = 'succeed'
 			# clean up the folder
 		else:
-			log.error('r' + str(report.id) + ' : sgeid ended with exit code ' + str(retval.exitStatus))
+			log.error('r' + str(report.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
 			report = Report.objects.get(id=report.id)  # make sure data is updated
 			if report.status != 'aborted':
 				pass
@@ -436,39 +436,41 @@ def run_report(report, fmFlag):
 	log.info('r' + str(report.id) + ' : process terminated successfully !')
 	return True
 
+# TODO check that
 def abort_report(report):
 	stat = report.status
+	ret = False
 	try:
 		if report.sgeid != "" and report.sgeid is not None:
 			s = drmaa.Session()
 			s.initialize()
 			report.status = "aborted"
-			report.save()
 			s.control(report.sgeid, drmaa.JobControlAction.TERMINATE)
-
-			s.exit()
 		else:
 			report.status = "aborted"
-			report.save()
+
 	except drmaa.AlreadyActiveSessionException:
 		# TODO improve this part
 		if settings.DEBUG: print("AlreadyActiveSessionException")
 		report.status = stat
-		report.save()
-		s.exit()
-		return "unable to abort"
+		ret = "unable to abort"
 	except drmaa.InvalidJobException:
 		if settings.DEBUG: print("InvalidJobException")
 		report.status = "aborted"
-		report.save()
-		s.exit()
-		return "InvalidJobException"
+		ret = "InvalidJobException"
 	except drmaa.InvalidArgumentException:
-		report.status = stat
-		report.save()
-		s.exit()
-		return "InvalidArgumentException"
+		report.status = "aborted"
+		ret = "InvalidArgumentException"
 
+	report.save()
+
+	try:
+		s.exit()
+	except Exception as e:
+		pass
+
+	if ret:
+		return ret
 	return True
 
 
@@ -498,13 +500,13 @@ def track_sge_job(job, force_refresh=False):
 	assert isinstance(log, logging.getLoggerClass())
 
 	changed = False
+	# force_refresh = False
 
 	status = str(job.status)
 	log.info(type + str(job.id) + ' : status is : ' + status)
 
 	if job.sgeid != "":
-		if status != 'succeed' and status != 'aborted' and status != drmaa.JobState.FAILED and \
-			(force_refresh or status == drmaa.JobState.QUEUED_ACTIVE):
+		if force_refresh and status != 'succeed' and status != 'aborted' and status != drmaa.JobState.FAILED:
 			try:
 				s = drmaa.Session()
 				s.initialize()
@@ -586,8 +588,7 @@ def track_sge_job_bis(jobs, force_refresh=False):
 			log.info(type + str(job.id) + ' : status is : ' + status)
 
 			if job.sgeid != "":
-				if status != 'succeed' and status != 'aborted' and status != drmaa.JobState.FAILED and \
-					(force_refresh or status == drmaa.JobState.QUEUED_ACTIVE):
+				if force_refresh and status != 'succeed' and status != 'aborted' and status != drmaa.JobState.FAILED:
 					status = str(s.jobStatus(job.sgeid))
 			elif job.status != 'scheduled':
 				now_t = timezone.now()  # .time()
