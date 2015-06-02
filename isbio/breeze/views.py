@@ -307,18 +307,11 @@ def jobs(request, state="", error_msg=""):
 			else:
 				return render_to_response('jobs-hist-paginator.html', RequestContext(request, {'history': hist_jobs, 'page': page}))
 
-	for jobitem in active_jobs:
-		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-	for jobitem in queued_jobs:
-		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-	for jobitem in active_reports:
-		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-	for jobitem in queued_reports:
-		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-	for jobitem in no_id_jobs:
-		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
-	for jobitem in no_id_reports:
-		rshell.track_sge_job(jobitem, True)  # forces job refresh from sge rather than just db status
+	# might be merged trough track_sge_job_bis
+	from itertools import chain
+
+	all_list = list(chain(active_jobs, queued_jobs, active_reports, queued_reports, no_id_jobs, no_id_reports))
+	rshell.track_sge_job_bis(all_list, True)  # forces job refresh from sge rather than just db status
 
 	user_profile = UserProfile.objects.get(user=request.user)
 	db_access = user_profile.db_agreement
@@ -402,7 +395,7 @@ def reports(request):
 	all_reports = Report.objects.filter(status="succeed", institute=insti).order_by(sorting)
 	user_rtypes = request.user.pipeline_access.all()
 	# later all_users will be changed to all users from the same institute
-	all_users = UserProfile.objects.filter(institute_info=insti).order_by('user')
+	all_users = UserProfile.objects.filter(institute_info=insti).order_by('user__username')
 	# first find all the users from the same institute, then find their accessible report types
 	reptypelst = list()
 	for each in all_users:
@@ -2609,7 +2602,7 @@ def ajax_user_stat(request):
 
 
 @login_required(login_url='/')
-def report_search(request):   # TODO check performance
+def report_search(request):
 
 	if not request.is_ajax():
 		request.method = 'GET'
@@ -2669,8 +2662,7 @@ def report_search(request):   # TODO check performance
 		each.user_has_access = request.user in each.shared.all() or each.user_is_owner
 	# Copy the query for the paginator to work with filtering
 	queryS = aux.makeHTTP_query(request)
-	#paginator counter
-	#count.update(dict(first=(page_index - 1)*entries_nb + 1, last=min(page_index*entries_nb, count['total'])))
+	# paginator counter
 	count.update(aux.viewRange(page_index, entries_nb, count['total']))
 
 	return render_to_response('reports-paginator.html', RequestContext(request, {
