@@ -13,11 +13,24 @@
 	{% if reports %}
 		<thead>
 		<tr>
-			<th>Date</th>
-			<th>Report Type</th>
-			<th>Report Name</th>
-			<th>Author</th>
-			<th>Project</th>
+			<th onclick="submit_filter_form(null, '{% if sorting = 'created' %}-created{% else %}created{% endif %}')">
+				Date
+				<i class="icon {% if sorting = 'created' %}icon-chevron-up{% elif sorting = '-created' %}icon-chevron-down{% endif %}"></i></th>
+			<th onclick="submit_filter_form(null, '{% if sorting = 'type' %}-type{% else %}type{% endif %}')">
+				Report Type
+				<i class="icon {% if sorting = 'type' %}icon-chevron-up{% elif sorting = '-type' %}icon-chevron-down{% endif %}"></i></th>
+			<th onclick="submit_filter_form(null, '{% if sorting = 'name' %}-name{% else %}name{% endif %}')">
+				Report Name
+				<i class="icon {% if sorting = 'name' %}icon-chevron-up{% elif sorting = '-name' %}icon-chevron-down{% endif %}"></i>
+			</th>
+			<th onclick="submit_filter_form(null, '{% if sorting = 'author__last_name' %}-author__last_name{% else %}author__last_name{% endif %}')">
+				Author
+				<i class="icon {% if sorting = 'author__last_name' %}icon-chevron-up{% elif sorting = '-author__last_name' %}icon-chevron-down{% endif %}"></i>
+			</th>
+			<th onclick="submit_filter_form(null, '{% if sorting = 'project__name' %}-project__name{% else %}project__name{% endif %}')">
+				Project
+				<i class="icon {% if sorting = 'project__name' %}icon-chevron-up{% elif sorting = '-project__name' %}icon-chevron-down{% endif %}"></i>
+			</th>
 			<th colspan="5">Actions</th>
 		</tr>
 		</thead>
@@ -110,6 +123,7 @@
 		}
 		//call refresh
 		apply_pg(pagOptions);
+		$("#pagination-content").change()
 
 	});
 </script>

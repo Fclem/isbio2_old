@@ -548,7 +548,6 @@ def track_sge_job(job, force_refresh=False):
 	if status != job.status and job.status!= drmaa.JobState.DONE and job.status!= drmaa.JobState.RUNNING \
 	  and job.status != 'failed' and job.status != 'aborted' and job.status != 'succeed':
 		job.status = status
-
 		changed = True
 
 	if job.status == drmaa.JobState.QUEUED_ACTIVE and job.progress != 35:

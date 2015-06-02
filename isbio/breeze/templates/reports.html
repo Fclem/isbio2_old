@@ -295,9 +295,10 @@
 	<!-- Pagination, research, filtering management, popover -->
 	<script type="text/javascript">
 		//AJAX submission of the filtering form (triggers reports list refresh)
-		function submit_filter_form(e) {
+		function submit_filter_form(e, sort) {
 			$("#pagination-content").fadeTo(0, 0.33);
 			var formData = $('#filter_form').serialize();
+			if (sort != undefined ) formData+= '&sort=' + encodeURIComponent(sort);
 			$.ajax({
 				type   : 'POST',
 				url    : '/reports/search',
@@ -305,7 +306,7 @@
 				success: function (response, textStatus, jqXHR) {
 					$("#pagination-content").fadeTo(0, 1);
 					$("#pagination-content").html(response);
-					if(e!=undefined) e.call(); //call-back
+					if(e!=undefined && isFunction(e)) e.call(); //call-back
 				},
 				error  : function (request, status, error) { console.log(error); }
 			});
@@ -320,7 +321,7 @@
 		var refresh = true;
 		// initial paginator setup
 		var pagOptions = {
-			currentPage  : {{ page }},
+			currentPage  : {{ page|default:"1" }},
 			numberOfPages: 5,
 			totalPages   : "{{ pagination_number }}",
 			alignment    : 'center',

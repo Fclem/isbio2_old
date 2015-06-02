@@ -334,6 +334,21 @@ def merge_job_lst(item1, item2):
 	return merged
 
 
+#02/06/2015 Clem
+def viewRange(page_index, entries_nb, total):
+	"""
+	Calculate and return a dict with the number of the first and last elements in the current view of the paginator
+	:param page_index: number of the current page in the paginator (1 to x)
+	:type page_index: int
+	:param entries_nb: number of elements to be disaplayed in the view
+	:type entries_nb: int
+	:param total: total number of elements
+	:type total: int
+	:return: dict(first, last, total)
+	:rtype: dict
+	"""
+	return dict(first=(page_index - 1)*entries_nb + 1, last=min(page_index*entries_nb, total), total=total)
+
 # 28/04/2015 Clem
 def makeHTTP_query(request):
 	''' serialize GET or POST data from a query into a dict string
@@ -343,9 +358,9 @@ def makeHTTP_query(request):
 	else:
 		args = request.GET.copy()
 
-	if 'page' in args:
+	if args.get('page'):
 		del args['page']
-	if 'csrfmiddlewaretoken' in args:
+	if args.get('csrfmiddlewaretoken'):
 		del args['csrfmiddlewaretoken']
 
 	queryS = ''

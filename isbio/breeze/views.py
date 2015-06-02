@@ -392,10 +392,14 @@ def scripts(request, layout="list"):
 @login_required(login_url='/')
 def reports(request):
 	page_index, entries_nb = aux.report_common(request)
-
+	# Manage sorting
+	if request.REQUEST.get('sort'):
+		sorting = request.REQUEST.get('sort')
+	else:
+		sorting = '-created'
 	# get the user's institute
 	insti = UserProfile.objects.get(user=request.user).institute_info
-	all_reports = Report.objects.filter(status="succeed", institute=insti).order_by('-created')
+	all_reports = Report.objects.filter(status="succeed", institute=insti).order_by(sorting)
 	user_rtypes = request.user.pipeline_access.all()
 	# later all_users will be changed to all users from the same institute
 	all_users = UserProfile.objects.filter(institute_info=insti).order_by('user')
@@ -413,38 +417,13 @@ def reports(request):
 	count = {'total': all_reports.count()}
 	paginator = Paginator(all_reports, entries_nb)  # show 18 items per page
 
-	# If AJAX - check page from the request
+	# If AJAX - use the search view
 	# Otherwise return the first page
 	if request.is_ajax() and request.method == 'GET':
-		# this section is likely duplicated code.
-		# TODO integrate it with report_search
-		# There should not be 2 views rendering template reports-paginator.html
-		try:
-			reports = paginator.page(page_index)
-		except PageNotAnInteger:  # if page isn't an integer
-			page_index = 1
-			reports = paginator.page(page_index)
-		except EmptyPage:  # if page out of bounds
-			page_index = paginator.num_pages
-			reports = paginator.page(page_index)
-		# access rights
-		for each in reports:
-			each.user_is_owner = each.author == request.user
-			each.user_has_access = request.user in each.shared.all() or each.user_is_owner
-
-		count.update({
-			'first': (page_index-1) * entries_nb + 1,
-			'last': min(page_index * entries_nb, count['total'])
-		})
-
-		return render_to_response('reports-paginator.html', RequestContext(request, {
-			'reports': reports,
-			'pagination_number': paginator.num_pages,
-			'count': count,
-			'page': page_index
-		}))
+		return report_search(request)
 	else:
-		reports = paginator.page(1)
+		page_index = 1
+		reports = paginator.page(page_index)
 		# access rights
 		for each in reports:
 			each.user_is_owner = each.author == request.user
@@ -456,15 +435,14 @@ def reports(request):
 			'Add': '/off_user/add/',
 			'Send': '/reports/send/'
 		}
-
-		count.update({
-			'first': 1,
-			'last': min(entries_nb, count['total'])
-		})
+		# paginator counter
+		count.update(aux.viewRange(page_index, entries_nb, count['total']))
+		#count.update(dict(first=1, last=min(entries_nb, count['total'])))
 
 		return render_to_response('reports.html', RequestContext(request, {
 			'reports_status': 'active',
 			'reports': reports,
+			'sorting': sorting,
 			'rtypes': reptypelst,
 			'user_rtypes': user_rtypes,
 			'users': all_users,
@@ -2632,19 +2610,19 @@ def ajax_user_stat(request):
 
 @login_required(login_url='/')
 def report_search(request):   # TODO check performance
-	search = request.REQUEST.get('filt_name', '') + request.REQUEST.get('filt_type', '') + \
-	         request.REQUEST.get('filt_author', '') + request.REQUEST.get('filt_project', '') + \
-	         request.REQUEST.get('access_filter1', '')
-	if request.REQUEST.get('reset') or search.strip() == '':
+
+	if not request.is_ajax():
 		request.method = 'GET'
 		return reports(request)  # Redirects to the default view (internaly : no new HTTP request)
-		# return HttpResponseRedirect('/reports/')  # Redirects to the default view
-	else:
-		entry_query = None
-		owned_filter = False
 
-		page_index, entries_nb = aux.report_common(request)
+	search = request.REQUEST.get('filt_name', '') + request.REQUEST.get('filt_type', '') + \
+		request.REQUEST.get('filt_author', '') + request.REQUEST.get('filt_project', '') + \
+		request.REQUEST.get('access_filter1', '')
+	entry_query = None
+	page_index, entries_nb = aux.report_common(request)
+	owned_filter = False
 
+	if search.strip() != '' and not request.REQUEST.get('reset'):
 		def query_concat(request, entry_query, rq_name, cols, user_name=False, exact=True):
 			# like_a = '%' if like else ''
 			query_type = (request.REQUEST.get(rq_name, '') if not user_name else request.user.id)
@@ -2670,27 +2648,30 @@ def report_search(request):   # TODO check performance
 			# filter by accessible reports
 			elif request.REQUEST['access_filter1'] == 'accessible':
 				entry_query = query_concat(request, entry_query, 'access_filter1', ['author_id', 'shared'], True)
-		# Process the query
-		if entry_query is None:
-			found_entries = Report.objects.filter(status="succeed").order_by('-created')  # .distinct()
-		else:
-			found_entries = Report.objects.filter(entry_query, status="succeed").order_by('-created').distinct()
-			print entry_query
-		count = {'total': found_entries.count()}
+	# Manage sorting
+	if request.REQUEST.get('sort'):
+		sorting = request.REQUEST.get('sort')
+	else:
+		sorting = '-created'
+
+	# Process the query
+	if entry_query is None:
+		found_entries = Report.objects.filter(status="succeed").order_by(sorting)  # .distinct()
+	else:
+		found_entries = Report.objects.filter(entry_query, status="succeed").order_by(sorting).distinct()
+	count = {'total': found_entries.count()}
+	# apply pagination
+	paginator = Paginator(found_entries, entries_nb)
+	found_entries = paginator.page(page_index)
 	# just a shortcut for the template
 	for each in found_entries:
 		each.user_is_owner = each.author == request.user
 		each.user_has_access = request.user in each.shared.all() or each.user_is_owner
-	# apply pagination
-	paginator = Paginator(found_entries, entries_nb)
-	found_entries = paginator.page(page_index)
 	# Copy the query for the paginator to work with filtering
 	queryS = aux.makeHTTP_query(request)
-
-	count.update({
-		'first': (page_index - 1) * entries_nb + 1,
-		'last': min(page_index * entries_nb, count['total'])
-	})
+	#paginator counter
+	#count.update(dict(first=(page_index - 1)*entries_nb + 1, last=min(page_index*entries_nb, count['total'])))
+	count.update(aux.viewRange(page_index, entries_nb, count['total']))
 
 	return render_to_response('reports-paginator.html', RequestContext(request, {
 		'reports': found_entries,
@@ -2699,6 +2680,7 @@ def report_search(request):   # TODO check performance
 		'url': 'search?',
 		'search': queryS,
 		'count': count,
+		'sorting': sorting,
 		'owned_filter': owned_filter
 	}))
 
