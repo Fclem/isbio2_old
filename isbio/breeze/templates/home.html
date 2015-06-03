@@ -614,11 +614,12 @@
 								}
 
 								// update the entire doc with the response, since we received a entire success page and we want to reload the entire page
+								window.clearTimeout(updateServer());
 								$(modalID).modal('hide');
 								document.open();
 								document.write(response);
 								document.close();
-								modalConnect();
+								// modalConnect();
 							}
 						},
 						error  : function (request, status, error) {

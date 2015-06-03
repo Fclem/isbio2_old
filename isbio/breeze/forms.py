@@ -215,7 +215,7 @@ class AddOffsiteUserDialog(forms.Form):
 		logger.addHandler(ch)
 		if not validate_email(data, debug=settings.DEBUG, check_mx=True):
 			ch.flush()
-			raise forms.ValidationError("This mail address is non-existent!")
+			raise forms.Validation_Error("This mail address is non-existent!")
 
 		return data
 	"""

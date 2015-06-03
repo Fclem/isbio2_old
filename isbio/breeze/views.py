@@ -593,6 +593,25 @@ def add_offsite_user(request, email=None):
 	}))
 
 
+@login_required(login_url='/')
+def delete_off_site_user(request, uid):
+	try:
+		del_u = OffsiteUser.objects.filter(belongs_to=request.user).get(id=uid)
+	except ObjectDoesNotExist:
+		raise PermissionDenied
+
+	# TODO remove report access
+	del_u.belongs_to.remove(request.user)
+	att_list = del_u.belongs_to.all()
+	rep_list = del_u.shiny_access.all().get
+	# if no other user reference this contact, we remove it
+	if att_list.count() == 0:
+		del_u.delete()
+
+		# return HttpResponseRedirect('/home/contacts')
+	return HttpResponseRedirect(reverse(home, kwargs={ 'state': 'contacts' }))
+
+
 # TODO fusion with add
 @login_required(login_url='/')
 def edit_offsite_user(request, uid):
@@ -1678,6 +1697,7 @@ def create_job(request, sid=None):
 			new_job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
 			new_job.rexecut.close()
 			new_job.docxml.close()
+			new_job.breeze_stat = 'scheduled'
 
 			rshell.schedule_job(new_job, request.POST)
 			try:
@@ -1697,16 +1717,9 @@ def create_job(request, sid=None):
 			os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
 
 			state = "scheduled"
-			if u'run_job' in request.POST:
+			if request.POST.get('run_job') or request.POST.get('action') and request.POST.get('action') == 'run_job':
 				run_script(request, new_job.id)
 				state = "current"
-			# p = Process(target=rshell.run_job, args=(new_job))
-			#p.start()
-			#print("running jobs")
-			if u'action' in request.POST:
-				if request.POST['action'] == 'run_job':
-					run_script(request, new_job.id)
-					state = "current"
 
 			print vars(request.POST)
 
@@ -1738,6 +1751,8 @@ def create_job(request, sid=None):
 def run_script(request, jid):
 	job = Jobs.objects.get(id=jid)
 	script = str(job.script.code)
+	job.breeze_stat = 'init'
+	job.save()
 	p = Process(target=rshell.run_job, args=(job, script))
 	p.start()
 
@@ -2380,11 +2395,13 @@ def new_rtype_dialog(request):
 
 @login_required(login_url='/')
 def user_list(request):
-	userlst = User.objects.all()
+	user_lst = User.objects.all().order_by('username')
 
-	lst = dict()
-	for each in userlst:
-		lst[str(each)] = each.get_full_name()
+	# lst = dict()
+	lst = OrderedDict([])
+	for each in user_lst:
+		# lst[str(each)] = each.get_full_name()
+		lst.update({str(each): each.get_full_name()})
 
 	data = simplejson.dumps(lst)
 	return HttpResponse(data, mimetype='application/json')

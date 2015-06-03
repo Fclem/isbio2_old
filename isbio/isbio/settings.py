@@ -263,21 +263,30 @@ class DevSettings(BreezeSettings):
 		PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
 
 	PROJECT_FHRB_PM_PATH = '/projects/fhrb_pm/'
-	JDBC_BRIDGE_PATH = PROJECT_FHRB_PM_PATH + 'bin/start-jdbc-bridge'
+	JDBC_BRIDGE_PATH = PROJECT_FHRB_PM_PATH + 'bin/start-jdbc-bridge' # Every other path has a trailing /
 
 	# root of the Breeze django project folder, includes 'venv', 'static' folder copy, isbio, logs
 	SOURCE_ROOT = recur(3, os.path.dirname, os.path.realpath(__file__)) + '/'
 
-	R_ENGINE_PATH = PROJECT_PATH+ 'R/bin/R '
-	TEMP_FOLDER = SOURCE_ROOT + 'tmp/'
-	# 'db' folder, containing reports, scripts, jobs, datasets, pipelines
-	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/homes/dbychkov/dev/isbio/db/'
+	R_ENGINE_PATH = PROJECT_PATH + 'R/bin/R '
+	TEMP_FOLDER = SOURCE_ROOT + 'tmp/' # /homes/dbychkov/dev/isbio/tmp/
+
+	# 'db' folder, containing : reports, scripts, jobs, datasets, pipelines, upload_temp
+	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
+	REPORTS_PATH = MEDIA_ROOT + 'reports/'
+	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
+	STATIC_ROOT = SOURCE_ROOT + 'static/'
+	# SHINY RELATED STUFF
 	SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
 	SHINY_TARGET_URL = 'http://127.0.0.1:3838/breeze/'
+	SHINY_UI_FILE_NAME = 'ui.R'
+	SHINY_SERVER_FILE_NAME = 'server.R'
+	SHINY_MIN_FILE_SIZE = 14 # library(shiny) is 14 byte long
 	# NOZZLE_TARGET_URL = 'http://' + FULL_HOST_NAME + '/'
 
-	STATIC_ROOT = SOURCE_ROOT + 'static/'
+
+	# STATIC URL MAPPINGS
 	STATIC_URL = '/static/'
 	MEDIA_URL = '/media/'
 

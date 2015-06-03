@@ -60,6 +60,7 @@ urlpatterns = patterns('',
     url(r'^off_user/add/form/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*)$', views.add_offsite_user),
     url(r'^off_user/add/form/$', views.add_offsite_user),
     url(r'^off_user/edit/(?P<uid>\d*)$', views.edit_offsite_user),
+    url(r'^off_user/del/(?P<uid>\d*)$', views.delete_off_site_user),
     # Shiny page in
     url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
     # Shiny page out

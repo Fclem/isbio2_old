@@ -183,6 +183,7 @@ class Jobs(models.Model):
 	
 	docxml = models.FileField(upload_to=file_name)
 	rexecut = models.FileField(upload_to=file_name)
+	breeze_stat = models.CharField(max_length=16, default='init')
 	
 	def __unicode__(self):
 		return self.jname
@@ -273,6 +274,7 @@ class Report(models.Model):
 	
 	shiny_key = models.CharField(max_length=64, null=True, help_text="!! DO NOT EDIT !!")
 	rora_id = models.PositiveIntegerField(default=0)
+	breeze_stat = models.CharField(max_length=16, default='init')
 
 	# offsite_user_access = models.ManyToManyField(OffsiteUser)
 	# conf_files = models.CharField(null=True, blank=True, default=None)
@@ -314,9 +316,12 @@ class Statistics(models.Model):
 
 
 class ShinyApp(models.Model):
+	FILE_UI_NAME = 'ui.R'
+	FILE_SERVER_NAME = 'server.R'
+
 	name = models.CharField(max_length=55, unique=True, blank=False,
-							help_text="Will be used as the folder name")
-	label = models.CharField(max_length=64, null=True, blank=True,
+							help_text="Must be unique, no special characters, as it will be used as the folder name")
+	label = models.CharField(max_length=64, blank=False,
 							help_text="The text to be displayed on the report index list")
 	
 	description = models.CharField(max_length=350, blank=True,
@@ -337,7 +342,7 @@ class ShinyApp(models.Model):
 		return slugify(str(self.name))
 
 	@staticmethod
-	def check_file_exist(fname):
+	def remove_file_safe(fname):
 		import os.path
 		try:
 			if os.path.isfile(fname):
@@ -348,26 +353,67 @@ class ShinyApp(models.Model):
 	def file_name_gen(self):
 		return str(settings.SHINY_APPS + '%s'%slugify(str(self.name)))
 
-	def file_name_ui(self, filename):
-		name = str(settings.SHINY_APPS + '%s/%s' % (slugify(str(self.name)), 'ui.R'))
-		self.check_file_exist(name)
-		return str(name)
+	def file_name_ui(self):
+		return str(self.folder_name()) + settings.SHINY_UI_FILE_NAME
 
-	def file_name_server(self, filename):
-		name = str(settings.SHINY_APPS + '%s/%s' % (slugify(str(self.name)), 'server.R'))
-		self.check_file_exist(name)
+	def file_name_server(self):
+		return str(self.folder_name()) + settings.SHINY_SERVER_FILE_NAME
+
+	def folder_name(self):
+		return str(settings.SHINY_APPS + '%s/'%slugify(str(self.name)))
+
+	def file_name_zip(self, filename):
+		name = str(settings.UPLOAD_FOLDER + '%s_%s'%(slugify(str(self.name)), slugify(filename)))
+		self.remove_file_safe(name)
 		return str(name)
 	
-	Rui = models.FileField(upload_to=file_name_ui, blank=False, null=False)
-	Rserver = models.FileField(upload_to=file_name_server, blank=False, null=False)
-
+	# Rui = models.FileField(upload_to=file_name_ui, blank=True, null=True)
+	# Rserver = models.FileField(upload_to=file_name_server, blank=True, null=True)
+	zip_file = models.FileField(upload_to=file_name_zip, blank=False, null=False,
+								help_text="Upload a zip file containing at least %s and %s files;<br />Any included file named 'report' will be discarded"%
+									(settings.SHINY_UI_FILE_NAME, settings.SHINY_SERVER_FILE_NAME))
+	enabled = models.BooleanField()
 	attached_report = models.ManyToManyField(ReportType)
 
+	# Manages folder creation, soft-linking to reports and zip verification and extraction
 	def clean(self):
-		pass
+		import zipfile, shutil, subprocess, os
+
+		def temp_cleanup(): # removes the zip from temp upload folder
+			self.remove_file_safe(self.zip_file)
+
+		try: # loads zip file
+			zf = zipfile.ZipFile(self.zip_file)
+		except Exception as e:
+			temp_cleanup()
+			raise ValidationError({ 'zip_file': ["while loading zip_lib says : %s"%e] })
+		# check both ui.R and server.R are in the zip and non empty
+		for filename in [settings.SHINY_UI_FILE_NAME, settings.SHINY_SERVER_FILE_NAME]:
+			try:
+				info = zf.getinfo(filename)
+			except KeyError:
+				temp_cleanup()
+				raise ValidationError({ 'zip_file': ["%s not found in zip's root"%filename] })
+			except Exception as e:
+				temp_cleanup()
+				raise ValidationError({ 'zip_file': ["while listing zip_lib says : %s"%e] })
+			# check that the file is not empty
+			if info.file_size < settings.SHINY_MIN_FILE_SIZE:
+				temp_cleanup()
+				raise ValidationError({ 'zip_file': ["%s file is empty"%filename] })
+		# clear the folder
+		shutil.rmtree(self.folder_name(), ignore_errors=True)
+		# extract the zip
+		zf.extractall(path=self.folder_name())
+		# removes the zip from temp upload folder
+		temp_cleanup()
+		# creates symbolic link to reports inside the shiny app folder
+		self.remove_file_safe(self.folder_name() + 'reports') # just in case it was included in the zip
+		os.symlink(settings.REPORTS_PATH, '%sreports'%self.folder_name())
 		# if self.attached_report.count() == 0:
-		# raise ValidationError('ShinyApp must be attached to at least one ReportType')
-	
+		# raise Validation_Error('ShinyApp must be attached to at least one ReportType')
+
+
 	class Meta:
 		ordering = ('name',)
 	
