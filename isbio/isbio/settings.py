@@ -4,6 +4,7 @@ import logging
 import os
 import socket
 
+# TODO : redesign
 
 def recur(nb, funct, args):
 	while nb > 0:
@@ -19,7 +20,7 @@ def recur_rec(nb, funct, args):
 
 
 class BreezeSettings(Settings):
-	DEBUG = True
+	DEBUG = False
 	TEMPLATE_DEBUG = DEBUG
 
 	logging.basicConfig(level=logging.INFO,
@@ -252,6 +253,7 @@ class DevSettings(BreezeSettings):
 	RUN_MODE = 'dev' if HOST_NAME.endswith('dev') else 'prod'
 	DEV_MODE = RUN_MODE == 'dev'
 	MODE_PROD = RUN_MODE == 'prod'
+	PHARMA_MODE = False
 
 	# contains everything else (including breeze generated content) than the breeze web source code and static files
 	PROJECT_FOLDER = '/fs/projects/'
@@ -324,3 +326,26 @@ class DevSettings(BreezeSettings):
 		VERBOSE = False
 	print 'Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME
 	logging.info('Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME)
+
+
+class PharmaSettings(BreezeSettings):
+	# auto-sensing if running on dev or prod, for dynamic environment configuration
+	FULL_HOST_NAME = socket.gethostname()
+	HOST_NAME = str.split(FULL_HOST_NAME, '.')[0]
+	if HOST_NAME.endswith('ph'):
+		DEBUG = False
+		VERBOSE = False
+		SQL_DUMP = False
+		PHARMA_MODE = True
+
+		RUN_MODE = 'pharma'
+		DEV_MODE = False
+		MODE_PROD = True
+
+		print 'source home : ' + SOURCE_ROOT
+		logging.info('source home : ' + SOURCE_ROOT)
+		print 'project home : ' + PROJECT_PATH
+		logging.info('project home : ' + PROJECT_PATH)
+
+		print 'Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME
+		logging.info('Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME)
