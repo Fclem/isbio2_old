@@ -252,7 +252,7 @@ def extract_users(groups, users):
 		# Process Individual Users
 	if users:
 		users_ids = map(int, users.split(','))
-		ref = breeze.models.User.objects.filter(id__in=users_ids)
+		ref = breeze.models.OrderedUser.objects.filter(id__in=users_ids)
 		people = list(set(people) | set(ref))
 
 	return people
