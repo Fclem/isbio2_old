@@ -104,7 +104,7 @@
 		function show_list() {
 			$('#report_div').hide();
 			$('#iframe_a').hide();
-			$('#pagination-content').load('{{ base_url }}?list');
+			$('#pagination-content').load('{{ base_url }}?list=1');
 			if ($('#pagination-content')[0].style.display == 'none') $('#pagination-content').show();
 		}
 	</script>
