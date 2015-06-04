@@ -1,7 +1,7 @@
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User # as DjangoUser
 from django.utils import timezone
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -12,6 +12,12 @@ CATEGORY_OPT = (
 	(u'screening', u'Screening'),
 	(u'sequencing', u'Sequencing'),
 )
+
+
+class OrderedUser(User):
+	class Meta:
+		ordering = ["username"]
+		proxy = True
 
 
 class Post(models.Model):
@@ -53,7 +59,10 @@ class Group(models.Model):
 	name = models.CharField(max_length=50, unique=True)
 	author = ForeignKey(User)
 	team = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='group_content')
-	
+
+	def delete(self):
+		self.team.clear()
+
 	def __unicode__(self):
 		return self.name
 
@@ -222,7 +231,7 @@ class InputTemplate(models.Model):
 
 
 class UserProfile(models.Model):
-	user = models.ForeignKey(User, unique=True)
+	user = models.ForeignKey(OrderedUser, unique=True)
 	
 	def file_name(self, filename):
 		fname, dot, extension = filename.rpartition('.')
@@ -334,12 +343,12 @@ class ShinyApp(models.Model):
 	order = models.PositiveIntegerField(default=0, help_text="index number (0 is the topmost)")
 
 	@property
-	def home(self):
-		return str(settings.SHINY_APPS + '%s' % slugify(str(self.name)))
-
-	@property
 	def get_name(self):
 		return slugify(str(self.name))
+
+	@property
+	def home(self):
+		return str(settings.SHINY_APPS + '%s' % self.get_name)
 
 	@staticmethod
 	def remove_file_safe(fname):
@@ -351,7 +360,7 @@ class ShinyApp(models.Model):
 			pass
 
 	def file_name_gen(self):
-		return str(settings.SHINY_APPS + '%s'%slugify(str(self.name)))
+		return str(settings.SHINY_APPS + '%s'%self.get_name)
 
 	def file_name_ui(self):
 		return str(self.folder_name()) + settings.SHINY_UI_FILE_NAME
@@ -360,10 +369,10 @@ class ShinyApp(models.Model):
 		return str(self.folder_name()) + settings.SHINY_SERVER_FILE_NAME
 
 	def folder_name(self):
-		return str(settings.SHINY_APPS + '%s/'%slugify(str(self.name)))
+		return str(settings.SHINY_APPS + '%s/'%self.get_name)
 
 	def file_name_zip(self, filename):
-		name = str(settings.UPLOAD_FOLDER + '%s_%s'%(slugify(str(self.name)), slugify(filename)))
+		name = str(settings.UPLOAD_FOLDER + '%s_%s'%(self.get_name, slugify(filename)))
 		self.remove_file_safe(name)
 		return str(name)
 	
@@ -376,6 +385,7 @@ class ShinyApp(models.Model):
 	attached_report = models.ManyToManyField(ReportType)
 
 	# Manages folder creation, soft-linking to reports and zip verification and extraction
+	# 03/06/2015
 	def clean(self):
 		import zipfile, shutil, subprocess, os
 
@@ -452,6 +462,52 @@ class OffsiteUser(models.Model):
 
 	class Meta:
 		ordering = ('first_name',)
+
+	# 04/06/2015
+	def unlink(self, user):
+		"""
+		Remove the reference of user to this off-site user
+		This off-site user, won't show up in user contact list any more
+			and won't have access to any previously shared by this user
+		:param user: current logged in user, usually : request.user
+		:type user: User
+		"""
+		# removes access to any report user might have shared with him
+		rep_list = self.shiny_access.filter(author=user)
+		for each in rep_list:
+			self.shiny_access.remove(each)
+		# remove the attachment link
+		self.belongs_to.remove(user)
+
+	def delete(self, using=None, force=None, *args, **kwargs):
+		"""
+		Remove this off-site user from the database, provided no user reference it anymore
+		:param force: force deletion and remove any remaining reference (shiny_access and belongs_to)
+		:type force: bool
+		:return: if actually deleted from database
+		:rtype: bool
+		"""
+		if force: # delete any relation to this off-site user
+			self.belongs_to.clear()
+			self.shiny_access.clear()
+		# if no other breeze user reference this off-site user, we remove it
+		att_list = self.belongs_to.all()
+		if att_list.count() == 0:
+			super(OffsiteUser, self).delete(*args, **kwargs)
+		else:
+			return False
+		return True
+
+	def drop(self, user):
+		"""
+		Remove this off-site user from the user contact list, and remove any access it has to report shared by user
+		If any other user reference this  off-site user, it won't be deleted.
+		You can force this contact to be totally removed by using .delete(force=True)
+		:param user: current logged in user, usually : request.user
+		:type user: User
+		"""
+		self.unlink(user)
+		self.delete()
 
 	def __unicode__(self):
 		return unicode(self.full_name)
