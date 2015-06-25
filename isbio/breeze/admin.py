@@ -12,5 +12,10 @@ admin.site.register(breeze_models.Project)
 admin.site.register(breeze_models.Post)
 admin.site.register(breeze_models.Group)
 admin.site.register(breeze_models.Statistics)
-admin.site.register(breeze_models.ShinyApp)
+# admin.site.register(breeze_models.ShinyApp)
 admin.site.register(breeze_models.OffsiteUser)
+#admin.site.register(breeze_models.ShinyReport, prepopulated_fields = { 'custom_header': ['title'], })
+admin.site.register(breeze_models.ShinyReport )
+admin.site.register(breeze_models.ShinyTag)
+
+

@@ -3,109 +3,20 @@
 {% block title %}{{ title }} :: Shiny{% endblock %}
 {% block extra_head %}
 	<style type="text/css">
-		.span12, .span6{
-
-		}
 		iframe{
-			height: 80%;
-			/* height: inherit; */
-			/* margin-top: 50px; */
-			/* padding-bottom: 70px; */
-			margin-left: 50px;
-			position: absolute;
-			bottom: 70px;
-			top: 120px;
-			border:0;
-			resize: vertical;
-			right: 5px;
-			width: inherit;
-
+			height: 100%;
+			width: 100%;
+			margin: 0px 0px 0px 0px;
+			position: fixed;
+			border: 0px;
+			/* bottom: 105px; */
+			right: 0px;
+			top: 41px;
 		}
-		/*
-		.container-fluid{
-			padding-left: 0px;
-			padding-right: 0px;
-		}
-		*/
 	</style>
-	<script language="JavaScript">
-		<!--
-		function autoResize(id) {
-			var newheight;
-			var newwidth;
-
-			if (document.getElementById) {
-				newheight = document.getElementById(id).contentWindow.document.body.scrollHeight;
-				newwidth = document.getElementById(id).contentWindow.document.body.scrollWidth;
-			}
-
-			document.getElementById(id).height = (newheight) + "px";
-			document.getElementById(id).width = (newwidth) + "px";
-		}
-		//-->
-	</script>
-	<script type="text/javascript">
-
-
-	</script>
 {% endblock %}
 {% block content %}
-	<div class="row-fluid">
-		<div class="span2 well">
-			<!-- Sidebar content -->
-
-			<h4>Index :</h4>
-			<ul>
-				{% for key, value in pages.items %}
-					<li><a class="index_list_link" id="link{{ forloop.counter }}" href="{{ base_url }}{{ value }}/{{ args }}" onclick="restoreI()" target="iframe_a">{{ key }}</a></li>
-				{% endfor %}
-				<li>--------</li>
-				<li><a href="{{ nozzle }}" onclick="restoreI()" target="iframe_a">Nozzle Report</a></li>
-				{% if outside %}
-					<li><a onclick="show_list();" href="#">My reports</a></li>
-				{% endif %}
-			</ul>
-		</div>
-		<div class="span10">
-			<div class="row-fluid" id="report_div">
-				<div class="well">
-					Patient infos<br/>
-				</div>
-
-			</div>
-
-			{% if outside %}
-				<!-- LIST OF EXISTING REPORTS -->
-				<div class="row-fluid" style="padding-top: 0pt;">
-					<div id="pagination-content" class="span10 offset1">
-					</div>
-				</div>
-			{% endif %}
-			<iframe id="iframe_a" name="iframe_a"></iframe>
-		</div>
-	</div>
-	<script type="text/javascript">
-		$(document).ready(function () {
-			//$('#navbar-content').html('');
-			$('.index_list_link')[0].click();
-		});
-
-		//returns true if obj is defined, contains element prop_name, and obj[prop_name] is not null
-		function not_empty(obj, prop_name) {
-			return obj != undefined && obj[prop_name] != undefined && obj[prop_name].length > 0;
-		}
-		//hide the dynamic block content and shows the Iframe
-		function restoreI() {
-			$('#pagination-content').hide()
-			if ($('#report_div')[0].style.display=='none') $('#report_div').show();
-			if ($('#iframe_a')[0].style.display=='none') $('#iframe_a').show();
-		}
-		//hide the Iframe and shows the dynamic block content
-		function show_list() {
-			$('#report_div').hide();
-			$('#iframe_a').hide();
-			$('#pagination-content').load('{{ base_url }}?list=1');
-			if ($('#pagination-content')[0].style.display == 'none') $('#pagination-content').show();
-		}
-	</script>
+	<iframe id="iframe_a" name="iframe_a" src="{{ frame_src }}"></iframe>
+{% endblock %}
+{% block footer %}
 {% endblock %}

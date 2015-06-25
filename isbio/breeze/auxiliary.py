@@ -29,6 +29,12 @@ def updateServer_routine():
 	p = Popen([qstat, "-g", "c"], stdout=PIPE)
 	output, err = p.communicate()
 	server = 'unknown'
+	s_name = ''
+	cqload = 0
+	used = 0
+	avail = 0
+	total = 0
+	cdsuE = 0
 	for each in output.splitlines():
 		if 'hugemem.q' in each.split(): # TODO switch to dynamic server
 			s_name = each.split()[0]
@@ -47,12 +53,12 @@ def updateServer_routine():
 			else:
 				server = 'idle'
 	server_info = {
-		's_name': s_name,
-		'cqload': str(cqload) + "%",
-		'cdsuE': str(cdsuE),
-		'total': total,
-		'avail': avail,
-		'used': used,
+		's_name': s_name or '',
+		'cqload': str(cqload or '') + "%",
+		'cdsuE': str(cdsuE or ''),
+		'total': total or '',
+		'avail': avail or '',
+		'used': used or '',
 	}
 	return server, server_info
 
@@ -453,18 +459,20 @@ def get_worker_safe_abstract(request, obj_id, model):
 
 
 # 10/03/2015 Clem / ShinyProxy
-def uPrint(request, url, code=None, size=None):
-	print uPrint_sub(request, url, code, size)
+def uPrint(request, url, code=None, size=None, dateF = None):
+	print uPrint_sub(request, url, code, size, dateF)
 
 
-def uPrint_sub(request, url, code=None, size=None):
-	return "[" + dateT() + "] \"PROX " + request.method + "   " + url + " " + request.META[
+def uPrint_sub(request, url, code=None, size=None, dateF = None):
+	return "[" + dateT(dateF) + "] \"PROX " + request.method + "   " + url + " " + request.META[
 		'SERVER_PROTOCOL'] + "\" " + str(code) + " " + str(size)
 
 
 # 10/03/2015 Clem / ShinyProxy
-def dateT():
-	return str(datetime.strftime(datetime.now(), "%d/%b/%Y %H:%M:%S"))
+def dateT(dateF = None):
+	if dateF is None:
+		dateF = settings.USUAL_DATE_FORMAT
+	return str(datetime.now().strftime(dateF))
 
 
 def get_report_path(fitem, fname=None):
@@ -560,6 +568,7 @@ DASHED_LINE = '-----------------------------------------------------------------
 
 def proxy_to(request, path, target_url, query_s=''):
 	import fileinput
+	CONSOLE_DATE_F = "%d/%b/%Y %H:%M:%S"
 	log_obj = logger.getChild(sys._getframe().f_code.co_name)
 	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
 	# TODO deploy on prod and then remove
@@ -587,9 +596,10 @@ def proxy_to(request, path, target_url, query_s=''):
 
 	log = '/var/log/shiny-server.log'
 	log_size = os.stat(log).st_size
+	proxied_request = None
 	try:
 		log_obj.debug(uPrint_sub(request, path + str(qs)))
-		if settings.VERBOSE: uPrint(request, path + str(qs))
+		if settings.VERBOSE: uPrint(request, path + str(qs), dateF=CONSOLE_DATE_F)
 		proxied_request = opener.open(url, data or None)
 	except urllib2.HTTPError as e:
 		more = ''
@@ -621,9 +631,14 @@ def proxy_to(request, path, target_url, query_s=''):
 				pass
 			more = more[:-1] + DASHED_LINE + '\n'
 
+		try:
+			content = e.read()
+		except:
+			content = 'SHINY SERVER : %s\nReason : %s\n%s\n%s'%(e.msg, e.reason, DASHED_LINE, more)
+
 		logger.getChild('shiny_server').error(request.method + ' ' + path + str(qs) + '\n' + more)
-		rep = HttpResponse('SHINY SERVER : ' + e.msg + "\nReason : " + e.reason + "\n" + DASHED_LINE + '\n' + more,
-						   status=e.code, mimetype='text/plain')
+		# rep = HttpResponse(content, status=e.code, mimetype='text/plain')
+		rep = HttpResponse(content, status=e.code, mimetype=e.headers.typeheader)
 	else:
 		status_code = proxied_request.code
 		mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
@@ -631,7 +646,7 @@ def proxy_to(request, path, target_url, query_s=''):
 		if proxied_request.code != 200:
 			print 'PROX::', proxied_request.code
 		log_obj.debug(uPrint_sub(request, path + str(qs), proxied_request.code, str(len(content))))
-		if settings.DEBUG: uPrint(request, path + str(qs), proxied_request.code, str(len(content)))
+		if settings.DEBUG: uPrint(request, path + str(qs), proxied_request.code, str(len(content)), dateF=CONSOLE_DATE_F)
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep
 
@@ -661,3 +676,4 @@ def update_all_jobs_sub(j_objs, r_objs):
 		response.update({ str(obj.id): dict(id=obj.id, name=name, staged=str(date), status=str(obj.status),
 										progress=obj.progress, sge=sge_status, type=type) })
 	return response
+

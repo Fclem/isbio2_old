@@ -18,6 +18,7 @@ from datetime import timedelta
 import socket
 from breeze.models import Report, Jobs
 from exceptions import Exception
+#from views import breeze
 
 if socket.gethostname().startswith('breeze'):
 	import drmaa
@@ -189,13 +190,7 @@ def del_pipe(pipe):
 
 
 def del_report(report):
-	path = str(settings.MEDIA_ROOT) + report.home
-
-	if os.path.isdir(path):
-		shutil.rmtree(path)
 	report.delete()
-
-	return True
 
 
 def del_job(job):
@@ -230,19 +225,33 @@ def schedule_job(job, mailing):
 
 def run_job(job, script=None):
 	"""
-        Submits scripts as an R-job to cluster with qsub (SGE);
-        This submission implements SCRIPTS concept in BREEZE
-        (For REPOTS submission see run_report)
-    """
-	loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
-	config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
+		Submits scripts as an R-job to cluster with qsub (SGE);
+		This submission implements SCRIPTS concept in BREEZE
+		(For REPOTS submission see run_report)
+	"""
+	log = logger.getChild('run_report')
+	assert isinstance(log, logging.getLoggerClass())
+	assert isinstance(job, Jobs)
 
-	default_dir = os.getcwd()
-	os.chdir(loc)
+	try:
+		loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
+		config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
 
-	job.status = "queued_active"
-	job.progress = 15
-	job.save()
+		default_dir = os.getcwd()
+		os.chdir(loc)
+
+		# prevents db being dropped
+		django.db.close_connection()
+
+		job.status = "queued_active"
+		job.breeze_stat = "prepare_run"
+		job.progress = 15
+		job.save()
+		log.info('j' + str(job.id) + ' : creating job')
+
+	except Exception as e:
+		log.exception('j' + str(job.id) + ' : pre-run error ' + str(e))
+		log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
 
 	try:
 		s = drmaa.Session()
@@ -266,7 +275,12 @@ def run_job(job, script=None):
 		jt.remoteCommand = config
 		jt.joinFiles = True
 
+		job.progress = 25
+		#job.status = 'submission'
+		#job.save()
+		log.info('j' + str(job.id) + ' : triggering dramaa.runJob')
 		job.sgeid = s.runJob(jt)
+		log.info('j' + str(job.id) + ' : returned sgedid "' + str(job.sgeid) + '"')
 		job.progress = 30
 		job.save()
 
@@ -275,17 +289,17 @@ def run_job(job, script=None):
 		#if not SGEID:
 		#print "no id!"
 		# TODO have a closer look into that
-		#status = str(s.jobStatus(job.sgeid))
+		log.info('j' + str(job.id) + ' : stat : ' + str(s.jobStatus(job.sgeid)))
 		retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
 		job.progress = 100
 		job.save()
 
 		if retval.hasExited and retval.exitStatus == 0:
 			job.status = 'succeed'
-
-		# clean up the folder
-
+			log.info('j' + str(job.id) + ' : dramaa.runJob ended with exit code 0 !')
+			# clean up the folder
 		else:
+			log.error('j' + str(job.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
 			job = Jobs.objects.get(id=job.id)  # make sure data is updated
 			if job.status != 'aborted':
 				pass
@@ -297,26 +311,26 @@ def run_job(job, script=None):
 
 		#track_sge_job(job, True)
 
+		log.info('j' + str(job.id) + ' : process terminated successfully !')
 		return True
 	except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException, drmaa.NoActiveSessionException) as e:
 		# TODO improve this part
-
-		newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.name, job.jname), 'w')
-		newfile.write("DRMAA ERROR")
+		log.exception('j' + str(job.id) + ' : drmaa error ' + str(e))
+		log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
 		# job.status = "failed"
-		job.progress = 100
+		job.progress = 67
 		job.save()
-		if e == drmaa.AlreadyActiveSessionException:
-			newfile.write("AlreadyActiveSessionException")
-		elif e == drmaa.InvalidArgumentException:
-			newfile.write("InvalidArgumentException")
-		elif e == drmaa.InvalidJobException:
-			newfile.write("InvalidJobException")
-		elif e == drmaa.NoActiveSessionException:
-			newfile.write("NoActiveSessionException")
-		newfile.close()
 		s.exit()
 		return e
+	except Exception as e:
+		# report.status = 'failed'
+		log.exception('r' + str(job.id) + ' : drmaa unknow error ' + str(e))
+		log.error('r' + str(job.id) + ' : process unexcpectedly terminated')
+		job.progress = 66
+		job.save()
+
+		s.exit()
+		return False
 	#except e:
 		# job.status = 'failed'
 		#job.progress = 100
@@ -352,6 +366,7 @@ def run_report(report, fmFlag):
 
 		# prevents db being dropped
 		django.db.close_connection()
+		report.breeze_stat = "prepare_run"
 		report.status = "queued_active"
 		report.progress = 15
 		report.save()
@@ -376,28 +391,39 @@ def run_report(report, fmFlag):
 		jt.joinFiles = True
 		jt.nativeSpecification = "-m bea"
 
+		report.progress = 25
+		#report.status = 'submission'
+		#report.save()
 		log.info('r' + str(report.id) + ' : triggering dramaa.runJob')
 		report.sgeid = s.runJob(jt)
 		log.info('r' + str(report.id) + ' : returned sgedid "' + str(report.sgeid) + '"')
 		report.progress = 30
 		report.save()
-
+		log.info('r' + str(report.id) + ' : stat : ' + str(s.jobStatus(report.sgeid)) )
 		# waiting for the job to end
 		SGEID = copy.deepcopy(report.sgeid)
 		retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
 		report.progress = 100
 		report.save()
 
-		if retval.hasExited and retval.exitStatus == 0:
-			log.info('r' + str(report.id) + ' : dramaa.runJob ended with exit code 0 !')
-			report.status = 'succeed'
-			# clean up the folder
-		else:
-			log.error('r' + str(report.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
-			report = Report.objects.get(id=report.id)  # make sure data is updated
-			if report.status != 'aborted':
-				pass
-				report.status = 'failed'  # seems to interfere with aborting process TODO check
+		print retval
+
+		"""
+		JobInfo(jobId='5146654', hasExited=True, hasSignal=False, terminatedSignal='SIGunknown signal', hasCoreDump=False, wasAborted=False, exitStatus=0, resourceUsage={'exit_status': '0.0000', 'ru_inblock': '0.0000', 'io': '0.0195', 'acct_maxvmem': '1615011840.0000', 'ru_nvcsw': '3780.0000', 'maxvmem': '1615011840.0000', 'ru_isrss': '0.0000', 'ru_stime': '1.4118', 'ru_nsignals': '0.0000', 'priority': '0.0000', 'mem': '19.2431', 'ru_nivcsw': '1821.0000', 'acct_iow': '0.0000', 'acct_io': '0.0195', 'acct_cpu': '17.2444', 'acct_mem': '19.2431', 'iow': '0.0000', 'start_time': '1434979102.0000', 'ru_msgsnd': '0.0000', 'ru_wallclock': '25.0000', 'ru_minflt': '121285.0000', 'submission_time': '1434979101.0000', 'ru_utime': '15.8326', 'ru_oublock': '0.0000', 'ru_nswap': '0.0000', 'ru_majflt': '0.0000', 'signal': '0.0000', 'vmem': '0.0000', 'ru_ixrss': '0.0000', 'ru_ismrss': '0.0000', 'end_time': '1434979127.0000', 'ru_idrss': '0.0000', 'ru_maxrss': '279540.0000', 'ru_msgrcv': '0.0000', 'cpu': '17.2444'})
+
+		"""
+
+		if retval.hasExited:
+			if retval.exitStatus == 0:
+				log.info('r' + str(report.id) + ' : dramaa.runJob ended with exit code 0 !')
+				report.status = 'succeed'
+				# clean up the folder
+			else:
+				log.error('r' + str(report.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
+				report = Report.objects.get(id=report.id)  # make sure data is updated
+				if report.status != 'aborted':
+					pass
+					report.status = 'failed'  # seems to interfere with aborting process TODO check
 
 		report.save()
 
@@ -435,6 +461,7 @@ def run_report(report, fmFlag):
 
 	log.info('r' + str(report.id) + ' : process terminated successfully !')
 	return True
+
 
 # TODO check that
 def abort_report(report):
@@ -489,7 +516,9 @@ decodestatus = {
 	drmaa.JobState.FAILED: 'job finished, but failed',
 	'aborted': 'job has been aborted',
 	'init': 'job instance is being generated (if you see this more than 1 min please contact admin)',
-	'scheduled': 'job is saved for later submission'
+	'scheduled': 'job is saved for later submission',
+	'checking': '...',
+	'submission': '...'
 }
 
 
@@ -503,15 +532,22 @@ def track_sge_job(job, force_refresh=False):
 	# force_refresh = False
 
 	status = str(job.status)
-	log.info(type + str(job.id) + ' : status is : ' + status)
+	message = type + str(job.id) + ' : status : ' + status
+	log.debug(message)
 
-	if job.sgeid != "":
-		if force_refresh and status != 'succeed' and status != 'aborted' and status != drmaa.JobState.FAILED:
+	if status != 'succeed' and status != 'aborted' and status != drmaa.JobState.FAILED and job.sgeid != "":
+		if job.breeze_stat == 'init' or job.breeze_stat == 'prepare_run':
+			force_refresh = True
+			job.breeze_stat = 'refreshing'
+			job.save()
+
+		if force_refresh:
 			try:
 				s = drmaa.Session()
 				s.initialize()
 
 				status = str(s.jobStatus(job.sgeid))
+				log.info(type + str(job.id) + ' : drmaa says ' + str(job.status))
 			except drmaa.InvalidArgumentException:
 				log.exception(type + str(job.id) + ' : drmaa InvalidArgumentException')
 				if settings.DEBUG: print("InvalidArgumentException")
@@ -527,7 +563,7 @@ def track_sge_job(job, force_refresh=False):
 					s.exit()
 				except Exception as e:
 					pass
-	elif job.status!='scheduled':
+	elif job.status != 'scheduled':
 		now_t = timezone.now()  # .time()
 		if isinstance(job, Jobs):
 			crea = job.staged
@@ -563,15 +599,21 @@ def track_sge_job(job, force_refresh=False):
 	if changed:
 		job.save()
 		# job.update(progress=job.progress, status=job.status, sgeid=job.sgeid)
+		log.info(message + ' changed to ' + str(job.status))
+
+	log.debug(type + str(job.id) + ' : nwstat : ' + str(job.status))
 
 	return decodestatus[job.status]
 
 
-# 29/05/2015 TOOOOOOOO SLOW
+# 29/05/2015
 def track_sge_job_bis(jobs, force_refresh=False):
 	log = logger.getChild('track_sge_job_bis')
 
 	assert isinstance(log, logging.getLoggerClass())
+
+	if jobs == list():
+		return
 
 	stats = dict()
 
@@ -585,11 +627,18 @@ def track_sge_job_bis(jobs, force_refresh=False):
 			changed = False
 
 			status = str(job.status)
-			log.info(type + str(job.id) + ' : status is : ' + status)
+			message = type + str(job.id) + ' : status : ' + status
+			log.debug(message)
 
 			if job.sgeid != "":
+				if job.breeze_stat == 'init' or job.breeze_stat == 'prepare_run':
+					force_refresh = True
+					job.breeze_stat = 'refreshing'
+					job.save()
+
 				if force_refresh and status != 'succeed' and status != 'aborted' and status != drmaa.JobState.FAILED:
 					status = str(s.jobStatus(job.sgeid))
+					log.info(type + str(job.id) + ' : drmaa says ' + str(job.status))
 			elif job.status != 'scheduled':
 				now_t = timezone.now()  # .time()
 				if isinstance(job, Jobs):
@@ -609,7 +658,7 @@ def track_sge_job_bis(jobs, force_refresh=False):
 					job.progress = 100
 					changed = True
 
-			if status != job.status:
+			if status != job.status and job.status != 'failed' and job.status != 'aborted' and job.status != 'succeed':
 				job.status = status
 				changed = True
 
@@ -626,6 +675,9 @@ def track_sge_job_bis(jobs, force_refresh=False):
 
 			if changed:
 				job.save()
+				log.info(message + ' changed to ' + str(job.status))
+
+			log.debug(type + str(job.id) + ' : nwstat : ' + str(job.status))
 
 			# stats.update({job.id: decodestatus[job.status]})
 
@@ -638,6 +690,8 @@ def track_sge_job_bis(jobs, force_refresh=False):
 	except drmaa.AlreadyActiveSessionException:  # this is OK, since a child process is in a drmaa session monitoring the job
 		if settings.DEBUG: print("AlreadyActiveSessionException")
 		log.warning('all : drmaa AlreadyActiveSessionException')
+	except Exception as e:
+		log.error('all : unhandeled drmaa error : ' + str(e))
 
 	try:
 		s.exit()
@@ -970,7 +1024,7 @@ def build_report(report_data, request_data, report_property, sections):
 	# for e in list(report_property.cleaned_data['share']):
 	# buddies.append( str(e) )
 
-	# shared_users = breeze.models.User.objects.filter(username__in=buddies)
+	# shared_users = breeze.models.OrderedUser.objects.filter(username__in=buddies)
 	shared_users = aux.extract_users(request_data.POST.get('Groups'), request_data.POST.get('Individuals'))
 
 	if shared_users == list() and request_data.POST.get('shared'):
@@ -987,7 +1041,8 @@ def build_report(report_data, request_data, report_property, sections):
 		progress=1,
 		project=breeze.models.Project.objects.get(id=request_data.POST.get('project')),
 		institute=insti,
-		status='init'
+		status='init',
+		breeze_stat='init'
 		# project=breeze.models.Project.objects.get(name=report_property.cleaned_data['Project'])
 	)
 	dbitem.save()

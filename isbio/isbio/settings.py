@@ -3,6 +3,7 @@ from configurations import Settings
 import logging
 import os
 import socket
+from datetime import datetime
 
 # TODO : redesign
 
@@ -19,14 +20,23 @@ def recur_rec(nb, funct, args):
 	return args
 
 
+USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S%z"
+log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
+LOG_PATH = '/var/log/breeze/%s' % log_fname
+
 class BreezeSettings(Settings):
+	global USUAL_DATE_FORMAT, LOG_PATH
 	DEBUG = False
 	TEMPLATE_DEBUG = DEBUG
 
+	USUAL_DATE_FORMAT = USUAL_DATE_FORMAT
+	LOG_PATH = LOG_PATH
+
 	logging.basicConfig(level=logging.INFO,
-	                    format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
-	                    datefmt='%a, %d %b %Y %H:%M:%S',
-	                    filename='/tmp/BREEZE.log', filemode='w')
+						format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
+						datefmt=USUAL_DATE_FORMAT,
+						# filename='/tmp/BREEZE.log', filemode='w')
+						filename=LOG_PATH, filemode='w+')
 
 	ADMINS = (
 		('Clement FIERE', 'clement.fiere@helsinki.fi'),
@@ -134,7 +144,7 @@ class BreezeSettings(Settings):
 		# Uncomment the next line for simple clickjacking protection:
 		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 	)
-
+	# from django_cas.backends import CASBackend
 	AUTHENTICATION_BACKENDS = (
 		'django.contrib.auth.backends.ModelBackend',
 		'django_cas.backends.CASBackend',
@@ -212,6 +222,7 @@ class BreezeSettings(Settings):
 	)
 
 class DevSettings(BreezeSettings):
+	global USUAL_DATE_FORMAT, LOG_PATH
 	DEBUG = True
 	VERBOSE = False
 	SQL_DUMP = False
@@ -234,7 +245,6 @@ class DevSettings(BreezeSettings):
 	os.environ['SGE_CELL'] = 'default'
 	os.environ['DRMAA_LIBRARY_PATH'] = os.environ['SGE_ROOT']+'/lib/'+sge_arch+'/libdrmaa.so'
 	os.environ['MAIL'] = '/var/mail/dbychkov'
-
 
 	DATABASES = {
 		'default': {
@@ -259,6 +269,13 @@ class DevSettings(BreezeSettings):
 	PROJECT_FOLDER = '/fs/projects/'
 	# BREEZE_FOLDER = 'breeze-dev/' if DEV_MODE else 'breeze/'
 	BREEZE_FOLDER = 'breeze' + ('-dev' if DEV_MODE else '') + '/'
+	if HOST_NAME.endswith('ph'):
+		BREEZE_FOLDER = 'breeze_new/'
+		DEBUG = False
+		VERBOSE = False
+		SQL_DUMP = False
+		PHARMA_MODE = True
+
 	PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
 	if not os.path.isdir(PROJECT_PATH):
 		PROJECT_FOLDER = '/projects/'
@@ -281,14 +298,34 @@ class DevSettings(BreezeSettings):
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	# SHINY RELATED STUFF
 	SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
+	SHINY_TAGS = MEDIA_ROOT + 'shinyTags/'
+	SHINY_REPORTS = MEDIA_ROOT + 'shinyReports/'
+	SHINY_REPORT_TEMPLATE_PATH = SOURCE_ROOT + 'isbio/shiny/report_template/'
 	SHINY_TARGET_URL = 'http://127.0.0.1:3838/breeze/'
+	SHINY_LIBS_TARGET_URL = 'http://127.0.0.1:3838/libs/'
+	SHINY_LIBS_BREEZE_URL = '/shiny/libs/'
+	SHINY_HEADER_FILE_NAME = 'header.R'
+	SHINY_LOADER_FILE_NAME = 'loader.R'
+	SHINY_GLOBAL_FILE_NAME = 'global.R'
 	SHINY_UI_FILE_NAME = 'ui.R'
 	SHINY_SERVER_FILE_NAME = 'server.R'
+	SHINY_FILE_LIST = 'files.json'
+	# SHINY_SERVER_FOLDER = 'scripts_server/'
+	SHINY_UI_FOLDER = 'scripts_body/'
+	SHINY_SERVER_FOLDER = 'scripts_server/'
+	SHINY_RES_FOLDER = 'www/'
+	SHINY_DASH_UI_FILE = 'dash_ui.R'
+	SHINY_DASH_SERVER_FILE = 'dashboard_serverside.R'
+	SHINY_DASH_UI_FN = SHINY_UI_FOLDER + SHINY_DASH_UI_FILE
+	SHINY_DASH_SERVER_FN = SHINY_SERVER_FOLDER + SHINY_DASH_SERVER_FILE
+	SHINY_TAG_CANVAS_FN = 'mould/shinyTagTemplate.zip'
+	SHINY_TAG_CANVAS_PATH = MEDIA_ROOT + SHINY_TAG_CANVAS_FN
 	SHINY_MIN_FILE_SIZE = 14 # library(shiny) is 14 byte long
 	# NOZZLE_TARGET_URL = 'http://' + FULL_HOST_NAME + '/'
-
+	# Install shiny library : install.packages('name of the lib', lib='/usr/local/lib/R/site-library', dependencies=TRUE)
 
 	# STATIC URL MAPPINGS
+	SHINY_URL = '/shiny/rep/'
 	STATIC_URL = '/static/'
 	MEDIA_URL = '/media/'
 
@@ -302,8 +339,8 @@ class DevSettings(BreezeSettings):
 
 	logging.basicConfig(level=logging.DEBUG,
 						format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
-						datefmt='%a, %d %b %Y %H:%M:%S',
-						filename=TEMP_FOLDER + 'breeze.log', filemode='w')
+						datefmt=USUAL_DATE_FORMAT, # "%d/%b/%Y %H:%M:%S%z",
+						filename='/var/log/breeze/breeze-dev.log', filemode='w+')
 
 	# mail config
 	EMAIL_HOST = 'smtp.gmail.com'
@@ -324,28 +361,8 @@ class DevSettings(BreezeSettings):
 	if MODE_PROD:
 		DEBUG = False
 		VERBOSE = False
-	print 'Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME
-	logging.info('Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME)
 
-
-class PharmaSettings(BreezeSettings):
-	# auto-sensing if running on dev or prod, for dynamic environment configuration
-	FULL_HOST_NAME = socket.gethostname()
-	HOST_NAME = str.split(FULL_HOST_NAME, '.')[0]
-	if HOST_NAME.endswith('ph'):
-		DEBUG = False
-		VERBOSE = False
-		SQL_DUMP = False
-		PHARMA_MODE = True
-
-		RUN_MODE = 'pharma'
-		DEV_MODE = False
-		MODE_PROD = True
-
-		print 'source home : ' + SOURCE_ROOT
-		logging.info('source home : ' + SOURCE_ROOT)
-		print 'project home : ' + PROJECT_PATH
-		logging.info('project home : ' + PROJECT_PATH)
-
-		print 'Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME
-		logging.info('Settings loaded. Running ' + RUN_MODE + ' on ' + FULL_HOST_NAME)
+	print 'Logging on %s\nSettings loaded. Running %s on %s' % (LOG_PATH, RUN_MODE, FULL_HOST_NAME)
+	if PHARMA_MODE:
+		print 'RUNNING WITH PHARMA'
+	logging.info('Settings loaded. Running %s on %s' % (RUN_MODE, FULL_HOST_NAME))

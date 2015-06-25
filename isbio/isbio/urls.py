@@ -51,7 +51,8 @@ urlpatterns = patterns('',
     url(r'^media/reports/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_wrap2),
     url(r'^reports/delete/(?P<rid>\d+)(?P<redir>-[a-z]+)?$', views.delete_report),
     url(r'^reports/edit_access/(?P<rid>\d+)$', views.edit_report_access),
-    url(r'^reports/overview/(?P<rtype>[A-Za-z]+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
+    #url(r'^reports/overview/(?P<rtype>[A-Za-z]+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
+    url(r'^reports/overview/(?P<rtype>\w+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
     url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
     url(r'^reports/check$', views.check_reports),  # Re Run report
     url(r'^reports/send/(?P<rid>\d+)$', views.send_report),
@@ -64,12 +65,17 @@ urlpatterns = patterns('',
     # Shiny page in
     url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
     # Shiny page out
-    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out, name='shiny.tab.out'),
+    # url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out, name='shiny.tab.out'),
     # sub-level access control wrapper (in)
-    url(r'^shiny/apps/(?P<path>.*)$', views.report_shiny_in_wrapper),
+    url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
+    url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)$', views.report_shiny_in_wrapper),
+    url(r'^shiny/rep/(?P<rid>\d+)/$', views.report_shiny_in_wrapper),
+    url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
+    url(r'^shiny/libs/$', views.shiny_libs),
+    # TODO re write for new shiny design
     # sub-level access control wrapper (out)
-    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/apps/(?P<path>.*)$', views.report_shiny_out_wrapper),
-    url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/nozzle$', views.report_nozzle_out_wrapper),
+    # url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/rep/(?P<path>.*)$', views.report_shiny_out_wrapper),
+    # url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/nozzle$', views.report_nozzle_out_wrapper),
     # fusion thoses lines
     url(r'^jobs/current', views.jobs, {'state': "current"}),
     url(r'^jobs/scheduled?$', views.jobs, {'state': "scheduled"}),
@@ -130,8 +136,6 @@ urlpatterns = patterns('',
 
     # url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
     #             {'document_root': settings.MEDIA_ROOT}),
-    # TODO test for completition of the access-enforced static files serving
-    # Examples:
     # Examples:
     # url(r'^$', 'isbio.views.home', name='home'),
     # url(r'^isbio/', include('isbio.foo.urls')),
@@ -146,7 +150,7 @@ urlpatterns = patterns('',
 if settings.DEBUG and settings.DEV_MODE:
     urlpatterns += patterns('django.contrib.staticfiles.views',
         url(r'^static/(?P<path>.*)$', 'serve'),
-        url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Testing
+        # url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Testing
         url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to, {'target_url': 'http://127.0.0.1:3838/sample-apps/'}),  # testing
         # url(r'^shiny/(?P<path>.*)$', views.proxy_to, {'target_url': settings.SHINY_TARGET_URL}),
     )
