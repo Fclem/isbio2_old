@@ -1023,17 +1023,14 @@ def build_report(report_data, request_data, report_property, sections):
 	log = logger.getChild('build_report')
 	assert isinstance(log, logging.getLoggerClass())
 	assert isinstance(request_data.user, User)
-	# 'report_name' - report's headline
 
 	# get the request ReportType
 	rt = ReportType.objects.get(type=report_data['report_type'])
-
-	# shared_users = breeze.models.OrderedUser.objects.filter(username__in=buddies)
+	# list of users that will have access to this report
 	shared_users = aux.extract_users(request_data.POST.get('Groups'), request_data.POST.get('Individuals'))
-
 	if shared_users == list() and request_data.POST.get('shared'):
 		shared_users = request_data.POST.getlist('shared')
-
+	# author
 	the_user = request_data.user
 	the_user.prof = UserProfile.objects.get(user=the_user)
 	assert isinstance(the_user.prof, UserProfile)
