@@ -459,14 +459,20 @@ def get_worker_safe_abstract(request, obj_id, model):
 
 
 # 10/03/2015 Clem / ShinyProxy
-def uPrint(request, url, code=None, size=None, dateF = None):
-	print uPrint_sub(request, url, code, size, dateF)
+def uPrint(request, url, code=None, size=None, datef=None):
+	print uPrint_sub(request, url, code, size, datef)
 
 
-def uPrint_sub(request, url, code=None, size=None, dateF = None):
-	return "[" + dateT(dateF) + "] \"PROX " + request.method + "   " + url + " " + request.META[
-		'SERVER_PROTOCOL'] + "\" " + str(code) + " " + str(size)
+def uPrint_sub(request, url, code=None, size=None, datef=None):
+	return console_print_sub("\"PROX %s   %s %s\" %s %s" % (request.method, url, request.META['SERVER_PROTOCOL'], code, size), datef=datef)
 
+# 25/06/2015 Clem
+def console_print(text, datef=None):
+	print console_print_sub(text, datef=datef)
+
+
+def console_print_sub(text, datef=None):
+	return "[%s] %s"%(dateT(datef), text)
 
 # 10/03/2015 Clem / ShinyProxy
 def dateT(dateF = None):
@@ -568,7 +574,7 @@ DASHED_LINE = '-----------------------------------------------------------------
 
 def proxy_to(request, path, target_url, query_s=''):
 	import fileinput
-	CONSOLE_DATE_F = "%d/%b/%Y %H:%M:%S"
+	CONSOLE_DATE_F = settings.CONSOLE_DATE_F
 	log_obj = logger.getChild(sys._getframe().f_code.co_name)
 	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
 	# TODO deploy on prod and then remove
@@ -599,7 +605,7 @@ def proxy_to(request, path, target_url, query_s=''):
 	proxied_request = None
 	try:
 		log_obj.debug(uPrint_sub(request, path + str(qs)))
-		if settings.VERBOSE: uPrint(request, path + str(qs), dateF=CONSOLE_DATE_F)
+		if settings.VERBOSE: uPrint(request, path + str(qs), datef=CONSOLE_DATE_F)
 		proxied_request = opener.open(url, data or None)
 	except urllib2.HTTPError as e:
 		more = ''
@@ -646,7 +652,7 @@ def proxy_to(request, path, target_url, query_s=''):
 		if proxied_request.code != 200:
 			print 'PROX::', proxied_request.code
 		log_obj.debug(uPrint_sub(request, path + str(qs), proxied_request.code, str(len(content))))
-		if settings.DEBUG: uPrint(request, path + str(qs), proxied_request.code, str(len(content)), dateF=CONSOLE_DATE_F)
+		if settings.DEBUG: uPrint(request, path + str(qs), proxied_request.code, str(len(content)), datef=CONSOLE_DATE_F)
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep
 

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User # as DjangoUser
 from django.utils import timezone
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 import logging, sys
 
 logger = logging.getLogger(__name__)
@@ -195,41 +196,16 @@ class ShinyReport(models.Model):
 	def res_folder_path(self):
 		return str('%s%s' % (self.folder_path, self.RES_FOLDER))
 
-	# TODO change all thoses to attribute
-	@staticmethod
-	def path_template_folder():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH)
-
-	@staticmethod
-	def path_server_r_template():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH + ShinyReport.FILE_SERVER_NAME)
-
-	@staticmethod
-	def path_ui_r_template():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH + ShinyReport.FILE_UI_NAME)
-
-	@staticmethod
-	def path_global_r_template():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH + ShinyReport.FILE_GLOBAL)
-
-	@staticmethod
-	def path_heade_r_template():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH + ShinyReport.FILE_HEADER_NAME)
-
-	@staticmethod
-	def path_global_r_template():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH + ShinyReport.FILE_GLOBAL)
-
+	path_template_folder = REPORT_TEMPLATE_PATH
+	path_server_r_template = REPORT_TEMPLATE_PATH + FILE_SERVER_NAME
+	path_ui_r_template = REPORT_TEMPLATE_PATH + FILE_UI_NAME
+	path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
+	path_heade_r_template = REPORT_TEMPLATE_PATH + FILE_HEADER_NAME
+	# path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
 	path_loader_r_template = str(REPORT_TEMPLATE_PATH + FILE_LOADER)
 	path_file_lst_template = str(REPORT_TEMPLATE_PATH + FILE_LIST)
-
-	@staticmethod
-	def path_dash_ui_r_template():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH + ShinyReport.FILE_DASH_UI)
-
-	@staticmethod
-	def path_dash_server_r_template():
-		return str(ShinyReport.REPORT_TEMPLATE_PATH + ShinyReport.FILE_DASH_SERVER)
+	path_dash_ui_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_UI
+	path_dash_server_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_SERVER
 
 	@property # relative path to link holder directory
 	def _link_holder_rel_path(self):
@@ -436,6 +412,7 @@ class ShinyReport(models.Model):
 		# opens ui.R template file
 		filein = open(self.path_ui_r_template())
 		src = Template(filein.read())
+		filein.close()
 		# document data
 		generated = 'Generated on %s for user %s (%s)' % (self.created, self.author.get_full_name(), self.author)
 		updated = 'Last updated on %s for user %s (%s)' % (aux.dateT(), a_user.get_full_name(), a_user)
@@ -575,9 +552,9 @@ class ReportType(models.Model):
 
 		for each in ShinyReport.objects.all():
 			each.regen_report()
-		#if self.shiny_report_id > 0:
-		#	# call symbolic link update
-		#	self.shiny_report._link_all_reports(True)
+		# if self.shiny_report_id > 0:
+		# 	# call symbolic link update
+		# 	self.shiny_report._link_all_reports(True)
 		return obj
 
 	def __unicode__(self):
@@ -638,7 +615,51 @@ class Rscripts(models.Model):
 	
 	def __unicode__(self):
 		return self.name
-	
+
+	@property
+	def sec_id(self):
+		return 'Section_dbID_%s' % self.id
+
+	_path_r_template = settings.TAGS_TEMPLATE_PATH
+
+	@property
+	def _code_path(self):
+		return settings.MEDIA_ROOT + str(self.code)
+
+	@property
+	def _header_path(self):
+		return settings.MEDIA_ROOT + str(self.header)
+
+	@property
+	def xml_path(self):
+		return settings.MEDIA_ROOT + str(self.docxml)
+
+	def get_R_code(self, gen_params):
+		"""
+		Generates the R code for the report generation of this tag, using the template
+		:param gen_params: the result of shell.gen_params_string
+		:type gen_params: str
+		:return: R code for this tag
+		:rtype: str
+		"""
+		from string import Template
+
+		filein = open(self._path_r_template)
+		src = Template(filein.read())
+		filein.close()
+		# source main code segment
+		body = open(self._code_path).read()
+		# final step - fire header
+		headers = open(self._header_path).read()
+
+		d = { 'tag_name': self.name,
+				'body': body,
+				'gen_params': gen_params,
+				'headers': headers,
+			}
+		# do the substitution
+		return src.substitute(d)
+
 	class Meta:
 		ordering = ["name"]
 
@@ -698,7 +719,7 @@ class UserProfile(models.Model):
 	
 	def file_name(self, filename):
 		fname, dot, extension = filename.rpartition('.')
-		slug = slugify(self.name)
+		slug = slugify(self.user.username)
 		return 'profiles/%s/%s.%s' % (slug, slug, extension)
 	
 	fimm_group = models.CharField(max_length=75, blank=True)
@@ -822,7 +843,7 @@ class Report(models.Model):
 	description = models.CharField(max_length=350, blank=True)
 	author = ForeignKey(User)
 	created = models.DateTimeField(auto_now_add=True)
-	home = models.CharField(max_length=155, blank=True)
+	# home = models.CharField(max_length=155, blank=True)
 	# _status = models.CharField(max_length=15, blank=True, db_column="status")
 	# TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
 	status = models.CharField(max_length=15, blank=True)
@@ -838,7 +859,7 @@ class Report(models.Model):
 	# conf_params = models.(null=True, blank=True, default=None)
 	conf_files = models.TextField(null=True, help_text="!! DO NOT EDIT !!", editable=False)
 	
-	shiny_key = models.CharField(max_length=64, null=True, help_text="!! DO NOT EDIT !!", editable = False)
+	shiny_key = models.CharField(max_length=64, null=True, help_text="!! DO NOT EDIT !!", editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
 	breeze_stat = models.CharField(max_length=16, default='init')
 
@@ -846,24 +867,46 @@ class Report(models.Model):
 	# conf_files = models.CharField(null=True, blank=True, default=None)
 	
 	def file_name(self, filename):
-		fname, dot, extension = filename.rpartition('.')
-		slug = slugify(str(self.id) + '_' + self.name + '_' + self.author.username)
+		# fname, dot, extension = filename.rpartition('.')
+		slug = self.folder_name
 		return 'reports/%s/%s' % (slug, filename)
 	
 	rexec = models.FileField(upload_to=file_name, blank=True)
 	dochtml = models.FileField(upload_to=file_name, blank=True)
 
+	fm_flag = models.BooleanField(default=False)
+
 	# 04/06/2015
 	@property
 	def args_string(self):
-		"""	The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
+		""" The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
 		from django.utils.http import urlencode
 		if self.rora_id > 0:
-			return '?%s'%urlencode([('path', self.home), ('roraId', str(self.rora_id))])
+			return '?%s' % urlencode([('path', self.home), ('roraId', str(self.rora_id))])
 		else:
 			return ''
 
-	# 16/08/15
+	# 25/06/15
+	@property
+	def folder_name(self):
+		return slugify('%s_%s_%s' % (self.id, self.name, self.author.username))
+
+	# 25/06/15
+	@property
+	def r_exec_path(self):
+		return '%s%s/'%(settings.MEDIA_ROOT, self.rexec)
+
+	# 25/06/15
+	@property
+	def home(self):
+		"""
+		Returns the relative path to this report folder
+		:return: the relative path to this report folder
+		:rtype: str
+		"""
+		return '%s%s/' % (settings.REPORTS_FOLDER, self.folder_name)
+
+	# 16/06/15
 	@property
 	def get_home(self):
 		"""
@@ -871,7 +914,7 @@ class Report(models.Model):
 		:return: the absolute path to this report folder
 		:rtype: str
 		"""
-		return '%s%s/' % (settings.MEDIA_ROOT, self.home)
+		return '%s%s' % (settings.MEDIA_ROOT, self.home)
 
 	@property
 	def nozzle_url(self):
@@ -888,6 +931,101 @@ class Report(models.Model):
 		assert isinstance(this_user, (User, OrderedUser))
 		return this_user and (this_user in self.shared.all() or self.author == this_user) \
 				and self.type.shiny_report.enabled
+
+	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
+
+	@property
+	def _rtype_config_path(self):
+		return settings.MEDIA_ROOT + str(self.type.config)
+
+	# TODO : use clean or save ?
+	def generate_R_file(self, sections, request_data):
+		"""
+		generate the Nozzle generator R file
+		:param sections: Rscripts list
+		:type sections: list
+		:param request_data:
+		:type request_data: HttpRequest
+		"""
+		from string import Template
+		from django.core.files import base
+		from breeze import shell as rshell
+		import xml.etree.ElementTree as xml
+
+		filein = open(self._path_r_template)
+		src = Template(filein.read())
+		filein.close()
+		tag_list = list()
+		self.fm_flag = False
+		for tag in sections:
+			assert (isinstance(tag, Rscripts)) # useful for code assistance ONLY
+			if tag.sec_id in request_data.POST and request_data.POST[tag.sec_id] == '1':
+				tree = xml.parse(tag.xml_path)
+				if tag.name == "Import to FileMaker":
+					self.fm_flag = True
+
+				gen_params = rshell.gen_params_string(tree, request_data.POST, self.home, request_data.FILES)
+				tag_list.append( tag.get_R_code(gen_params) )
+
+		d = { 'loc': self.get_home,
+				'report_name': self.title,
+				'project_parameters': self.dump_project_parameters,
+				'pipeline_config': self.dump_pipeline_config,
+				'tags': '\n'.join(tag_list),
+				'dochtml': self.dochtml,
+			}
+		# do the substitution
+		result = src.substitute(d)
+		# save r-file
+		self.rexec.save('script.r', base.ContentFile(result))
+
+	@property
+	def dump_project_parameters(self):
+		import copy
+		dump = '# <----------  Project Details  ----------> \n'
+		dump += 'report.author          <- \"%s\"\n'%self.author.username
+		dump += 'report.pipeline        <- \"%s\"\n'%self.type
+		dump += 'project.name           <- \"%s\"\n'%self.project.name
+		dump += 'project.manager        <- \"%s\"\n'%self.project.manager
+		dump += 'project.pi             <- \"%s\"\n'%self.project.pi
+		dump += 'project.author         <- \"%s\"\n'%self.project.author
+		dump += 'project.collaborative  <- \"%s\"\n'%self.project.collaborative
+		dump += 'project.wbs            <- \"%s\"\n'%self.project.wbs
+		dump += 'project.external.id    <- \"%s\"\n'%self.project.external_id
+		dump += '# <----------  end of Project Details  ----------> \n\n'
+		
+		return copy.copy(dump)
+
+	@property
+	def dump_pipeline_config(self):
+		import copy
+		dump = '# <----------  Pipeline Config  ----------> \n'
+		dump += 'query.key          <- \"%s\"  # id of queried RORA instance \n'% self.rora_id
+		dump += open(self._rtype_config_path).read() + '\n'
+		dump += '# <------- end of Pipeline Config --------> \n\n\n'
+
+		return copy.copy(dump)
+
+	@property
+	def title(self):
+		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
+
+	@property
+	def html_path(self):
+		return '%sreport' % self.get_home
+
+	def generate_shiny_key(self):
+		"""
+		Generate a sha256 key for outside access
+		"""
+		from datetime import datetime
+		from hashlib import sha256
+		m = sha256()
+		m.update(settings.SECRET_KEY + self.folder_name + str(datetime.now()))
+		self.shiny_key = str(m.hexdigest())
+
+	def run(self):
+		pass
 
 	def save(self, *args, **kwargs):
 		super(Report, self).save(*args, **kwargs) # Call the "real" save() method.

@@ -32,8 +32,8 @@ def init_script(name, inline, person):
 	if not os.path.isdir(spath):
 		os.makedirs(spath)
 		dbitem = breeze.models.Rscripts(name=name,
-		                                category=breeze.models.Script_categories.objects.get(category="general"),
-		                                inln=inline, author=person, details="empty", order=0)
+										category=breeze.models.Script_categories.objects.get(category="general"),
+										inln=inline, author=person, details="empty", order=0)
 
 		# create empty files for header, code and xml
 		dbitem.header.save('name.txt', base.ContentFile('# write your header here...'))
@@ -346,7 +346,7 @@ def run_job(job, script=None):
 
 # THIS should run in a separate Process
 # TODO merge those two functions
-def run_report(report, fmFlag):
+def run_report(report):
 	"""
         Submits reports as an R-job to cluster with SGE;
         This submission implements REPORTS concept in BREEZE
@@ -360,6 +360,8 @@ def run_report(report, fmFlag):
 		config = loc + '/sgeconfig.sh'
 		default_dir = os.getcwd()
 		os.chdir(loc)
+
+		fmFlag = report.fm_flag
 
 		if fmFlag:
 			os.system(settings.JDBC_BRIDGE_PATH)
@@ -1002,27 +1004,29 @@ def dump_pipeline_config(report_type, query_key):
 
 def build_report(report_data, request_data, report_property, sections):
 	""" Assembles report home folder, configures DRMAA and R related files
-        and spawns a new process for reports DRMAA job on cluster.
+		and spawns a new process for reports DRMAA job on cluster.
 
-    Arguments:
-    report_data      -- report info dictionary
-    request_data     -- a copy of request object
-    report_property  -- report property form
-    sections         -- a list of 'Rscripts' db objects
+	:param report_data: report info dictionary
+	:type report_data: dict
+	:param request_data: a copy of request object
+	:type request_data: HTTPrequest
+	:param report_property: report property form
+	:type report_property: breezeForms.ReportPropsForm
+	:param sections: a list of 'Rscripts' db objects
+	:type sections: list
+	:return: True
+	:rtype: bool
+	"""
 
-    """
+	from breeze.models import Project, UserProfile, ReportType, Report
+	from django.contrib.auth.models import User
 	log = logger.getChild('build_report')
 	assert isinstance(log, logging.getLoggerClass())
+	assert isinstance(request_data.user, User)
 	# 'report_name' - report's headline
 
-	rt = breeze.models.ReportType.objects.get(type=report_data['report_type'])
-	report_name = report_data['report_type'] + ' Report' + ' :: ' + report_data['instance_name'] + '  <br>  ' + str(
-		rt.description)
-
-	# This trick is to extract users's names from the form
-	# buddies = list()
-	# for e in list(report_property.cleaned_data['share']):
-	# buddies.append( str(e) )
+	# get the request ReportType
+	rt = ReportType.objects.get(type=report_data['report_type'])
 
 	# shared_users = breeze.models.OrderedUser.objects.filter(username__in=buddies)
 	shared_users = aux.extract_users(request_data.POST.get('Groups'), request_data.POST.get('Individuals'))
@@ -1030,103 +1034,45 @@ def build_report(report_data, request_data, report_property, sections):
 	if shared_users == list() and request_data.POST.get('shared'):
 		shared_users = request_data.POST.getlist('shared')
 
-	#print 'shared users :', shared_users
+	the_user = request_data.user
+	the_user.prof = UserProfile.objects.get(user=the_user)
+	assert isinstance(the_user.prof, UserProfile)
 
-	insti = breeze.models.UserProfile.objects.get(user=request_data.user).institute_info
 	# create initial instance so that we can use its db id
-	dbitem = breeze.models.Report(
-		type=breeze.models.ReportType.objects.get(type=report_data['report_type']),
+	dbitem = Report(
+		type=rt,
 		name=str(report_data['instance_name']),
-		author=request_data.user,
+		author=the_user,
 		progress=1,
-		project=breeze.models.Project.objects.get(id=request_data.POST.get('project')),
-		institute=insti,
-		status='init',
+		project=Project.objects.get(id=request_data.POST.get('project')),
+		institute=the_user.prof.institute_info,
+		status='',
+		rora_id=report_data['instance_id'],
 		breeze_stat='init'
-		# project=breeze.models.Project.objects.get(name=report_property.cleaned_data['Project'])
 	)
 	dbitem.save()
-
+	# Now that it has an id we can use m2m ref
 	if shared_users:
 		dbitem.shared = shared_users
 
-	# define location: that is report's folder name
-	path = slugify(str(dbitem.id) + '_' + dbitem.name + '_' + dbitem.author.username)
-	loc = str(settings.MEDIA_ROOT) + str("reports/") + path
-	dochtml = loc + '/report'
-	dbitem.home = str("reports/") + path
-	dbitem.save()
-
 	# BUILD R-File
-	script_string = 'setwd(\"%s\")\n' % loc
-	script_string += 'require( Nozzle.R1 )\n\n'
-	script_string += 'path <- \"%s\"\n' % loc
-	script_string += 'report_name <- \"%s\"\n' % report_name
-	# define a function for exception handler
-	script_string += 'failed_fun_print <- function(section_name, error_report){\n'
-	script_string += '  Error_report_par  <- newParagraph("<br>", asStrong( "Error Log Details: " ),"<br><br>",asCode(paste(error_report,collapse=""))); \n'
-	script_string += '  section_name      <- addTo( section_name, newParagraph( "This section FAILED! Contact the development team... " ), Error_report_par )\n'
-	script_string += '  return (section_name)\n}\n\n'
-
-	script_string += dump_project_parameters(dbitem.project, dbitem)
-	script_string += dump_pipeline_config(rt, report_data['instance_id'])
-
-	script_string += 'REPORT <- newCustomReport(report_name)\n'
-
-	dummy_flag = False
-	for tag in sections:
-		secID = 'Section_dbID_' + str(tag.id)
-		if secID in request_data.POST and request_data.POST[secID] == '1':
-			tree = xml.parse(str(settings.MEDIA_ROOT) + str(tag.docxml))
-			script_string += '##### TAG: %s #####\n' % tag.name
-			if tag.name == "Import to FileMaker":
-				dummy_flag = True
-
-			# source main code segment
-			code_path = str(settings.MEDIA_ROOT) + str(tag.code)
-			script_string += '# <----------  body  ----------> \n' + open(code_path, 'r').read() + '\n'
-			script_string += '# <------- end of body --------> \n'
-			# input parameters definition
-			script_string += '# <----------  parameters  ----------> \n'
-			script_string += gen_params_string(tree, request_data.POST, str(settings.MEDIA_ROOT) + dbitem.home,
-			                                   request_data.FILES)
-			script_string += '# <------- end of parameters --------> \n'
-			# final step - fire header
-			header_path = str(settings.MEDIA_ROOT) + str(tag.header)
-			script_string += '# <----------  header  ----------> \n' + open(header_path, 'r').read() + '\n\n'
-			script_string += 'new_section <- newSection( section_name )\n'
-			script_string += 'tag_section <- tryCatch({section_body(new_section)}, error = function(e){ failed_fun_print(new_section,e) })\n'
-			script_string += 'REPORT <- addTo( REPORT, tag_section )\n'
-			script_string += '# <------- end of header --------> \n'
-			script_string += '##### END OF TAG #####\n\n\n'
-			script_string += 'setwd(\"%s\")\n' % loc
-
-		else:  # if tag disabled - do nothing
-			pass
-	# render report to file
-	script_string += '# Render the report to a file\n' + 'writeReport( REPORT, filename=toString(\"%s\"))\n' % dochtml
-	script_string += 'system("chmod -R 770 .")'
-
-	# save r-file
-	dbitem.rexec.save('script.r', base.ContentFile(script_string))
-	dbitem.save()
+	dbitem.generate_R_file(sections, request_data)
 
 	# configure shell-file
-	config_path = loc + '/sgeconfig.sh'
+	config_path = dbitem.get_home + '/sgeconfig.sh'
 	config = open(config_path, 'w')
 
 	# config should be executable
 	st = os.stat(config_path)
 	os.chmod(config_path, st.st_mode | stat.S_IEXEC)
 
-	command = '#!/bin/bash \n' + str(settings.R_ENGINE_PATH) + 'CMD BATCH --no-save ' + str(settings.MEDIA_ROOT) + str(
-		dbitem.rexec)
+	command = '#!/bin/bash \n%sCMD BATCH --no-save %s' % (settings.R_ENGINE_PATH, dbitem.r_exec_path)
 	config.write(command)
 	config.close()
 
 	# open report's folder for others
-	st = os.stat(loc)
-	os.chmod(loc, st.st_mode | stat.S_IRWXG)
+	st = os.stat(dbitem.get_home)
+	os.chmod(dbitem.get_home, st.st_mode | stat.S_IRWXG)
 
 	# clem : saves parameters into db, in order to be able to duplicate report
 	dbitem.conf_params = pickle.dumps(request_data.POST)
@@ -1137,25 +1083,11 @@ def build_report(report_data, request_data, report_property, sections):
 		dbitem.conf_files = json.dumps(tmp)
 	dbitem.save()
 
-	# generate shiny files
+	# generate shiny access for offsite users
 	if report_data['report_type'] == 'ScreenReport':
-		m = hashlib.sha256()
-		m.update(settings.SECRET_KEY + path + str(datetime.now()))
-		dbitem.shiny_key = str(m.hexdigest())
-		dbitem.rora_id = report_data['instance_id']
-		dbitem.save()
+		dbitem.generate_shiny_key()
 
-	try:
-		# submit r-code
-		log.info('r' + str(dbitem.id) + ' : creating run_report process')
-		p = Process(target=run_report, args=(dbitem, dummy_flag))
-		#print(dbitem)
-		#run_report(dbitem,dummy_flag)
-		p.start()
-		log.info('r' + str(dbitem.id) + ' : run_report process started with pid ' + str(p.pid))
-	except Exception as e:
-
-		log.exception('r' + str(dbitem.id) + ' : unhandled error while starting run_process thread : ' + str(e))
-		return False
+	dbitem.breeze_stat = 'run_wait'
+	dbitem.save()
 
 	return True
