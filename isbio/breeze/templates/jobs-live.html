@@ -1,7 +1,7 @@
 <tbody>
 <div id="dashboard">
 	{% for job in current %}
-		{% if job.status == "active" %}
+		{% if job.status == "running" %}
 			<tr id="{{ job.id }}_tr1" class="info">
 				<td id="{{ job.id }}_SGEstatus"><strong>{{ job.jname }}</strong> - checking status... - {{ job.staged }}</td>
 			</tr>

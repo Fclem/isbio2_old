@@ -21,6 +21,7 @@ def recur_rec(nb, funct, args):
 
 
 USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S%z"
+DB_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
 LOG_PATH = '/var/log/breeze/%s' % log_fname
 
@@ -53,7 +54,9 @@ class BreezeSettings(Settings):
 			'PASSWORD': 'rna',  # Not used with sqlite3.
 			'HOST': '/var/run/mysqld/mysqld.sock',  # Set to empty string for localhost. Not used with sqlite3.
 			'PORT': '3306',  # Set to empty string for default. Not used with sqlite3.
-			'OPTIONS': { "init_command": "SET foreign_key_checks = 0;", },
+			# 'OPTIONS': { "init_command": "SET foreign_key_checks = 0;", },
+			'OPTIONS': {
+				"init_command": "SET storage_engine=INNODB, SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", }
 			}
 	}
 
@@ -132,7 +135,6 @@ class BreezeSettings(Settings):
 		#     'django.template.loaders.eggs.Loader',
 	)
 
-
 	MIDDLEWARE_CLASSES = (
 		'django.middleware.common.CommonMiddleware',
 		'django.contrib.sessions.middleware.SessionMiddleware',
@@ -140,6 +142,7 @@ class BreezeSettings(Settings):
 		'django.contrib.auth.middleware.AuthenticationMiddleware',
 		'django.contrib.messages.middleware.MessageMiddleware',
 		'django.middleware.doc.XViewMiddleware',
+		'breeze.jobKeeper',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
 		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -254,8 +257,12 @@ class DevSettings(BreezeSettings):
 			'PASSWORD': 'find!comrade',  # Not used with sqlite3.
 			'HOST': '/var/run/mysqld/mysqld.sock',  # Set to empty string for localhost. Not used with sqlite3.
 			'PORT': '3306',  # Set to empty string for default. Not used with sqlite3.
+			'OPTIONS': {
+				"init_command": "SET storage_engine=INNODB, SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", }
 		}
 	}
+
+	CONSOLE_DATE_F = "%d/%b/%Y %H:%M:%S"
 	# auto-sensing if running on dev or prod, for dynamic environment configuration
 	FULL_HOST_NAME = socket.gethostname()
 	HOST_NAME = str.split(FULL_HOST_NAME, '.')[0]
@@ -286,6 +293,7 @@ class DevSettings(BreezeSettings):
 
 	# root of the Breeze django project folder, includes 'venv', 'static' folder copy, isbio, logs
 	SOURCE_ROOT = recur(3, os.path.dirname, os.path.realpath(__file__)) + '/'
+	DJANGO_ROOT = recur(2, os.path.dirname, os.path.realpath(__file__)) + '/'
 
 	R_ENGINE_PATH = PROJECT_PATH + 'R/bin/R '
 	TEMP_FOLDER = SOURCE_ROOT + 'tmp/' # /homes/dbychkov/dev/isbio/tmp/
@@ -293,14 +301,30 @@ class DevSettings(BreezeSettings):
 	# 'db' folder, containing : reports, scripts, jobs, datasets, pipelines, upload_temp
 	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
-	REPORTS_PATH = MEDIA_ROOT + 'reports/'
+	REPORTS_FOLDER = 'reports/'
+	JOBS_FOLDER = 'jobs/'
+	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FOLDER)
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
-	# SHINY RELATED STUFF
+	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
+	NOZZLE_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'nozzle_templates/'
+	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
+	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
+	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
+
+	#
+	# WATCHER RELATED CONFIG
+	#
+	WATCHER_DB_REFRESH = 5 # number of seconds to wait before refreshing reports from DB
+	WATCHER_PROC_REFRESH = 2 # number of seconds to wait before refreshing processes
+
+	#
+	# SHINY RELATED CONFIG
+	#
 	SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
 	SHINY_TAGS = MEDIA_ROOT + 'shinyTags/'
 	SHINY_REPORTS = MEDIA_ROOT + 'shinyReports/'
-	SHINY_REPORT_TEMPLATE_PATH = SOURCE_ROOT + 'isbio/shiny/report_template/'
+	SHINY_REPORT_TEMPLATE_PATH = TEMPLATE_FOLDER + 'shiny_templates/'
 	SHINY_TARGET_URL = 'http://127.0.0.1:3838/breeze/'
 	SHINY_LIBS_TARGET_URL = 'http://127.0.0.1:3838/libs/'
 	SHINY_LIBS_BREEZE_URL = '/shiny/libs/'

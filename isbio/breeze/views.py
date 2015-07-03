@@ -257,15 +257,17 @@ def jobs(request, state="", error_msg=""):
 
 	scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
 	history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(
-		status__exact="active").exclude(status__exact="queued_active").exclude(status__exact="init").order_by("-id")
-	active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").order_by("-id")
+		status__exact="running").exclude(status__exact="queued_active").exclude(status__exact="init").order_by("-id")
+	#history_jobs = Jobs.objects.filter(juser__exact=request.user).filter(breeze_stat="done").order_by("-id")
+
+	active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status="running").order_by("-id")
 	init_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="init").order_by("-id")
 	queued_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="queued_active").order_by("-id")
 
 	no_id_jobs = Jobs.objects.filter(juser__exact=request.user).filter(sgeid="").order_by("-id")
 	no_id_reports = Report.objects.filter(sgeid="").filter(author__exact=request.user).order_by('-created')
 
-	active_reports = Report.objects.filter(status="active").filter(author__exact=request.user).order_by('-created')
+	active_reports = Report.objects.filter(status="running").filter(author__exact=request.user).order_by('-created')
 	init_reports = Report.objects.filter(status="init").filter(author__exact=request.user).order_by('-created')
 	queued_reports = Report.objects.filter(status="queued_active").filter(author__exact=request.user).order_by(
 		'-created')
@@ -277,8 +279,9 @@ def jobs(request, state="", error_msg=""):
 	merged_active = aux.merge_job_lst(merged_active, queued_merged)
 	merged_active = aux.merge_job_lst(merged_active, merged_init)
 
-	ready_reports = Report.objects.exclude(status="active").exclude(status="queued_active").exclude(
-		status__exact="init").filter(author__exact=request.user).order_by('-created')
+	#ready_reports = Report.objects.exclude(status="running").exclude(status="queued_active").exclude(
+	#	status__exact="init").filter(author__exact=request.user).order_by('-created')
+	ready_reports = Report.objects.filter(breeze_stat="done").filter(author__exact=request.user).order_by('-created')
 
 	merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
@@ -312,7 +315,7 @@ def jobs(request, state="", error_msg=""):
 	from itertools import chain
 
 	all_list = list(chain(active_jobs, queued_jobs, active_reports, queued_reports, no_id_jobs, no_id_reports))
-	rshell.track_sge_job_bis(all_list, True)  # forces job refresh from sge rather than just db status
+	# rshell.track_sge_job_bis(all_list, True)  # forces job refresh from sge rather than just db status
 
 	user_profile = UserProfile.objects.get(user=request.user)
 	db_access = user_profile.db_agreement
@@ -327,7 +330,7 @@ def jobs(request, state="", error_msg=""):
 		str(tab): 'active',
 		str(show_tab): 'active',
 		'active_tab': state,
-		'jobs_status': 'active',
+		# 'jobs_status': 'active',
 		'dash_history': paginator.page(1)[0:3],
 		'scheduled': scheduled_jobs,
 		'history': hist_jobs,
@@ -1432,7 +1435,8 @@ def delete_job(request, jid, state):
 		# Enforce access rights
 		if job.juser != request.user:
 			raise PermissionDenied
-		rshell.del_job(job)
+		#rshell.del_job(job)
+		job.delete()
 	except ObjectDoesNotExist:
 		return aux.fail_with404(request, 'There is no job with id ' + str(jid) + ' in database')
 	except Exception as e:
@@ -1761,6 +1765,7 @@ def run_script(request, jid):
 def abort_sge(request, id, type):
 	log = logger.getChild('abort_sge')
 	assert isinstance(log, logging.getLoggerClass())
+	item = None
 	try:
 		if type == "report":
 			item = Report.objects.get(id=id)
@@ -1770,7 +1775,7 @@ def abort_sge(request, id, type):
 		log.exception("job/report " + id + " does not exists")
 		return jobs(request, error_msg="job/report " + id + " does not exists\nPlease contact Breeze support")
 
-	s = rshell.abort_report(item)
+	s = item.abort()
 
 	if s == True:
 		return HttpResponseRedirect('/jobs/')
@@ -1781,15 +1786,11 @@ def abort_sge(request, id, type):
 
 @login_required(login_url='/')
 def abort_report(request, rid):
-	if settings.DEBUG: print("aborting report")
-
 	return abort_sge(request, rid, "report")
 
 
 @login_required(login_url='/')
 def abort_job(request, jid):
-	if settings.DEBUG: print("aborting job")
-
 	return abort_sge(request, jid, "job")
 
 
@@ -2295,23 +2296,10 @@ def update_jobs(request, jid, item):
 		date = obj.created
 		name = str(obj.name)
 
-	sge_status = rshell.track_sge_job(obj)
+	# sge_status = rshell.track_sge_job(obj)
 	# request job instance again to be sure that the data is updated
 	response = dict(id=obj.id, name=name, staged=str(date), status=str(obj.status),
-					progress=obj.progress, sge=sge_status)
-
-	return HttpResponse(simplejson.dumps(response), mimetype='application/json')
-
-
-# 29/05/2015 TOOOOOOOO SLOW
-@login_required(login_url='/')
-def update_all_jobs(request):
-	j_objs = Jobs.objects.filter(juser=request.user).exclude(status='succeed').exclude(status='failed').exclude(
-		status='scheduled').exclude(status='aborted')
-	r_objs = Report.objects.filter(author=request.user).exclude(status='succeed').exclude(status='failed').exclude(
-		status='scheduled').exclude(status='aborted')
-
-	response = aux.update_all_jobs_sub(j_objs, r_objs)
+					progress=obj.progress, sge=obj.get_status())
 
 	return HttpResponse(simplejson.dumps(response), mimetype='application/json')
 

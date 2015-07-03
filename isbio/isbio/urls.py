@@ -89,7 +89,7 @@ urlpatterns = patterns('',
     url(r'^jobs/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile),
     # url(r'^media/jobs/(?P<rid>\d+)_(?P<rest>[^/-]+)/(?P<fname>[^/-]+)?$', views.report_file_wrap),
     url(r'^update-jobs/(?P<jid>\d+)-(?P<item>[a-z]+)$', views.update_jobs),
-    url(r'^update-all-jobs/$', views.update_all_jobs), # DO NOT USE : TOOOOOOOO SLOW
+    # url(r'^update-all-jobs/$', views.update_all_jobs), # DO NOT USE : TOOOOOOOO SLOW
     url(r'^scripts/(?P<layout>[a-z]+)?$', views.scripts),
     url(r'^scripts/delete/(?P<sid>\d+)$', views.delete_script),
     url(r'^scripts/apply-script/(?P<sid>\d+)$', views.create_job),

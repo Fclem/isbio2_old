@@ -1173,15 +1173,18 @@ def create_report_sections(sections, req=None, posted=None, files=None, path=Non
 	section_lst = list()
 
 	for item in sections:
-		tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
+		if item.is_valid():
+			tree = xml.parse(item.xml_path)
+		else:
+			tree = xml.parse(settings.NO_TAG_XML)
+			sdata['isvalid'] = False
 		sdata['id'] = item.id
 		key = 'Section_dbID_' + str(item.id)
 		# TODO remove # print 'Section ' + key + ' active : ' + posted[key] if key in posted else 0
 		sdata['value'] = posted[key] if posted and key in posted else 0
 		sdata['inline'] = str(item.inln)
 		sdata['name'] = str(item.name)
-		sdata['form'] = form_from_xml(xml=tree, post=posted, files=files, usr=req.user, init=True if posted else False,
-		                              path=path)
+		sdata['form'] = form_from_xml(xml=tree, post=posted, files=files, usr=req.user, init=True if posted else False, path=path)
 		sdata['size'] = len(sdata['form'].__str__())
 		section_lst.append(dict(sdata))
 
@@ -1200,22 +1203,22 @@ def validate_report_sections(sections, req):
 	section_lst = list()
 
 	for item in sections:
-		tree = xml.parse(str(settings.MEDIA_ROOT) + str(item.docxml))
-		sdata['id'] = item.id
-		sdata['inline'] = str(item.inln)
-		sdata['name'] = str(item.name)
+		if item.is_valid():
+			tree = xml.parse(item.xml_path)
+			sdata['id'] = item.id
+			sdata['inline'] = str(item.inln)
+			sdata['name'] = str(item.name)
 
-		# we want to validate only those sections
-		# that have been enabled by user
-		secID = 'Section_dbID_' + str(item.id)
-		if secID in req.POST and req.POST[secID] == '1':
-			sdata['form'] = form_from_xml(xml=tree, req=req, usr=req.user)
-			sdata['isvalid'] = sdata['form'].is_valid()
-		else:
-			sdata['form'] = form_from_xml(xml=tree, usr=req.user)
-			sdata['isvalid'] = True
-
-		section_lst.append(dict(sdata))
+			# we want to validate only those sections
+			# that have been enabled by user
+			secID = 'Section_dbID_' + str(item.id)
+			if secID in req.POST and req.POST[secID] == '1':
+				sdata['form'] = form_from_xml(xml=tree, req=req, usr=req.user)
+				sdata['isvalid'] = sdata['form'].is_valid()
+			else:
+				sdata['form'] = form_from_xml(xml=tree, usr=req.user)
+				sdata['isvalid'] = True
+			section_lst.append(dict(sdata))
 
 	return section_lst
 

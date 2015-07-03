@@ -18,6 +18,10 @@ CATEGORY_OPT = (
 )
 
 
+def is_non_empty_file(file_path):
+	import os
+	return os.path.isfile(file_path) and os.path.getsize(file_path) > 0
+
 def remove_file_safe(fname):
 	"""
 	Remove a file or link if it exists
@@ -116,15 +120,18 @@ def shiny_header():
 	fileh = open(str(settings.SHINY_REPORT_TEMPLATE_PATH + settings.SHINY_HEADER_FILE_NAME))
 	return str(fileh.read())
 
+
 # 17/06/2015
 def shiny_loader():
 	fileh = open(str(settings.SHINY_REPORT_TEMPLATE_PATH + settings.SHINY_LOADER_FILE_NAME))
 	return str(fileh.read())
 
+
 # 17/06/2015
 def shiny_files():
 	fileh = open(str(settings.SHINY_REPORT_TEMPLATE_PATH + settings.SHINY_FILE_LIST))
 	return str(fileh.read())
+
 
 # 08/06/2015
 class ShinyReport(models.Model):
@@ -511,12 +518,6 @@ class ShinyReport(models.Model):
 
 
 class ReportType(models.Model):
-	def __init__(self, *args, **kwargs):
-		super(ReportType, self).__init__(*args, **kwargs)
-		self.__important_fields = ['shiny_report_id', ]
-		for field in self.__important_fields:
-			setattr(self, '__original_%s'%field, getattr(self, field))
-
 	type = models.CharField(max_length=17, unique=True)
 	description = models.CharField(max_length=5500, blank=True)
 	search = models.BooleanField(default=True)
@@ -539,13 +540,6 @@ class ReportType(models.Model):
 	created = models.DateField(auto_now_add=True)
 
 	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to", default=0)
-
-	def has_changed(self):
-		for field in self.__important_fields:
-			orig = '__original_%s'%field
-			if getattr(self, orig) != getattr(self, field):
-				return True
-		return False
 
 	def save(self, *args, **kwargs):
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
@@ -633,6 +627,14 @@ class Rscripts(models.Model):
 	@property
 	def xml_path(self):
 		return settings.MEDIA_ROOT + str(self.docxml)
+
+	def is_valid(self):
+		"""
+		Return true if the tag XML file is present and non empty
+		:return: tell if the tag is usable
+		:rtype: bool
+		"""
+		return is_non_empty_file(self.xml_path)
 
 	def get_R_code(self, gen_params):
 		"""
@@ -740,28 +742,79 @@ class Worker(models.Model):
 		abstract = True
 
 
+import drmaa
+
+# 30/06/2015
+class JobStat(object):
+	RUN_WAIT = 'run_wait'
+	ABORT = 'abort'
+	ABORTED = 'aborted'
+	RUNNING = drmaa.JobState.RUNNING
+	DONE = drmaa.JobState.DONE
+	SCHEDULED = 'scheduled'
+	FAILED = drmaa.JobState.FAILED
+	QUEUED_ACTIVE = drmaa.JobState.QUEUED_ACTIVE
+	INIT = 'init'
+	SUCCEED = 'succeed'
+	SUBMITED = 'submited'
+	PREPARE_RUN = 'prep_run'
+
 class Jobs(models.Model):
+	JOBS_FOLDER = settings.JOBS_FOLDER
+
 	jname = models.CharField(max_length=55)
 	jdetails = models.CharField(max_length=4900, blank=True)
 	juser = ForeignKey(User)
 	script = ForeignKey(Rscripts)
 	# status may be changed to NUMVER later
-	status = models.CharField(max_length=15, help_text="scheduled|active|succeed|failed|aborted")
+	status = models.CharField(max_length=15, help_text="scheduled|running|succeed|failed|aborted", default=JobStat.INIT)
 	staged = models.DateTimeField(auto_now_add=True)
 	progress = models.IntegerField()
 	sgeid = models.CharField(max_length=15, blank=True, help_text="SGE job id")
-	mailing = models.CharField(max_length=3, blank=True, help_text='configuration of mailing events : (b)egin (e)nd  (a)bort or empty')  # TextField(name="mailing", )
+	mailing = models.CharField(max_length=3, blank=True, help_text=\
+		'configuration of mailing events : (b)egin (e)nd  (a)bort or empty')  # TextField(name="mailing", )
 	email = models.CharField(max_length=75, help_text=
 		"mail address to send the notification to (not working ATM : your personal mail adress will be user instead)")
 
 	def file_name(self, filename):
 		fname, dot, extension = filename.rpartition('.')
 		slug = slugify(self.jname + '_' + self.juser.username)
-		return 'jobs/%s/%s.%s'%(slug, slug, extension)
+		return 'jobs/%s/%s.%s'%(slug, slug, extension) # TODO : change
 
 	docxml = models.FileField(upload_to=file_name)
 	rexecut = models.FileField(upload_to=file_name)
-	breeze_stat = models.CharField(max_length=16, default='init')
+	breeze_stat = models.CharField(max_length=16, default=JobStat.INIT)
+
+	@property
+	def folder_path(self):
+		return '%s%s' % (settings.MEDIA_ROOT, self.folder_name)
+
+	@property
+	def folder_name(self):
+		return '%s%s/' % (self.JOBS_FOLDER, slugify('%s_%s' % (self.jname, self.juser)))
+
+	def abort(self):
+		import time
+		if self.breeze_stat != JobStat.DONE:
+			self.breeze_stat = JobStat.ABORT
+			self.save()
+			# time.sleep(settings.WATCHER_PROC_REFRESH)
+		return True
+
+	def delete(self, using=None):
+		import os, shutil
+
+		self.abort()
+		if os.path.isdir(self.folder_path):
+			shutil.rmtree(self.folder_path)
+
+		log_obj = logger.getChild(sys._getframe().f_code.co_name)
+		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj.info("job %s : %s has been deleted" % (self.id, self))
+
+		super(Jobs, self).delete(using=using) # Call the "real" delete() method.
+
+		return True
 
 	def __unicode__(self):
 		return self.jname
@@ -838,6 +891,11 @@ class JobsH(Jobs):
 
 
 class Report(models.Model):
+	R_FILE_NAME = 'script.r'
+	R_OUT_FILE_NAME = R_FILE_NAME + '.Rout'
+	REPORT_FILE_NAME = 'report'
+	REPORTS_FOLDER = settings.REPORTS_FOLDER
+
 	type = models.ForeignKey(ReportType)
 	name = models.CharField(max_length=55)
 	description = models.CharField(max_length=350, blank=True)
@@ -846,7 +904,7 @@ class Report(models.Model):
 	# home = models.CharField(max_length=155, blank=True)
 	# _status = models.CharField(max_length=15, blank=True, db_column="status")
 	# TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
-	status = models.CharField(max_length=15, blank=True)
+	status = models.CharField(max_length=15, blank=True, default=JobStat.INIT)
 	progress = models.PositiveSmallIntegerField(default=0)
 	sgeid = models.CharField(max_length=15)
 	# store the institute info of the user who creates this report
@@ -861,7 +919,7 @@ class Report(models.Model):
 	
 	shiny_key = models.CharField(max_length=64, null=True, help_text="!! DO NOT EDIT !!", editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
-	breeze_stat = models.CharField(max_length=16, default='init')
+	breeze_stat = models.CharField(max_length=16, default=JobStat.INIT)
 
 	# offsite_user_access = models.ManyToManyField(OffsiteUser)
 	# conf_files = models.CharField(null=True, blank=True, default=None)
@@ -869,12 +927,13 @@ class Report(models.Model):
 	def file_name(self, filename):
 		# fname, dot, extension = filename.rpartition('.')
 		slug = self.folder_name
-		return 'reports/%s/%s' % (slug, filename)
+		return '%s%s/%s' % (Report.REPORTS_FOLDER, slug, filename)
 	
 	rexec = models.FileField(upload_to=file_name, blank=True)
 	dochtml = models.FileField(upload_to=file_name, blank=True)
 
 	fm_flag = models.BooleanField(default=False)
+	# drmaa_data = models.TextField(null=True, help_text="!! DO NOT EDIT !!", editable=False)
 
 	# 04/06/2015
 	@property
@@ -894,7 +953,7 @@ class Report(models.Model):
 	# 25/06/15
 	@property
 	def r_exec_path(self):
-		return '%s%s/'%(settings.MEDIA_ROOT, self.rexec)
+		return '%s%s'%(settings.MEDIA_ROOT, self.rexec)
 
 	# 25/06/15
 	@property
@@ -904,7 +963,12 @@ class Report(models.Model):
 		:return: the relative path to this report folder
 		:rtype: str
 		"""
-		return '%s%s/' % (settings.REPORTS_FOLDER, self.folder_name)
+		return '%s%s/' % (self.REPORTS_FOLDER, self.folder_name)
+
+	#26/06/15
+	@property
+	def _dochtml(self):
+		return '%sreport' % self.get_home
 
 	# 16/06/15
 	@property
@@ -938,6 +1002,10 @@ class Report(models.Model):
 	def _rtype_config_path(self):
 		return settings.MEDIA_ROOT + str(self.type.config)
 
+	@property
+	def _r_out_path(self):
+		return '%s%s' % (self.get_home, self.R_OUT_FILE_NAME)
+
 	# TODO : use clean or save ?
 	def generate_R_file(self, sections, request_data):
 		"""
@@ -959,7 +1027,7 @@ class Report(models.Model):
 		self.fm_flag = False
 		for tag in sections:
 			assert (isinstance(tag, Rscripts)) # useful for code assistance ONLY
-			if tag.sec_id in request_data.POST and request_data.POST[tag.sec_id] == '1':
+			if tag.is_valid() and tag.sec_id in request_data.POST and request_data.POST[tag.sec_id] == '1':
 				tree = xml.parse(tag.xml_path)
 				if tag.name == "Import to FileMaker":
 					self.fm_flag = True
@@ -967,17 +1035,17 @@ class Report(models.Model):
 				gen_params = rshell.gen_params_string(tree, request_data.POST, self.home, request_data.FILES)
 				tag_list.append( tag.get_R_code(gen_params) )
 
-		d = { 'loc': self.get_home,
+		d = { 'loc': self.get_home[:-1],
 				'report_name': self.title,
 				'project_parameters': self.dump_project_parameters,
 				'pipeline_config': self.dump_pipeline_config,
 				'tags': '\n'.join(tag_list),
-				'dochtml': self.dochtml,
+				'dochtml': str(self._dochtml),
 			}
 		# do the substitution
 		result = src.substitute(d)
 		# save r-file
-		self.rexec.save('script.r', base.ContentFile(result))
+		self.rexec.save(self.R_FILE_NAME, base.ContentFile(result))
 
 	@property
 	def dump_project_parameters(self):
@@ -1012,7 +1080,15 @@ class Report(models.Model):
 
 	@property
 	def html_path(self):
-		return '%sreport' % self.get_home
+		return '%s%s' % (self.get_home, self.REPORT_FILE_NAME)
+
+	@property
+	def _html_full_path(self):
+		return '%s.html' % self.html_path
+
+	@property
+	def _test_file(self):
+		return '%sdone'%self.get_home
 
 	def generate_shiny_key(self):
 		"""
@@ -1024,8 +1100,197 @@ class Report(models.Model):
 		m.update(settings.SECRET_KEY + self.folder_name + str(datetime.now()))
 		self.shiny_key = str(m.hexdigest())
 
+	def is_done(self):
+		if self.status == JobStat.SUCCEED and self.breeze_stat == JobStat.DONE:
+			return True
+
+		import os
+		return os.path.isfile(self._test_file)
+
+	def abort(self):
+		import time
+		if self.breeze_stat != JobStat.DONE:
+			self.breeze_stat = JobStat.ABORT
+			self.save()
+			# time.sleep(settings.WATCHER_PROC_REFRESH)
+		return True
+
 	def run(self):
-		pass
+		"""
+			Submits reports as an R-job to cluster with SGE;
+			This submission implements REPORTS concept in BREEZE
+			(For SCRIPTS submission see run_job)
+			TO BE RUN IN AN INDEPENDENT PROCESS / THREAD
+		"""
+		import os, copy, json
+		import django.db
+		drmaa = None
+		s = None
+		if settings.HOST_NAME.startswith('breeze'):
+			import drmaa
+
+		loc = self.get_home # str(settings.MEDIA_ROOT) + self.home
+		config = loc + '/sgeconfig.sh'
+		log = logger.getChild('run_report')
+		assert isinstance(log, logging.getLoggerClass())
+		fmFlag = self.fm_flag
+		default_dir = os.getcwd()
+
+		try:
+			os.chdir(loc)
+			if fmFlag == 1:
+				# print "HAS FM"
+				os.system(settings.JDBC_BRIDGE_PATH)
+
+			# prevents db being dropped
+			django.db.close_connection()
+			self.set_status(JobStat.PREPARE_RUN)
+			log.info('r' + str(self.id) + ' : creating job')
+		except Exception as e:
+			log.exception('r' + str(self.id) + ' : pre-run error ' + str(e))
+			log.error('r' + str(self.id) + ' : process unexcpectedly terminated')
+
+		try:
+			s = drmaa.Session()
+			s.initialize()
+
+			jt = s.createJobTemplate()
+
+			jt.workingDirectory = loc
+			jt.jobName = slugify(self.name) + '_REPORT'
+			jt.email = [str(self.author.email)]
+			jt.blockEmail = False
+
+			jt.remoteCommand = config
+			jt.joinFiles = True
+			jt.nativeSpecification = "-m bea"
+
+			self.progress = 25
+			# self.status = 'submission'
+			self.save()
+			log.info('r' + str(self.id) + ' : triggering dramaa.runJob')
+			self.sgeid = s.runJob(jt)
+			log.info('r' + str(self.id) + ' : returned sgedid "' + str(self.sgeid) + '"')
+			self.set_status( JobStat.SUBMITED )
+			log.info('r' + str(self.id) + ' : stat : ' + str(s.jobStatus(self.sgeid)))
+			# waiting for the job to end
+			SGEID = copy.deepcopy(self.sgeid)
+			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+			#self.drmaa_data = json.dumps(retval)
+			json.dump(retval, open(self._test_file, 'w'))
+			self.set_status(JobStat.DONE)
+			# self.save()
+			jt.delete()
+
+			if retval.hasExited:
+				if retval.exitStatus == 0:
+					log.info('r' + str(self.id) + ' : dramaa.runJob ended with exit code 0 !')
+					self.set_status(JobStat.SUCCEED)
+					# clean up the folder
+				else:
+					log.error('r' + str(self.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
+					if self.status != JobStat.ABORTED and self.breeze_stat != JobStat.ABORT:
+						self.set_status(JobStat.FAILED)
+
+			os.chdir(default_dir)
+
+			if self.fm_flag:
+				extra_path = loc + "/transfer_to_fm.txt"
+				extra_file = open(extra_path, 'r')
+				command = extra_file.read()
+				run = command.split("\"")[1]
+				os.system(run)
+			s.exit()
+
+		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
+			# TODO improve this part
+			log.exception('r' + str(self.id) + ' : drmaa error ' + str(e))
+			log.error('r' + str(self.id) + ' : drmaa waiter process unexcpectedly terminated')
+			self.progress = self._progress_level(e)
+			self.status = 'failed'
+			self.save()
+			if s is not None:
+				s.exit()
+			return 1
+		except Exception as e:
+			# self.status = 'failed'
+			log.exception('r' + str(self.id) + ' : drmaa unknow error ' + str(e))
+			log.error('r' + str(self.id) + ' : drmaa waiter process unexcpectedly terminated')
+			self.progress = self._progress_level(e)
+			self.status = 'failed'
+			self.save()
+			if s is not None:
+				s.exit()
+			return 1
+
+		log.info('r' + str(self.id) + ' : drmaa waiter process terminated successfully !')
+		return 0
+
+	def _progress_level(self, stat=None):
+		"""
+		Return the progression value associated with a specific status
+		:param stat:
+		:type stat: str or Exception
+		:return: progress value
+		:rtype: int
+		"""
+		if isinstance(stat, (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
+			return 67
+		elif stat is Exception:
+			return 66
+		elif stat == JobStat.RUN_WAIT:
+			return 8
+		elif stat in (JobStat.PREPARE_RUN, JobStat.QUEUED_ACTIVE):
+			return 15
+		elif stat == JobStat.SUBMITED:
+			return 30
+		elif stat == JobStat.RUNNING:
+			return 55
+		elif stat in (JobStat.FAILED, JobStat.SUCCEED, JobStat.DONE):
+			return 100
+		else:
+			return self.progress
+
+	def set_status(self, status):
+		"""
+		Save a specific status state of the Report.
+		Changes the progression % and saves the object
+		:param status: a JobStat value
+		:type status: str
+		"""
+		if self.status == JobStat.SUCCEED or status is None:
+			return
+
+		self.progress = self._progress_level(status)
+		if status == JobStat.ABORTED:
+			self.status = JobStat.ABORTED
+			self.breeze_stat = JobStat.DONE
+		elif status == JobStat.PREPARE_RUN:
+			self.breeze_stat = JobStat.PREPARE_RUN
+			self.status = JobStat.QUEUED_ACTIVE
+		elif status == JobStat.SUBMITED:
+			self.breeze_stat = JobStat.SUBMITED
+		elif status == JobStat.FAILED:
+			self.status = JobStat.FAILED
+			self.breeze_stat = JobStat.DONE
+		elif status == JobStat.RUN_WAIT:
+			self.status = JobStat.INIT
+			self.breeze_stat = JobStat.RUN_WAIT
+		elif status == JobStat.RUNNING:
+			self.status = JobStat.RUNNING
+			self.breeze_stat = JobStat.RUNNING
+		elif status == JobStat.DONE:
+			self.breeze_stat = JobStat.DONE
+		elif status == JobStat.SUCCEED:
+			self.breeze_stat = JobStat.DONE
+			self.status = JobStat.SUCCEED
+		else:
+			self.status = status
+
+		self.save()
+
+	def get_status(self):
+		return decodestatus[self.status]
 
 	def save(self, *args, **kwargs):
 		super(Report, self).save(*args, **kwargs) # Call the "real" save() method.
@@ -1036,26 +1301,20 @@ class Report(models.Model):
 	def delete(self, using=None):
 		import os, shutil
 
+		self.abort()
+
 		if os.path.isdir(self.get_home[:-1]):
 			shutil.rmtree(self.get_home[:-1])
 		if self.type.shiny_report_id > 0:
 			self.type.shiny_report.unlink_report(self)
-		super(Report, self).delete(using=using) # Call the "real" save() method.
 
 		log_obj = logger.getChild(sys._getframe().f_code.co_name)
 		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-		log_obj.info("report %s : %s has been deleted" % (self.id, self))
+		log_obj.info("report %s : %s has been deleted"%(self.id, self))
 
+		super(Report, self).delete(using=using) # Call the "real" delete() method.
 		return True
-	#@property
-	#def status(self):
-	#	if self.status == 'init':
-	#		return 'queued active'
-	#	return self.status
-	
-	# @status.setter
-	# def status(self, value):
-	
+
 	def __unicode__(self):
 		return self.name
 
@@ -1329,3 +1588,21 @@ class OffsiteUser(models.Model):
 
 	def __unicode__(self):
 		return unicode(self.full_name)
+
+decodestatus = {
+	drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
+	drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
+	drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
+	drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
+	drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
+	drmaa.JobState.RUNNING: 'job is running',
+	drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
+	drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
+	drmaa.JobState.DONE: 'job finished normally',
+	JobStat.SUCCEED: 'job finished normally',
+	drmaa.JobState.FAILED: 'job finished, but failed',
+	JobStat.ABORTED: 'job has been aborted',
+	JobStat.ABORT: 'job is being aborted...',
+	JobStat.INIT: 'job instance is being generated...',
+	JobStat.SCHEDULED: 'job is saved for later submission',
+}

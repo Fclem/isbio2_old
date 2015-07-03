@@ -212,7 +212,7 @@
 					$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
 
 					//A job is not running anymore
-					if (msg.status != "active" && msg.status != "queued_active" && msg.status != "init") {
+					if (msg.status != "running" && msg.status != "queued_active" && msg.status != "init") {
 						//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
 						changePage(null, 1, 1, modalConnect);
 
@@ -241,7 +241,7 @@
 						if(msg.status!= last_state[jid]) {
 							var jstatus = '';
 							var jbar = '';
-							if (msg.status == "active") {
+							if (msg.status == "running") {
 								jstatus = "success";
 								jbar = "info";
 							}
@@ -254,11 +254,7 @@
 							$("#" + jid.toString() + "_tr2").attr('class', jstatus);
 							$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
 						}
-						if(msg.status == "queued_active"){
-							delay = 1000
-						}else {
-							delay = 300
-						}
+						delay = 1000;
 						window.setTimeout(updateJobs, delay, jid, item);
 					}
 					last_state[jid] = msg.status;
@@ -274,108 +270,7 @@
 			});
 		};
 
-		function updateAllJobs() {
-			$.ajax({
-				type: "GET",
-				url: "/update-all-jobs/",
-				dataType: 'json',
-				success: function (msgZ) {
-					//for (var msg in msgZ) {
-					//console.log($(".bar.jbar"));
-					$(".bar.jbar").each(function (id, el) {
-						var jid = parseInt(el.id);
-
-						if ( msgZ[jid] ) {
-							var msg = msgZ[jid];
-
-							var arg = "width: " + msg.progress.toString() + "%";
-
-							$("#" + jid.toString() + "_bar").attr('style', arg);
-							$("#" + jid.toString() + "_SGEstatus").text(msg.name.toString() + " - " + msg.sge.toString());
-							$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
-
-							//A job is not running anymore
-							if (msg.status != "active" && msg.status != "queued_active" && msg.status != "init") {
-								//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
-								changePage(null, 1, 1, modalConnect);
-
-								var jstatus = '';
-								var jbar = '';
-								if (msg.status == "succeed") {
-									jstatus = "success";
-									jbar = "success";
-								}
-								else if (msg.status == "failed") {
-									jstatus = "error";
-									jbar = "danger";
-								}
-								else if (msg.status == "aborted") {
-									jstatus = "error";
-									jbar = "warning";
-								}
-
-								$("#" + jid.toString() + "_tr1").attr('class', jstatus);
-								$("#" + jid.toString() + "_tr2").attr('class', jstatus);
-								$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
-
-								modalConnect();
-
-								// Remove line from 'In progress tab'
-								$("#" + jid.toString() + "_list_tr").remove();
-								// Decrease or remove the counter
-								var a = parseInt($("#current_tab_li_a .badge").html()) - 1;
-								if (a > 0) {
-									$("#current_tab_li_a .badge").html(a.toString())
-								} else {
-									$("#current_tab_li_a .badge").remove();
-								}
-							} else {
-								if (msg.status != last_state[jid]) {
-									var jstatus = '';
-									var jbar = '';
-									if (msg.status == "active") {
-										jstatus = "success";
-										jbar = "info";
-									}
-									else if (msg.status == "queued_active" || msg.status == "init") {
-										jstatus = "success";
-										jbar = "warning";
-									}
-
-									$("#" + jid.toString() + "_tr1").attr('class', jstatus);
-									$("#" + jid.toString() + "_tr2").attr('class', jstatus);
-									$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
-								}
-								if (msg.status == "queued_active") {
-									delay = 1000
-								} else {
-									delay = 300
-								}
-
-							}
-							last_state[jid] = msg.status;
-
-						}else {
-							//element not returned by the server
-							// job is done or failed, but we need to ask again
-							updateJobs(id, el.data("inst"));
-						}
-					});
-					window.setTimeout(updateAllJobs, delay);
-				},
-				error: function (request, status, error) {
-					$(".bar.jbar").each(function (id, el) {
-						var jid = parseInt(el.id);
-						//implement proper error handling
-						$("#" + jid.toString() + "_tr1").attr('class', 'error');
-						$("#" + jid.toString() + "_tr2").attr('class', 'error');
-						$("#" + jid.toString() + "_div").attr('class', "progress progress-warning");
-						$("#" + jid.toString() + "_SGEstatus").text("ERROR while checking status ! (Reload the page)");
-					});
-
-				}
-			});
-		}
+		// function updateAllJobs() { // DELETED ON 30/06/2015
 	</script>
 	<!-- New design attempt -->
 	<script type="text/javascript">

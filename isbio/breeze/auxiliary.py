@@ -357,8 +357,13 @@ def viewRange(page_index, entries_nb, total):
 
 # 28/04/2015 Clem
 def makeHTTP_query(request):
-	''' serialize GET or POST data from a query into a dict string
-	    '''
+	"""
+	serialize GET or POST data from a query into a dict string
+	:param request: Django Http request object
+	:type request: http.HttpRequest
+	:return: QueryString
+	:rtype: str
+	"""
 	if request.method == 'POST':
 		args = request.POST.copy()
 	else:
@@ -481,6 +486,7 @@ def dateT(dateF = None):
 	return str(datetime.now().strftime(dateF))
 
 
+# Used to check for missing reports, following lost report event
 def get_report_path(fitem, fname=None):
 	"""
 		Return the path of an object, and checks that the path is existent or fail with 404
@@ -517,6 +523,7 @@ def get_report_path(fitem, fname=None):
 	return local_path, path_to_file
 
 
+# Used to check for missing reports, following lost report event
 def get_report_path_test(fitem, fname=None, NoFail=False):
 	"""
 	:param fitem: a Report.objects from db
@@ -656,30 +663,5 @@ def proxy_to(request, path, target_url, query_s=''):
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep
 
-
 # 29/05/2015 TOOOOOOOO SLOW
-def update_all_jobs_sub(j_objs, r_objs):
-	import breeze.shell as rshell
-	from itertools import chain
-
-	response = dict()
-	objs = rshell.track_sge_job_bis(list(chain(j_objs, r_objs)))
-
-	for obj in objs:
-
-		assert isinstance(obj, (Report, Jobs))
-		if isinstance(obj, Report):
-			type = 'r'
-			date = obj.created
-			name = str(obj.name)
-		else:
-			type = 'j'
-			date = obj.staged
-			name = str(obj.jname)
-
-		sge_status = rshell.decodestatus[obj.status]
-		# response.update({ type + str(obj.id): dict(id=obj.id, name=name, staged=str(date), status=str(obj.status),
-		response.update({ str(obj.id): dict(id=obj.id, name=name, staged=str(date), status=str(obj.status),
-										progress=obj.progress, sge=sge_status, type=type) })
-	return response
-
+# DELETED update_all_jobs_sub on 30/06/2015
