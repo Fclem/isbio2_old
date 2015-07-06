@@ -16,7 +16,7 @@ def recur(nb, funct, args):
 
 def recur_rec(nb, funct, args):
 	if nb > 0:
-		return recur_rec(nb-1, funct, funct(args))
+		return recur_rec(nb - 1, funct, funct(args))
 	return args
 
 
@@ -297,13 +297,11 @@ class DevSettings(BreezeSettings):
 
 	R_ENGINE_PATH = PROJECT_PATH + 'R/bin/R '
 	TEMP_FOLDER = SOURCE_ROOT + 'tmp/' # /homes/dbychkov/dev/isbio/tmp/
-
+	#
 	# 'db' folder, containing : reports, scripts, jobs, datasets, pipelines, upload_temp
+	#
 	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
-	REPORTS_FOLDER = 'reports/'
-	JOBS_FOLDER = 'jobs/'
-	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FOLDER)
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
@@ -311,6 +309,14 @@ class DevSettings(BreezeSettings):
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
 	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
+	# Reports config
+	REPORTS_FOLDER = 'reports/'
+	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FOLDER)
+	REPORTS_SH = 'sgeconfig.sh'
+	# Jobs configs
+	JOBS_FOLDER = 'jobs/'
+	JOBS_PATH = '%s%s' % (MEDIA_ROOT, JOBS_FOLDER)
+	JOBS_SH = '_config.sh'
 
 	#
 	# WATCHER RELATED CONFIG

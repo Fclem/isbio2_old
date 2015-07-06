@@ -20,7 +20,9 @@ CATEGORY_OPT = (
 
 def is_non_empty_file(file_path):
 	import os
+
 	return os.path.isfile(file_path) and os.path.getsize(file_path) > 0
+
 
 def remove_file_safe(fname):
 	"""
@@ -59,6 +61,7 @@ def auto_symlink(target, holder):
 	log_obj.debug("symlink to %s @ %s" % (target, holder))
 	os.symlink(target, holder)
 	return True
+
 
 # TODO : move all the logic into objects here
 
@@ -157,21 +160,21 @@ class ShinyReport(models.Model):
 	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
 
 	custom_header = models.TextField(blank=True, default=shiny_header(),
-										help_text="Use R Shiny code here to customize the header of the dashboard<br />"
-												"Here is a basic example of what you can do.<br />\n"
-												"For more information, please refer to Shiny documentation.")
+									 help_text="Use R Shiny code here to customize the header of the dashboard<br />"
+											   "Here is a basic example of what you can do.<br />\n"
+											   "For more information, please refer to Shiny documentation.")
 
 	custom_loader = models.TextField(blank=True, default=shiny_loader(),
-										help_text="Use R Shiny code here to customize the global server part of the "
-												"dashboard<br />This is usefull to load files, or declare variables "
-												"that will be accessible to each attached tags:<br />NB : you may "
-												"reference, in the next field, every file you use here. Use a $ to "
-												"reference your file according to the 'tname' you associated with it.")
+									 help_text="Use R Shiny code here to customize the global server part of the "
+											   "dashboard<br />This is usefull to load files, or declare variables "
+											   "that will be accessible to each attached tags:<br />NB : you may "
+											   "reference, in the next field, every file you use here. Use a $ to "
+											   "reference your file according to the 'tname' you associated with it.")
 
 	custom_files = models.TextField(blank=True, default=shiny_files(),
-										help_text="Use the following JSON format to reference your files<br />This "
-												"enables Breeze to dynamically check for the files you marked as "
-												"required.<br />")
+									help_text="Use the following JSON format to reference your files<br />This "
+											  "enables Breeze to dynamically check for the files you marked as "
+											  "required.<br />")
 
 	enabled = models.BooleanField(default=True)
 
@@ -244,6 +247,7 @@ class ShinyReport(models.Model):
 		creates sever and ui sub-folders and link server and ui dashboard 'tag'
 		"""
 		import shutil, os.path
+
 		shutil.rmtree(self._folder_path_base, ignore_errors=True)
 		os.mkdir(self._folder_path_base, self.FS_ACL)
 		os.mkdir(self._link_holder_path, self.FS_ACL)
@@ -251,9 +255,10 @@ class ShinyReport(models.Model):
 		# os.mkdir('%s%s/' % (self.folder_path, self.UI_FOLDER), self.FS_ACL)
 		# os.mkdir('%s%s/' % (self.folder_path, self.SERVER_FOLDER), self.FS_ACL)
 		os.mkdir('%s%s/' % (self.folder_path, self.RES_FOLDER), self.FS_ACL)
-		# link the dashboard 'tag'
-		# auto_symlink(self.path_dash_ui_r_template(), self.folder_path + self.FILE_DASH_UI)
-		# auto_symlink(self.path_dash_server_r_template(), self.folder_path + self.FILE_DASH_SERVER)
+
+	# link the dashboard 'tag'
+	# auto_symlink(self.path_dash_ui_r_template(), self.folder_path + self.FILE_DASH_UI)
+	# auto_symlink(self.path_dash_server_r_template(), self.folder_path + self.FILE_DASH_SERVER)
 
 	def _link_all_reports(self, force=False):
 		"""
@@ -278,9 +283,11 @@ class ShinyReport(models.Model):
 		"""
 		log_obj = logger.getChild(sys._getframe().f_code.co_name)
 		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-		log_obj.debug("updating shinyReport %s slink for report %s %s" % (self.id, report.id, 'FORCING' if force else ''))
+		log_obj.debug(
+			"updating shinyReport %s slink for report %s %s" % (self.id, report.id, 'FORCING' if force else ''))
 
 		import os
+
 		assert isinstance(report, Report)
 		# handles individually each generated report of this type
 		report_home = report.get_home
@@ -343,6 +350,7 @@ class ShinyReport(models.Model):
 		:type tag: ShinyTag
 		"""
 		from distutils.dir_util import copy_tree
+
 		assert isinstance(tag, ShinyTag)
 		copy_tree(tag.path_res_folder, self.res_folder_path) # TODO replace with symlimks ?
 
@@ -353,6 +361,7 @@ class ShinyReport(models.Model):
 		:rtype: dict or list
 		"""
 		import json
+
 		try:
 			jfile = open(ShinyReport.path_file_lst_template)
 			j = json.load(jfile)
@@ -369,6 +378,7 @@ class ShinyReport(models.Model):
 	@staticmethod
 	def get_parsed_loader():
 		from string import Template
+
 		file_loaders = open(ShinyReport.path_loader_r_template)
 		src = Template(file_loaders.read())
 		file_loaders.close()
@@ -377,6 +387,7 @@ class ShinyReport(models.Model):
 	def generate_server(self, a_user=None): # generate the report server.R file to include all the tags
 		from string import Template
 		import auxiliary as aux
+
 		SEP = '\n  '
 
 		if a_user is None or not isinstance(a_user, (User, OrderedUser)):
@@ -396,12 +407,12 @@ class ShinyReport(models.Model):
 		loaders = self.get_parsed_loader()
 		alist.append('') # avoid join errors if list is empty
 		d = { 'title': self.title,
-				'generated': generated,
-				'updated': updated,
-				'loaders': loaders,
-				'sources': SEP.join(alist)
-			}
-		assert(isinstance(src, Template))
+			  'generated': generated,
+			  'updated': updated,
+			  'loaders': loaders,
+			  'sources': SEP.join(alist)
+			  }
+		assert (isinstance(src, Template))
 		result = src.safe_substitute(d)
 		f = open(self.server_path, 'w')
 		f.write(result)
@@ -411,6 +422,7 @@ class ShinyReport(models.Model):
 	def generate_ui(self, a_user=None):  # generate the report ui.R file to include all the tags
 		from string import Template
 		import auxiliary as aux
+
 		SEP = '\n'
 		SEP2 = ',\n  '
 
@@ -423,7 +435,9 @@ class ShinyReport(models.Model):
 		# document data
 		generated = 'Generated on %s for user %s (%s)' % (self.created, self.author.get_full_name(), self.author)
 		updated = 'Last updated on %s for user %s (%s)' % (aux.dateT(), a_user.get_full_name(), a_user)
-		alist = list(); tag_vars = list(); menu_list = list()
+		alist = list();
+		tag_vars = list();
+		menu_list = list()
 		if ShinyTag.objects.filter(attached_report=self).count() > 0:
 			for each in self.shinytag_set.all().order_by('order'):
 				self.import_tag_res(each)
@@ -434,13 +448,13 @@ class ShinyReport(models.Model):
 		alist.append('')
 		menu_list.append('')
 		d = { 'title': self.title,
-				'header': self.custom_header,
-				'generated': generated,
-				'updated': updated,
-				'menu_items': SEP2.join(menu_list),
-				'sources': SEP.join(alist),
-				'tag_vars': SEP2.join(tag_vars),
-			}
+			  'header': self.custom_header,
+			  'generated': generated,
+			  'updated': updated,
+			  'menu_items': SEP2.join(menu_list),
+			  'sources': SEP.join(alist),
+			  'tag_vars': SEP2.join(tag_vars),
+			  }
 		# do the substitution
 		result = src.substitute(d)
 		f = open(self.ui_path, 'w')
@@ -471,10 +485,10 @@ class ShinyReport(models.Model):
 					each.name, each.author.get_full_name(), each.author, each.created, file_glob.read()))
 				file_glob.close()
 		alist.append('')
-		d = {'generated': generated,
-				'updated': updated,
-				'tag_global': SEP.join(alist)
-			}
+		d = { 'generated': generated,
+			  'updated': updated,
+			  'tag_global': SEP.join(alist)
+			  }
 		# do the substitution
 		result = src.substitute(d)
 		f = open(self.global_path, 'w')
@@ -501,6 +515,7 @@ class ShinyReport(models.Model):
 
 	def delete(self, using=None):
 		import shutil
+
 		log_obj = logger.getChild(sys._getframe().f_code.co_name)
 		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
 		log_obj.info("deleted shinyReport %s : %s" % (self.id, self))
@@ -539,7 +554,8 @@ class ReportType(models.Model):
 	manual = models.FileField(upload_to=file_name, blank=True, null=True)
 	created = models.DateField(auto_now_add=True)
 
-	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to", default=0)
+	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to",
+									 default=0)
 
 	def save(self, *args, **kwargs):
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
@@ -591,10 +607,10 @@ class Rscripts(models.Model):
 	must = models.BooleanField(default=False)  # defines wheather the tag is enabled by default
 	order = models.DecimalField(max_digits=3, decimal_places=1, blank=True, default=0)
 	report_type = models.ManyToManyField(ReportType, null=True, blank=True,
-										default=None)  # assosiation with report type
-	#report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
+										 default=None)  # assosiation with report type
+	# report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
 	access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name="users")
-	#install date info
+	# install date info
 	install_date = models.ManyToManyField(User_date, blank=True, null=True, default=None, related_name="installdate")
 	
 	def file_name(self, filename):
@@ -655,10 +671,10 @@ class Rscripts(models.Model):
 		headers = open(self._header_path).read()
 
 		d = { 'tag_name': self.name,
-				'body': body,
-				'gen_params': gen_params,
-				'headers': headers,
-			}
+			  'body': body,
+			  'gen_params': gen_params,
+			  'headers': headers,
+			  }
 		# do the substitution
 		return src.substitute(d)
 
@@ -734,14 +750,6 @@ class UserProfile(models.Model):
 	def __unicode__(self):
 		return self.user.get_full_name()  # return self.user.username
 
-
-# 04/06/2015 WIP
-class Worker(models.Model):
-
-	class Meta:
-		abstract = True
-
-
 import drmaa
 
 # 30/06/2015
@@ -759,8 +767,50 @@ class JobStat(object):
 	SUBMITED = 'submited'
 	PREPARE_RUN = 'prep_run'
 
-class Jobs(models.Model):
+
+class Runnable(models.Model):
+	def __init__(self, *args, **kwargs):
+		super(Runnable, self).__init__(*args, **kwargs)
+
+	@property
+	def is_report(self):
+		return isinstance(self, Report)
+
+	@property
+	def is_job(self):
+		return isinstance(self, Jobs)
+
+	@property
+	def instance_type(self):
+		return 'report' if isinstance(self, Report) else 'job'
+
+	class Meta:
+		abstract = True
+
+	@property
+	def text_id(self):
+		if 'name' in self.__dict__.keys():
+			return self.name
+		elif 'jname' in self.__dict__.keys():
+			return self.jname
+		else:
+			return '?'
+
+	def __unicode__(self):
+		return u'%s_%s' % (self.instance_type, self.text_id)
+
+	def __str__(self):
+		return '%s_%s' % (self.instance_type, self.text_id)
+
+class Jobs(Runnable):
+	def __init__(self, *args, **kwargs):
+		super(Jobs, self).__init__(*args, **kwargs)
+		allowed_keys = ['jname', 'jdetails', 'juser', 'script', 'status', 'progress', 'institute',
+						'mailing', 'email', 'docxml', 'rexecut', 'breeze_stat']
+		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
+
 	JOBS_FOLDER = settings.JOBS_FOLDER
+	JOBS_PATH = settings.JOBS_PATH
 
 	jname = models.CharField(max_length=55)
 	jdetails = models.CharField(max_length=4900, blank=True)
@@ -771,15 +821,15 @@ class Jobs(models.Model):
 	staged = models.DateTimeField(auto_now_add=True)
 	progress = models.IntegerField()
 	sgeid = models.CharField(max_length=15, blank=True, help_text="SGE job id")
-	mailing = models.CharField(max_length=3, blank=True, help_text=\
+	mailing = models.CharField(max_length=3, blank=True, help_text= \
 		'configuration of mailing events : (b)egin (e)nd  (a)bort or empty')  # TextField(name="mailing", )
-	email = models.CharField(max_length=75, help_text=
-		"mail address to send the notification to (not working ATM : your personal mail adress will be user instead)")
+	email = models.CharField(max_length=75,
+		help_text="mail address to send the notification to (not working ATM : your personal mail adress will be user instead)")
 
 	def file_name(self, filename):
 		fname, dot, extension = filename.rpartition('.')
 		slug = slugify(self.jname + '_' + self.juser.username)
-		return 'jobs/%s/%s.%s'%(slug, slug, extension) # TODO : change
+		return 'jobs/%s/%s.%s' % (slug, slug, extension) # TODO : change
 
 	docxml = models.FileField(upload_to=file_name)
 	rexecut = models.FileField(upload_to=file_name)
@@ -787,22 +837,175 @@ class Jobs(models.Model):
 
 	@property
 	def folder_path(self):
-		return '%s%s' % (settings.MEDIA_ROOT, self.folder_name)
+		return self.get_home
 
 	@property
 	def folder_name(self):
-		return '%s%s/' % (self.JOBS_FOLDER, slugify('%s_%s' % (self.jname, self.juser)))
+		return slugify('%s_%s' % (self.jname, self.juser))
+
+	@property
+	def home(self):
+		"""
+		Returns the relative path to this job folder
+		:return: the relative path to this job folder
+		:rtype: str
+		"""
+		return '%s%s/' % (self.JOBS_FOLDER, self.folder_name)
+
+	@property
+	def get_home(self):
+		"""
+		Returns the absolute path to this job folder
+		:return: the absolute path to this job folder
+		:rtype: str
+		"""
+		return '%s%s' % (settings.MEDIA_ROOT, self.home)
+
+	def run(self): # , script=None):
+		"""
+			Submits scripts as an R-job to cluster with qsub (SGE);
+			This submission implements SCRIPTS concept in BREEZE
+			(For REPOTS submission see Reports.run)
+		"""
+		import os
+		import copy
+		import json
+		import django.db
+
+		drmaa = None
+		s = None
+		if settings.HOST_NAME.startswith('breeze'):
+			import drmaa
+		log = logger.getChild('run_job')
+		assert isinstance(log, logging.getLoggerClass())
+
+		loc = self.get_home # absolute path
+		# loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
+		config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh' # TODO change with :
+		# config = loc + '/sgeconfig.sh'
+		default_dir = os.getcwd()
+
+		try:
+
+			default_dir = os.getcwd()
+			os.chdir(loc)
+
+			# prevents db being dropped
+			django.db.close_connection()
+
+			job.status = "queued_active"
+			job.breeze_stat = "prepare_run"
+			job.progress = 15
+			job.save()
+			log.info('j' + str(job.id) + ' : creating job')
+
+		except Exception as e:
+			log.exception('j' + str(job.id) + ' : pre-run error ' + str(e))
+			log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
+
+		try:
+			s = drmaa.Session()
+			s.initialize()
+			jt = s.createJobTemplate()
+			assert isinstance(jt, object)
+
+			jt.workingDirectory = loc
+			jt.jobName = slugify(job.jname) + '_JOB'
+			# external mail address support
+			# Not working ATM probably because of mail backend not being properly configured
+			if job.email != '':
+				jt.email = [str(job.email), str(job.juser.email)]
+			else:
+				jt.email = [str(job.juser.email)]
+			# print "Mail address for this job is : " +  ', '.join(jt.email)
+			# mail notification on events
+			if job.mailing != '':
+				jt.nativeSpecification = "-m " + job.mailing  # Begin End Abort Suspend
+			jt.blockEmail = False
+			jt.remoteCommand = config
+			jt.joinFiles = True
+
+			job.progress = 25
+			# job.status = 'submission'
+			# job.save()
+			log.info('j' + str(job.id) + ' : triggering dramaa.runJob')
+			job.sgeid = s.runJob(jt)
+			log.info('j' + str(job.id) + ' : returned sgedid "' + str(job.sgeid) + '"')
+			job.progress = 30
+			job.save()
+
+			SGEID = copy.deepcopy(job.sgeid)
+			# waiting for the job to end
+			# if not SGEID:
+			# print "no id!"
+			# TODO have a closer look into that
+			log.info('j' + str(job.id) + ' : stat : ' + str(s.jobStatus(job.sgeid)))
+			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+			job.progress = 100
+			job.save()
+
+			if retval.hasExited and retval.exitStatus == 0:
+				job.status = 'succeed'
+				log.info('j' + str(job.id) + ' : dramaa.runJob ended with exit code 0 !')
+			# clean up the folder
+			else:
+				log.error('j' + str(job.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
+				job = Jobs.objects.get(id=job.id)  # make sure data is updated
+				if job.status != 'aborted':
+					pass
+					job.status = 'failed'  # seems to interfere with aborting process TODO check
+
+			job.save()
+			s.exit()
+			os.chdir(default_dir)
+
+			# track_sge_job(job, True)
+
+			log.info('j' + str(job.id) + ' : process terminated successfully !')
+			return True
+		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
+				drmaa.NoActiveSessionException) as e:
+			# TODO improve this part
+			log.exception('j' + str(job.id) + ' : drmaa error ' + str(e))
+			log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
+			# job.status = "failed"
+			job.progress = 67
+			job.save()
+			s.exit()
+			return e
+		except Exception as e:
+			# report.status = 'failed'
+			log.exception('r' + str(job.id) + ' : drmaa unknow error ' + str(e))
+			log.error('r' + str(job.id) + ' : process unexcpectedly terminated')
+			job.progress = 66
+			job.save()
+
+			s.exit()
+			return False
+		# except e:
+		# job.status = 'failed'
+		# job.progress = 100
+		# job.save()
+
+		# newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.juser, job.jname), 'w')
+		# newfile.write("UNKNOW ERROR" + vars(e))
+		# newfile.close()
+
+		# s.exit()
+		# return False
 
 	def abort(self):
 		import time
+
 		if self.breeze_stat != JobStat.DONE:
 			self.breeze_stat = JobStat.ABORT
 			self.save()
-			# time.sleep(settings.WATCHER_PROC_REFRESH)
+		# time.sleep(settings.WATCHER_PROC_REFRESH)
 		return True
 
 	def delete(self, using=None):
-		import os, shutil
+		import os
+		import shutil
 
 		self.abort()
 		if os.path.isdir(self.folder_path):
@@ -816,8 +1019,8 @@ class Jobs(models.Model):
 
 		return True
 
-	def __unicode__(self):
-		return self.jname
+	# def __unicode__(self):
+	#	return self.jname
 
 
 # 04/06/2015
@@ -886,15 +1089,23 @@ class JobsH(Jobs):
 	def args_string(self):
 		return ''
 
-	class Meta:
-		abstract = True
+	class Meta(Runnable.Meta):
+		abstract = False
+		db_table = 'breeze_jobs'
 
 
-class Report(models.Model):
+class Report(Runnable):
+	def __init__(self, *args, **kwargs):
+		super(Report, self).__init__( *args, **kwargs)
+		allowed_keys = ['dochtml', 'author', 'shared', 'type', 'institute', 'title', 'rexec', 'project', 'name',
+						'progress', 'status', 'rora_id', 'breeze_stat']
+		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
+
 	R_FILE_NAME = 'script.r'
 	R_OUT_FILE_NAME = R_FILE_NAME + '.Rout'
 	REPORT_FILE_NAME = 'report'
 	REPORTS_FOLDER = settings.REPORTS_FOLDER
+	SH_FILE = settings.REPORTS_SH
 
 	type = models.ForeignKey(ReportType)
 	name = models.CharField(max_length=55)
@@ -940,6 +1151,7 @@ class Report(models.Model):
 	def args_string(self):
 		""" The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
 		from django.utils.http import urlencode
+
 		if self.rora_id > 0:
 			return '?%s' % urlencode([('path', self.home), ('roraId', str(self.rora_id))])
 		else:
@@ -953,7 +1165,7 @@ class Report(models.Model):
 	# 25/06/15
 	@property
 	def r_exec_path(self):
-		return '%s%s'%(settings.MEDIA_ROOT, self.rexec)
+		return '%s%s' % (settings.MEDIA_ROOT, self.rexec)
 
 	# 25/06/15
 	@property
@@ -965,7 +1177,7 @@ class Report(models.Model):
 		"""
 		return '%s%s/' % (self.REPORTS_FOLDER, self.folder_name)
 
-	#26/06/15
+	# 26/06/15
 	@property
 	def _dochtml(self):
 		return '%sreport' % self.get_home
@@ -989,12 +1201,13 @@ class Report(models.Model):
 		"""
 		from django.core.urlresolvers import reverse
 		from breeze import views
+
 		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
 
 	def has_access_to_shiny(self, this_user):
 		assert isinstance(this_user, (User, OrderedUser))
 		return this_user and (this_user in self.shared.all() or self.author == this_user) \
-				and self.type.shiny_report.enabled
+			and self.type.shiny_report.enabled
 
 	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
 
@@ -1033,14 +1246,14 @@ class Report(models.Model):
 					self.fm_flag = True
 
 				gen_params = rshell.gen_params_string(tree, request_data.POST, self.home, request_data.FILES)
-				tag_list.append( tag.get_R_code(gen_params) )
+				tag_list.append(tag.get_R_code(gen_params))
 
 		d = { 'loc': self.get_home[:-1],
-				'report_name': self.title,
-				'project_parameters': self.dump_project_parameters,
-				'pipeline_config': self.dump_pipeline_config,
-				'tags': '\n'.join(tag_list),
-				'dochtml': str(self._dochtml),
+			'report_name': self.title,
+			'project_parameters': self.dump_project_parameters,
+			'pipeline_config': self.dump_pipeline_config,
+			'tags': '\n'.join(tag_list),
+			'dochtml': str(self._dochtml),
 			}
 		# do the substitution
 		result = src.substitute(d)
@@ -1050,16 +1263,17 @@ class Report(models.Model):
 	@property
 	def dump_project_parameters(self):
 		import copy
+
 		dump = '# <----------  Project Details  ----------> \n'
-		dump += 'report.author          <- \"%s\"\n'%self.author.username
-		dump += 'report.pipeline        <- \"%s\"\n'%self.type
-		dump += 'project.name           <- \"%s\"\n'%self.project.name
-		dump += 'project.manager        <- \"%s\"\n'%self.project.manager
-		dump += 'project.pi             <- \"%s\"\n'%self.project.pi
-		dump += 'project.author         <- \"%s\"\n'%self.project.author
-		dump += 'project.collaborative  <- \"%s\"\n'%self.project.collaborative
-		dump += 'project.wbs            <- \"%s\"\n'%self.project.wbs
-		dump += 'project.external.id    <- \"%s\"\n'%self.project.external_id
+		dump += 'report.author          <- \"%s\"\n' % self.author.username
+		dump += 'report.pipeline        <- \"%s\"\n' % self.type
+		dump += 'project.name           <- \"%s\"\n' % self.project.name
+		dump += 'project.manager        <- \"%s\"\n' % self.project.manager
+		dump += 'project.pi             <- \"%s\"\n' % self.project.pi
+		dump += 'project.author         <- \"%s\"\n' % self.project.author
+		dump += 'project.collaborative  <- \"%s\"\n' % self.project.collaborative
+		dump += 'project.wbs            <- \"%s\"\n' % self.project.wbs
+		dump += 'project.external.id    <- \"%s\"\n' % self.project.external_id
 		dump += '# <----------  end of Project Details  ----------> \n\n'
 		
 		return copy.copy(dump)
@@ -1067,8 +1281,9 @@ class Report(models.Model):
 	@property
 	def dump_pipeline_config(self):
 		import copy
+
 		dump = '# <----------  Pipeline Config  ----------> \n'
-		dump += 'query.key          <- \"%s\"  # id of queried RORA instance \n'% self.rora_id
+		dump += 'query.key          <- \"%s\"  # id of queried RORA instance \n' % self.rora_id
 		dump += open(self._rtype_config_path).read() + '\n'
 		dump += '# <------- end of Pipeline Config --------> \n\n\n'
 
@@ -1088,7 +1303,11 @@ class Report(models.Model):
 
 	@property
 	def _test_file(self):
-		return '%sdone'%self.get_home
+		return '%sdone' % self.get_home
+
+	@property
+	def sh_file_path(self):
+		return '%sdone' % self.get_home
 
 	def generate_shiny_key(self):
 		"""
@@ -1096,6 +1315,7 @@ class Report(models.Model):
 		"""
 		from datetime import datetime
 		from hashlib import sha256
+
 		m = sha256()
 		m.update(settings.SECRET_KEY + self.folder_name + str(datetime.now()))
 		self.shiny_key = str(m.hexdigest())
@@ -1105,25 +1325,30 @@ class Report(models.Model):
 			return True
 
 		import os
+
 		return os.path.isfile(self._test_file)
 
 	def abort(self):
 		import time
+
 		if self.breeze_stat != JobStat.DONE:
 			self.breeze_stat = JobStat.ABORT
 			self.save()
-			# time.sleep(settings.WATCHER_PROC_REFRESH)
+		# time.sleep(settings.WATCHER_PROC_REFRESH)
 		return True
 
 	def run(self):
 		"""
 			Submits reports as an R-job to cluster with SGE;
 			This submission implements REPORTS concept in BREEZE
-			(For SCRIPTS submission see run_job)
+			(For SCRIPTS submission see Jobs.run)
 			TO BE RUN IN AN INDEPENDENT PROCESS / THREAD
 		"""
-		import os, copy, json
+		import os
+		import copy
+		import json
 		import django.db
+
 		drmaa = None
 		s = None
 		if settings.HOST_NAME.startswith('breeze'):
@@ -1171,12 +1396,12 @@ class Report(models.Model):
 			log.info('r' + str(self.id) + ' : triggering dramaa.runJob')
 			self.sgeid = s.runJob(jt)
 			log.info('r' + str(self.id) + ' : returned sgedid "' + str(self.sgeid) + '"')
-			self.set_status( JobStat.SUBMITED )
+			self.set_status(JobStat.SUBMITED)
 			log.info('r' + str(self.id) + ' : stat : ' + str(s.jobStatus(self.sgeid)))
 			# waiting for the job to end
 			SGEID = copy.deepcopy(self.sgeid)
 			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-			#self.drmaa_data = json.dumps(retval)
+			# self.drmaa_data = json.dumps(retval)
 			json.dump(retval, open(self._test_file, 'w'))
 			self.set_status(JobStat.DONE)
 			# self.save()
@@ -1186,7 +1411,7 @@ class Report(models.Model):
 				if retval.exitStatus == 0:
 					log.info('r' + str(self.id) + ' : dramaa.runJob ended with exit code 0 !')
 					self.set_status(JobStat.SUCCEED)
-					# clean up the folder
+				# clean up the folder
 				else:
 					log.error('r' + str(self.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
 					if self.status != JobStat.ABORTED and self.breeze_stat != JobStat.ABORT:
@@ -1234,7 +1459,8 @@ class Report(models.Model):
 		:return: progress value
 		:rtype: int
 		"""
-		if isinstance(stat, (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
+		if isinstance(stat,
+					  (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
 			return 67
 		elif stat is Exception:
 			return 66
@@ -1310,13 +1536,17 @@ class Report(models.Model):
 
 		log_obj = logger.getChild(sys._getframe().f_code.co_name)
 		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-		log_obj.info("report %s : %s has been deleted"%(self.id, self))
+		log_obj.info("report %s : %s has been deleted" % (self.id, self))
 
 		super(Report, self).delete(using=using) # Call the "real" delete() method.
 		return True
 
-	def __unicode__(self):
-		return self.name
+	class Meta(Runnable.Meta):
+		abstract = False
+		db_table = 'breeze_report'
+
+	# def __unicode__(self):
+	#	return self.name
 
 
 # 04/06/2015
@@ -1387,16 +1617,16 @@ class ShinyTag(models.Model):
 	name = models.CharField(max_length=55, unique=True, blank=False,
 							help_text="Must be unique, no special characters.")
 	label = models.CharField(max_length=32, blank=False,
-								help_text="The text to be display on the dashboard")
+							 help_text="The text to be display on the dashboard")
 	description = models.CharField(max_length=350, blank=True,
-									help_text="Optional description text")
+								   help_text="Optional description text")
 	author = ForeignKey(OrderedUser)
 	created = models.DateTimeField(auto_now_add=True)
 	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
 	order = models.PositiveIntegerField(default=0, help_text="sorting index number (0 is the topmost)")
 	menu_entry = models.TextField(default=DEFAULT_MENU_ITEM,
-									help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
-									"of your tag.<br /><u>NB : tabName MUST be identical to the uppercase name of your tag.</u>")
+								  help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
+											"of your tag.<br /><u>NB : tabName MUST be identical to the uppercase name of your tag.</u>")
 
 	@property
 	def get_name(self):
@@ -1409,7 +1639,7 @@ class ShinyTag(models.Model):
 		try:
 			if os.path.isfile(fname):
 				os.remove(fname)
-		except:
+		except os.error:
 			pass
 
 	@property
@@ -1435,10 +1665,10 @@ class ShinyTag(models.Model):
 
 	zip_file = models.FileField(upload_to=file_name_zip, blank=False, null=False,
 								help_text="Upload a zip file containing all the files required for your tag, and "
-											" following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
-											"Check the <a href='%s'>available libraries</a>. If the one you need is not"
-											" present, please contact an admin." %
-											(FILE_TEMPLATE_URL, settings.SHINY_LIBS_BREEZE_URL))
+										  " following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
+										  "Check the <a href='%s'>available libraries</a>. If the one you need is not"
+										  " present, please contact an admin." %
+										  (FILE_TEMPLATE_URL, settings.SHINY_LIBS_BREEZE_URL))
 	enabled = models.BooleanField()
 	attached_report = models.ManyToManyField(ShinyReport)
 
@@ -1449,7 +1679,9 @@ class ShinyTag(models.Model):
 
 	# Manages folder creation, zip verification and extraction
 	def clean(self):
-		import zipfile, shutil, os
+		import zipfile
+		import shutil
+		import os
 
 		# Regenerates every attached reports FS's
 		# for each in self.attached_report.all():
@@ -1483,7 +1715,7 @@ class ShinyTag(models.Model):
 		zf.extractall(path=self.folder_name)
 		# changing files permission
 		for item in os.listdir(self.folder_name[:-1]):
-			path = '%s%s'%(self.folder_name, item)
+			path = '%s%s' % (self.folder_name, item)
 			if os.path.isfile(path):
 				print 'chmod %s' % path, self.ACL_RW_RW_R
 				os.chmod(path, self.ACL_RW_RW_R)
@@ -1493,9 +1725,10 @@ class ShinyTag(models.Model):
 
 	def delete(self, using=None):
 		import shutil
+
 		log_obj = logger.getChild(sys._getframe().f_code.co_name)
 		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-		log_obj.info("deleted shinyTag %s : %s"%(self.id, self))
+		log_obj.info("deleted shinyTag %s : %s" % (self.id, self))
 
 		# Deleting the folder
 		shutil.rmtree(self.folder_name[:-1], ignore_errors=True)
@@ -1511,7 +1744,8 @@ class ShinyTag(models.Model):
 class OffsiteUser(models.Model):
 	first_name = models.CharField(max_length=32, blank=False, help_text="First name of the off-site user to add")
 	last_name = models.CharField(max_length=32, blank=False, help_text="Last name of the off-site user to add")
-	email = models.CharField(max_length=64, blank=False, unique=True, help_text="Valid email address of the off-site user")
+	email = models.CharField(max_length=64, blank=False, unique=True,
+							 help_text="Valid email address of the off-site user")
 	institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
 	role = models.CharField(max_length=32, blank=True, help_text="Position/role of this off-site user")
 	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True, help_text="!! DO NOT EDIT !!")
@@ -1588,6 +1822,7 @@ class OffsiteUser(models.Model):
 
 	def __unicode__(self):
 		return unicode(self.full_name)
+
 
 decodestatus = {
 	drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
