@@ -6,7 +6,12 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
-import logging, sys
+from breeze import managers
+import logging
+import sys
+from os.path import isfile, isdir, islink, exists, getsize
+from os import symlink
+# import os.path
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +22,91 @@ CATEGORY_OPT = (
 	(u'sequencing', u'Sequencing'),
 )
 
+# Shortcut for handling path
+class Path(object):
+	from os.path import isfile, isdir, islink, exists, getsize
+	from os import symlink
+
+	def __init__(self, path_str):
+		"""
+		Path object always return the path string with a trailing slash ( / ) for folders
+		:param path_str: the path to use
+		:type path_str: str
+		"""
+		self.__path_str = ''
+		self.set_path(path_str)
+
+	def get_path(self):
+		return self.__path_str
+
+	def set_path(self, path_str):
+		if path_str[-1] != '/' and isdir(path_str + '/'):
+			path_str += '/'
+		self.__path_str = path_str
+
+	path_str = property(get_path, set_path)
+
+	def __str__(self): # Python 3: def __str__(self):
+		return '%s' % self.path_str
+
+	def is_dir(self):
+		return isdir(self.path_str)
+
+	def is_file(self):
+		return isfile(self.path_str)
+
+	def is_link(self):
+		return islink(self.path_str)
+
+	def exists(self):
+		return exists(self.path_str)
+
+	def get_size(self):
+		return getsize(self.path_str)
+
+	def is_non_empty_file(self):
+		"""
+		Return if the path is pointing to an non empty file
+		:return: is path pointing to an non empty file
+		:rtype: bool
+		"""
+		return isfile(self.path_str) and getsize(self.path_str) > 0
+
+	def remove_file_safe(self):
+		"""
+		Remove a file or link if it exists
+		:param fname: the path of the file/link to delete
+		:type fname: str
+		:return: True or False
+		:rtype: bool
+		"""
+		from os import remove
+		try:
+			if isfile(self.path_str) or islink(self.path_str):
+				remove(self.path_str)
+				return True
+		except OSError:
+			pass
+		return False
+
+	def auto_symlink(self, holder):
+		"""
+		Make a soft-link and overwrite any previously existing file (be careful !) or link with the same name
+		:param holder: path of the link holder
+		:type holder: str
+		"""
+		log_obj = logger.getChild(sys._getframe().f_code.co_name)
+		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+
+		remove_file_safe(holder)
+		if settings.VERBOSE: print "symlink to", self.path_str, "@", holder
+		log_obj.debug("symlink to %s @ %s" % (self.path_str, holder))
+		symlink(self.path_str, holder)
+		return True
+
 
 def is_non_empty_file(file_path):
-	import os
-
-	return os.path.isfile(file_path) and os.path.getsize(file_path) > 0
+	return Path(file_path).is_non_empty_file()
 
 
 def remove_file_safe(fname):
@@ -32,15 +117,7 @@ def remove_file_safe(fname):
 	:return: True or False
 	:rtype: bool
 	"""
-	import os.path
-
-	try:
-		if os.path.isfile(fname) or os.path.islink(fname):
-			os.remove(fname)
-			return True
-	except:
-		pass
-	return False
+	return Path(fname).remove_file_safe()
 
 
 def auto_symlink(target, holder):
@@ -51,17 +128,7 @@ def auto_symlink(target, holder):
 	:param holder: path of the link holder
 	:type holder: str
 	"""
-	import os
-
-	log_obj = logger.getChild(sys._getframe().f_code.co_name)
-	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-
-	remove_file_safe(holder)
-	if settings.VERBOSE: print "symlink to", target, "@", holder
-	log_obj.debug("symlink to %s @ %s" % (target, holder))
-	os.symlink(target, holder)
-	return True
-
+	return Path(target).auto_symlink(holder)
 
 # TODO : move all the logic into objects here
 
@@ -290,7 +357,7 @@ class ShinyReport(models.Model):
 
 		assert isinstance(report, Report)
 		# handles individually each generated report of this type
-		report_home = report.get_home
+		report_home = report.home_folder_full_path
 		report_link = self.report_link(report)
 		# if the home folder of the report exists, and the link doesn't yet
 		if os.path.isdir(report_home[:-1]) and report_home != settings.MEDIA_ROOT:
@@ -321,7 +388,7 @@ class ShinyReport(models.Model):
 		assert isinstance(report, Report)
 		import os
 		# handles individually each generated report of this type
-		report_home = report.get_home
+		report_home = report.home_folder_full_path
 		report_link = self.report_link(report)
 
 		# if the home folder of the report exists, and the link doesn't yet
@@ -750,7 +817,10 @@ class UserProfile(models.Model):
 	def __unicode__(self):
 		return self.user.get_full_name()  # return self.user.username
 
+
 import drmaa
+
+
 
 # 30/06/2015
 class JobStat(object):
@@ -769,9 +839,521 @@ class JobStat(object):
 
 
 class Runnable(models.Model):
+	##
+	# CONSTANTS
+	##
+	HOME_FOLDER = '' # absolute path to the container folder
+	SH_NAME = settings.GENERAL_SH_NAME
+	FILE_MAKER_FN = settings.REPORTS_FM_FN
+	REPORT_FILE_NAME = 'report'
+
+	objects = managers.WorkersManager() # The default manager.
+
 	def __init__(self, *args, **kwargs):
 		super(Runnable, self).__init__(*args, **kwargs)
 
+	##
+	# DB FIELDS
+	##
+	_breeze_stat = models.CharField(max_length=16, default=JobStat.INIT, db_column='breeze_stat')
+	_status = models.CharField(max_length=15, blank=True, default=JobStat.INIT, db_column='status')
+	progress = models.PositiveSmallIntegerField(default=0)
+	sgeid = models.CharField(max_length=15, help_text="job id, as returned by SGE")
+
+	##
+	# WRAPPERs
+	##
+	# 1/7 type : self._type -> Report.db_column = type | Jobs.db_column = script
+	@property # Report
+	def type(self):
+		return self._type
+
+	@type.setter # Report
+	def type(self, value):
+		self._type = value
+
+	# for backward compatibility, TODO remove both
+	@property # Jobs
+	def script(self):
+		return self._type
+
+	@script.setter # Jobs
+	def script(self, value):
+		self._type = value
+
+	#
+	# 2/7 name : self._name -> Report.db_column = name | Jobs.db_column = jname
+	@property # Report
+	def name(self):
+		return self._name
+
+	@name.setter # Report
+	def name(self, value):
+		self._name = value
+
+	# for backward compatibility, TODO remove both
+	@property # Jobs
+	def jname(self):
+		return self._name
+
+	@jname.setter # Jobs
+	def jname(self, value):
+		self._name = value
+
+	#
+	# 3/7 description : self._description -> Report.db_column = description | Jobs.db_column = jdetails
+	@property # Report
+	def description(self):
+		return self._description
+
+	@description.setter # Report
+	def description(self, value):
+		self._description = value
+
+	# for backward compatibility, TODO remove both
+	@property # Jobs
+	def jdetails(self):
+		return self._description
+
+	@jdetails.setter # Jobs
+	def jdetails(self, value):
+		self._description = value
+
+	#
+	# 4/7 author : self._author -> Report.db_column = author | Jobs.db_column = juser
+	@property # Report
+	def author(self):
+		return self._author
+
+	@author.setter # Report
+	def author(self, value):
+		self._author = value
+
+	# for backward compatibility, TODO remove both
+	@property # Jobs
+	def juser(self):
+		return self._author
+
+	@juser.setter # Jobs
+	def juser(self, value):
+		self._author = value
+
+	#
+	# 5/7 created : self._created -> Report.db_column = created | Jobs.db_column = staged
+	@property # Report
+	def created(self):
+		return self._created
+
+	@created.setter # Report
+	def created(self, value):
+		self._created = value
+
+	# for backward compatibility, TODO remove both
+	@property # Jobs
+	def staged(self):
+		return self._created
+
+	@staged.setter # Jobs
+	def staged(self, value):
+		self._created = value
+
+	#
+	# 6/7 rexec : self._rexec -> Report.db_column = rexec | Jobs.db_column = rexecut
+	@property # Report
+	def rexec(self):
+
+		return self._rexec
+
+	@rexec.setter # Report
+	def rexec(self, value):
+		self._rexec = value
+
+	# for backward compatibility, TODO remove both
+	@property # Jobs
+	def rexecut(self):
+		return self._rexec
+
+	@rexecut.setter # Jobs
+	def rexecut(self, value):
+		self._rexec = value
+
+	#
+	# 7/7 doc_ml : self._doc_ml -> Report.db_column = dochtml | Jobs.db_column = docxml
+	@property # Report
+	def dochtml(self):
+		return self._doc_ml
+
+	@dochtml.setter # Report
+	def dochtml(self, value):
+		self._doc_ml = value
+
+	@property # Jobs
+	def docxml(self):
+		return self._doc_ml
+
+	@docxml.setter # Jobs
+	def docxml(self, value):
+		self._doc_ml = value
+
+	# Wrapper for status reporting
+	@property
+	def breeze_stat(self):
+		return self._breeze_stat
+
+	@breeze_stat.setter
+	def breeze_stat(self, value):
+		self._set_status(value)
+
+	@property
+	def status(self):
+		return self._status
+
+	@status.setter # prevents status from being modified directly
+	def status(self, value):
+		pass
+
+	@property
+	def institute(self):
+		try:
+			self._author.get_profile()
+		except ValueError: # for some reason and because of using custom OrderedUser the first call
+			# raise this exception while actually populating the cache for this value...
+			pass
+		return self._author.get_profile().institute_info
+
+	def not_imp(self):
+		raise NotImplementedError("Class %s doesn't implement %s, because it's an abstract/interface class." % (self.__class__.__name__, sys._getframe(1).f_code.co_name))
+
+	def file_name(self, filename):
+		"""
+
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		return '%s%s' % (Path(self._home_folder_rel), slugify(filename))
+
+	@property # interface
+	def args_string(self):
+		""" The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
+		raise self.not_imp()
+
+	@property # interface
+	def folder_name(self):
+		"""
+		Should implement a generator for the name of the folder to store the instance
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		raise self.not_imp()
+
+	@property
+	def home_folder_full_path(self):
+		"""
+		Should return the absolute path to this instance folder
+		:return: the absolute path to this instance folder
+		:rtype: str
+		"""
+		raise self.not_imp()
+
+	@property
+	def _home_folder_rel(self):
+		"""
+		Should return the relative path to this instance folder
+		:return: the relative path to this instance folder
+		:rtype: str
+		"""
+		raise self.not_imp()
+
+	@property
+	def _dochtml(self):
+		return '%sreport' % self.home_folder_full_path
+
+	# 16/06/15
+	@property
+	def home_folder_full_path(self):
+		"""
+		Returns the absolute path to this report folder
+		:return: the absolute path to this report folder
+		:rtype: str
+		"""
+		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
+
+	@property
+	def nozzle_url(self):
+		"""
+		Return the url to nozzle view of this report
+		:return: the url to nozzle view of this report
+		:rtype: str
+		"""
+		from django.core.urlresolvers import reverse
+		from breeze import views
+
+		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
+
+	def has_access_to_shiny(self, this_user):
+		assert isinstance(this_user, (User, OrderedUser))
+		return this_user and (this_user in self.shared.all() or self.author == this_user) \
+			and self.type.shiny_report.enabled
+
+	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
+
+	@property
+	def _rtype_config_path(self):
+		return settings.MEDIA_ROOT + str(self.type.config)
+
+	@property
+	def _r_out_path(self):
+		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
+
+	def generate_R_file(self, sections, request_data):
+		raise self.not_imp()
+
+	@property # interface
+	def dump_project_parameters(self):
+		raise self.not_imp()
+
+	@property # interface
+	def dump_pipeline_config(self):
+		raise self.not_imp()
+
+	##
+	## Other properties
+	##
+	@property
+	def title(self):
+		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
+
+	@property
+	def html_path(self):
+		return '%s%s' % (self.home_folder_full_path, self.REPORT_FILE_NAME)
+
+	@property
+	def _html_full_path(self):
+		return '%s.html' % self.html_path
+
+	@property
+	def _test_file(self):
+		return '%sdone' % self.home_folder_full_path
+
+	@property
+	def sh_file_path(self):
+		return '%s%s' % (self.home_folder_full_path, self.SH_NAME)
+
+	@property
+	def fm_file_path(self):
+		return '%s%s' % (self.home_folder_full_path, self.FILE_MAKER_FN)
+
+	@property
+	def sge_job_name(self):
+		return '%s_%s' % (slugify(self.name), self.instance_type.capitalize())
+
+	# interface
+	def generate_shiny_key(self):
+		#raise self.not_imp()
+		return ''
+
+	def is_done(self):
+		if self.status == JobStat.SUCCEED and self.breeze_stat == JobStat.DONE:
+			return True
+
+		return isfile(self._test_file)
+
+	def abort(self):
+		if self.breeze_stat != JobStat.DONE:
+			self.breeze_stat = JobStat.ABORT
+			self.save()
+		return True
+
+	# TODO
+	def run(self):
+		"""
+			Submits reports as an R-job to cluster with SGE;
+			This submission implements REPORTS concept in BREEZE
+			(For SCRIPTS submission see Jobs.run)
+			TO BE RUN IN AN INDEPENDENT PROCESS / THREAD
+		"""
+		import os
+		import copy
+		import json
+		import django.db
+
+		drmaa = None
+		s = None
+		if settings.HOST_NAME.startswith('breeze'):
+			import drmaa
+
+		loc = self.home_folder_full_path # writing shortcut
+		config = self.sh_file_path
+		log = logger.getChild('run_%s' % self.instance_type )
+		assert isinstance(log, logging.getLoggerClass())
+		data = (self.instance_type[1], str(self.id))
+		default_dir = os.getcwd()
+
+		try:
+			os.chdir(loc)
+			if self.is_report and self.fm_flag: # TODO Report specific
+				os.system(settings.JDBC_BRIDGE_PATH)
+
+			# *MAY* prevent db from being dropped
+			django.db.close_connection()
+			self.breeze_stat = JobStat.PREPARE_RUN
+			log.info('%s%s : ' % data + 'creating %s' % self.instance_type)
+		except Exception as e:
+			log.exception('%s%s : ' % data + 'pre-run error %s' % e)
+			log.error('%s%s : process unexcpectedly terminated' % data)
+
+		try:
+			s = drmaa.Session()
+			s.initialize()
+
+			jt = s.createJobTemplate()
+			# TODO check for report specificity
+			jt.workingDirectory = loc
+			jt.jobName = self.sge_job_name
+			jt.email = [str(self.author.email)]
+			jt.blockEmail = False
+
+			jt.remoteCommand = config
+			jt.joinFiles = True
+			jt.nativeSpecification = "-m bea" # TODO REPORT SPECIFIC
+
+			self.progress = 25
+			self.save()
+			log.info('%s%s : ' % data + 'triggering dramaa.runJob')
+			self.sgeid = s.runJob(jt)
+			log.info('%s%s : ' % data + 'returned sgedid "%s"' % self.sgeid)
+			self.breeze_stat = JobStat.SUBMITED
+			log.info('%s%s : ' % data + 'stat : %s' % s.jobStatus(self.sgeid))
+			# waiting for the job to end
+			SGEID = copy.deepcopy(self.sgeid)
+			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+			# self.drmaa_data = json.dumps(retval)
+			json.dump(retval, open(self._test_file, 'w'))
+			self.breeze_stat = JobStat.DONE
+			# self.save()
+			jt.delete()
+
+			if retval.hasExited:
+				if retval.exitStatus == 0:
+					log.info('%s%s : ' % data + 'dramaa.runJob ended with exit code 0 !')
+					self.breeze_stat = JobStat.SUCCEED
+				# clean up the folder
+				else:
+					log.error('%s%s : ' % data + 'dramaa.runJob ended with exit code %s' % retval.exitStatus)
+					if self.status != JobStat.ABORTED and self.breeze_stat != JobStat.ABORT:
+						self.breeze_stat = JobStat.FAILED
+
+			os.chdir(default_dir)
+
+			if self.is_report and self.fm_flag and isfile(self.fm_file_path):
+				run = open(self.fm_file_path).read().split("\"")[1]
+				os.system(run)
+			s.exit()
+
+		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
+				Exception) as e:
+			log.exception('%s%s : ' % data + 'drmaa error %s' % e)
+			log.error('%s%s : ' % data + 'drmaa waiter process unexcpectedly terminated')
+			self.breeze_stat = JobStat.FAILED
+			#self.progress = self._progress_level(e)
+			#self._status = 'failed'
+			#self.save()
+			if s is not None:
+				s.exit()
+			return 1
+
+		log.info('%s%s : ' % data + 'drmaa waiter process terminated successfully !')
+		return 0
+
+	def _progress_level(self, stat=None):
+		"""
+		Return the progression value associated with a specific status
+		:param stat:
+		:type stat: str or Exception
+		:return: progress value
+		:rtype: int
+		"""
+		if isinstance(stat,
+			(drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
+			return 67
+		elif stat is Exception:
+			return 66
+		elif stat == JobStat.RUN_WAIT:
+			return 8
+		elif stat in (JobStat.PREPARE_RUN, JobStat.QUEUED_ACTIVE):
+			return 15
+		elif stat == JobStat.SUBMITED:
+			return 30
+		elif stat == JobStat.RUNNING:
+			return 55
+		elif stat in (JobStat.FAILED, JobStat.SUCCEED, JobStat.DONE):
+			return 100
+		else:
+			return self.progress
+
+	def _set_status(self, status):
+		"""
+		Save a specific status state of the instance.
+		Changes the progression % and saves the object
+		ONLY PLACE WHERE ONE SHOULD CHANGE _breeze_stat and status
+		:param status: a JobStat value
+		:type status: str
+		"""
+		if self.status == JobStat.SUCCEED or status is None:
+			return
+
+		self.progress = self._progress_level(status)
+		if status == JobStat.ABORTED:
+			self.status = JobStat.ABORTED
+			self._breeze_stat = JobStat.DONE
+		elif status == JobStat.PREPARE_RUN:
+			self._breeze_stat = JobStat.PREPARE_RUN
+			self.status = JobStat.QUEUED_ACTIVE
+		elif status == JobStat.SUBMITED:
+			self._breeze_stat = JobStat.SUBMITED
+		elif status == JobStat.FAILED:
+			self.status = JobStat.FAILED
+			self._breeze_stat = JobStat.DONE
+		elif status == JobStat.RUN_WAIT:
+			self.status = JobStat.INIT
+			self._breeze_stat = JobStat.RUN_WAIT
+		elif status == JobStat.RUNNING:
+			self.status = JobStat.RUNNING
+			self._breeze_stat = JobStat.RUNNING
+		elif status == JobStat.DONE:
+			self._breeze_stat = JobStat.DONE
+		elif status == JobStat.SUCCEED:
+			self._breeze_stat = JobStat.DONE
+			self.status = JobStat.SUCCEED
+		else:
+			self.status = status
+
+		self.save()
+
+	def get_status(self):
+		return decodestatus[self.status]
+
+	def save(self, *args, **kwargs):
+		super(Runnable, self).save(*args, **kwargs) # Call the "real" save() method.
+
+	def delete(self, using=None):
+		import os
+		import shutil
+
+		self.abort()
+		if os.path.isdir(self.home_folder_full_path):
+			shutil.rmtree(self.home_folder_full_path)
+
+		log_obj = logger.getChild(sys._getframe().f_code.co_name)
+		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj.info("%s %s : %s has been deleted" % (self.instance_type, self.id, self))
+
+		super(Runnable, self).delete(using=using) # Call the "real" delete() method.
+		return True
+
+	#
+	# SPECIAL FUNCTION FOR INTERFACE
+	#
 	@property
 	def is_report(self):
 		return isinstance(self, Report)
@@ -782,25 +1364,23 @@ class Runnable(models.Model):
 
 	@property
 	def instance_type(self):
-		return 'report' if isinstance(self, Report) else 'job'
+		return 'report' if self.is_report else 'job' if self.is_job else 'abstract'
+
+	@property
+	def instance_of(self):
+		# return Report if self.is_report else Jobs if self.is_job else self.__class__
+		return self.__class__
+
+	@property
+	def text_id(self):
+		return '%s:%s' % (self.id, self.name)
+
+	def __unicode__(self): # Python 3: def __str__(self):
+		return '%s' % self.text_id
 
 	class Meta:
 		abstract = True
 
-	@property
-	def text_id(self):
-		if 'name' in self.__dict__.keys():
-			return self.name
-		elif 'jname' in self.__dict__.keys():
-			return self.jname
-		else:
-			return '?'
-
-	def __unicode__(self):
-		return u'%s_%s' % (self.instance_type, self.text_id)
-
-	def __str__(self):
-		return '%s_%s' % (self.instance_type, self.text_id)
 
 class Jobs(Runnable):
 	def __init__(self, *args, **kwargs):
@@ -809,42 +1389,43 @@ class Jobs(Runnable):
 						'mailing', 'email', 'docxml', 'rexecut', 'breeze_stat']
 		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
 
+	##
+	# CONSTANTS
+	##
 	JOBS_FOLDER = settings.JOBS_FOLDER
 	JOBS_PATH = settings.JOBS_PATH
+	HOME_FOLDER = JOBS_PATH
+	DNE = "!! DO NOT EDIT !!"
+	##
+	# DB FIELDS
+	##
+	_name = models.CharField(max_length=55, db_column='jname')
+	_description = models.CharField(max_length=4900, blank=True, db_column='jdetails')
+	_author = ForeignKey(User, db_column='juser_id')
+	_type = ForeignKey(Rscripts, db_column='script_id')
+	_created = models.DateTimeField(auto_now_add=True, db_column='staged')
 
-	jname = models.CharField(max_length=55)
-	jdetails = models.CharField(max_length=4900, blank=True)
-	juser = ForeignKey(User)
-	script = ForeignKey(Rscripts)
-	# status may be changed to NUMVER later
-	status = models.CharField(max_length=15, help_text="scheduled|running|succeed|failed|aborted", default=JobStat.INIT)
-	staged = models.DateTimeField(auto_now_add=True)
-	progress = models.IntegerField()
-	sgeid = models.CharField(max_length=15, blank=True, help_text="SGE job id")
+	def _institute(self):
+		self.institute
+
+	def file_name(self, filename):
+		return super(Jobs, self).file_name(filename)
+
+	_rexec = models.FileField(upload_to=file_name, db_column='rexecut')
+	_doc_ml = models.FileField(upload_to=file_name, db_column='docxml')
+
+	# Jobs specific
 	mailing = models.CharField(max_length=3, blank=True, help_text= \
 		'configuration of mailing events : (b)egin (e)nd  (a)bort or empty')  # TextField(name="mailing", )
 	email = models.CharField(max_length=75,
 		help_text="mail address to send the notification to (not working ATM : your personal mail adress will be user instead)")
 
-	def file_name(self, filename):
-		fname, dot, extension = filename.rpartition('.')
-		slug = slugify(self.jname + '_' + self.juser.username)
-		return 'jobs/%s/%s.%s' % (slug, slug, extension) # TODO : change
-
-	docxml = models.FileField(upload_to=file_name)
-	rexecut = models.FileField(upload_to=file_name)
-	breeze_stat = models.CharField(max_length=16, default=JobStat.INIT)
-
-	@property
-	def folder_path(self):
-		return self.get_home
-
 	@property
 	def folder_name(self):
-		return slugify('%s_%s' % (self.jname, self.juser))
+		return slugify('%s_%s' % (self._name, self._author))
 
 	@property
-	def home(self):
+	def _home_folder_rel(self):
 		"""
 		Returns the relative path to this job folder
 		:return: the relative path to this job folder
@@ -853,14 +1434,15 @@ class Jobs(Runnable):
 		return '%s%s/' % (self.JOBS_FOLDER, self.folder_name)
 
 	@property
-	def get_home(self):
+	def home_folder_full_path(self):
 		"""
 		Returns the absolute path to this job folder
 		:return: the absolute path to this job folder
 		:rtype: str
 		"""
-		return '%s%s' % (settings.MEDIA_ROOT, self.home)
+		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
 
+	# TODO resume here
 	def run(self): # , script=None):
 		"""
 			Submits scripts as an R-job to cluster with qsub (SGE);
@@ -879,7 +1461,7 @@ class Jobs(Runnable):
 		log = logger.getChild('run_job')
 		assert isinstance(log, logging.getLoggerClass())
 
-		loc = self.get_home # absolute path
+		loc = self.home_folder_full_path # absolute path
 		# loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
 		config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh' # TODO change with :
 		# config = loc + '/sgeconfig.sh'
@@ -994,106 +1576,6 @@ class Jobs(Runnable):
 		# s.exit()
 		# return False
 
-	def abort(self):
-		import time
-
-		if self.breeze_stat != JobStat.DONE:
-			self.breeze_stat = JobStat.ABORT
-			self.save()
-		# time.sleep(settings.WATCHER_PROC_REFRESH)
-		return True
-
-	def delete(self, using=None):
-		import os
-		import shutil
-
-		self.abort()
-		if os.path.isdir(self.folder_path):
-			shutil.rmtree(self.folder_path)
-
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-		log_obj.info("job %s : %s has been deleted" % (self.id, self))
-
-		super(Jobs, self).delete(using=using) # Call the "real" delete() method.
-
-		return True
-
-	# def __unicode__(self):
-	#	return self.jname
-
-
-# 04/06/2015
-class JobsH(Jobs):
-	@property
-	def type(self):
-		return self.script
-
-	@property
-	def name(self):
-		return self.jname
-
-	@property
-	def description(self):
-		return self.jdetails
-
-	@property
-	def author(self):
-		return self.juser
-
-	@property
-	def created(self):
-		return self.staged
-
-	@property
-	def home(self):
-		return ''
-
-	@property
-	def rexec(self):
-		return self.rexecut
-
-	@property
-	def dochtml(self):
-		return self.docxml
-
-	@property
-	def institute(self):
-		return Institute.objects.get(id=0)
-
-	@property
-	def project(self):
-		return ''
-
-	@property
-	def shared(self):
-		return []
-
-	@property
-	def conf_params(self):
-		return ''
-
-	@property
-	def conf_files(self):
-		return ''
-
-	@property
-	def shiny_key(self):
-		return ''
-
-	@property
-	def rora_id(self):
-		return 0
-
-	@property
-	def args_string(self):
-		return ''
-
-	class Meta(Runnable.Meta):
-		abstract = False
-		db_table = 'breeze_jobs'
-
-
 class Report(Runnable):
 	def __init__(self, *args, **kwargs):
 		super(Report, self).__init__( *args, **kwargs)
@@ -1101,50 +1583,41 @@ class Report(Runnable):
 						'progress', 'status', 'rora_id', 'breeze_stat']
 		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
 
+	##
+	# CONSTANTS
+	##
 	R_FILE_NAME = 'script.r'
 	R_OUT_FILE_NAME = R_FILE_NAME + '.Rout'
-	REPORT_FILE_NAME = 'report'
 	REPORTS_FOLDER = settings.REPORTS_FOLDER
+	HOME_FOLDER = REPORTS_FOLDER
 	SH_FILE = settings.REPORTS_SH
-
-	type = models.ForeignKey(ReportType)
-	name = models.CharField(max_length=55)
-	description = models.CharField(max_length=350, blank=True)
-	author = ForeignKey(User)
-	created = models.DateTimeField(auto_now_add=True)
-	# home = models.CharField(max_length=155, blank=True)
-	# _status = models.CharField(max_length=15, blank=True, db_column="status")
+	DNE = "!! DO NOT EDIT !!"
+	##
+	# DB FIELDS
+	##
+	_name = models.CharField(max_length=55, db_column='name')
+	_description = models.CharField(max_length=350, blank=True, db_column='description')
+	_author = ForeignKey(User, db_column='author_id')
+	_type = models.ForeignKey(ReportType, db_column='type_id')
+	_created = models.DateTimeField(auto_now_add=True, db_column='created')
+	_institute = ForeignKey(Institute, default=Institute.objects.get(id=1), db_column='institute_id')
 	# TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
-	status = models.CharField(max_length=15, blank=True, default=JobStat.INIT)
-	progress = models.PositiveSmallIntegerField(default=0)
-	sgeid = models.CharField(max_length=15)
-	# store the institute info of the user who creates this report
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
-	
-	project = models.ForeignKey(Project, null=True, blank=True, default=None)
-	shared = models.ManyToManyField(User, null=True, blank=True, default=None,
-									related_name='report_shares')  # share list
-	conf_params = models.TextField(null=True, help_text="!! DO NOT EDIT !!", editable=False)
-	# conf_params = models.(null=True, blank=True, default=None)
-	conf_files = models.TextField(null=True, help_text="!! DO NOT EDIT !!", editable=False)
-	
-	shiny_key = models.CharField(max_length=64, null=True, help_text="!! DO NOT EDIT !!", editable=False)
-	rora_id = models.PositiveIntegerField(default=0)
-	breeze_stat = models.CharField(max_length=16, default=JobStat.INIT)
 
-	# offsite_user_access = models.ManyToManyField(OffsiteUser)
-	# conf_files = models.CharField(null=True, blank=True, default=None)
-	
 	def file_name(self, filename):
-		# fname, dot, extension = filename.rpartition('.')
-		slug = self.folder_name
-		return '%s%s/%s' % (Report.REPORTS_FOLDER, slug, filename)
-	
-	rexec = models.FileField(upload_to=file_name, blank=True)
-	dochtml = models.FileField(upload_to=file_name, blank=True)
+		return super(Report, self).file_name(filename)
 
+	_rexec = models.FileField(upload_to=file_name, blank=True, db_column='rexec')
+	_doc_ml = models.FileField(upload_to=file_name, blank=True, db_column='dochtml')
+
+	# Report specific
+	project = models.ForeignKey(Project, null=True, blank=True, default=None)
+	shared = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='report_shares')
+	conf_params = models.TextField(null=True, editable=False)
+	conf_files = models.TextField(null=True, editable=False)
 	fm_flag = models.BooleanField(default=False)
-	# drmaa_data = models.TextField(null=True, help_text="!! DO NOT EDIT !!", editable=False)
+	# Shiny specific
+	shiny_key = models.CharField(max_length=64, null=True, editable=False)
+	rora_id = models.PositiveIntegerField(default=0)
 
 	# 04/06/2015
 	@property
@@ -1153,7 +1626,7 @@ class Report(Runnable):
 		from django.utils.http import urlencode
 
 		if self.rora_id > 0:
-			return '?%s' % urlencode([('path', self.home), ('roraId', str(self.rora_id))])
+			return '?%s' % urlencode([('path', self._home_folder_rel), ('roraId', str(self.rora_id))])
 		else:
 			return ''
 
@@ -1165,11 +1638,11 @@ class Report(Runnable):
 	# 25/06/15
 	@property
 	def r_exec_path(self):
-		return '%s%s' % (settings.MEDIA_ROOT, self.rexec)
+		return '%s%s' % (settings.MEDIA_ROOT, self._rexec)
 
 	# 25/06/15
 	@property
-	def home(self):
+	def _home_folder_rel(self):
 		"""
 		Returns the relative path to this report folder
 		:return: the relative path to this report folder
@@ -1180,17 +1653,17 @@ class Report(Runnable):
 	# 26/06/15
 	@property
 	def _dochtml(self):
-		return '%sreport' % self.get_home
+		return '%sreport' % self.home_folder_full_path
 
 	# 16/06/15
 	@property
-	def get_home(self):
+	def home_folder_full_path(self):
 		"""
 		Returns the absolute path to this report folder
 		:return: the absolute path to this report folder
 		:rtype: str
 		"""
-		return '%s%s' % (settings.MEDIA_ROOT, self.home)
+		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
 
 	@property
 	def nozzle_url(self):
@@ -1217,7 +1690,7 @@ class Report(Runnable):
 
 	@property
 	def _r_out_path(self):
-		return '%s%s' % (self.get_home, self.R_OUT_FILE_NAME)
+		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
 
 	# TODO : use clean or save ?
 	def generate_R_file(self, sections, request_data):
@@ -1245,10 +1718,10 @@ class Report(Runnable):
 				if tag.name == "Import to FileMaker":
 					self.fm_flag = True
 
-				gen_params = rshell.gen_params_string(tree, request_data.POST, self.home, request_data.FILES)
+				gen_params = rshell.gen_params_string(tree, request_data.POST, self._home_folder_rel, request_data.FILES)
 				tag_list.append(tag.get_R_code(gen_params))
 
-		d = { 'loc': self.get_home[:-1],
+		d = { 'loc': self.home_folder_full_path[:-1],
 			'report_name': self.title,
 			'project_parameters': self.dump_project_parameters,
 			'pipeline_config': self.dump_pipeline_config,
@@ -1258,7 +1731,7 @@ class Report(Runnable):
 		# do the substitution
 		result = src.substitute(d)
 		# save r-file
-		self.rexec.save(self.R_FILE_NAME, base.ContentFile(result))
+		self._rexec.save(self.R_FILE_NAME, base.ContentFile(result))
 
 	@property
 	def dump_project_parameters(self):
@@ -1293,22 +1766,6 @@ class Report(Runnable):
 	def title(self):
 		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
 
-	@property
-	def html_path(self):
-		return '%s%s' % (self.get_home, self.REPORT_FILE_NAME)
-
-	@property
-	def _html_full_path(self):
-		return '%s.html' % self.html_path
-
-	@property
-	def _test_file(self):
-		return '%sdone' % self.get_home
-
-	@property
-	def sh_file_path(self):
-		return '%sdone' % self.get_home
-
 	def generate_shiny_key(self):
 		"""
 		Generate a sha256 key for outside access
@@ -1320,24 +1777,7 @@ class Report(Runnable):
 		m.update(settings.SECRET_KEY + self.folder_name + str(datetime.now()))
 		self.shiny_key = str(m.hexdigest())
 
-	def is_done(self):
-		if self.status == JobStat.SUCCEED and self.breeze_stat == JobStat.DONE:
-			return True
-
-		import os
-
-		return os.path.isfile(self._test_file)
-
-	def abort(self):
-		import time
-
-		if self.breeze_stat != JobStat.DONE:
-			self.breeze_stat = JobStat.ABORT
-			self.save()
-		# time.sleep(settings.WATCHER_PROC_REFRESH)
-		return True
-
-	def run(self):
+	def run(self): # TO BE RUN IN AN INDEPENDENT PROCESS / THREAD
 		"""
 			Submits reports as an R-job to cluster with SGE;
 			This submission implements REPORTS concept in BREEZE
@@ -1354,22 +1794,21 @@ class Report(Runnable):
 		if settings.HOST_NAME.startswith('breeze'):
 			import drmaa
 
-		loc = self.get_home # str(settings.MEDIA_ROOT) + self.home
-		config = loc + '/sgeconfig.sh'
+		loc = self.home_folder_full_path
+		config = self.sh_file_path
 		log = logger.getChild('run_report')
 		assert isinstance(log, logging.getLoggerClass())
 		fmFlag = self.fm_flag
 		default_dir = os.getcwd()
 
 		try:
-			os.chdir(loc)
+			os.chdir(loc) # ???
 			if fmFlag == 1:
-				# print "HAS FM"
 				os.system(settings.JDBC_BRIDGE_PATH)
 
-			# prevents db being dropped
+			# *MAY* prevent db from being dropped
 			django.db.close_connection()
-			self.set_status(JobStat.PREPARE_RUN)
+			self._set_status(JobStat.PREPARE_RUN)
 			log.info('r' + str(self.id) + ' : creating job')
 		except Exception as e:
 			log.exception('r' + str(self.id) + ' : pre-run error ' + str(e))
@@ -1396,37 +1835,34 @@ class Report(Runnable):
 			log.info('r' + str(self.id) + ' : triggering dramaa.runJob')
 			self.sgeid = s.runJob(jt)
 			log.info('r' + str(self.id) + ' : returned sgedid "' + str(self.sgeid) + '"')
-			self.set_status(JobStat.SUBMITED)
+			self._set_status(JobStat.SUBMITED)
 			log.info('r' + str(self.id) + ' : stat : ' + str(s.jobStatus(self.sgeid)))
 			# waiting for the job to end
 			SGEID = copy.deepcopy(self.sgeid)
 			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
 			# self.drmaa_data = json.dumps(retval)
 			json.dump(retval, open(self._test_file, 'w'))
-			self.set_status(JobStat.DONE)
+			self._set_status(JobStat.DONE)
 			# self.save()
 			jt.delete()
 
 			if retval.hasExited:
 				if retval.exitStatus == 0:
 					log.info('r' + str(self.id) + ' : dramaa.runJob ended with exit code 0 !')
-					self.set_status(JobStat.SUCCEED)
+					self._set_status(JobStat.SUCCEED)
 				# clean up the folder
 				else:
 					log.error('r' + str(self.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
 					if self.status != JobStat.ABORTED and self.breeze_stat != JobStat.ABORT:
-						self.set_status(JobStat.FAILED)
+						self._set_status(JobStat.FAILED)
 
-			os.chdir(default_dir)
+			os.chdir(default_dir) # WTF ???
 
-			if self.fm_flag:
-				extra_path = loc + "/transfer_to_fm.txt"
-				extra_file = open(extra_path, 'r')
-				command = extra_file.read()
-				run = command.split("\"")[1]
+			if self.fm_flag and isfile(self.fm_file_path):
+				run = open(self.fm_file_path).read().split("\"")[1]
 				os.system(run)
 			s.exit()
-
+		# legqcy exception handling TODO revise
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
 			# TODO improve this part
 			log.exception('r' + str(self.id) + ' : drmaa error ' + str(e))
@@ -1451,102 +1887,21 @@ class Report(Runnable):
 		log.info('r' + str(self.id) + ' : drmaa waiter process terminated successfully !')
 		return 0
 
-	def _progress_level(self, stat=None):
-		"""
-		Return the progression value associated with a specific status
-		:param stat:
-		:type stat: str or Exception
-		:return: progress value
-		:rtype: int
-		"""
-		if isinstance(stat,
-					  (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
-			return 67
-		elif stat is Exception:
-			return 66
-		elif stat == JobStat.RUN_WAIT:
-			return 8
-		elif stat in (JobStat.PREPARE_RUN, JobStat.QUEUED_ACTIVE):
-			return 15
-		elif stat == JobStat.SUBMITED:
-			return 30
-		elif stat == JobStat.RUNNING:
-			return 55
-		elif stat in (JobStat.FAILED, JobStat.SUCCEED, JobStat.DONE):
-			return 100
-		else:
-			return self.progress
-
-	def set_status(self, status):
-		"""
-		Save a specific status state of the Report.
-		Changes the progression % and saves the object
-		:param status: a JobStat value
-		:type status: str
-		"""
-		if self.status == JobStat.SUCCEED or status is None:
-			return
-
-		self.progress = self._progress_level(status)
-		if status == JobStat.ABORTED:
-			self.status = JobStat.ABORTED
-			self.breeze_stat = JobStat.DONE
-		elif status == JobStat.PREPARE_RUN:
-			self.breeze_stat = JobStat.PREPARE_RUN
-			self.status = JobStat.QUEUED_ACTIVE
-		elif status == JobStat.SUBMITED:
-			self.breeze_stat = JobStat.SUBMITED
-		elif status == JobStat.FAILED:
-			self.status = JobStat.FAILED
-			self.breeze_stat = JobStat.DONE
-		elif status == JobStat.RUN_WAIT:
-			self.status = JobStat.INIT
-			self.breeze_stat = JobStat.RUN_WAIT
-		elif status == JobStat.RUNNING:
-			self.status = JobStat.RUNNING
-			self.breeze_stat = JobStat.RUNNING
-		elif status == JobStat.DONE:
-			self.breeze_stat = JobStat.DONE
-		elif status == JobStat.SUCCEED:
-			self.breeze_stat = JobStat.DONE
-			self.status = JobStat.SUCCEED
-		else:
-			self.status = status
-
-		self.save()
-
-	def get_status(self):
-		return decodestatus[self.status]
-
 	def save(self, *args, **kwargs):
 		super(Report, self).save(*args, **kwargs) # Call the "real" save() method.
-		if self.type.shiny_report_id > 0 and len(self.home) > 1:
+		if self.type.shiny_report_id > 0 and len(self._home_folder_rel) > 1:
 			# call symbolic link update
 			self.type.shiny_report.link_report(self, True)
 
 	def delete(self, using=None):
-		import os, shutil
-
-		self.abort()
-
-		if os.path.isdir(self.get_home[:-1]):
-			shutil.rmtree(self.get_home[:-1])
 		if self.type.shiny_report_id > 0:
 			self.type.shiny_report.unlink_report(self)
 
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-		log_obj.info("report %s : %s has been deleted" % (self.id, self))
+		return super(Report, self).delete(using=using) # Call the "real" delete() method.
 
-		super(Report, self).delete(using=using) # Call the "real" delete() method.
-		return True
-
-	class Meta(Runnable.Meta):
+	class Meta(Runnable.Meta): # TODO check if inheritence is required here
 		abstract = False
 		db_table = 'breeze_report'
-
-	# def __unicode__(self):
-	#	return self.name
 
 
 # 04/06/2015
@@ -1566,7 +1921,7 @@ class ReportH(Report):
 
 	@property
 	def staged(self):
-		return self.created
+		return self._created
 
 	@property
 	def mailing(self):
@@ -1578,11 +1933,11 @@ class ReportH(Report):
 
 	@property
 	def docxml(self):
-		return self.dochtml
+		return self._doc_ml
 
 	@property
 	def rexecut(self):
-		return self.rexec
+		return self._rexec
 
 	class Meta:
 		abstract = True
