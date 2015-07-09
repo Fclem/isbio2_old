@@ -1,9 +1,13 @@
 from django.db import models
-from django.db.models.query import QuerySet as _original_QS
-from django.db.models.query_utils import Q as _original_Q
+from django.db.models.query import QuerySet as __original_QS
+import django.db.models.query_utils
+
 
 class Trans:
-	__translation = {
+	def __init__(self, *args, **kwargs):
+		self._translate(*args, **kwargs)
+
+	_translation = {
 		'name': '_name', 'jname': '_name',
 		'description': '_description', 'jdetails': '_description',
 		'author': '_author', 'juser_id': '_author',
@@ -15,38 +19,46 @@ class Trans:
 		'institute': '_institute',
 	}
 
-	def has(self, item):
+	def _has(self, item):
 		if isinstance(item, str) and item != '':
 			text = item
 			if text[0] == '-':
 				text = text[1:]
-			for key in self.__translation.keys():
+			for key in self._translation.keys():
 				if text.startswith(key):
-					return item.replace(key, self.__translation[key])
+					return item.replace(key, self._translation[key])
 		return None
 
+	def _translate(self, args, kwargs):
+		new_arg = list(args)
+		for pos, el in enumerate(new_arg):
+			new_key = self._has(el)
+			if new_key is not None:
+				new_arg[pos] = new_key
+		new_arg = tuple(new_arg)
+
+		for key in kwargs.keys():
+			new_key = self._has(key)
+			if new_key is not None:
+				kwargs[new_key] = kwargs[key]
+				del kwargs[key]
+		self.args, self.kwargs = new_arg, kwargs
+
+	def get(self):
+		return self.args, self.kwargs
+
+
 def _translate(args, kwargs):
-	new_arg = list(args)
-	for pos, el in enumerate(new_arg):
-		new_key = Trans().has(el)
-		if new_key is not None:
-			new_arg[pos] = new_key
-	new_arg = tuple(new_arg)
-
-	for key in kwargs.keys():
-		new_key = Trans().has(key)
-		if new_key is not None:
-			kwargs[new_key] = kwargs[key]
-			del kwargs[key]
-	return new_arg, kwargs
+	return Trans(args, kwargs).get()
 
 
-class Q(_original_Q):
+class Q(django.db.models.query_utils.Q):
 	def __init__(self, *args, **kwargs):
 		args, kwargs = _translate(args, kwargs)
 		super(Q, self).__init__(*args, **kwargs)
 
-class QuerySet(_original_QS):
+
+class QuerySet(__original_QS):
 	def _filter_or_exclude(self, negate, *args, **kwargs):
 		args, kwargs = _translate(args, kwargs)
 		return super(QuerySet, self)._filter_or_exclude(negate, *args, **kwargs)
@@ -70,6 +82,7 @@ class QuerySet(_original_QS):
 	def order_by(self, *field_names):
 		field_names, _ = _translate(field_names, dict())
 		return super(QuerySet, self).order_by(*field_names)
+
 
 class WorkersManager(models.Manager):
 	"""
