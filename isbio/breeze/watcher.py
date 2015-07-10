@@ -2,24 +2,17 @@ from symbol import argument
 
 __author__ = 'clem'
 import django.db
-from django.template.defaulttags import now
-import os, shutil, re, stat, copy
+import os
 from datetime import datetime
 from multiprocessing import Process
-from Bio import Entrez
-from django.template.defaultfilters import slugify
 from django.conf import settings
-import auxiliary as aux
 import logging
-import pickle, json
-import hashlib
 from django.utils import timezone
 from datetime import timedelta
 from auxiliary import console_print as cp
 import time
 from exceptions import Exception
 from breeze.models import Report, Jobs, JobStat
-from breeze import shell
 import drmaa
 
 logger = logging.getLogger(__name__)
@@ -76,15 +69,15 @@ class Watcher:
 		"""
 		changed = False
 		django.db.close_connection()
-		# lst = Report.objects.filter(breeze_stat='run_wait')
-		lst = Report.objects.all().exclude(breeze_stat=JobStat.DONE).exclude(status=JobStat.SCHEDULED)
+
+		lst = Report.objects.get_active()
 		for item in lst:
-			# self.report_lst.update({ item.id: item })
-			if item.breeze_stat == JobStat.RUN_WAIT:
-				self._run_report(item)
-				changed = True
-			elif item.breeze_stat != JobStat.DONE:
-				self.refresh_drmaa(item.id)
+			self.refresh_drmaa(item.id)
+
+		lst = Report.objects.get_run_wait()
+		for item in lst:
+			self._run_report(item)
+			changed = True
 
 		return changed
 
@@ -107,7 +100,7 @@ class Watcher:
 				if report.status != JobStat.SUCCEED and report.breeze_stat != JobStat.ABORT \
 					and report.status != JobStat.ABORTED:
 					console_print('failing job', report.id)
-					report.set_status(JobStat.FAILED)
+					report.breeze_stat = JobStat.FAILED
 			else:
 				self.refresh_drmaa(each[1])
 
@@ -121,15 +114,15 @@ class Watcher:
 		"""
 		s = self.s
 		if s is None:
-			console_print('NO DRMAA instance availiable', rid)
+			console_print('NO DRMAA instance available', rid)
 			return
 
 		log = logger.getChild('watcher.refresh_drmaa')
 		job = self.report(rid)
-		type = 'r'
+		type = job.instance_type[1]
 		status = None
 		if job.breeze_stat == JobStat.ABORT:
-			job.set_status(JobStat.ABORTED)
+			job.breeze_stat = JobStat.ABORTED
 			if job.sgeid is not None and job.sgeid != '' and job.sgeid > 0:
 				s.control(job.sgeid, drmaa.JobControlAction.TERMINATE)
 		elif job.sgeid is not None and job.sgeid != '' and int(job.sgeid) > 0:
@@ -151,8 +144,8 @@ class Watcher:
 				log.error('%s%s : drmaa AlreadyActiveSessionException' % (type, job.id))
 
 			if status != job.status:
-				job.set_status(status)
-				# No need to save, set_status take care of that
+				job.breeze_stat = status
+				# No need to save, _set_status take care of that
 		else:
 			now_t = timezone.now()  # .time()
 			crea = job.created
@@ -161,12 +154,12 @@ class Watcher:
 			log.warning('%s%s : sgeid has been empty for %s sec' % (type, job.id, tdelta.seconds))
 			if settings.DEBUG: console_print('sgeid has been empty for ' + str(tdelta.seconds) + ' sec', rid)
 			if tdelta > timedelta(seconds=settings.NO_SGEID_EXPIRY):
-				log.warning('%s%s : trying to resubmit the report' % (type, job.id))
-				if settings.DEBUG: console_print('trying to resubmit the report', rid)
-				# TODO : move this to set_status
+				log.warning('%s%s : reseting job status' % (type, job.id))
+				if settings.DEBUG: console_print('reseting job status', rid)
+				# TODO : move this to _set_status
 				job.created = datetime.now().strftime(settings.USUAL_DATE_FORMAT)
 				# reset job status to RUN_WAIT which will trigger job.run
-				job.set_status(JobStat.RUN_WAIT)
+				job.breeze_stat = JobStat.RUN_WAIT
 
 		# s.exit()
 
@@ -186,33 +179,6 @@ class Watcher:
 		except Exception as e:
 			log.exception('r%s : unhandled error while starting run_process thread : %s' % (dbitem.id, e))
 			return False
-
-
-class Watched:
-	type = None
-
-	def __unicode__(self):
-		return self.type
-
-	class Meta:
-		abstract = True
-
-
-class WatchedJob(Watched):
-	type = Jobs
-
-	@property
-	def status(self):
-		return self.type
-
-
-class WatchedReport():
-	type = Report
-
-	@property
-	def status(self):
-		return self.type
-
 
 # TO BE RUN ONLY_ONCE IN A SEPARATE BACKGROUND PROCESS
 def runner():

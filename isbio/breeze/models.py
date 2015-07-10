@@ -1,3 +1,4 @@
+from operator import isCallable
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
@@ -13,7 +14,7 @@ from os.path import isfile, isdir, islink, exists, getsize
 from os import symlink
 # import os.path
 
-logger = logging.getLogger(__name__)
+
 
 CATEGORY_OPT = (
 	(u'general', u'General'),
@@ -21,6 +22,14 @@ CATEGORY_OPT = (
 	(u'screening', u'Screening'),
 	(u'sequencing', u'Sequencing'),
 )
+
+def get_logger(name=None):
+	logger = logging.getLogger(__name__)
+	if name is None:
+		name = sys._getframe(1).f_code.co_name
+	log_obj = logger.getChild(name)
+	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+	return log_obj
 
 # Shortcut for handling path
 class Path(object):
@@ -95,8 +104,7 @@ class Path(object):
 		:param holder: path of the link holder
 		:type holder: str
 		"""
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj = get_logger()
 
 		remove_file_safe(holder)
 		if settings.VERBOSE: print "symlink to", self.path_str, "@", holder
@@ -348,8 +356,7 @@ class ShinyReport(models.Model):
 		:param force: force linking even if files are missing, or the link already existent
 		:type force: bool
 		"""
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj = get_logger()
 		log_obj.debug(
 			"updating shinyReport %s slink for report %s %s" % (self.id, report.id, 'FORCING' if force else ''))
 
@@ -564,8 +571,7 @@ class ShinyReport(models.Model):
 		return
 
 	def regen_report(self, a_user=None):
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj = get_logger()
 		log_obj.info("rebuilding shinyReport %s for user %s" % (self.id, a_user))
 		self.update_folder()
 		self.generate_server(a_user)
@@ -583,8 +589,7 @@ class ShinyReport(models.Model):
 	def delete(self, using=None):
 		import shutil
 
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj = get_logger()
 		log_obj.info("deleted shinyReport %s : %s" % (self.id, self))
 		# unlinking all attached Reports
 		self._unlink_all_reports()
@@ -820,7 +825,12 @@ class UserProfile(models.Model):
 
 import drmaa
 
+class InvalidArguments(BaseException):
+	pass
 
+
+class ReadOnlyAttribute(BaseException):
+	pass
 
 # 30/06/2015
 class JobStat(object):
@@ -834,18 +844,97 @@ class JobStat(object):
 	QUEUED_ACTIVE = drmaa.JobState.QUEUED_ACTIVE
 	INIT = 'init'
 	SUCCEED = 'succeed'
-	SUBMITED = 'submited'
+	SUBMITTED = 'submitted'
 	PREPARE_RUN = 'prep_run'
+
+	__decode_status = {
+		drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
+		drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
+		drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
+		drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
+		drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
+		drmaa.JobState.RUNNING: 'job is running',
+		drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
+		drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
+		drmaa.JobState.DONE: 'job finished normally',
+		SUCCEED: 'job finished normally',
+		drmaa.JobState.FAILED: 'job finished, but failed',
+		ABORTED: 'job has been aborted',
+		ABORT: 'job is being aborted...',
+		INIT: 'job instance is being generated...',
+		SCHEDULED: 'job is saved for later submission',
+		PREPARE_RUN: 'job is being prepared for submission',
+		SUBMITTED: 'job has been submited, and should be running soon',
+	}
+
+	def status_logic(self, status):
+		if status == JobStat.ABORTED:
+			self.status = JobStat.ABORTED
+			self.breeze_stat = JobStat.DONE
+		elif status == JobStat.PREPARE_RUN:
+			self.status = JobStat.QUEUED_ACTIVE # diff
+			self.breeze_stat = JobStat.PREPARE_RUN
+		elif status == JobStat.QUEUED_ACTIVE:
+			self.status = JobStat.QUEUED_ACTIVE
+			self.breeze_stat = JobStat.RUNNING
+		elif status == JobStat.INIT:
+			self.status = JobStat.INIT
+			self.breeze_stat = JobStat.INIT
+		elif status == JobStat.SUBMITTED:
+			# self.status remains unchanged
+			self.breeze_stat = JobStat.SUBMITTED
+		elif status == JobStat.FAILED:
+			self.status = JobStat.FAILED
+			self.breeze_stat = JobStat.DONE
+		elif status == JobStat.RUN_WAIT:
+			self.status = JobStat.INIT # diff
+			self.breeze_stat = JobStat.RUN_WAIT
+		elif status == JobStat.RUNNING:
+			self.status = JobStat.RUNNING
+			self.breeze_stat = JobStat.RUNNING
+		elif status == JobStat.DONE:
+			# self.status remains unchanged (because it could be failed or succeed)
+			self.breeze_stat = JobStat.DONE
+		elif status == JobStat.SUCCEED:
+			self.status = JobStat.SUCCEED
+			self.breeze_stat = JobStat.DONE
+		else:
+			self.status = status
+		self.stat_text = self.textual(status)
+
+	def __init__(self, status):
+		self.status = ''
+		self.breeze_stat = ''
+		self.stat_text = ''
+		if status in self.__decode_status.keys():
+			self.status_logic(status)
+		else:
+			raise InvalidArguments
+
+	@staticmethod
+	def textual(stat):
+		if stat in JobStat.__decode_status:
+			return JobStat.__decode_status[stat]
+		else:
+			return 'unknown status'
+
+	def __str__(self):
+		return self.stat_text
+
+
+from managers import Trans
 
 
 class Runnable(models.Model):
 	##
 	# CONSTANTS
 	##
-	HOME_FOLDER = '' # absolute path to the container folder
+	BASE_FOLDER_NAME = '' # folder name
+	BASE_FOLDER_PATH = '' # absolute path to the container folder
 	SH_NAME = settings.GENERAL_SH_NAME
 	FILE_MAKER_FN = settings.REPORTS_FM_FN
 	REPORT_FILE_NAME = 'report'
+	# BASE_FOLDER_NAME = ''
 
 	objects = managers.WorkersManager() # The default manager.
 
@@ -863,155 +952,25 @@ class Runnable(models.Model):
 	##
 	# WRAPPERs
 	##
-	# 1/7 type : self._type -> Report.db_column = type | Jobs.db_column = script
-	@property # Report
-	def type(self):
-		return self._type
 
-	@type.setter # Report
-	def type(self, value):
-		self._type = value
+	# GENERICS
+	def __getattr__(self, item):
+		try:
+			return super(Runnable, self).__getattribute__(item)
+		except AttributeError: # backward compatibility
+			return super(Runnable, self).__getattribute__(Trans.swap(item))
 
-	# for backward compatibility, TODO remove both
-	@property # Jobs
-	def script(self):
-		return self._type
+	def __setattr__(self, attr_name, value):
+		if attr_name == 'breeze_stat':
+			self._set_status(value)
+		elif attr_name == 'status':
+			raise ReadOnlyAttribute # prevent direct writing
+		else:
+			attr_name = Trans.swap(attr_name) # backward compatibility
 
-	@script.setter # Jobs
-	def script(self, value):
-		self._type = value
+		super(Runnable, self).__setattr__(attr_name, value)
 
-	#
-	# 2/7 name : self._name -> Report.db_column = name | Jobs.db_column = jname
-	@property # Report
-	def name(self):
-		return self._name
-
-	@name.setter # Report
-	def name(self, value):
-		self._name = value
-
-	# for backward compatibility, TODO remove both
-	@property # Jobs
-	def jname(self):
-		return self._name
-
-	@jname.setter # Jobs
-	def jname(self, value):
-		self._name = value
-
-	#
-	# 3/7 description : self._description -> Report.db_column = description | Jobs.db_column = jdetails
-	@property # Report
-	def description(self):
-		return self._description
-
-	@description.setter # Report
-	def description(self, value):
-		self._description = value
-
-	# for backward compatibility, TODO remove both
-	@property # Jobs
-	def jdetails(self):
-		return self._description
-
-	@jdetails.setter # Jobs
-	def jdetails(self, value):
-		self._description = value
-
-	#
-	# 4/7 author : self._author -> Report.db_column = author | Jobs.db_column = juser
-	@property # Report
-	def author(self):
-		return self._author
-
-	@author.setter # Report
-	def author(self, value):
-		self._author = value
-
-	# for backward compatibility, TODO remove both
-	@property # Jobs
-	def juser(self):
-		return self._author
-
-	@juser.setter # Jobs
-	def juser(self, value):
-		self._author = value
-
-	#
-	# 5/7 created : self._created -> Report.db_column = created | Jobs.db_column = staged
-	@property # Report
-	def created(self):
-		return self._created
-
-	@created.setter # Report
-	def created(self, value):
-		self._created = value
-
-	# for backward compatibility, TODO remove both
-	@property # Jobs
-	def staged(self):
-		return self._created
-
-	@staged.setter # Jobs
-	def staged(self, value):
-		self._created = value
-
-	#
-	# 6/7 rexec : self._rexec -> Report.db_column = rexec | Jobs.db_column = rexecut
-	@property # Report
-	def rexec(self):
-
-		return self._rexec
-
-	@rexec.setter # Report
-	def rexec(self, value):
-		self._rexec = value
-
-	# for backward compatibility, TODO remove both
-	@property # Jobs
-	def rexecut(self):
-		return self._rexec
-
-	@rexecut.setter # Jobs
-	def rexecut(self, value):
-		self._rexec = value
-
-	#
-	# 7/7 doc_ml : self._doc_ml -> Report.db_column = dochtml | Jobs.db_column = docxml
-	@property # Report
-	def dochtml(self):
-		return self._doc_ml
-
-	@dochtml.setter # Report
-	def dochtml(self, value):
-		self._doc_ml = value
-
-	@property # Jobs
-	def docxml(self):
-		return self._doc_ml
-
-	@docxml.setter # Jobs
-	def docxml(self, value):
-		self._doc_ml = value
-
-	# Wrapper for status reporting
-	@property
-	def breeze_stat(self):
-		return self._breeze_stat
-
-	@breeze_stat.setter
-	def breeze_stat(self, value):
-		self._set_status(value)
-
-	@property
-	def status(self):
-		return self._status
-
-	@status.setter # prevents status from being modified directly
-	def status(self, value):
-		pass
-
+	# SPECIFICS
 	@property
 	def institute(self):
 		try:
@@ -1021,9 +980,9 @@ class Runnable(models.Model):
 			pass
 		return self._author.get_profile().institute_info
 
-	def not_imp(self):
-		raise NotImplementedError("Class %s doesn't implement %s, because it's an abstract/interface class." % (self.__class__.__name__, sys._getframe(1).f_code.co_name))
-
+	##
+	# SHARED PROPERTIES / METHODS
+	##
 	def file_name(self, filename):
 		"""
 
@@ -1032,7 +991,7 @@ class Runnable(models.Model):
 		"""
 		return '%s%s' % (Path(self._home_folder_rel), slugify(filename))
 
-	@property # interface
+	@property # interface (Report specific)
 	def args_string(self):
 		""" The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
 		raise self.not_imp()
@@ -1047,28 +1006,14 @@ class Runnable(models.Model):
 		raise self.not_imp()
 
 	@property
-	def home_folder_full_path(self):
-		"""
-		Should return the absolute path to this instance folder
-		:return: the absolute path to this instance folder
-		:rtype: str
-		"""
-		raise self.not_imp()
-
-	@property
 	def _home_folder_rel(self):
 		"""
-		Should return the relative path to this instance folder
-		:return: the relative path to this instance folder
+		Returns the relative path to this job folder
+		:return: the relative path to this job folder
 		:rtype: str
 		"""
-		raise self.not_imp()
+		return '%s%s/' % (self.BASE_FOLDER_NAME, self.folder_name)
 
-	@property
-	def _dochtml(self):
-		return '%sreport' % self.home_folder_full_path
-
-	# 16/06/15
 	@property
 	def home_folder_full_path(self):
 		"""
@@ -1078,25 +1023,25 @@ class Runnable(models.Model):
 		"""
 		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
 
+	@property # interface (Report specific)
+	def _dochtml(self):
+		raise self.not_imp()
+
 	@property
+	def r_exec_path(self):
+		return '%s%s' % (settings.MEDIA_ROOT, self._rexec)
+
+	@property # interface (Report specific)
 	def nozzle_url(self):
-		"""
-		Return the url to nozzle view of this report
-		:return: the url to nozzle view of this report
-		:rtype: str
-		"""
-		from django.core.urlresolvers import reverse
-		from breeze import views
+		raise self.not_imp()
 
-		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
-
+	# interface (Report specific)
 	def has_access_to_shiny(self, this_user):
-		assert isinstance(this_user, (User, OrderedUser))
-		return this_user and (this_user in self.shared.all() or self.author == this_user) \
-			and self.type.shiny_report.enabled
+		raise self.not_imp()
 
 	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
 
+	# TODO : resume HERE
 	@property
 	def _rtype_config_path(self):
 		return settings.MEDIA_ROOT + str(self.type.config)
@@ -1105,6 +1050,7 @@ class Runnable(models.Model):
 	def _r_out_path(self):
 		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
 
+	# interface
 	def generate_R_file(self, sections, request_data):
 		raise self.not_imp()
 
@@ -1148,7 +1094,7 @@ class Runnable(models.Model):
 		return '%s_%s' % (slugify(self.name), self.instance_type.capitalize())
 
 	# interface
-	def generate_shiny_key(self):
+	def generate_shiny_key(self): # TODO
 		#raise self.not_imp()
 		return ''
 
@@ -1184,8 +1130,7 @@ class Runnable(models.Model):
 
 		loc = self.home_folder_full_path # writing shortcut
 		config = self.sh_file_path
-		log = logger.getChild('run_%s' % self.instance_type )
-		assert isinstance(log, logging.getLoggerClass())
+		log = get_logger('run_%s' % self.instance_type )
 		data = (self.instance_type[1], str(self.id))
 		default_dir = os.getcwd()
 
@@ -1222,7 +1167,7 @@ class Runnable(models.Model):
 			log.info('%s%s : ' % data + 'triggering dramaa.runJob')
 			self.sgeid = s.runJob(jt)
 			log.info('%s%s : ' % data + 'returned sgedid "%s"' % self.sgeid)
-			self.breeze_stat = JobStat.SUBMITED
+			self.breeze_stat = JobStat.SUBMITTED
 			log.info('%s%s : ' % data + 'stat : %s' % s.jobStatus(self.sgeid))
 			# waiting for the job to end
 			SGEID = copy.deepcopy(self.sgeid)
@@ -1282,7 +1227,7 @@ class Runnable(models.Model):
 			return 8
 		elif stat in (JobStat.PREPARE_RUN, JobStat.QUEUED_ACTIVE):
 			return 15
-		elif stat == JobStat.SUBMITED:
+		elif stat == JobStat.SUBMITTED:
 			return 30
 		elif stat == JobStat.RUNNING:
 			return 55
@@ -1295,43 +1240,53 @@ class Runnable(models.Model):
 		"""
 		Save a specific status state of the instance.
 		Changes the progression % and saves the object
-		ONLY PLACE WHERE ONE SHOULD CHANGE _breeze_stat and status
+		ONLY PLACE WHERE ONE SHOULD CHANGE _breeze_stat and _status
 		:param status: a JobStat value
 		:type status: str
 		"""
-		if self.status == JobStat.SUCCEED or status is None:
+		if self._status == JobStat.SUCCEED or status is None:
 			return
 
 		self.progress = self._progress_level(status)
 		if status == JobStat.ABORTED:
-			self.status = JobStat.ABORTED
+			self._status = JobStat.ABORTED
 			self._breeze_stat = JobStat.DONE
 		elif status == JobStat.PREPARE_RUN:
 			self._breeze_stat = JobStat.PREPARE_RUN
-			self.status = JobStat.QUEUED_ACTIVE
-		elif status == JobStat.SUBMITED:
-			self._breeze_stat = JobStat.SUBMITED
+			self._status = JobStat.QUEUED_ACTIVE
+		elif status == JobStat.QUEUED_ACTIVE:
+			self._breeze_stat = JobStat.RUNNING
+			self._status = JobStat.QUEUED_ACTIVE
+		elif status == JobStat.INIT:
+			self._breeze_stat = JobStat.INIT
+			self._status = JobStat.INIT
+		elif status == JobStat.SUBMITTED:
+			self._breeze_stat = JobStat.SUBMITTED
 		elif status == JobStat.FAILED:
-			self.status = JobStat.FAILED
+			self._status = JobStat.FAILED
 			self._breeze_stat = JobStat.DONE
 		elif status == JobStat.RUN_WAIT:
-			self.status = JobStat.INIT
+			self._status = JobStat.INIT
 			self._breeze_stat = JobStat.RUN_WAIT
 		elif status == JobStat.RUNNING:
-			self.status = JobStat.RUNNING
+			self._status = JobStat.RUNNING
 			self._breeze_stat = JobStat.RUNNING
 		elif status == JobStat.DONE:
 			self._breeze_stat = JobStat.DONE
 		elif status == JobStat.SUCCEED:
 			self._breeze_stat = JobStat.DONE
-			self.status = JobStat.SUCCEED
+			self._status = JobStat.SUCCEED
 		else:
-			self.status = status
-
+			self._status = status
+		self._stat_text = JobStat.textual(status)
 		self.save()
 
 	def get_status(self):
-		return decodestatus[self.status]
+		return self._stat_text
+
+	##
+	# DJANGO RELATED FUNCTIONS
+	##
 
 	def save(self, *args, **kwargs):
 		super(Runnable, self).save(*args, **kwargs) # Call the "real" save() method.
@@ -1344,8 +1299,7 @@ class Runnable(models.Model):
 		if os.path.isdir(self.home_folder_full_path):
 			shutil.rmtree(self.home_folder_full_path)
 
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj = get_logger()
 		log_obj.info("%s %s : %s has been deleted" % (self.instance_type, self.id, self))
 
 		super(Runnable, self).delete(using=using) # Call the "real" delete() method.
@@ -1354,6 +1308,10 @@ class Runnable(models.Model):
 	#
 	# SPECIAL FUNCTION FOR INTERFACE
 	#
+	def not_imp(self):
+		raise NotImplementedError("Class %s doesn't implement %s, because it's an abstract/interface class." % (
+			self.__class__.__name__, sys._getframe(1).f_code.co_name))
+
 	@property
 	def is_report(self):
 		return isinstance(self, Report)
@@ -1385,16 +1343,15 @@ class Runnable(models.Model):
 class Jobs(Runnable):
 	def __init__(self, *args, **kwargs):
 		super(Jobs, self).__init__(*args, **kwargs)
-		allowed_keys = ['jname', 'jdetails', 'juser', 'script', 'status', 'progress', 'institute',
-						'mailing', 'email', 'docxml', 'rexecut', 'breeze_stat']
+		allowed_keys = Trans.translation.keys()
 		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
 
 	##
 	# CONSTANTS
 	##
-	JOBS_FOLDER = settings.JOBS_FOLDER
-	JOBS_PATH = settings.JOBS_PATH
-	HOME_FOLDER = JOBS_PATH
+	BASE_FOLDER_NAME = settings.JOBS_FN
+	BASE_FOLDER_PATH = settings.JOBS_PATH
+	SH_FILE = settings.JOBS_SH
 	DNE = "!! DO NOT EDIT !!"
 	##
 	# DB FIELDS
@@ -1406,7 +1363,7 @@ class Jobs(Runnable):
 	_created = models.DateTimeField(auto_now_add=True, db_column='staged')
 
 	def _institute(self):
-		self.institute
+		return self.institute
 
 	def file_name(self, filename):
 		return super(Jobs, self).file_name(filename)
@@ -1424,24 +1381,6 @@ class Jobs(Runnable):
 	def folder_name(self):
 		return slugify('%s_%s' % (self._name, self._author))
 
-	@property
-	def _home_folder_rel(self):
-		"""
-		Returns the relative path to this job folder
-		:return: the relative path to this job folder
-		:rtype: str
-		"""
-		return '%s%s/' % (self.JOBS_FOLDER, self.folder_name)
-
-	@property
-	def home_folder_full_path(self):
-		"""
-		Returns the absolute path to this job folder
-		:return: the absolute path to this job folder
-		:rtype: str
-		"""
-		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
-
 	# TODO resume here
 	def run(self): # , script=None):
 		"""
@@ -1458,12 +1397,11 @@ class Jobs(Runnable):
 		s = None
 		if settings.HOST_NAME.startswith('breeze'):
 			import drmaa
-		log = logger.getChild('run_job')
-		assert isinstance(log, logging.getLoggerClass())
+		log = get_logger('run_job')
 
 		loc = self.home_folder_full_path # absolute path
-		# loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
-		config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh' # TODO change with :
+		# loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', self.jname, self.juser.username))
+		config = loc + slugify(self.jname + '_' + self.juser.username) + '_config.sh' # TODO change with :
 		# config = loc + '/sgeconfig.sh'
 		default_dir = os.getcwd()
 
@@ -1475,15 +1413,15 @@ class Jobs(Runnable):
 			# prevents db being dropped
 			django.db.close_connection()
 
-			job.status = "queued_active"
-			job.breeze_stat = "prepare_run"
-			job.progress = 15
-			job.save()
-			log.info('j' + str(job.id) + ' : creating job')
+			self.status = "queued_active"
+			self.breeze_stat = "prepare_run"
+			self.progress = 15
+			self.save()
+			log.info('j' + str(self.id) + ' : creating job')
 
 		except Exception as e:
-			log.exception('j' + str(job.id) + ' : pre-run error ' + str(e))
-			log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
+			log.exception('j' + str(self.id) + ' : pre-run error ' + str(e))
+			log.error('j' + str(self.id) + ' : process unexcpectedly terminated')
 
 		try:
 			s = drmaa.Session()
@@ -1492,85 +1430,85 @@ class Jobs(Runnable):
 			assert isinstance(jt, object)
 
 			jt.workingDirectory = loc
-			jt.jobName = slugify(job.jname) + '_JOB'
+			jt.jobName = slugify(self.jname) + '_JOB'
 			# external mail address support
 			# Not working ATM probably because of mail backend not being properly configured
-			if job.email != '':
-				jt.email = [str(job.email), str(job.juser.email)]
+			if self.email != '':
+				jt.email = [str(self.email), str(self.juser.email)]
 			else:
-				jt.email = [str(job.juser.email)]
+				jt.email = [str(self.juser.email)]
 			# print "Mail address for this job is : " +  ', '.join(jt.email)
 			# mail notification on events
-			if job.mailing != '':
-				jt.nativeSpecification = "-m " + job.mailing  # Begin End Abort Suspend
+			if self.mailing != '':
+				jt.nativeSpecification = "-m " + self.mailing  # Begin End Abort Suspend
 			jt.blockEmail = False
 			jt.remoteCommand = config
 			jt.joinFiles = True
 
-			job.progress = 25
-			# job.status = 'submission'
-			# job.save()
-			log.info('j' + str(job.id) + ' : triggering dramaa.runJob')
-			job.sgeid = s.runJob(jt)
-			log.info('j' + str(job.id) + ' : returned sgedid "' + str(job.sgeid) + '"')
-			job.progress = 30
-			job.save()
+			self.progress = 25
+			# self.status = 'submission'
+			# self.save()
+			log.info('j' + str(self.id) + ' : triggering dramaa.runJob')
+			self.sgeid = s.runJob(jt)
+			log.info('j' + str(self.id) + ' : returned sgedid "' + str(self.sgeid) + '"')
+			self.progress = 30
+			self.save()
 
-			SGEID = copy.deepcopy(job.sgeid)
+			SGEID = copy.deepcopy(self.sgeid)
 			# waiting for the job to end
 			# if not SGEID:
 			# print "no id!"
 			# TODO have a closer look into that
-			log.info('j' + str(job.id) + ' : stat : ' + str(s.jobStatus(job.sgeid)))
+			log.info('j' + str(self.id) + ' : stat : ' + str(s.jobStatus(self.sgeid)))
 			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-			job.progress = 100
-			job.save()
+			self.progress = 100
+			self.save()
 
 			if retval.hasExited and retval.exitStatus == 0:
-				job.status = 'succeed'
-				log.info('j' + str(job.id) + ' : dramaa.runJob ended with exit code 0 !')
+				self.status = 'succeed'
+				log.info('j' + str(self.id) + ' : dramaa.runJob ended with exit code 0 !')
 			# clean up the folder
 			else:
-				log.error('j' + str(job.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
-				job = Jobs.objects.get(id=job.id)  # make sure data is updated
-				if job.status != 'aborted':
+				log.error('j' + str(self.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
+				job = Jobs.objects.get(id=self.id)  # make sure data is updated
+				if self.status != 'aborted':
 					pass
-					job.status = 'failed'  # seems to interfere with aborting process TODO check
+					self.status = 'failed'  # seems to interfere with aborting process TODO check
 
-			job.save()
+			self.save()
 			s.exit()
 			os.chdir(default_dir)
 
 			# track_sge_job(job, True)
 
-			log.info('j' + str(job.id) + ' : process terminated successfully !')
+			log.info('j' + str(self.id) + ' : process terminated successfully !')
 			return True
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				drmaa.NoActiveSessionException) as e:
 			# TODO improve this part
-			log.exception('j' + str(job.id) + ' : drmaa error ' + str(e))
-			log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
-			# job.status = "failed"
-			job.progress = 67
-			job.save()
+			log.exception('j' + str(self.id) + ' : drmaa error ' + str(e))
+			log.error('j' + str(self.id) + ' : process unexcpectedly terminated')
+			# self.status = "failed"
+			self.progress = 67
+			self.save()
 			s.exit()
 			return e
 		except Exception as e:
 			# report.status = 'failed'
-			log.exception('r' + str(job.id) + ' : drmaa unknow error ' + str(e))
-			log.error('r' + str(job.id) + ' : process unexcpectedly terminated')
-			job.progress = 66
-			job.save()
+			log.exception('r' + str(self.id) + ' : drmaa unknow error ' + str(e))
+			log.error('r' + str(self.id) + ' : process unexcpectedly terminated')
+			self.progress = 66
+			self.save()
 
 			s.exit()
 			return False
 		# except e:
-		# job.status = 'failed'
-		# job.progress = 100
-		# job.save()
+		# self.status = 'failed'
+		# self.progress = 100
+		# self.save()
 
-		# newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.juser, job.jname), 'w')
-		# newfile.write("UNKNOW ERROR" + vars(e))
+		# newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (self.juser, self.jname), 'w')
+		# newfile.write("UNKNOWN ERROR" + vars(e))
 		# newfile.close()
 
 		# s.exit()
@@ -1579,8 +1517,7 @@ class Jobs(Runnable):
 class Report(Runnable):
 	def __init__(self, *args, **kwargs):
 		super(Report, self).__init__( *args, **kwargs)
-		allowed_keys = ['dochtml', 'author', 'shared', 'type', 'institute', 'title', 'rexec', 'project', 'name',
-						'progress', 'status', 'rora_id', 'breeze_stat']
+		allowed_keys = Trans.translation.keys() + ['shared', 'title', 'project', 'rora_id']
 		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
 
 	##
@@ -1588,8 +1525,8 @@ class Report(Runnable):
 	##
 	R_FILE_NAME = 'script.r'
 	R_OUT_FILE_NAME = R_FILE_NAME + '.Rout'
-	REPORTS_FOLDER = settings.REPORTS_FOLDER
-	HOME_FOLDER = REPORTS_FOLDER
+	BASE_FOLDER_NAME = settings.REPORTS_FN
+	BASE_FOLDER_PATH = settings.REPORTS_PATH
 	SH_FILE = settings.REPORTS_SH
 	DNE = "!! DO NOT EDIT !!"
 	##
@@ -1619,51 +1556,15 @@ class Report(Runnable):
 	shiny_key = models.CharField(max_length=64, null=True, editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
 
-	# 04/06/2015
-	@property
-	def args_string(self):
-		""" The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
-		from django.utils.http import urlencode
-
-		if self.rora_id > 0:
-			return '?%s' % urlencode([('path', self._home_folder_rel), ('roraId', str(self.rora_id))])
-		else:
-			return ''
-
 	# 25/06/15
 	@property
 	def folder_name(self):
-		return slugify('%s_%s_%s' % (self.id, self.name, self.author.username))
-
-	# 25/06/15
-	@property
-	def r_exec_path(self):
-		return '%s%s' % (settings.MEDIA_ROOT, self._rexec)
-
-	# 25/06/15
-	@property
-	def _home_folder_rel(self):
-		"""
-		Returns the relative path to this report folder
-		:return: the relative path to this report folder
-		:rtype: str
-		"""
-		return '%s%s/' % (self.REPORTS_FOLDER, self.folder_name)
+		return slugify('%s_%s_%s' % (self.id, self._name, self._author.username))
 
 	# 26/06/15
 	@property
-	def _dochtml(self):
+	def _dochtml(self): # Report specific called from genereate_R_file
 		return '%sreport' % self.home_folder_full_path
-
-	# 16/06/15
-	@property
-	def home_folder_full_path(self):
-		"""
-		Returns the absolute path to this report folder
-		:return: the absolute path to this report folder
-		:rtype: str
-		"""
-		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
 
 	@property
 	def nozzle_url(self):
@@ -1677,20 +1578,23 @@ class Report(Runnable):
 
 		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
 
+	# 04/06/2015
+	@property # TODO check
+	def args_string(self):
+		""" The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
+		from django.utils.http import urlencode
+
+		if self.rora_id > 0:
+			return '?%s' % urlencode([('path', self._home_folder_rel), ('roraId', str(self.rora_id))])
+		else:
+			return ''
+
 	def has_access_to_shiny(self, this_user):
 		assert isinstance(this_user, (User, OrderedUser))
-		return this_user and (this_user in self.shared.all() or self.author == this_user) \
-			and self.type.shiny_report.enabled
+		return this_user and (this_user in self.shared.all() or self._author == this_user) \
+			and self._type.shiny_report.enabled
 
-	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
-
-	@property
-	def _rtype_config_path(self):
-		return settings.MEDIA_ROOT + str(self.type.config)
-
-	@property
-	def _r_out_path(self):
-		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
+	# TODO : resume HERE
 
 	# TODO : use clean or save ?
 	def generate_R_file(self, sections, request_data):
@@ -1704,7 +1608,7 @@ class Report(Runnable):
 		from string import Template
 		from django.core.files import base
 		from breeze import shell as rshell
-		import xml.etree.ElementTree as xml
+		import xml.etree.ElementTree as XmlET
 
 		filein = open(self._path_r_template)
 		src = Template(filein.read())
@@ -1714,11 +1618,12 @@ class Report(Runnable):
 		for tag in sections:
 			assert (isinstance(tag, Rscripts)) # useful for code assistance ONLY
 			if tag.is_valid() and tag.sec_id in request_data.POST and request_data.POST[tag.sec_id] == '1':
-				tree = xml.parse(tag.xml_path)
+				tree = XmlET.parse(tag.xml_path)
 				if tag.name == "Import to FileMaker":
 					self.fm_flag = True
 
-				gen_params = rshell.gen_params_string(tree, request_data.POST, self._home_folder_rel, request_data.FILES)
+				gen_params = rshell.gen_params_string(tree, request_data.POST, self._home_folder_rel,
+					request_data.FILES)
 				tag_list.append(tag.get_R_code(gen_params))
 
 		d = { 'loc': self.home_folder_full_path[:-1],
@@ -1748,7 +1653,7 @@ class Report(Runnable):
 		dump += 'project.wbs            <- \"%s\"\n' % self.project.wbs
 		dump += 'project.external.id    <- \"%s\"\n' % self.project.external_id
 		dump += '# <----------  end of Project Details  ----------> \n\n'
-		
+
 		return copy.copy(dump)
 
 	@property
@@ -1762,10 +1667,6 @@ class Report(Runnable):
 
 		return copy.copy(dump)
 
-	@property
-	def title(self):
-		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
-
 	def generate_shiny_key(self):
 		"""
 		Generate a sha256 key for outside access
@@ -1776,116 +1677,6 @@ class Report(Runnable):
 		m = sha256()
 		m.update(settings.SECRET_KEY + self.folder_name + str(datetime.now()))
 		self.shiny_key = str(m.hexdigest())
-
-	def run(self): # TO BE RUN IN AN INDEPENDENT PROCESS / THREAD
-		"""
-			Submits reports as an R-job to cluster with SGE;
-			This submission implements REPORTS concept in BREEZE
-			(For SCRIPTS submission see Jobs.run)
-			TO BE RUN IN AN INDEPENDENT PROCESS / THREAD
-		"""
-		import os
-		import copy
-		import json
-		import django.db
-
-		drmaa = None
-		s = None
-		if settings.HOST_NAME.startswith('breeze'):
-			import drmaa
-
-		loc = self.home_folder_full_path
-		config = self.sh_file_path
-		log = logger.getChild('run_report')
-		assert isinstance(log, logging.getLoggerClass())
-		fmFlag = self.fm_flag
-		default_dir = os.getcwd()
-
-		try:
-			os.chdir(loc) # ???
-			if fmFlag == 1:
-				os.system(settings.JDBC_BRIDGE_PATH)
-
-			# *MAY* prevent db from being dropped
-			django.db.close_connection()
-			self._set_status(JobStat.PREPARE_RUN)
-			log.info('r' + str(self.id) + ' : creating job')
-		except Exception as e:
-			log.exception('r' + str(self.id) + ' : pre-run error ' + str(e))
-			log.error('r' + str(self.id) + ' : process unexcpectedly terminated')
-
-		try:
-			s = drmaa.Session()
-			s.initialize()
-
-			jt = s.createJobTemplate()
-
-			jt.workingDirectory = loc
-			jt.jobName = slugify(self.name) + '_REPORT'
-			jt.email = [str(self.author.email)]
-			jt.blockEmail = False
-
-			jt.remoteCommand = config
-			jt.joinFiles = True
-			jt.nativeSpecification = "-m bea"
-
-			self.progress = 25
-			# self.status = 'submission'
-			self.save()
-			log.info('r' + str(self.id) + ' : triggering dramaa.runJob')
-			self.sgeid = s.runJob(jt)
-			log.info('r' + str(self.id) + ' : returned sgedid "' + str(self.sgeid) + '"')
-			self._set_status(JobStat.SUBMITED)
-			log.info('r' + str(self.id) + ' : stat : ' + str(s.jobStatus(self.sgeid)))
-			# waiting for the job to end
-			SGEID = copy.deepcopy(self.sgeid)
-			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-			# self.drmaa_data = json.dumps(retval)
-			json.dump(retval, open(self._test_file, 'w'))
-			self._set_status(JobStat.DONE)
-			# self.save()
-			jt.delete()
-
-			if retval.hasExited:
-				if retval.exitStatus == 0:
-					log.info('r' + str(self.id) + ' : dramaa.runJob ended with exit code 0 !')
-					self._set_status(JobStat.SUCCEED)
-				# clean up the folder
-				else:
-					log.error('r' + str(self.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
-					if self.status != JobStat.ABORTED and self.breeze_stat != JobStat.ABORT:
-						self._set_status(JobStat.FAILED)
-
-			os.chdir(default_dir) # WTF ???
-
-			if self.fm_flag and isfile(self.fm_file_path):
-				run = open(self.fm_file_path).read().split("\"")[1]
-				os.system(run)
-			s.exit()
-		# legqcy exception handling TODO revise
-		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException) as e:
-			# TODO improve this part
-			log.exception('r' + str(self.id) + ' : drmaa error ' + str(e))
-			log.error('r' + str(self.id) + ' : drmaa waiter process unexcpectedly terminated')
-			self.progress = self._progress_level(e)
-			self.status = 'failed'
-			self.save()
-			if s is not None:
-				s.exit()
-			return 1
-		except Exception as e:
-			# self.status = 'failed'
-			log.exception('r' + str(self.id) + ' : drmaa unknow error ' + str(e))
-			log.error('r' + str(self.id) + ' : drmaa waiter process unexcpectedly terminated')
-			self.progress = self._progress_level(e)
-			self.status = 'failed'
-			self.save()
-			if s is not None:
-				s.exit()
-			return 1
-
-		log.info('r' + str(self.id) + ' : drmaa waiter process terminated successfully !')
-		return 0
 
 	def save(self, *args, **kwargs):
 		super(Report, self).save(*args, **kwargs) # Call the "real" save() method.
@@ -1902,45 +1693,6 @@ class Report(Runnable):
 	class Meta(Runnable.Meta): # TODO check if inheritence is required here
 		abstract = False
 		db_table = 'breeze_report'
-
-
-# 04/06/2015
-# Mapper to enable usage of Jobs and Report alike (design/implementation ERROR)
-class ReportH(Report):
-	@property
-	def jname(self):
-		return self.name
-
-	@property
-	def jdetails(self):
-		return self.description
-
-	@property
-	def juser(self):
-		return self.author
-
-	@property
-	def staged(self):
-		return self._created
-
-	@property
-	def mailing(self):
-		return ''
-
-	@property
-	def email(self):
-		return ''
-
-	@property
-	def docxml(self):
-		return self._doc_ml
-
-	@property
-	def rexecut(self):
-		return self._rexec
-
-	class Meta:
-		abstract = True
 
 
 class Statistics(models.Model):
@@ -1967,20 +1719,18 @@ class ShinyTag(models.Model):
 	FILE_TEMPLATE = settings.SHINY_TAG_CANVAS_PATH
 	FILE_TEMPLATE_URL = settings.MEDIA_URL + settings.SHINY_TAG_CANVAS_FN
 	DEFAULT_MENU_ITEM = 'menuItem("Quality Control", icon = icon("filter", lib = "glyphicon"), tabName = "QC",' \
-						'badgeLabel = "QC", badgeColor = "green")'
+		'badgeLabel = "QC", badgeColor = "green")'
 
 	name = models.CharField(max_length=55, unique=True, blank=False,
 							help_text="Must be unique, no special characters.")
-	label = models.CharField(max_length=32, blank=False,
-							 help_text="The text to be display on the dashboard")
-	description = models.CharField(max_length=350, blank=True,
-								   help_text="Optional description text")
+	label = models.CharField(max_length=32, blank=False, help_text="The text to be display on the dashboard")
+	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
 	author = ForeignKey(OrderedUser)
 	created = models.DateTimeField(auto_now_add=True)
 	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
 	order = models.PositiveIntegerField(default=0, help_text="sorting index number (0 is the topmost)")
 	menu_entry = models.TextField(default=DEFAULT_MENU_ITEM,
-								  help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
+									help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
 											"of your tag.<br /><u>NB : tabName MUST be identical to the uppercase name of your tag.</u>")
 
 	@property
@@ -2020,10 +1770,10 @@ class ShinyTag(models.Model):
 
 	zip_file = models.FileField(upload_to=file_name_zip, blank=False, null=False,
 								help_text="Upload a zip file containing all the files required for your tag, and "
-										  " following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
-										  "Check the <a href='%s'>available libraries</a>. If the one you need is not"
-										  " present, please contact an admin." %
-										  (FILE_TEMPLATE_URL, settings.SHINY_LIBS_BREEZE_URL))
+								" following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
+								"Check the <a href='%s'>available libraries</a>. If the one you need is not"
+								" present, please contact an admin." %
+								(FILE_TEMPLATE_URL, settings.SHINY_LIBS_BREEZE_URL))
 	enabled = models.BooleanField()
 	attached_report = models.ManyToManyField(ShinyReport)
 
@@ -2040,7 +1790,7 @@ class ShinyTag(models.Model):
 
 		# Regenerates every attached reports FS's
 		# for each in self.attached_report.all():
-		#	each.regen_report(self.author)
+		# each.regen_report(self.author)
 
 		def temp_cleanup(): # removes the zip from temp upload folder
 			self.remove_file_safe(self.zip_file)
@@ -2081,8 +1831,7 @@ class ShinyTag(models.Model):
 	def delete(self, using=None):
 		import shutil
 
-		log_obj = logger.getChild(sys._getframe().f_code.co_name)
-		assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
+		log_obj = get_logger()
 		log_obj.info("deleted shinyTag %s : %s" % (self.id, self))
 
 		# Deleting the folder
@@ -2100,7 +1849,7 @@ class OffsiteUser(models.Model):
 	first_name = models.CharField(max_length=32, blank=False, help_text="First name of the off-site user to add")
 	last_name = models.CharField(max_length=32, blank=False, help_text="Last name of the off-site user to add")
 	email = models.CharField(max_length=64, blank=False, unique=True,
-							 help_text="Valid email address of the off-site user")
+							help_text="Valid email address of the off-site user")
 	institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
 	role = models.CharField(max_length=32, blank=True, help_text="Position/role of this off-site user")
 	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True, help_text="!! DO NOT EDIT !!")
@@ -2179,7 +1928,7 @@ class OffsiteUser(models.Model):
 		return unicode(self.full_name)
 
 
-decodestatus = {
+decode_status = {
 	drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
 	drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
 	drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
