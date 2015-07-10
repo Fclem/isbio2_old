@@ -78,6 +78,15 @@ class Watcher:
 		for item in lst:
 			self._run_report(item)
 			changed = True
+		# TODO merge this
+		lst = Jobs.objects.get_active()
+		for item in lst:
+			self.refresh_drmaa(item.id)
+
+		lst = Jobs.objects.get_run_wait()
+		for item in lst:
+			self._run_report(item)
+			changed = True
 
 		return changed
 
@@ -166,7 +175,7 @@ class Watcher:
 	def _run_report(self, dbitem):
 		log = logger.getChild('watcher.run_report')
 		assert isinstance(log, logging.getLoggerClass())
-		assert isinstance(dbitem, Report)
+		assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 		try:
 			# submit r-code
 
