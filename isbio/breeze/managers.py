@@ -102,7 +102,9 @@ class WorkersManager(django.db.models.Manager):
 	The Runnable allows to use unified name for fields, while keeping the old database models #TODO migrate
 	From now on, every request to Report and Jobs should be done trough included request filters
 	"""
+	##
 	# Overrides
+	##
 	def get_query_set(self):
 		"""
 		:rtype: QuerySet
@@ -179,7 +181,7 @@ class WorkersManager(django.db.models.Manager):
 		from breeze.models import JobStat
 		return self.get_not_scheduled().filter(_breeze_stat=JobStat.DONE)
 
-	def get_done(self, include_failed=True, including_aborted=True):
+	def get_done(self, include_failed=True, include_aborted=True):
 		"""
 		Returns all the jobs that are done,
 		including or not the failed and aborted ones
@@ -189,9 +191,9 @@ class WorkersManager(django.db.models.Manager):
 		r = self.get_history()
 
 		if not include_failed:
-			r.exclude(_status=JobStat.FAILED)
-		if not including_aborted:
-			r.exclude(_status=JobStat.ABORTED)
+			r = r.exclude(_status=JobStat.FAILED)
+		if not include_aborted:
+			r = r.exclude(_status=JobStat.ABORTED)
 
 		return r
 
