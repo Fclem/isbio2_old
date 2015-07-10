@@ -4,11 +4,15 @@ from openid.yadis.parsehtml import ent_pat
 from social_auth.backends.pipeline import user
 import auxiliary as aux
 import forms as breezeForms
-import urllib, pprint, os, copy, tempfile, zipfile, shutil, fnmatch, rpy2, os.path  # mimetypes, urllib2, glob,  sys
+import urllib
+import os
+import copy
+import tempfile, zipfile, shutil, fnmatch, rpy2, os.path  # mimetypes, urllib2, glob,  sys
 import rora as rora
 import shell as rshell
 import xml.etree.ElementTree as xml
-import json, pickle
+import json
+import pickle
 from datetime import datetime
 from breeze.models import * # Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
 	# Statistics, Institute, Script_categories, CartInfo  # , User_date
@@ -24,7 +28,7 @@ from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-from django.db.models import Q
+from breeze.managers import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
@@ -32,7 +36,7 @@ from django.template import loader
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils import simplejson
-from django.utils.http import urlencode
+# from django.utils.http import urlencode
 from django.views.decorators.csrf import csrf_exempt
 import logging
 from mimetypes import MimeTypes
@@ -175,11 +179,11 @@ def home(request, state="feed"):
 	# rscripts = Rscripts.objects.all().get(draft=True)
 	# get all the report info
 	stats = Statistics.objects.all()
-	occurrences['jobs_running'] = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="active").count()
-	occurrences['jobs_scheduled'] = Jobs.objects.filter(juser__exact=request.user).filter(
-		status__exact="scheduled").count()
-	occurrences['jobs_history'] = Jobs.objects.filter(juser__exact=request.user).exclude(
-		status__exact="scheduled").exclude(status__exact="active").count()
+	occurrences['jobs_running'] = Jobs.objects.filter(_author__exact=request.user).filter(_status__exact="active").count()
+	occurrences['jobs_scheduled'] = Jobs.objects.filter(_author__exact=request.user).filter(
+		_status__exact="scheduled").count()
+	occurrences['jobs_history'] = Jobs.objects.filter(_author__exact=request.user).exclude(
+		_status__exact="scheduled").exclude(status__exact="active").count()
 
 	occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
 	occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
@@ -255,22 +259,22 @@ def jobs(request, state="", error_msg=""):
 		tab = "history_tab"
 		show_tab = "show_hist"
 
-	scheduled_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="scheduled").order_by("-id")
-	history_jobs = Jobs.objects.filter(juser__exact=request.user).exclude(status__exact="scheduled").exclude(
-		status__exact="running").exclude(status__exact="queued_active").exclude(status__exact="init").order_by("-id")
-	#history_jobs = Jobs.objects.filter(juser__exact=request.user).filter(breeze_stat="done").order_by("-id")
+	scheduled_jobs = Jobs.objects.filter(_author__exact=request.user).filter(_status__exact="scheduled").order_by("-id")
+	history_jobs = Jobs.objects.filter(_author__exact=request.user).exclude(_status__exact="scheduled").exclude(
+		_status__exact="running").exclude(_status__exact="queued_active").exclude(_status__exact="init").order_by("-id")
+	#history_jobs = Jobs.objects.filter(_author__exact=request.user).filter(breeze_stat="done").order_by("-id")
 
-	active_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status="running").order_by("-id")
-	init_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="init").order_by("-id")
-	queued_jobs = Jobs.objects.filter(juser__exact=request.user).filter(status__exact="queued_active").order_by("-id")
+	active_jobs = Jobs.objects.filter(_author__exact=request.user).filter(_status="running").order_by("-id")
+	init_jobs = Jobs.objects.filter(_author__exact=request.user).filter(_status__exact="init").order_by("-id")
+	queued_jobs = Jobs.objects.filter(_author__exact=request.user).filter(_status__exact="queued_active").order_by("-id")
 
-	no_id_jobs = Jobs.objects.filter(juser__exact=request.user).filter(sgeid="").order_by("-id")
-	no_id_reports = Report.objects.filter(sgeid="").filter(author__exact=request.user).order_by('-created')
+	no_id_jobs = Jobs.objects.filter(_author__exact=request.user).filter(sgeid="").order_by("-id")
+	no_id_reports = Report.objects.filter(sgeid="").filter(_author__exact=request.user).order_by('-_created')
 
-	active_reports = Report.objects.filter(status="running").filter(author__exact=request.user).order_by('-created')
-	init_reports = Report.objects.filter(status="init").filter(author__exact=request.user).order_by('-created')
-	queued_reports = Report.objects.filter(status="queued_active").filter(author__exact=request.user).order_by(
-		'-created')
+	active_reports = Report.objects.filter(_status="running").filter(_author__exact=request.user).order_by('-_created')
+	init_reports = Report.objects.filter(_status="init").filter(_author__exact=request.user).order_by('-_created')
+	queued_reports = Report.objects.filter(_status="queued_active").filter(_author__exact=request.user).order_by(
+		'-_created')
 
 	queued_merged = aux.merge_job_history(queued_jobs, queued_reports)
 	merged_active = aux.merge_job_history(active_jobs, active_reports)
@@ -279,9 +283,9 @@ def jobs(request, state="", error_msg=""):
 	merged_active = aux.merge_job_lst(merged_active, queued_merged)
 	merged_active = aux.merge_job_lst(merged_active, merged_init)
 
-	#ready_reports = Report.objects.exclude(status="running").exclude(status="queued_active").exclude(
-	#	status__exact="init").filter(author__exact=request.user).order_by('-created')
-	ready_reports = Report.objects.filter(breeze_stat="done").filter(author__exact=request.user).order_by('-created')
+	#ready_reports = Report.objects.exclude(_status="running").exclude(_status="queued_active").exclude(
+	#	_status__exact="init").filter(_author__exact=request.user).order_by('-_created')
+	ready_reports = Report.objects.filter(_breeze_stat="done").filter(_author__exact=request.user).order_by('-_created')
 
 	merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
@@ -375,7 +379,7 @@ def scripts(request, layout="list"):
 	# if request.user.has_perm('breeze.add_rscripts'):
 	# cat_list['_My_Scripts_'] = Rscripts.objects.filter(author__exact=request.user)
 	#    cat_list['_Datasets_'] = DataSet.objects.all()
-	user_profile = UserProfile.objects.get(user=request.user)
+	user_profile = UserProfile.objects.get(user=request.user) # TODO check if exists #bugfix
 	db_access = user_profile.db_agreement
 	return render_to_response('scripts.html', RequestContext(request, {
 		'script_list': all_scripts,
@@ -398,6 +402,7 @@ def reports(request):
 	# get the user's institute
 	insti = UserProfile.objects.get(user=request.user).institute_info
 	all_reports = Report.objects.filter(status="succeed", institute=insti).order_by(sorting)
+	#all_reports = Report.objects.filter(status="succeed").order_by(sorting)
 	user_rtypes = request.user.pipeline_access.all()
 	# later all_users will be changed to all users from the same institute
 	all_users = UserProfile.objects.filter(institute_info=insti).order_by('user__username')
@@ -954,7 +959,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		try:
 			# filter tags according to report type (here we pick non-draft tags):
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
-			report_type=ReportType.objects.get(id=report.type_id)).order_by('order')
+			report_type=ReportType.objects.get(id=report.type.id)).order_by('order')
 		except ObjectDoesNotExist:
 			return aux.fail_with404(request, 'There is ReportType with id ' + str(report.type_id) + ' in database')
 		data = pickle.loads(report.conf_params) if report.conf_params is not None and len(report.conf_params) > 0 else None
@@ -1017,7 +1022,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		# Renders report overview and available tags
 		if mod == 'reload' and report:
 			property_form = breezeForms.ReportPropsFormRE(instance=report, request=request)
-			loc = str(settings.MEDIA_ROOT) + report.home
+			loc = str(settings.MEDIA_ROOT) + report._home_folder_rel
 			tags_data_list = breezeForms.create_report_sections(tags, request, data, files, path=loc)
 		else:
 			property_form = breezeForms.ReportPropsForm(request=request)
@@ -1433,7 +1438,7 @@ def delete_job(request, jid, state):
 	try:
 		job = Jobs.objects.get(id=jid)
 		# Enforce access rights
-		if job.juser != request.user:
+		if job._author != request.user:
 			raise PermissionDenied
 		#rshell.del_job(job)
 		job.delete()
@@ -1575,7 +1580,7 @@ def check_reports(request):
 			malst.append({
 			'id': str(each.id),
 			'type': str(each.type),
-			'created': str(each.created),
+			'created': str(each._created),
 			'author': unicode(each.author.get_full_name() or each.author.username),
 			'name': str(each.name),
 			'project': str(each.project),
@@ -1594,18 +1599,18 @@ def check_reports(request):
 def edit_job(request, jid=None, mod=None):
 	job = aux.get_job_safe(request, jid)
 
-	tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
+	tree = xml.parse(str(settings.MEDIA_ROOT) + str(job._doc_ml))
 	# user_info = User.objects.get(username=request.user)
 	user_info = request.user
 
 	if mod is not None:
 		mode = 'replicate'
-		tmpname = str(job.jname) + '_REPL'
+		tmpname = str(job._name) + '_REPL'
 		edit = ""
 	else:
 		mode = 'edit'
-		tmpname = str(job.jname)
-		edit = str(job.jname)
+		tmpname = str(job._name)
+		edit = str(job._name)
 
 	if request.method == 'POST':
 		head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
@@ -1613,26 +1618,26 @@ def edit_job(request, jid=None, mod=None):
 		if head_form.is_valid() and custom_form.is_valid():
 
 			if mode == 'replicate':
-				tmpscript = job.script
+				tmpscript = job._type
 				job = Jobs()
-				job.script = tmpscript
+				job._type = tmpscript
 				job.status = "scheduled"
-				job.juser = request.user
+				job._author = request.user
 				job.progress = 0
 			else:
-				loc = rshell.get_job_folder(str(job.jname), str(job.juser.username))
+				loc = rshell.get_job_folder(str(job._name), str(job._author.username))
 				shutil.rmtree(loc)
 
 			rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-			                           str(job.script.code), str(job.script.header), request.FILES)
+			                           str(job._type.code), str(job._type.header), request.FILES)
 
-			job.jname = head_form.cleaned_data['job_name']
-			job.jdetails = head_form.cleaned_data['job_details']
+			job._name = head_form.cleaned_data['job_name']
+			job._description = head_form.cleaned_data['job_details']
 
-			job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
-			job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
-			job.rexecut.close()
-			job.docxml.close()
+			job._rexec.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
+			job._doc_ml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
+			job._rexec.close()
+			job._doc_ml.close()
 
 			rshell.schedule_job(job, request.POST)
 
@@ -1641,15 +1646,15 @@ def edit_job(request, jid=None, mod=None):
 			os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
 			return HttpResponseRedirect('/jobs')
 	else:
-		head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.jname),
-		                                     initial={'job_name': str(tmpname), 'job_details': str(job.jdetails),
+		head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job._name),
+		                                     initial={'job_name': str(tmpname), 'job_details': str(job._description),
 		                                              'report_to': str(job.email if job.email else user_info.email)})
 		custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
 	return render_to_response('forms/user_modal.html', RequestContext(request, {
 		'url': "/jobs/edit/" + str(jid),
-		'name': str(job.script.name),
-		'inline': str(job.script.inln),
+		'name': str(job._type.name),
+		'inline': str(job._type.inln),
 		'headform': head_form,
 		'custform': custom_form,
 		'layout': "horizontal",
@@ -1686,19 +1691,19 @@ def create_job(request, sid=None):
 		if head_form.is_valid() and custom_form.is_valid():
 			rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
 			                           str(script.code), str(script.header), request.FILES)
-			new_job.jname = head_form.cleaned_data['job_name']
-			new_job.jdetails = head_form.cleaned_data['job_details']
-			new_job.script = script
+			new_job._name = head_form.cleaned_data['job_name']
+			new_job._description = head_form.cleaned_data['job_details']
+			new_job._type = script
 			# new_job.status = request.POST['job_status']
 			new_job.status = u"scheduled"
-			new_job.juser = request.user
+			new_job._author = request.user
 			# TODO finish testing and debug
 			new_job.email = mail_addr
 			new_job.progress = 0
-			new_job.rexecut.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
-			new_job.docxml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
-			new_job.rexecut.close()
-			new_job.docxml.close()
+			new_job._rexec.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
+			new_job._doc_ml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
+			new_job._rexec.close()
+			new_job._doc_ml.close()
 			new_job.breeze_stat = 'scheduled'
 
 			rshell.schedule_job(new_job, request.POST)
@@ -1752,7 +1757,7 @@ def create_job(request, sid=None):
 @login_required(login_url='/')
 def run_script(request, jid):
 	job = Jobs.objects.get(id=jid)
-	script = str(job.script.code)
+	script = str(job._type.code)
 	job.breeze_stat = 'init'
 	job.save()
 	p = Process(target=rshell.run_job, args=(job, script))
@@ -1933,9 +1938,9 @@ def save(request):
 
 def show_rcode(request, jid):
 	job = Jobs.objects.get(id=jid)
-	docxml = xml.parse(str(settings.MEDIA_ROOT) + str(job.docxml))
-	script = job.jname  # docxml.getroot().attrib["name"]
-	inline = job.script.inln  # docxml.getroot().find('inline').text
+	docxml = xml.parse(str(settings.MEDIA_ROOT) + str(job._doc_ml))
+	script = job._name  # docxml.getroot().attrib["name"]
+	inline = job._type.inln  # docxml.getroot().find('inline').text
 
 	fields = list()
 	values = list()
@@ -1947,10 +1952,10 @@ def show_rcode(request, jid):
 	parameters = zip(fields, values)
 
 	return render_to_response('forms/code_modal.html', RequestContext(request, {
-		'name': str(job.jname),
+		'name': str(job._name),
 		'script': script,
 		'inline': inline,
-		'description': str(job.jdetails),
+		'description': str(job._description),
 		'input': parameters,
 	}))
 
@@ -1972,9 +1977,9 @@ def view_group(request, gid):
 @login_required(login_url='/')
 def send_zipfile(request, jid, mod=None):
 	job = Jobs.objects.get(id=jid)
-	loc = rshell.get_job_folder(str(job.jname), str(job.juser.username))
+	loc = rshell.get_job_folder(str(job._name), str(job._author.username))
 	files_list = os.listdir(loc)
-	zipname = 'attachment; filename=' + str(job.jname) + '.zip'
+	zipname = 'attachment; filename=' + str(job._name) + '.zip'
 
 	temp = tempfile.TemporaryFile()
 	archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
@@ -2289,11 +2294,11 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 def update_jobs(request, jid, item):
 	if item == 'script':
 		obj = Jobs.objects.get(id=jid)
-		date = obj.staged
-		name = str(obj.jname)
+		date = obj.created
+		name = str(obj._name)
 	else:
 		obj = Report.objects.get(id=jid)
-		date = obj.created
+		date = obj._created
 		name = str(obj.name)
 
 	# sge_status = rshell.track_sge_job(obj)

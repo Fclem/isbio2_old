@@ -96,14 +96,17 @@ class QuerySet(__original_QS):
 
 class WorkersManager(django.db.models.Manager):
 	"""
-	Just change the name of the fields parameters in a QuerySet
+	Overrides change the name of the fields parameters in a QuerySet
 	this allow legacy backward compatibility with the new Runnable class
 	while not needing to change all the query everywhere in the code.
 	The Runnable allows to use unified name for fields, while keeping the old database models #TODO migrate
-	Even though, such query should be done from this manager in the future #TODO
+	From now on, every request to Report and Jobs should be done trough included request filters
 	"""
-	# Overides
+	# Overrides
 	def get_query_set(self):
+		"""
+		:rtype: QuerySet
+		"""
 		return QuerySet(self.model, using=self._db)
 
 	def filter(self, *args, **kwargs):
@@ -126,20 +129,20 @@ class WorkersManager(django.db.models.Manager):
 		args, kwargs = _translate(args, kwargs)
 		return super(WorkersManager, self).order_by(*args, **kwargs)
 
-	# TODO : re-write all the queries here
+	##
+	# Request filtering
+	##
 	def get_not_scheduled(self):
 		"""
 		Returns ALL the jobs that are NOT scheduled
-		:rtype: QuerySet
 		"""
 		from breeze.models import JobStat
 		return self.all().exclude(_status=JobStat.SCHEDULED).exclude(_breeze_stat=JobStat.SCHEDULED)
 
-	def get_incompleted(self):
+	def get_incomplete(self):
 		"""
 		Returns all the jobs that are NOT completed, excluding Scheduled jobs
 		That also includes active job that are not running yet
-		:rtype: QuerySet
 		"""
 		from breeze.models import JobStat
 		return self.get_not_scheduled().exclude(_breeze_stat=JobStat.DONE)
@@ -147,31 +150,64 @@ class WorkersManager(django.db.models.Manager):
 	def get_run_wait(self):
 		"""
 		Returns all the jobs that are waiting to be run
-		:rtype: QuerySet
 		"""
 		from breeze.models import JobStat
 		return self.get_not_scheduled().filter(_breeze_stat=JobStat.RUN_WAIT)
 
 	def get_active(self):
 		"""
-		Returns all the jobs that are currently running
-		This is the set you want to refresh periodicaly
-		:rtype: QuerySet
+		Returns all the jobs that are currently active
+		(this include INIT, PREPARE_RUN, RUNNING, QUEUED_ACTIVE but not RUN_WAIT nor SCHEDULED)
+		This is the set you want to refresh periodically
 		"""
 		from breeze.models import JobStat
 		return self.get_not_scheduled().exclude(_breeze_stat=JobStat.RUN_WAIT).exclude(_breeze_stat=JobStat.DONE)
 
-	def get_done(self, include_failed=True):
+	def get_running(self):
+		"""
+		Returns all the jobs that are currently active and actually running
+		(does NOT include INIT, PREPARE_RUN, QUEUED_ACTIVE, etc)
+		"""
+		from breeze.models import JobStat
+		return self.get_not_scheduled().filter(_breeze_stat=JobStat.RUNNING, _status=JobStat.RUNNING)
+
+	def get_history(self):
+		"""
+		Returns all the jobs history
+		includes succeeded, failed and aborted ones
+		"""
+		from breeze.models import JobStat
+		return self.get_not_scheduled().filter(_breeze_stat=JobStat.DONE)
+
+	def get_done(self, include_failed=True, including_aborted=True):
 		"""
 		Returns all the jobs that are done,
-		including or not the failed ones
-		:rtype: QuerySet
+		including or not the failed and aborted ones
 		"""
 		from breeze.models import JobStat
 
-		r = self.get_not_scheduled().exclude(_breeze_stat=JobStat.DONE)
+		r = self.get_history()
 
 		if not include_failed:
 			r.exclude(_status=JobStat.FAILED)
+		if not including_aborted:
+			r.exclude(_status=JobStat.ABORTED)
 
 		return r
+
+	def get_failed(self):
+		"""
+		Returns all the jobs history
+		includes succeeded, failed and aborted ones
+		"""
+		from breeze.models import JobStat
+		return self.get_history().filter(_status=JobStat.FAILED)
+
+	def get_aborted(self):
+		"""
+		Returns all the jobs history
+		includes succeeded, failed and aborted ones
+		"""
+		from breeze.models import JobStat
+
+		return self.get_history().filter(Q(_status=JobStat.ABORTED) or Q(_status=JobStat.ABORT))

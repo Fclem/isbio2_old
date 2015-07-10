@@ -1,4 +1,4 @@
-from operator import isCallable
+# from operator import isCallable
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
@@ -10,6 +10,8 @@ from django.http import HttpRequest
 from breeze import managers
 import logging
 import sys
+# sys.path.append('/homes/dbychkov/dev/isbio/venv/lib/python2.7/site-packages/drmaa')
+import drmaa
 from os.path import isfile, isdir, islink, exists, getsize
 from os import symlink
 # import os.path
@@ -26,10 +28,12 @@ CATEGORY_OPT = (
 def get_logger(name=None):
 	logger = logging.getLogger(__name__)
 	if name is None:
-		name = sys._getframe(1).f_code.co_name
+		name = sys._getframe(2).f_code.co_name
 	log_obj = logger.getChild(name)
 	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
 	return log_obj
+
+Trans = managers.Trans
 
 # Shortcut for handling path
 class Path(object):
@@ -92,10 +96,32 @@ class Path(object):
 		from os import remove
 		try:
 			if isfile(self.path_str) or islink(self.path_str):
+				get_logger().debug("removing %s" % self.path_str)
+				if settings.VERBOSE: print "removing %s" % self.path_str
 				remove(self.path_str)
 				return True
 		except OSError:
-			pass
+			return self.remove_lnk_safe()
+		return False
+
+	def remove_lnk_safe(self):
+		"""
+		Remove a link file or a dir and all sub content (to use for links only)
+		"""
+		from os import unlink
+
+		path = self.path_str
+		if self.is_dir() and self.path_str.endswith('/'):
+			path = path[:-1]
+
+		try:
+			get_logger().debug("unlinking %s" % path)
+			if settings.VERBOSE: print "unlinking %s" % path
+			unlink(path)
+			return True
+		except OSError as e:
+			get_logger().error("unable to unlink %s : %s" % (path, e))
+			if settings.VERBOSE: print "unable to unlink %s : %s" % (path, e)
 		return False
 
 	def auto_symlink(self, holder):
@@ -105,8 +131,8 @@ class Path(object):
 		:type holder: str
 		"""
 		log_obj = get_logger()
+		Path(holder).remove_lnk_safe()
 
-		remove_file_safe(holder)
 		if settings.VERBOSE: print "symlink to", self.path_str, "@", holder
 		log_obj.debug("symlink to %s @ %s" % (self.path_str, holder))
 		symlink(self.path_str, holder)
@@ -235,21 +261,21 @@ class ShinyReport(models.Model):
 	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
 
 	custom_header = models.TextField(blank=True, default=shiny_header(),
-									 help_text="Use R Shiny code here to customize the header of the dashboard<br />"
-											   "Here is a basic example of what you can do.<br />\n"
-											   "For more information, please refer to Shiny documentation.")
+									help_text="Use R Shiny code here to customize the header of the dashboard<br />"
+									"Here is a basic example of what you can do.<br />\n"
+									"For more information, please refer to Shiny documentation.")
 
 	custom_loader = models.TextField(blank=True, default=shiny_loader(),
-									 help_text="Use R Shiny code here to customize the global server part of the "
-											   "dashboard<br />This is usefull to load files, or declare variables "
-											   "that will be accessible to each attached tags:<br />NB : you may "
-											   "reference, in the next field, every file you use here. Use a $ to "
-											   "reference your file according to the 'tname' you associated with it.")
+									help_text="Use R Shiny code here to customize the global server part of the "
+									"dashboard<br />This is usefull to load files, or declare variables "
+									"that will be accessible to each attached tags:<br />NB : you may "
+									"reference, in the next field, every file you use here. Use a $ to "
+									"reference your file according to the 'tname' you associated with it.")
 
 	custom_files = models.TextField(blank=True, default=shiny_files(),
 									help_text="Use the following JSON format to reference your files<br />This "
-											  "enables Breeze to dynamically check for the files you marked as "
-											  "required.<br />")
+									"enables Breeze to dynamically check for the files you marked as "
+									"required.<br />")
 
 	enabled = models.BooleanField(default=True)
 
@@ -321,7 +347,8 @@ class ShinyReport(models.Model):
 		Creates the directory structure, removing any previously existing content,
 		creates sever and ui sub-folders and link server and ui dashboard 'tag'
 		"""
-		import shutil, os.path
+		import shutil
+		import os.path
 
 		shutil.rmtree(self._folder_path_base, ignore_errors=True)
 		os.mkdir(self._folder_path_base, self.FS_ACL)
@@ -382,7 +409,7 @@ class ShinyReport(models.Model):
 				for item in os.listdir(self.folder_path):
 					auto_symlink('%s%s' % (self.folder_path, item), '%s%s' % (report_home, item))
 				# Creates a slink in shinyReports to the actual report
-				auto_symlink(report_home[:-1], report_link)
+				auto_symlink(report_home, report_link)
 		else: # the target report is missing we remove the link
 			self.unlink_report(report)
 
@@ -399,13 +426,13 @@ class ShinyReport(models.Model):
 		report_link = self.report_link(report)
 
 		# if the home folder of the report exists, and the link doesn't yet
-		if os.path.isdir(report_home[:-1]) and report_home != settings.MEDIA_ROOT:
+		if os.path.isdir(report_home) and report_home != settings.MEDIA_ROOT:
 			# removes the soft-link for each files/folder of the shinyReport folder into the Report folder
 			for item in os.listdir(self.folder_path):
-				remove_file_safe('%s%s' % (report_home, item))
+				remove_file_safe('%s%s' % (report_home, item)) # TODO check
 		if os.path.islink(report_link):
 			# removes the slink in shinyReports to the actual report
-			remove_file_safe(report_link) # unlink from shiny
+			remove_file_safe(report_link) # unlink from shiny TODO check
 
 	def _unlink_all_reports(self):
 		"""
@@ -823,8 +850,6 @@ class UserProfile(models.Model):
 		return self.user.get_full_name()  # return self.user.username
 
 
-import drmaa
-
 class InvalidArguments(BaseException):
 	pass
 
@@ -832,8 +857,16 @@ class InvalidArguments(BaseException):
 class ReadOnlyAttribute(BaseException):
 	pass
 
-# 30/06/2015
+# 30/06/2015 / 10/07/2015
 class JobStat(object):
+	"""
+	Has all the job status logic for updates.
+	Some of the logic regarding requests, lies in WorkersManager
+	DB use 2 different fields :
+	_ status : store the DRMAA / sge actual status
+	_ breeze_stat : store the current state of the job to be reported
+	This is kind of messy, but work well
+	"""
 	RUN_WAIT = 'run_wait'
 	ABORT = 'abort'
 	ABORTED = 'aborted'
@@ -865,9 +898,49 @@ class JobStat(object):
 		SCHEDULED: 'job is saved for later submission',
 		PREPARE_RUN: 'job is being prepared for submission',
 		SUBMITTED: 'job has been submited, and should be running soon',
+		RUN_WAIT: 'job is about to be submitted',
 	}
 
-	def status_logic(self, status):
+	@staticmethod
+	def _progress_level(stat):
+		"""
+		Return the progression value associated with a specific status
+		:param stat:
+		:type stat: str or Exception
+		:return: progress value
+		:rtype: int
+		"""
+		if isinstance(stat,
+			(drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
+			return 67
+		elif stat is Exception:
+			return 66
+		elif stat == JobStat.RUN_WAIT:
+			return 8
+		elif stat in (JobStat.PREPARE_RUN, JobStat.QUEUED_ACTIVE):
+			return 15
+		elif stat == JobStat.SUBMITTED:
+			return 30
+		elif stat == JobStat.RUNNING:
+			return 55
+		elif stat in (JobStat.FAILED, JobStat.SUCCEED, JobStat.DONE):
+			return 100
+		else:
+			# return self.progress
+			return None
+
+	def status_logic(self):
+		return self.status_logic_arg(self._init_stat)
+
+	def status_logic_arg(self, status):
+		"""
+		Return relevant the relevant status, breeze_stat, progress and text display of current status code
+		:param status: a JobStat constant
+		:type status: str
+		:return: status, breeze_stat, progress, textual(status)
+		:rtype: str, str, int, str
+		"""
+		progress = self._progress_level(status)
 		if status == JobStat.ABORTED:
 			self.status = JobStat.ABORTED
 			self.breeze_stat = JobStat.DONE
@@ -893,7 +966,7 @@ class JobStat(object):
 			self.status = JobStat.RUNNING
 			self.breeze_stat = JobStat.RUNNING
 		elif status == JobStat.DONE:
-			# self.status remains unchanged (because it could be failed or succeed)
+			# self.status remains unchanged (because it could be failed, succeed or aborted)
 			self.breeze_stat = JobStat.DONE
 		elif status == JobStat.SUCCEED:
 			self.status = JobStat.SUCCEED
@@ -902,17 +975,28 @@ class JobStat(object):
 			self.status = status
 		self.stat_text = self.textual(status)
 
+		return self.status, self.breeze_stat, progress, self.textual(status)
+
 	def __init__(self, status):
-		self.status = ''
-		self.breeze_stat = ''
+		self._init_stat = None
+		self.status = None
+		self.breeze_stat = None
 		self.stat_text = ''
 		if status in self.__decode_status.keys():
-			self.status_logic(status)
+			self._init_stat = status
+			self.status_logic()
 		else:
 			raise InvalidArguments
 
 	@staticmethod
 	def textual(stat):
+		"""
+		Return string representation of current status
+		:param stat: current status
+		:type stat: str
+		:return: string representation of current status
+		:rtype: str
+		"""
 		if stat in JobStat.__decode_status:
 			return JobStat.__decode_status[stat]
 		else:
@@ -920,9 +1004,6 @@ class JobStat(object):
 
 	def __str__(self):
 		return self.stat_text
-
-
-from managers import Trans
 
 
 class Runnable(models.Model):
@@ -1039,8 +1120,6 @@ class Runnable(models.Model):
 	def has_access_to_shiny(self, this_user):
 		raise self.not_imp()
 
-	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
-
 	# TODO : resume HERE
 	@property
 	def _rtype_config_path(self):
@@ -1091,13 +1170,13 @@ class Runnable(models.Model):
 
 	@property
 	def sge_job_name(self):
-		return '%s_%s' % (slugify(self.name), self.instance_type.capitalize())
+		return '%s_%s' % (slugify(self._name), self.instance_type.capitalize())
 
 	# interface
-	def generate_shiny_key(self): # TODO
-		#raise self.not_imp()
-		return ''
+	def generate_shiny_key(self):
+		raise self.not_imp()
 
+	@property
 	def is_done(self):
 		if self.status == JobStat.SUCCEED and self.breeze_stat == JobStat.DONE:
 			return True
@@ -1105,9 +1184,9 @@ class Runnable(models.Model):
 		return isfile(self._test_file)
 
 	def abort(self):
-		if self.breeze_stat != JobStat.DONE:
-			self.breeze_stat = JobStat.ABORT
-			self.save()
+		if self._breeze_stat != JobStat.DONE:
+			self._set_status(JobStat.ABORT)
+			#self.save()
 		return True
 
 	# TODO
@@ -1135,6 +1214,7 @@ class Runnable(models.Model):
 		default_dir = os.getcwd()
 
 		try:
+			default_dir = os.getcwd() # Jobs specific
 			os.chdir(loc)
 			if self.is_report and self.fm_flag: # TODO Report specific
 				os.system(settings.JDBC_BRIDGE_PATH)
@@ -1145,7 +1225,7 @@ class Runnable(models.Model):
 			log.info('%s%s : ' % data + 'creating %s' % self.instance_type)
 		except Exception as e:
 			log.exception('%s%s : ' % data + 'pre-run error %s' % e)
-			log.error('%s%s : process unexcpectedly terminated' % data)
+			log.error('%s%s : process unexpectedly terminated' % data)
 
 		try:
 			s = drmaa.Session()
@@ -1210,32 +1290,6 @@ class Runnable(models.Model):
 		log.info('%s%s : ' % data + 'drmaa waiter process terminated successfully !')
 		return 0
 
-	def _progress_level(self, stat=None):
-		"""
-		Return the progression value associated with a specific status
-		:param stat:
-		:type stat: str or Exception
-		:return: progress value
-		:rtype: int
-		"""
-		if isinstance(stat,
-			(drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
-			return 67
-		elif stat is Exception:
-			return 66
-		elif stat == JobStat.RUN_WAIT:
-			return 8
-		elif stat in (JobStat.PREPARE_RUN, JobStat.QUEUED_ACTIVE):
-			return 15
-		elif stat == JobStat.SUBMITTED:
-			return 30
-		elif stat == JobStat.RUNNING:
-			return 55
-		elif stat in (JobStat.FAILED, JobStat.SUCCEED, JobStat.DONE):
-			return 100
-		else:
-			return self.progress
-
 	def _set_status(self, status):
 		"""
 		Save a specific status state of the instance.
@@ -1245,44 +1299,25 @@ class Runnable(models.Model):
 		:type status: str
 		"""
 		if self._status == JobStat.SUCCEED or status is None:
-			return
+			return # job status must not been changed after succeeded
 
-		self.progress = self._progress_level(status)
-		if status == JobStat.ABORTED:
-			self._status = JobStat.ABORTED
-			self._breeze_stat = JobStat.DONE
-		elif status == JobStat.PREPARE_RUN:
-			self._breeze_stat = JobStat.PREPARE_RUN
-			self._status = JobStat.QUEUED_ACTIVE
-		elif status == JobStat.QUEUED_ACTIVE:
-			self._breeze_stat = JobStat.RUNNING
-			self._status = JobStat.QUEUED_ACTIVE
-		elif status == JobStat.INIT:
-			self._breeze_stat = JobStat.INIT
-			self._status = JobStat.INIT
-		elif status == JobStat.SUBMITTED:
-			self._breeze_stat = JobStat.SUBMITTED
-		elif status == JobStat.FAILED:
-			self._status = JobStat.FAILED
-			self._breeze_stat = JobStat.DONE
-		elif status == JobStat.RUN_WAIT:
-			self._status = JobStat.INIT
-			self._breeze_stat = JobStat.RUN_WAIT
-		elif status == JobStat.RUNNING:
-			self._status = JobStat.RUNNING
-			self._breeze_stat = JobStat.RUNNING
-		elif status == JobStat.DONE:
-			self._breeze_stat = JobStat.DONE
-		elif status == JobStat.SUCCEED:
-			self._breeze_stat = JobStat.DONE
-			self._status = JobStat.SUCCEED
-		else:
-			self._status = status
-		self._stat_text = JobStat.textual(status)
+		_status, _breeze_stat, progress, text = JobStat(status).status_logic()
+
+		if _status is not None:
+			self._status = _status
+		if _breeze_stat is not None:
+			self._breeze_stat = _breeze_stat
+		if progress is not None:
+			self.progress = progress
+
+		self._stat_text = text
 		self.save()
 
 	def get_status(self):
-		return self._stat_text
+		try:
+			return self._stat_text
+		except AttributeError:
+			return JobStat.textual(self._status)
 
 	##
 	# DJANGO RELATED FUNCTIONS
@@ -1390,7 +1425,7 @@ class Jobs(Runnable):
 		"""
 		import os
 		import copy
-		import json
+		# import json
 		import django.db
 
 		drmaa = None
@@ -1400,9 +1435,7 @@ class Jobs(Runnable):
 		log = get_logger('run_job')
 
 		loc = self.home_folder_full_path # absolute path
-		# loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', self.jname, self.juser.username))
-		config = loc + slugify(self.jname + '_' + self.juser.username) + '_config.sh' # TODO change with :
-		# config = loc + '/sgeconfig.sh'
+		config = loc + '/sgeconfig.sh'
 		default_dir = os.getcwd()
 
 		try:
@@ -1594,7 +1627,7 @@ class Report(Runnable):
 		return this_user and (this_user in self.shared.all() or self._author == this_user) \
 			and self._type.shiny_report.enabled
 
-	# TODO : resume HERE
+	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
 
 	# TODO : use clean or save ?
 	def generate_R_file(self, sections, request_data):
@@ -1928,20 +1961,4 @@ class OffsiteUser(models.Model):
 		return unicode(self.full_name)
 
 
-decode_status = {
-	drmaa.JobState.UNDETERMINED: 'process status cannot be determined',
-	drmaa.JobState.QUEUED_ACTIVE: 'job is queued and active',
-	drmaa.JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
-	drmaa.JobState.USER_ON_HOLD: 'job is queued and in user hold',
-	drmaa.JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
-	drmaa.JobState.RUNNING: 'job is running',
-	drmaa.JobState.SYSTEM_SUSPENDED: 'job is system suspended',
-	drmaa.JobState.USER_SUSPENDED: 'job is user suspended',
-	drmaa.JobState.DONE: 'job finished normally',
-	JobStat.SUCCEED: 'job finished normally',
-	drmaa.JobState.FAILED: 'job finished, but failed',
-	JobStat.ABORTED: 'job has been aborted',
-	JobStat.ABORT: 'job is being aborted...',
-	JobStat.INIT: 'job instance is being generated...',
-	JobStat.SCHEDULED: 'job is saved for later submission',
-}
+# decode_status = {

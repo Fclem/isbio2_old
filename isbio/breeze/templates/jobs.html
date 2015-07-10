@@ -199,7 +199,7 @@
 
 		var last_state = [];
 
-		function updateJobs(jid, item) {
+		function updateJobs(jid, item, has_error) {
 			$.ajax({
 				type: "GET",
 				url: "/update-jobs/"+jid+"-"+item,
@@ -207,12 +207,14 @@
 				success: function (msg) {
 					var arg = "width: " + msg.progress.toString() + "%";
 
-					$("#" + jid.toString() + "_bar").attr('style', arg);
-					$("#" + jid.toString() + "_SGEstatus").html("<strong>" + msg.name.toString() + "</strong> - " + msg.sge.toString());
-					$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
+					if (has_error != 1) {
+						$("#" + jid.toString() + "_bar").attr('style', arg);
+						$("#" + jid.toString() + "_SGEstatus").html("<strong>" + msg.name.toString() + "</strong> - " + msg.sge.toString());
+						$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
+					}
 
 					//A job is not running anymore
-					if (msg.status != "running" && msg.status != "queued_active" && msg.status != "init") {
+					if (msg.status != "running" && msg.status != "queued_active" && msg.status != "init" && has_error!=1) {
 						//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
 						changePage(null, 1, 1, modalConnect);
 
@@ -265,7 +267,9 @@
 					$("#" + jid.toString() + "_tr2").attr('class', 'error');
 					$("#" + jid.toString() + "_div").attr('class', "progress progress-warning");
 					$("#" + jid.toString() + "_SGEstatus").html($("#" + jid.toString() + "_SGEstatus strong").text() +
-					  " - <strong>ERROR</strong> while checking status ! (try reloading)");
+					  " - <strong>ERROR</strong> while checking status !");
+					last_state[jid] = 'error';
+					window.setTimeout(updateJobs, 3000 , jid, item, 1);
 				}
 			});
 		};

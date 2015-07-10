@@ -233,8 +233,8 @@ def run_job(job, script=None):
 	assert isinstance(job, Jobs)
 
 	try:
-		loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
-		config = loc + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
+		loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job._name, job._author.username))
+		config = loc + slugify(job._name + '_' + job._author.username) + '_config.sh'
 
 		default_dir = os.getcwd()
 		os.chdir(loc)
@@ -259,13 +259,13 @@ def run_job(job, script=None):
 		assert isinstance(jt, object)
 
 		jt.workingDirectory = loc
-		jt.jobName = slugify(job.jname) + '_JOB'
+		jt.jobName = slugify(job._name) + '_JOB'
 		# external mail address support
 		# Not working ATM probably because of mail backend not being properly configured
 		if job.email != '':
-			jt.email = [str(job.email), str(job.juser.email)]
+			jt.email = [str(job.email), str(job._author.email)]
 		else:
-			jt.email = [str(job.juser.email)]
+			jt.email = [str(job._author.email)]
 		# print "Mail address for this job is : " +  ', '.join(jt.email)
 		# mail notification on events
 		if job.mailing != '':
@@ -343,7 +343,7 @@ def run_job(job, script=None):
 	#return False
 
 
-from models import decodestatus
+from models import decode_status
 
 # DELETED run_report on 30/06/2015 (now part of Report)
 # DELETED abort_report on 30/06/2015 (now part of Report)
@@ -683,26 +683,28 @@ def build_report(report_data, request_data, report_property, sections):
 
 	# create initial instance so that we can use its db id
 	dbitem = Report(
-		type=rt,
-		name=str(report_data['instance_name']),
-		author=the_user,
+		_type=rt,
+		_name=str(report_data['instance_name']),
+		_author=the_user,
 		progress=8,
 		project=Project.objects.get(id=request_data.POST.get('project')),
-		institute=the_user.prof.institute_info,
-		status='init',
+		_institute=the_user.prof.institute_info,
+		_status='init',
 		rora_id=report_data['instance_id'],
-		breeze_stat='init'
+		_breeze_stat='init'
 	)
 	dbitem.save()
 	# Now that it has an id we can use m2m ref
 	if shared_users:
 		dbitem.shared = shared_users
 
+	# TODO : Move all the following code in Runnable create handler
+
 	# BUILD R-File
 	dbitem.generate_R_file(sections, request_data)
 
 	# configure shell-file
-	config_path = dbitem.get_home + '/sgeconfig.sh'
+	config_path = dbitem.home_folder_full_path + '/sgeconfig.sh'
 	config = open(config_path, 'w')
 
 	# config should be executable
@@ -715,8 +717,8 @@ def build_report(report_data, request_data, report_property, sections):
 	config.close()
 
 	# open report's folder for others
-	st = os.stat(dbitem.get_home)
-	os.chmod(dbitem.get_home, st.st_mode | stat.S_IRWXG)
+	st = os.stat(dbitem.home_folder_full_path)
+	os.chmod(dbitem.home_folder_full_path, st.st_mode | stat.S_IRWXG)
 
 	# clem : saves parameters into db, in order to be able to duplicate report
 	dbitem.conf_params = pickle.dumps(request_data.POST)
@@ -728,10 +730,9 @@ def build_report(report_data, request_data, report_property, sections):
 	dbitem.save()
 
 	# generate shiny access for offsite users
-	if report_data['report_type'] == 'ScreenReport':
+	if report_data['report_type'] == 'ScreenReport': # TODO dynamic
 		dbitem.generate_shiny_key()
 
-	dbitem.breeze_stat = 'run_wait'
-	dbitem.save()
+	dbitem.breeze_stat = JobStat.RUN_WAIT
 
 	return True

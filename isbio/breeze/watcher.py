@@ -135,7 +135,7 @@ class Watcher:
 			except drmaa.InvalidJobException:
 				log.warning('%s%s : drmaa InvalidJobException' % (type, job.id))
 				# if settings.DEBUG: console_print("InvalidJobException", rid)
-				if job.is_done():
+				if job.is_done:
 					status = JobStat.SUCCEED
 				else:
 					status = JobStat.ABORTED

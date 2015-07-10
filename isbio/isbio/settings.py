@@ -143,6 +143,7 @@ class BreezeSettings(Settings):
 		'django.contrib.messages.middleware.MessageMiddleware',
 		'django.middleware.doc.XViewMiddleware',
 		'breeze.jobKeeper',
+		'breeze.middlewares.CheckUserProfile',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
 		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -309,13 +310,15 @@ class DevSettings(BreezeSettings):
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
 	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
+	GENERAL_SH_NAME = 'sgeconfig.sh'
 	# Reports config
-	REPORTS_FOLDER = 'reports/'
-	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FOLDER)
-	REPORTS_SH = 'sgeconfig.sh'
+	REPORTS_FN = 'reports/'
+	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FN)
+	REPORTS_SH = GENERAL_SH_NAME
+	REPORTS_FM_FN = 'transfer_to_fm.txt'
 	# Jobs configs
-	JOBS_FOLDER = 'jobs/'
-	JOBS_PATH = '%s%s' % (MEDIA_ROOT, JOBS_FOLDER)
+	JOBS_FN = 'jobs/'
+	JOBS_PATH = '%s%s' % (MEDIA_ROOT, JOBS_FN)
 	JOBS_SH = '_config.sh'
 
 	#

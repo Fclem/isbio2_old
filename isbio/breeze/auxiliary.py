@@ -7,7 +7,7 @@ from datetime import datetime
 # from django.contrib import messages
 from django import http
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
-from django.db.models import Q
+from breeze.managers import Q
 from django.http import Http404, HttpResponse
 from django.template import loader
 from django.template.context import RequestContext
@@ -271,10 +271,13 @@ def merge_job_history(jobs, reports):
 	merged = list()
 	pool = list(jobs) + list(reports)
 
+	from breeze.models import Runnable
+
 	for item in pool:
+		assert isinstance(item, Runnable)
 		el = dict()
 		# automatize this part
-		if 'script_id' in item.__dict__:  # job
+		if item.is_job:
 			el['instance'] = 'script'
 			el['id'] = item.id
 			el['jname'] = item.jname
@@ -307,7 +310,7 @@ def merge_job_history(jobs, reports):
 			el['ddownhref'] = ''  # debug
 			el['fdownhref'] = ''  # full folder
 
-			el['home'] = item.home
+			el['home'] = item._home_folder_rel
 			el['reschedhref'] = '/reports/edit/%s'%str(item.id)
 
 			el['delhref'] = '/reports/delete/%s-dash'%str(item.id)
@@ -504,7 +507,7 @@ def get_report_path(fitem, fname=None):
 	if isinstance(fitem, DataSet):
 		home = fitem.rdata
 	else:
-		home = fitem.home
+		home = fitem._home_folder_rel
 	local_path = home + '/' + unicode.replace(unicode(fname), '../', '')
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
@@ -535,7 +538,7 @@ def get_report_path_test(fitem, fname=None, NoFail=False):
 	"""
 
 	if fname is None: fname = 'report.html'
-	local_path = fitem.home + '/' + unicode.replace(unicode(fname), '../', '')
+	local_path = fitem._home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '')
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
 	file_exists = os.path.exists(path_to_file)
