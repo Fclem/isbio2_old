@@ -14,7 +14,7 @@ class Trans:
 		'created': '_created', 'staged': '_created',
 		'breeze_stat': '_breeze_stat', 'status': '_status',
 		'rexec': '_rexec', 'rexecut': '_rexec',
-		'dochtml': '_doc_ml', 'docxml': '_doc_ml',
+		'dochtml': '_doc_ml', 'docxml': '_doc_ml', 'doc_ml': '_doc_ml',
 		'institute': '_institute',
 	}
 

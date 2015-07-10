@@ -9,7 +9,7 @@ from django.core.files import File, base
 import breeze.models
 import auxiliary as aux
 import logging
-import pickle, json
+
 from breeze.models import Report, Jobs, JobStat
 from exceptions import Exception
 # import hashlib
@@ -197,159 +197,16 @@ def del_pipe(pipe):
 
 	return False
 
-# DELETED del_report on 30/06/2015 (now part of Report)
-# DELETED del_job on 30/06/2015 (now part of Jobs)
-
-# TODO : integrate into Job data model
-def schedule_job(job, mailing):
-	"""
-		Creates SGE configuration file for QSUB command
-	"""
-	job_path = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job.jname, job.juser.username))
-	config_path = job_path + slugify(job.jname + '_' + job.juser.username) + '_config.sh'
-	config = open(config_path, 'w')
-
-	st = os.stat(config_path)  # config should be executble
-	os.chmod(config_path, st.st_mode | stat.S_IEXEC)
-
-	command = '#!/bin/bash \n%sCMD BATCH --no-save %s%s' % (settings.R_ENGINE_PATH, settings.MEDIA_ROOT, job.rexecut)
-	config.write(command)
-	config.close()
-
-	job.progress = 0
-	job.save()
-	return 1
-
-
-# TODO : integrate into Job data model
-def run_job(job, script=None):
-	"""
-		Submits scripts as an R-job to cluster with qsub (SGE);
-		This submission implements SCRIPTS concept in BREEZE
-		(For REPOTS submission see run_report)
-	"""
-	log = logger.getChild('run_report')
-	assert isinstance(log, logging.getLoggerClass())
-	assert isinstance(job, Jobs)
-
-	try:
-		loc = str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', job._name, job._author.username))
-		config = loc + slugify(job._name + '_' + job._author.username) + '_config.sh'
-
-		default_dir = os.getcwd()
-		os.chdir(loc)
-
-		# prevents db being dropped
-		django.db.close_connection()
-
-		job.status = "queued_active"
-		job.breeze_stat = "prepare_run"
-		job.progress = 15
-		job.save()
-		log.info('j' + str(job.id) + ' : creating job')
-
-	except Exception as e:
-		log.exception('j' + str(job.id) + ' : pre-run error ' + str(e))
-		log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
-
-	try:
-		s = drmaa.Session()
-		s.initialize()
-		jt = s.createJobTemplate()
-		assert isinstance(jt, object)
-
-		jt.workingDirectory = loc
-		jt.jobName = slugify(job._name) + '_JOB'
-		# external mail address support
-		# Not working ATM probably because of mail backend not being properly configured
-		if job.email != '':
-			jt.email = [str(job.email), str(job._author.email)]
-		else:
-			jt.email = [str(job._author.email)]
-		# print "Mail address for this job is : " +  ', '.join(jt.email)
-		# mail notification on events
-		if job.mailing != '':
-			jt.nativeSpecification = "-m " + job.mailing  # Begin End Abort Suspend
-		jt.blockEmail = False
-		jt.remoteCommand = config
-		jt.joinFiles = True
-
-		job.progress = 25
-		#job.status = 'submission'
-		#job.save()
-		log.info('j' + str(job.id) + ' : triggering dramaa.runJob')
-		job.sgeid = s.runJob(jt)
-		log.info('j' + str(job.id) + ' : returned sgedid "' + str(job.sgeid) + '"')
-		job.progress = 30
-		job.save()
-
-		SGEID = copy.deepcopy(job.sgeid)
-		# waiting for the job to end
-		#if not SGEID:
-		#print "no id!"
-		# TODO have a closer look into that
-		log.info('j' + str(job.id) + ' : stat : ' + str(s.jobStatus(job.sgeid)))
-		retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-		job.progress = 100
-		job.save()
-
-		if retval.hasExited and retval.exitStatus == 0:
-			job.status = 'succeed'
-			log.info('j' + str(job.id) + ' : dramaa.runJob ended with exit code 0 !')
-			# clean up the folder
-		else:
-			log.error('j' + str(job.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
-			job = Jobs.objects.get(id=job.id)  # make sure data is updated
-			if job.status != 'aborted':
-				pass
-				job.status = 'failed'  # seems to interfere with aborting process TODO check
-
-		job.save()
-		s.exit()
-		os.chdir(default_dir)
-
-		#track_sge_job(job, True)
-
-		log.info('j' + str(job.id) + ' : process terminated successfully !')
-		return True
-	except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException, drmaa.NoActiveSessionException) as e:
-		# TODO improve this part
-		log.exception('j' + str(job.id) + ' : drmaa error ' + str(e))
-		log.error('j' + str(job.id) + ' : process unexcpectedly terminated')
-		# job.status = "failed"
-		job.progress = 67
-		job.save()
-		s.exit()
-		return e
-	except Exception as e:
-		# report.status = 'failed'
-		log.exception('r' + str(job.id) + ' : drmaa unknow error ' + str(e))
-		log.error('r' + str(job.id) + ' : process unexcpectedly terminated')
-		job.progress = 66
-		job.save()
-
-		s.exit()
-		return False
-	#except e:
-		# job.status = 'failed'
-		#job.progress = 100
-		#job.save()
-
-		#newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (job.juser, job.jname), 'w')
-		#newfile.write("UNKNOW ERROR" + vars(e))
-		#newfile.close()
-
-		#s.exit()
-	#return False
-
-
-from models import decode_status
-
-# DELETED run_report on 30/06/2015 (now part of Report)
-# DELETED abort_report on 30/06/2015 (now part of Report)
+# DELETED del_report on 30/06/2015 (now part of Runnable.del)
+# DELETED del_job on 30/06/2015 (now part of Runnable.del)
+# DELETED schedule_job on 10/07/2015 (now part of Runnable.assemble)
+# DELETED run_job on 10/07/2015 (now part of Runnable.run)
+# DELETED run_report on 30/06/2015 (now part of Runnable.run)
+# DELETED abort_report on 30/06/2015 (now part of Runnable.abort)
 # DELETED track_sge_job on 30/06/2015 (now part of Watcher)
 # DELETED track_sge_job_bis on 30/06/2015 (now part of Watcher)
 
+# TODO integrate in Jobs or Runnable and integrate with reports' equivalent funct
 def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
 	"""
         Builds (singe) R-exacutable file: puts together sources, header
@@ -424,6 +281,7 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
 	return 1
 
 
+# TODO : job related find out what is this
 def build_header(data):
 	header = open(str(settings.TEMP_FOLDER) + 'header.txt', 'w')
 	string = str(data)
@@ -648,6 +506,7 @@ def dump_pipeline_config(report_type, query_key):
 	return copy.copy(dump)
 
 
+# TODO integrate in Report or Runnable and integrate with job's equivalent funct
 def build_report(report_data, request_data, report_property, sections):
 	""" Assembles report home folder, configures DRMAA and R related files
 		and spawns a new process for reports DRMAA job on cluster.
@@ -689,50 +548,10 @@ def build_report(report_data, request_data, report_property, sections):
 		progress=8,
 		project=Project.objects.get(id=request_data.POST.get('project')),
 		_institute=the_user.prof.institute_info,
-		_status='init',
-		rora_id=report_data['instance_id'],
-		_breeze_stat='init'
+		_breeze_stat=JobStat.INIT,
+		rora_id=report_data['instance_id']
 	)
-	dbitem.save()
-	# Now that it has an id we can use m2m ref
-	if shared_users:
-		dbitem.shared = shared_users
-
-	# TODO : Move all the following code in Runnable create handler
-
-	# BUILD R-File
-	dbitem.generate_R_file(sections, request_data)
-
-	# configure shell-file
-	config_path = dbitem.home_folder_full_path + '/sgeconfig.sh'
-	config = open(config_path, 'w')
-
-	# config should be executable
-	st = os.stat(config_path)
-	os.chmod(config_path, st.st_mode | stat.S_IEXEC)
-
-	# Thanks to ' && touch ./done' breeze can always asses if the run was completed (successful or not)
-	command = '#!/bin/bash \ntouch ./INCOMPLETE_RUN && %sCMD BATCH --no-save %s && touch ./done && rm ./INCOMPLETE_RUN' % (settings.R_ENGINE_PATH, dbitem.r_exec_path)
-	config.write(command)
-	config.close()
-
-	# open report's folder for others
-	st = os.stat(dbitem.home_folder_full_path)
-	os.chmod(dbitem.home_folder_full_path, st.st_mode | stat.S_IRWXG)
-
-	# clem : saves parameters into db, in order to be able to duplicate report
-	dbitem.conf_params = pickle.dumps(request_data.POST)
-	if request_data.FILES:
-		tmp = dict()
-		for each in request_data.FILES:
-			tmp[str(each)] = str(request_data.FILES[each])
-		dbitem.conf_files = json.dumps(tmp)
-	dbitem.save()
-
-	# generate shiny access for offsite users
-	if report_data['report_type'] == 'ScreenReport': # TODO dynamic
-		dbitem.generate_shiny_key()
-
-	dbitem.breeze_stat = JobStat.RUN_WAIT
+	dbitem.assemble(request_data=request_data, shared_users=shared_users, sections=sections)
+	dbitem.submit_to_cluster()
 
 	return True

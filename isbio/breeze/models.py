@@ -654,7 +654,11 @@ class ReportType(models.Model):
 	created = models.DateField(auto_now_add=True)
 
 	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to",
-									 default=0)
+		default=0)
+
+	@property
+	def is_shiny_enabled(self):
+		return self.shiny_report_id > 0
 
 	def save(self, *args, **kwargs):
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
@@ -857,10 +861,10 @@ class InvalidArguments(BaseException):
 class ReadOnlyAttribute(BaseException):
 	pass
 
-# 30/06/2015 / 10/07/2015
+# 30/06/2015 & 10/07/2015
 class JobStat(object):
 	"""
-	Has all the job status logic for updates.
+	Has all the job status logic for updates (except concerning aborting).
 	Some of the logic regarding requests, lies in WorkersManager
 	DB use 2 different fields :
 	_ status : store the DRMAA / sge actual status
@@ -940,40 +944,34 @@ class JobStat(object):
 		:return: status, breeze_stat, progress, textual(status)
 		:rtype: str, str, int, str
 		"""
-		progress = self._progress_level(status)
+		progress = self._progress_level(status) # progression %
 		if status == JobStat.ABORTED:
-			self.status = JobStat.ABORTED
-			self.breeze_stat = JobStat.DONE
+			self.status, self.breeze_stat = JobStat.ABORTED, JobStat.DONE
 		elif status == JobStat.PREPARE_RUN:
-			self.status = JobStat.QUEUED_ACTIVE # diff
-			self.breeze_stat = JobStat.PREPARE_RUN
+			self.status, self.breeze_stat = JobStat.QUEUED_ACTIVE, JobStat.PREPARE_RUN
 		elif status == JobStat.QUEUED_ACTIVE:
-			self.status = JobStat.QUEUED_ACTIVE
-			self.breeze_stat = JobStat.RUNNING
+			self.status, self.breeze_stat = JobStat.QUEUED_ACTIVE, JobStat.RUNNING
 		elif status == JobStat.INIT:
-			self.status = JobStat.INIT
-			self.breeze_stat = JobStat.INIT
+			self.status, self.breeze_stat = JobStat.INIT, JobStat.INIT
 		elif status == JobStat.SUBMITTED:
 			# self.status remains unchanged
 			self.breeze_stat = JobStat.SUBMITTED
 		elif status == JobStat.FAILED:
-			self.status = JobStat.FAILED
-			self.breeze_stat = JobStat.DONE
+			self.status, self.breeze_stat = JobStat.FAILED, JobStat.DONE
 		elif status == JobStat.RUN_WAIT:
-			self.status = JobStat.INIT # diff
-			self.breeze_stat = JobStat.RUN_WAIT
+			self.status, self.breeze_stat = JobStat.INIT, JobStat.RUN_WAIT
 		elif status == JobStat.RUNNING:
-			self.status = JobStat.RUNNING
-			self.breeze_stat = JobStat.RUNNING
+			self.status, self.breeze_stat = JobStat.RUNNING, JobStat.RUNNING
 		elif status == JobStat.DONE:
 			# self.status remains unchanged (because it could be failed, succeed or aborted)
 			self.breeze_stat = JobStat.DONE
 		elif status == JobStat.SUCCEED:
-			self.status = JobStat.SUCCEED
-			self.breeze_stat = JobStat.DONE
+			self.status, self.breeze_stat = JobStat.SUCCEED, JobStat.DONE
+		elif status == JobStat.SCHEDULED:
+			self.status, self.breeze_stat = JobStat.SCHEDULED, JobStat.SCHEDULED
 		else:
 			self.status = status
-		self.stat_text = self.textual(status)
+		self.stat_text = self.textual(status) # clear text status description
 
 		return self.status, self.breeze_stat, progress, self.textual(status)
 
@@ -1015,8 +1013,10 @@ class Runnable(models.Model):
 	SH_NAME = settings.GENERAL_SH_NAME
 	FILE_MAKER_FN = settings.REPORTS_FM_FN
 	REPORT_FILE_NAME = 'report'
+	RQ_FIELDS = ['_name', '_author', '_type']
 	# BASE_FOLDER_NAME = ''
 
+	__can_save = False
 	objects = managers.WorkersManager() # The default manager.
 
 	def __init__(self, *args, **kwargs):
@@ -1028,10 +1028,10 @@ class Runnable(models.Model):
 	_breeze_stat = models.CharField(max_length=16, default=JobStat.INIT, db_column='breeze_stat')
 	_status = models.CharField(max_length=15, blank=True, default=JobStat.INIT, db_column='status')
 	progress = models.PositiveSmallIntegerField(default=0)
-	sgeid = models.CharField(max_length=15, help_text="job id, as returned by SGE")
+	sgeid = models.CharField(max_length=15, help_text="job id, as returned by SGE", blank=True)
 
 	##
-	# WRAPPERs
+	# WRAPPERS
 	##
 
 	# GENERICS
@@ -1121,7 +1121,7 @@ class Runnable(models.Model):
 		raise self.not_imp()
 
 	# TODO : resume HERE
-	@property
+	@property # Report specific ? TODO check
 	def _rtype_config_path(self):
 		return settings.MEDIA_ROOT + str(self.type.config)
 
@@ -1185,11 +1185,71 @@ class Runnable(models.Model):
 
 	def abort(self):
 		if self._breeze_stat != JobStat.DONE:
-			self._set_status(JobStat.ABORT)
-			#self.save()
+			self._breeze_stat = JobStat.ABORT
+			self.save()
 		return True
 
-	# TODO
+	def write_sh_file(self):
+		"""
+		Generate the SH file that will be executed on the cluster by SGE
+		"""
+		import os
+		import stat
+		# configure shell-file
+		config = open(self.sh_file_path, 'w')
+
+		# config should be executable
+		st = os.stat(self.sh_file_path)
+		os.chmod(self.sh_file_path, st.st_mode | stat.S_IEXEC)
+
+		# Thanks to ' && touch ./done' breeze can always asses if the run was completed (successful or not)
+		command = '#!/bin/bash \ntouch ./INCOMPLETE_RUN && %sCMD BATCH --no-save %s && touch ./done && rm ./INCOMPLETE_RUN' % (
+			settings.R_ENGINE_PATH, self.r_exec_path)
+		config.write(command)
+		config.close()
+
+	def grant_write_access(self):
+		"""
+		Make the home folder writable for group
+		"""
+		import os
+		import stat
+		# open home's folder for others
+		st = os.stat(self.home_folder_full_path)
+		os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
+
+	def deferred_instance_specific(self, *args, **kwargs):
+		"""
+		Specific operations to generate job or report instance dependencies.
+		N.B. : you CANNOT use m2m relations before this point
+		YOU MUST DEFINE THIS METHOD
+		"""
+		raise self.not_imp()
+
+	def assemble(self, *args, **kwargs):
+		"""
+		Assembles instance home folder, configures DRMAA and R related files.
+		Call deferred_instance_specific()
+		and finally triggers self.save()
+		"""
+		# The instance is now fully generated and ready to be submitted to SGE
+		# NO SAVE can happen before this point, to avoid any inconsistencies
+		# that could occur if an Exception happens anywhere in the process
+		self.__can_save = True
+		self.save()
+		# other stuff that might be needed by specific kind of instances (Report and Jobs)
+		self.deferred_instance_specific(*args, **kwargs)
+		# open instance home's folder for other to write
+		self.grant_write_access() # TODO create the folder
+		# Build and write SH file
+		self.write_sh_file()
+
+		self.save()
+
+	def submit_to_cluster(self):
+		self.breeze_stat = JobStat.RUN_WAIT
+
+	# TODO check
 	def run(self):
 		"""
 			Submits reports as an R-job to cluster with SGE;
@@ -1207,16 +1267,16 @@ class Runnable(models.Model):
 		if settings.HOST_NAME.startswith('breeze'):
 			import drmaa
 
-		loc = self.home_folder_full_path # writing shortcut
+		# loc = self.home_folder_full_path # writing shortcut
 		config = self.sh_file_path
 		log = get_logger('run_%s' % self.instance_type )
 		data = (self.instance_type[1], str(self.id))
-		default_dir = os.getcwd()
+		default_dir = os.getcwd() # Jobs specific ? or Report specific ?
 
 		try:
-			default_dir = os.getcwd() # Jobs specific
-			os.chdir(loc)
-			if self.is_report and self.fm_flag: # TODO Report specific
+			default_dir = os.getcwd()
+			os.chdir(self.home_folder_full_path)
+			if self.is_report and self.fm_flag: # Report specific
 				os.system(settings.JDBC_BRIDGE_PATH)
 
 			# *MAY* prevent db from being dropped
@@ -1232,15 +1292,17 @@ class Runnable(models.Model):
 			s.initialize()
 
 			jt = s.createJobTemplate()
-			# TODO check for report specificity
-			jt.workingDirectory = loc
+			jt.workingDirectory = self.home_folder_full_path
 			jt.jobName = self.sge_job_name
-			jt.email = [str(self.author.email)]
+			jt.email = [str(self._author.email)]
+			if self.mailing != '':
+				jt.nativeSpecification = "-m " + self.mailing
+			if self.email != '':
+				jt.email = jt.email.append(str(self.email))
 			jt.blockEmail = False
 
 			jt.remoteCommand = config
 			jt.joinFiles = True
-			jt.nativeSpecification = "-m bea" # TODO REPORT SPECIFIC
 
 			self.progress = 25
 			self.save()
@@ -1255,7 +1317,6 @@ class Runnable(models.Model):
 			# self.drmaa_data = json.dumps(retval)
 			json.dump(retval, open(self._test_file, 'w'))
 			self.breeze_stat = JobStat.DONE
-			# self.save()
 			jt.delete()
 
 			if retval.hasExited:
@@ -1269,7 +1330,7 @@ class Runnable(models.Model):
 						self.breeze_stat = JobStat.FAILED
 
 			os.chdir(default_dir)
-
+			# Report specific
 			if self.is_report and self.fm_flag and isfile(self.fm_file_path):
 				run = open(self.fm_file_path).read().split("\"")[1]
 				os.system(run)
@@ -1280,9 +1341,6 @@ class Runnable(models.Model):
 			log.exception('%s%s : ' % data + 'drmaa error %s' % e)
 			log.error('%s%s : ' % data + 'drmaa waiter process unexcpectedly terminated')
 			self.breeze_stat = JobStat.FAILED
-			#self.progress = self._progress_level(e)
-			#self._status = 'failed'
-			#self.save()
 			if s is not None:
 				s.exit()
 			return 1
@@ -1297,8 +1355,9 @@ class Runnable(models.Model):
 		ONLY PLACE WHERE ONE SHOULD CHANGE _breeze_stat and _status
 		:param status: a JobStat value
 		:type status: str
+
 		"""
-		if self._status == JobStat.SUCCEED or status is None:
+		if self._status == JobStat.SUCCEED and status != JobStat.ABORTED or status is None:
 			return # job status must not been changed after succeeded
 
 		_status, _breeze_stat, progress, text = JobStat(status).status_logic()
@@ -1311,7 +1370,9 @@ class Runnable(models.Model):
 			self.progress = progress
 
 		self._stat_text = text
-		self.save()
+
+		if self.id is not None:
+			self.save()
 
 	def get_status(self):
 		try:
@@ -1323,7 +1384,22 @@ class Runnable(models.Model):
 	# DJANGO RELATED FUNCTIONS
 	##
 
+	def all_required_are_filled(self, fail=False):
+		for each in self.RQ_FIELDS:
+			if each not in self.__dict__:
+				if fail:
+					raise AssertionError('You must assign every required fields of job before '
+						+ 'setting breeze_stat. (You forgot %s)\n Required fields are : %s' %
+						(each, self.RQ_FIELDS))
+				else:
+					return False
+		return True
+
+	# TODO check if new item or not
 	def save(self, *args, **kwargs):
+		#self.all_required_are_filled()
+		if self.id is None and not self.__can_save:
+			raise AssertionError('The instance has to complete self.assemble() before any save can happen')
 		super(Runnable, self).save(*args, **kwargs) # Call the "real" save() method.
 
 	def delete(self, using=None):
@@ -1344,8 +1420,12 @@ class Runnable(models.Model):
 	# SPECIAL FUNCTION FOR INTERFACE
 	#
 	def not_imp(self):
-		raise NotImplementedError("Class %s doesn't implement %s, because it's an abstract/interface class." % (
-			self.__class__.__name__, sys._getframe(1).f_code.co_name))
+		if self.__class__ == Runnable.__class__:
+			raise NotImplementedError("Class % doesn't implement %s, because it's an abstract/interface class." % (
+				self.__class__.__name__, sys._getframe(1).f_code.co_name))
+		else:
+			raise NotImplementedError("%s was not implemented in concrete class %s." % (
+			sys._getframe(1).f_code.co_name, self.__class__.__name__))
 
 	@property
 	def is_report(self):
@@ -1377,8 +1457,10 @@ class Runnable(models.Model):
 
 class Jobs(Runnable):
 	def __init__(self, *args, **kwargs):
+
 		super(Jobs, self).__init__(*args, **kwargs)
 		allowed_keys = Trans.translation.keys()
+
 		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
 
 	##
@@ -1416,136 +1498,9 @@ class Jobs(Runnable):
 	def folder_name(self):
 		return slugify('%s_%s' % (self._name, self._author))
 
-	# TODO resume here
-	def run(self): # , script=None):
-		"""
-			Submits scripts as an R-job to cluster with qsub (SGE);
-			This submission implements SCRIPTS concept in BREEZE
-			(For REPOTS submission see Reports.run)
-		"""
-		import os
-		import copy
-		# import json
-		import django.db
+	def deferred_instance_specific(self):
+		pass
 
-		drmaa = None
-		s = None
-		if settings.HOST_NAME.startswith('breeze'):
-			import drmaa
-		log = get_logger('run_job')
-
-		loc = self.home_folder_full_path # absolute path
-		config = loc + '/sgeconfig.sh'
-		default_dir = os.getcwd()
-
-		try:
-
-			default_dir = os.getcwd()
-			os.chdir(loc)
-
-			# prevents db being dropped
-			django.db.close_connection()
-
-			self.status = "queued_active"
-			self.breeze_stat = "prepare_run"
-			self.progress = 15
-			self.save()
-			log.info('j' + str(self.id) + ' : creating job')
-
-		except Exception as e:
-			log.exception('j' + str(self.id) + ' : pre-run error ' + str(e))
-			log.error('j' + str(self.id) + ' : process unexcpectedly terminated')
-
-		try:
-			s = drmaa.Session()
-			s.initialize()
-			jt = s.createJobTemplate()
-			assert isinstance(jt, object)
-
-			jt.workingDirectory = loc
-			jt.jobName = slugify(self.jname) + '_JOB'
-			# external mail address support
-			# Not working ATM probably because of mail backend not being properly configured
-			if self.email != '':
-				jt.email = [str(self.email), str(self.juser.email)]
-			else:
-				jt.email = [str(self.juser.email)]
-			# print "Mail address for this job is : " +  ', '.join(jt.email)
-			# mail notification on events
-			if self.mailing != '':
-				jt.nativeSpecification = "-m " + self.mailing  # Begin End Abort Suspend
-			jt.blockEmail = False
-			jt.remoteCommand = config
-			jt.joinFiles = True
-
-			self.progress = 25
-			# self.status = 'submission'
-			# self.save()
-			log.info('j' + str(self.id) + ' : triggering dramaa.runJob')
-			self.sgeid = s.runJob(jt)
-			log.info('j' + str(self.id) + ' : returned sgedid "' + str(self.sgeid) + '"')
-			self.progress = 30
-			self.save()
-
-			SGEID = copy.deepcopy(self.sgeid)
-			# waiting for the job to end
-			# if not SGEID:
-			# print "no id!"
-			# TODO have a closer look into that
-			log.info('j' + str(self.id) + ' : stat : ' + str(s.jobStatus(self.sgeid)))
-			retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-			self.progress = 100
-			self.save()
-
-			if retval.hasExited and retval.exitStatus == 0:
-				self.status = 'succeed'
-				log.info('j' + str(self.id) + ' : dramaa.runJob ended with exit code 0 !')
-			# clean up the folder
-			else:
-				log.error('j' + str(self.id) + ' : dramaa.runJob ended with exit code ' + str(retval.exitStatus))
-				job = Jobs.objects.get(id=self.id)  # make sure data is updated
-				if self.status != 'aborted':
-					pass
-					self.status = 'failed'  # seems to interfere with aborting process TODO check
-
-			self.save()
-			s.exit()
-			os.chdir(default_dir)
-
-			# track_sge_job(job, True)
-
-			log.info('j' + str(self.id) + ' : process terminated successfully !')
-			return True
-		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
-				drmaa.NoActiveSessionException) as e:
-			# TODO improve this part
-			log.exception('j' + str(self.id) + ' : drmaa error ' + str(e))
-			log.error('j' + str(self.id) + ' : process unexcpectedly terminated')
-			# self.status = "failed"
-			self.progress = 67
-			self.save()
-			s.exit()
-			return e
-		except Exception as e:
-			# report.status = 'failed'
-			log.exception('r' + str(self.id) + ' : drmaa unknow error ' + str(e))
-			log.error('r' + str(self.id) + ' : process unexcpectedly terminated')
-			self.progress = 66
-			self.save()
-
-			s.exit()
-			return False
-		# except e:
-		# self.status = 'failed'
-		# self.progress = 100
-		# self.save()
-
-		# newfile = open(str(settings.TEMP_FOLDER) + 'job_%s_%s.log' % (self.juser, self.jname), 'w')
-		# newfile.write("UNKNOWN ERROR" + vars(e))
-		# newfile.close()
-
-		# s.exit()
-		# return False
 
 class Report(Runnable):
 	def __init__(self, *args, **kwargs):
@@ -1562,6 +1517,7 @@ class Report(Runnable):
 	BASE_FOLDER_PATH = settings.REPORTS_PATH
 	SH_FILE = settings.REPORTS_SH
 	DNE = "!! DO NOT EDIT !!"
+	RQ_SPECIFICS = ['request_data', 'sections']
 	##
 	# DB FIELDS
 	##
@@ -1570,7 +1526,7 @@ class Report(Runnable):
 	_author = ForeignKey(User, db_column='author_id')
 	_type = models.ForeignKey(ReportType, db_column='type_id')
 	_created = models.DateTimeField(auto_now_add=True, db_column='created')
-	_institute = ForeignKey(Institute, default=Institute.objects.get(id=1), db_column='institute_id')
+	_institute = ForeignKey(Institute, default=1, db_column='institute_id')
 	# TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
 
 	def file_name(self, filename):
@@ -1578,6 +1534,8 @@ class Report(Runnable):
 
 	_rexec = models.FileField(upload_to=file_name, blank=True, db_column='rexec')
 	_doc_ml = models.FileField(upload_to=file_name, blank=True, db_column='dochtml')
+	email = ''
+	mailing = ''
 
 	# Report specific
 	project = models.ForeignKey(Project, null=True, blank=True, default=None)
@@ -1589,6 +1547,9 @@ class Report(Runnable):
 	shiny_key = models.CharField(max_length=64, null=True, editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
 
+	##
+	# Defining meta props
+	##
 	# 25/06/15
 	@property
 	def folder_name(self):
@@ -1629,6 +1590,38 @@ class Report(Runnable):
 
 	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
 
+	def deferred_instance_specific(self, *args, **kwargs):
+		import pickle
+		import json
+
+		for each in self.RQ_SPECIFICS:
+			if each not in kwargs.keys():
+				raise InvalidArguments("'%s' should be provided as an argument of assemble()" % each)
+
+		request_data = kwargs['request_data']# self.request_data
+		sections = kwargs['sections']
+
+		# BUILD Report specific R-File
+		self.generate_R_file(sections, request_data)
+
+		# clem : saves parameters into db, in order to be able to duplicate report
+		self.conf_params = pickle.dumps(request_data.POST)
+		if request_data.FILES:
+			tmp = dict()
+			for each in request_data.FILES:
+				tmp[str(each)] = str(request_data.FILES[each])
+			self.conf_files = json.dumps(tmp)
+		# self.save()
+
+		# generate shiny access for offsite users
+		# if report_data['report_type'] == 'ScreenReport': # TODO dynamic
+		# if self._type ==  'ScreenReport': # TODO dynamic
+		if self._type.is_shiny_enabled:
+			self.generate_shiny_key()
+
+		if 'shared_users' in kwargs.keys():
+			self.shared = kwargs['shared_users']
+
 	# TODO : use clean or save ?
 	def generate_R_file(self, sections, request_data):
 		"""
@@ -1655,6 +1648,7 @@ class Report(Runnable):
 				if tag.name == "Import to FileMaker":
 					self.fm_flag = True
 
+				# TODO : Find a way to solve this dependency issue
 				gen_params = rshell.gen_params_string(tree, request_data.POST, self._home_folder_rel,
 					request_data.FILES)
 				tag_list.append(tag.get_R_code(gen_params))
@@ -1723,7 +1717,7 @@ class Report(Runnable):
 
 		return super(Report, self).delete(using=using) # Call the "real" delete() method.
 
-	class Meta(Runnable.Meta): # TODO check if inheritence is required here
+	class Meta(Runnable.Meta): # TODO check if inheritance is required here
 		abstract = False
 		db_table = 'breeze_report'
 
@@ -1960,5 +1954,3 @@ class OffsiteUser(models.Model):
 	def __unicode__(self):
 		return unicode(self.full_name)
 
-
-# decode_status = {

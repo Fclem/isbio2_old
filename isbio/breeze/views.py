@@ -28,7 +28,8 @@ from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-from breeze.managers import Q
+#from breeze.managers import Q
+from django.db.models.query_utils import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
@@ -1599,18 +1600,18 @@ def check_reports(request):
 def edit_job(request, jid=None, mod=None):
 	job = aux.get_job_safe(request, jid)
 
-	tree = xml.parse(str(settings.MEDIA_ROOT) + str(job._doc_ml))
+	tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.doc_ml))
 	# user_info = User.objects.get(username=request.user)
 	user_info = request.user
 
 	if mod is not None:
 		mode = 'replicate'
-		tmpname = str(job._name) + '_REPL'
+		tmp_name = str(job.name) + '_REPL'
 		edit = ""
 	else:
 		mode = 'edit'
-		tmpname = str(job._name)
-		edit = str(job._name)
+		tmp_name = str(job.name)
+		edit = str(job.name)
 
 	if request.method == 'POST':
 		head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
@@ -1618,43 +1619,45 @@ def edit_job(request, jid=None, mod=None):
 		if head_form.is_valid() and custom_form.is_valid():
 
 			if mode == 'replicate':
-				tmpscript = job._type
+				tmp_script = job.type
 				job = Jobs()
-				job._type = tmpscript
-				job.status = "scheduled"
-				job._author = request.user
+				job.type = tmp_script
+				job.author = request.user
+				job.breeze_stat = JobStat.SCHEDULED
+
 				job.progress = 0
 			else:
-				loc = rshell.get_job_folder(str(job._name), str(job._author.username))
+				loc = rshell.get_job_folder(str(job.name), str(job.author.username))
 				shutil.rmtree(loc)
 
 			rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-			                           str(job._type.code), str(job._type.header), request.FILES)
+				str(job.type.code), str(job.type.header), request.FILES)
 
-			job._name = head_form.cleaned_data['job_name']
-			job._description = head_form.cleaned_data['job_details']
+			job.name = head_form.cleaned_data['job_name']
+			job.description = head_form.cleaned_data['job_details']
 
-			job._rexec.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
-			job._doc_ml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
-			job._rexec.close()
-			job._doc_ml.close()
+			job.assemble()
+			job.rexec.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
+			job.doc_ml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
+			job.rexec.close()
+			job.doc_ml.close()
 
-			rshell.schedule_job(job, request.POST)
+			#rshell.schedule_job(job, request.POST)
 
 			# improve the manipulation with XML - tmp folder not a good idea!
 			os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
 			os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
 			return HttpResponseRedirect('/jobs')
 	else:
-		head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job._name),
-		                                     initial={'job_name': str(tmpname), 'job_details': str(job._description),
-		                                              'report_to': str(job.email if job.email else user_info.email)})
+		head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.name),
+			initial={'job_name': str(tmp_name), 'job_details': str(job.description),
+			'report_to': str(job.email if job.email else user_info.email)})
 		custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
 
 	return render_to_response('forms/user_modal.html', RequestContext(request, {
 		'url': "/jobs/edit/" + str(jid),
-		'name': str(job._type.name),
-		'inline': str(job._type.inln),
+		'name': str(job.type.name),
+		'inline': str(job.type.inln),
 		'headform': head_form,
 		'custform': custom_form,
 		'layout': "horizontal",
@@ -1690,7 +1693,7 @@ def create_job(request, sid=None):
 
 		if head_form.is_valid() and custom_form.is_valid():
 			rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-			                           str(script.code), str(script.header), request.FILES)
+				str(script.code), str(script.header), request.FILES)
 			new_job._name = head_form.cleaned_data['job_name']
 			new_job._description = head_form.cleaned_data['job_details']
 			new_job._type = script
@@ -1706,7 +1709,8 @@ def create_job(request, sid=None):
 			new_job._doc_ml.close()
 			new_job.breeze_stat = 'scheduled'
 
-			rshell.schedule_job(new_job, request.POST)
+			# shell.schedule_job(new_job, request.POST)
+			new_job.assemble()
 			try:
 				stat = Statistics.objects.get(script=script)
 				stat.times += 1
@@ -1725,7 +1729,8 @@ def create_job(request, sid=None):
 
 			state = "scheduled"
 			if request.POST.get('run_job') or request.POST.get('action') and request.POST.get('action') == 'run_job':
-				run_script(request, new_job.id)
+				# run_script(request, new_job.id)
+				new_job.breeze_stat = JobStat.RUN_WAIT
 				state = "current"
 
 			print vars(request.POST)
@@ -1756,15 +1761,16 @@ def create_job(request, sid=None):
 
 @login_required(login_url='/')
 def run_script(request, jid):
-	job = Jobs.objects.get(id=jid)
-	script = str(job._type.code)
-	job.breeze_stat = 'init'
-	job.save()
-	p = Process(target=rshell.run_job, args=(job, script))
-	p.start()
+	try:
+		job = Jobs.objects.get(id=jid, _author=request.user)
+	except (Report.DoesNotExist, Jobs.DoesNotExist):
+		log = logger.getChild('abort_sge')
+		assert isinstance(log, logging.getLoggerClass())
+		log.exception("user %s trying to run job %s that does not belong to him" & (request.user, jid))
+		return jobs(request, error_msg="You cannot do that.")
+	job.submit_to_cluster()
 
-	return HttpResponseRedirect('/jobs/')
-
+	return jobs(request)
 
 @login_required(login_url='/')
 def abort_sge(request, id, type):
