@@ -8,7 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from breeze import managers
-import logging
+from utils import *
 import sys
 # sys.path.append('/homes/dbychkov/dev/isbio/venv/lib/python2.7/site-packages/drmaa')
 import drmaa
@@ -16,22 +16,12 @@ from os.path import isfile, isdir, islink, exists, getsize
 from os import symlink
 # import os.path
 
-
-
 CATEGORY_OPT = (
 	(u'general', u'General'),
 	(u'visualization', u'Visualization'),
 	(u'screening', u'Screening'),
 	(u'sequencing', u'Sequencing'),
 )
-
-def get_logger(name=None):
-	logger = logging.getLogger(__name__)
-	if name is None:
-		name = sys._getframe(2).f_code.co_name
-	log_obj = logger.getChild(name)
-	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-	return log_obj
 
 Trans = managers.Trans
 
@@ -1014,6 +1004,9 @@ class Runnable(models.Model):
 	FILE_MAKER_FN = settings.REPORTS_FM_FN
 	REPORT_FILE_NAME = 'report'
 	RQ_FIELDS = ['_name', '_author', '_type']
+	R_FILE_NAME_BASE = 'script'
+	R_FILE_NAME = R_FILE_NAME_BASE + '.r'
+	R_OUT_FILE_NAME = R_FILE_NAME_BASE + '.Rout'
 	# BASE_FOLDER_NAME = ''
 
 	__can_save = False
@@ -1062,22 +1055,9 @@ class Runnable(models.Model):
 		return self._author.get_profile().institute_info
 
 	##
-	# SHARED PROPERTIES / METHODS
+	# PROPERTIES INTERFACES
 	##
-	def file_name(self, filename):
-		"""
-
-		:return: the generated name of the folder to be used to store content of instance
-		:rtype: str
-		"""
-		return '%s%s' % (Path(self._home_folder_rel), slugify(filename))
-
-	@property # interface (Report specific)
-	def args_string(self):
-		""" The query string to be passed for shiny apps, if Report is Shiny-enabled, or blank string	"""
-		raise self.not_imp()
-
-	@property # interface
+	@property # interface (Generic)
 	def folder_name(self):
 		"""
 		Should implement a generator for the name of the folder to store the instance
@@ -1086,6 +1066,21 @@ class Runnable(models.Model):
 		"""
 		raise self.not_imp()
 
+	# special interface (Generic)
+	def file_name(self, filename):
+		"""
+		Special property
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		f_name = filename.split('.')
+		ext = f_name[-1]
+		f_name = slugify('_'.join(f_name[:-1]))
+		return '%s%s.%s' % (Path(self._home_folder_rel), f_name, ext)
+
+	##
+	# OTHER SHARED PROPERTIES
+	##
 	@property
 	def _home_folder_rel(self):
 		"""
@@ -1104,84 +1099,80 @@ class Runnable(models.Model):
 		"""
 		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
 
-	@property # interface (Report specific)
-	def _dochtml(self):
-		raise self.not_imp()
-
-	@property
-	def r_exec_path(self):
-		return '%s%s' % (settings.MEDIA_ROOT, self._rexec)
-
-	@property # interface (Report specific)
-	def nozzle_url(self):
-		raise self.not_imp()
-
-	# interface (Report specific)
-	def has_access_to_shiny(self, this_user):
-		raise self.not_imp()
-
-	# TODO : resume HERE
-	@property # Report specific ? TODO check
-	def _rtype_config_path(self):
-		return settings.MEDIA_ROOT + str(self.type.config)
-
-	@property
-	def _r_out_path(self):
-		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
-
-	# interface
-	def generate_R_file(self, sections, request_data):
-		raise self.not_imp()
-
-	@property # interface
-	def dump_project_parameters(self):
-		raise self.not_imp()
-
-	@property # interface
-	def dump_pipeline_config(self):
-		raise self.not_imp()
-
-	##
-	## Other properties
-	##
-	@property
-	def title(self):
-		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
-
-	@property
+	@property # UNUSED ?
 	def html_path(self):
 		return '%s%s' % (self.home_folder_full_path, self.REPORT_FILE_NAME)
 
-	@property
+	@property # UNUSED ?
+	def _r_out_path(self):
+		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
+
+	@property # used by write_sh_file()
+	def _r_exec_path(self): # TODO problem here with jobs
+		return '%s%s' % (settings.MEDIA_ROOT, self._rexec)
+
+	@property # UNUSED ?
 	def _html_full_path(self):
 		return '%s.html' % self.html_path
 
 	@property
 	def _test_file(self):
+		"""
+		full path of the job competition verification file
+		:rtype: str
+		"""
 		return '%sdone' % self.home_folder_full_path
 
 	@property
 	def sh_file_path(self):
+		"""
+		the full path of the sh file used to run the job on the cluster.
+		This is the file that SGE has to instruct the cluster to run.
+		:rtype: str
+		"""
 		return '%s%s' % (self.home_folder_full_path, self.SH_NAME)
 
 	@property
 	def fm_file_path(self):
+		"""
+		The full path of the file use for FileMaker transfert
+		:rtype: str
+		"""
 		return '%s%s' % (self.home_folder_full_path, self.FILE_MAKER_FN)
 
 	@property
 	def sge_job_name(self):
+		"""
+		The job name to submit to SGE
+		:rtype: str
+		"""
 		return '%s_%s' % (slugify(self._name), self.instance_type.capitalize())
-
-	# interface
-	def generate_shiny_key(self):
-		raise self.not_imp()
 
 	@property
 	def is_done(self):
+		"""
+		Check if the job was successfully done or not, using it's breeze_stat or
+		the confirmation file that allow confirmation even in case of management
+		system failure (like breeze db being down, breeze server, or the worker)
+		:rtype: bool
+		"""
 		if self.status == JobStat.SUCCEED and self.breeze_stat == JobStat.DONE:
 			return True
 
 		return isfile(self._test_file)
+
+	##
+	# SHARED CONCRETE METHODS (JOB MANAGEMENT RELATED)
+	##
+	def add_file(self, f):
+		import os
+		a_dir = self.home_folder_full_path
+		if not os.path.exists(a_dir):
+			os.makedirs(a_dir)
+
+		with open(a_dir + "/" + slugify(f.name), 'wb+') as destination:
+			for chunk in f.chunks():
+				destination.write(chunk)
 
 	def abort(self):
 		if self._breeze_stat != JobStat.DONE:
@@ -1204,7 +1195,7 @@ class Runnable(models.Model):
 
 		# Thanks to ' && touch ./done' breeze can always asses if the run was completed (successful or not)
 		command = '#!/bin/bash \ntouch ./INCOMPLETE_RUN && %sCMD BATCH --no-save %s && touch ./done && rm ./INCOMPLETE_RUN' % (
-			settings.R_ENGINE_PATH, self.r_exec_path)
+			settings.R_ENGINE_PATH, self._r_exec_path)
 		config.write(command)
 		config.close()
 
@@ -1218,6 +1209,7 @@ class Runnable(models.Model):
 		st = os.stat(self.home_folder_full_path)
 		os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
 
+	# interface for extending assembling process
 	def deferred_instance_specific(self, *args, **kwargs):
 		"""
 		Specific operations to generate job or report instance dependencies.
@@ -1240,7 +1232,7 @@ class Runnable(models.Model):
 		# other stuff that might be needed by specific kind of instances (Report and Jobs)
 		self.deferred_instance_specific(*args, **kwargs)
 		# open instance home's folder for other to write
-		self.grant_write_access() # TODO create the folder
+		self.grant_write_access()
 		# Build and write SH file
 		self.write_sh_file()
 
@@ -1249,7 +1241,7 @@ class Runnable(models.Model):
 	def submit_to_cluster(self):
 		self.breeze_stat = JobStat.RUN_WAIT
 
-	# TODO check
+	# TODO re-check
 	def run(self):
 		"""
 			Submits reports as an R-job to cluster with SGE;
@@ -1270,7 +1262,7 @@ class Runnable(models.Model):
 		# loc = self.home_folder_full_path # writing shortcut
 		config = self.sh_file_path
 		log = get_logger('run_%s' % self.instance_type )
-		data = (self.instance_type[1], str(self.id))
+		data = (self.instance_type[0], str(self.id))
 		default_dir = os.getcwd() # Jobs specific ? or Report specific ?
 
 		try:
@@ -1360,6 +1352,7 @@ class Runnable(models.Model):
 		if self._status == JobStat.SUCCEED and status != JobStat.ABORTED or status is None:
 			return # job status must not been changed after succeeded
 
+		# we use JobStat object to provide further extensibility to the job management system
 		_status, _breeze_stat, progress, text = JobStat(status).status_logic()
 
 		if _status is not None:
@@ -1380,10 +1373,9 @@ class Runnable(models.Model):
 		except AttributeError:
 			return JobStat.textual(self._status)
 
-	##
+	###
 	# DJANGO RELATED FUNCTIONS
-	##
-
+	###
 	def all_required_are_filled(self, fail=False):
 		for each in self.RQ_FIELDS:
 			if each not in self.__dict__:
@@ -1411,14 +1403,14 @@ class Runnable(models.Model):
 			shutil.rmtree(self.home_folder_full_path)
 
 		log_obj = get_logger()
-		log_obj.info("%s %s : %s has been deleted" % (self.instance_type, self.id, self))
+		log_obj.info("%s has been deleted" % self)
 
 		super(Runnable, self).delete(using=using) # Call the "real" delete() method.
 		return True
 
-	#
-	# SPECIAL FUNCTION FOR INTERFACE
-	#
+	###
+	# SPECIAL PROPERTIES FOR INTERFACE INSTANCE
+	###
 	def not_imp(self):
 		if self.__class__ == Runnable.__class__:
 			raise NotImplementedError("Class % doesn't implement %s, because it's an abstract/interface class." % (
@@ -1446,7 +1438,7 @@ class Runnable(models.Model):
 
 	@property
 	def text_id(self):
-		return '%s:%s' % (self.id, self.name)
+		return '%s%s %s' % (self.instance_type[0], self.id, self.name)
 
 	def __unicode__(self): # Python 3: def __str__(self):
 		return '%s' % self.text_id
@@ -1469,7 +1461,6 @@ class Jobs(Runnable):
 	BASE_FOLDER_NAME = settings.JOBS_FN
 	BASE_FOLDER_PATH = settings.JOBS_PATH
 	SH_FILE = settings.JOBS_SH
-	DNE = "!! DO NOT EDIT !!"
 	##
 	# DB FIELDS
 	##
@@ -1498,6 +1489,8 @@ class Jobs(Runnable):
 	def folder_name(self):
 		return slugify('%s_%s' % (self._name, self._author))
 
+	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
+
 	def deferred_instance_specific(self):
 		pass
 
@@ -1511,12 +1504,9 @@ class Report(Runnable):
 	##
 	# CONSTANTS
 	##
-	R_FILE_NAME = 'script.r'
-	R_OUT_FILE_NAME = R_FILE_NAME + '.Rout'
 	BASE_FOLDER_NAME = settings.REPORTS_FN
 	BASE_FOLDER_PATH = settings.REPORTS_PATH
 	SH_FILE = settings.REPORTS_SH
-	DNE = "!! DO NOT EDIT !!"
 	RQ_SPECIFICS = ['request_data', 'sections']
 	##
 	# DB FIELDS
@@ -1557,8 +1547,16 @@ class Report(Runnable):
 
 	# 26/06/15
 	@property
-	def _dochtml(self): # Report specific called from genereate_R_file
+	def _dochtml(self):
 		return '%sreport' % self.home_folder_full_path
+
+	@property
+	def _rtype_config_path(self):
+		return settings.MEDIA_ROOT + str(self.type.config)
+
+	@property
+	def title(self):
+		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
 
 	@property
 	def nozzle_url(self):
@@ -1602,7 +1600,7 @@ class Report(Runnable):
 		sections = kwargs['sections']
 
 		# BUILD Report specific R-File
-		self.generate_R_file(sections, request_data)
+		self.generate_r_file(sections, request_data)
 
 		# clem : saves parameters into db, in order to be able to duplicate report
 		self.conf_params = pickle.dumps(request_data.POST)
@@ -1623,7 +1621,7 @@ class Report(Runnable):
 			self.shared = kwargs['shared_users']
 
 	# TODO : use clean or save ?
-	def generate_R_file(self, sections, request_data):
+	def generate_r_file(self, sections, request_data):
 		"""
 		generate the Nozzle generator R file
 		:param sections: Rscripts list
@@ -1649,7 +1647,7 @@ class Report(Runnable):
 					self.fm_flag = True
 
 				# TODO : Find a way to solve this dependency issue
-				gen_params = rshell.gen_params_string(tree, request_data.POST, self._home_folder_rel,
+				gen_params = rshell.gen_params_string(tree, request_data.POST, self,
 					request_data.FILES)
 				tag_list.append(tag.get_R_code(gen_params))
 

@@ -142,7 +142,7 @@ class BreezeSettings(Settings):
 		'django.contrib.auth.middleware.AuthenticationMiddleware',
 		'django.contrib.messages.middleware.MessageMiddleware',
 		'django.middleware.doc.XViewMiddleware',
-		'breeze.jobKeeper',
+		'breeze.middlewares.JobKeeper',
 		'breeze.middlewares.CheckUserProfile',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
@@ -298,25 +298,31 @@ class DevSettings(BreezeSettings):
 
 	R_ENGINE_PATH = PROJECT_PATH + 'R/bin/R '
 	TEMP_FOLDER = SOURCE_ROOT + 'tmp/' # /homes/dbychkov/dev/isbio/tmp/
-	#
+	####
 	# 'db' folder, containing : reports, scripts, jobs, datasets, pipelines, upload_temp
-	#
+	####
 	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
+	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
+	GENERAL_SH_NAME = 'sgeconfig.sh'
+	##
+	# Report config
+	##
 	NOZZLE_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'nozzle_templates/'
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
 	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
-	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
-	GENERAL_SH_NAME = 'sgeconfig.sh'
-	# Reports config
 	REPORTS_FN = 'reports/'
 	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FN)
 	REPORTS_SH = GENERAL_SH_NAME
 	REPORTS_FM_FN = 'transfer_to_fm.txt'
+	##
 	# Jobs configs
+	##
+	SCRIPT_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'script_templates/'
+	SCRIPT_TEMPLATE_PATH = SCRIPT_TEMPLATE_FOLDER + 'script.R'
 	JOBS_FN = 'jobs/'
 	JOBS_PATH = '%s%s' % (MEDIA_ROOT, JOBS_FN)
 	JOBS_SH = '_config.sh'
@@ -324,7 +330,7 @@ class DevSettings(BreezeSettings):
 	#
 	# WATCHER RELATED CONFIG
 	#
-	WATCHER_DB_REFRESH = 5 # number of seconds to wait before refreshing reports from DB
+	WATCHER_DB_REFRESH = 4 # number of seconds to wait before refreshing reports from DB
 	WATCHER_PROC_REFRESH = 2 # number of seconds to wait before refreshing processes
 
 	#

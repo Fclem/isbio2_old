@@ -480,7 +480,7 @@ def console_print(text, datef=None):
 
 
 def console_print_sub(text, datef=None):
-	return "[%s] %s"%(dateT(datef), text)
+	return "[%s] %s" % (dateT(datef), text)
 
 # 10/03/2015 Clem / ShinyProxy
 def dateT(dateF = None):

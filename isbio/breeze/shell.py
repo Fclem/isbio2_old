@@ -206,22 +206,9 @@ def del_pipe(pipe):
 # DELETED track_sge_job on 30/06/2015 (now part of Watcher)
 # DELETED track_sge_job_bis on 30/06/2015 (now part of Watcher)
 
-# TODO integrate in Jobs or Runnable and integrate with reports' equivalent funct
-def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
-	"""
-        Builds (singe) R-exacutable file: puts together sources, header
-        and input parameters from user
-    """
-
-	# create job folder
-	directory = get_job_folder(jname, juser)
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-	rexec = open(str(settings.TEMP_FOLDER) + 'rexec.r', 'w')
-	script_header = open(str(settings.MEDIA_ROOT) + str(header), "rb").read()
-	script_code = open(str(settings.MEDIA_ROOT) + str(code), "rb").read()
-
+def gen_params_string_job_temp(tree, data, runnable_inst, files):
+	assert isinstance(runnable_inst, Report) or isinstance(runnable_inst, Jobs)
+	tmp = dict()
 	params = ''
 	for item in tree.getroot().iter('inputItem'):
 		item.set('val', str(data.cleaned_data[item.attrib['comment']]))
@@ -240,7 +227,9 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
 			seq = seq[:-1] + ')'
 			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
 		elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
-			add_file_to_job(jname, juser, FILES[item.attrib['comment']])
+			# add_file_to_job(jname, juser, FILES[item.attrib['comment']])
+			# add_file_to_report(runnable_inst.home_folder_full_path, files[item.attrib['comment']])
+			runnable_inst.add_file(files[item.attrib['comment']])
 			params = params + str(item.attrib['rvarname']) + ' <- "' + str(
 				data.cleaned_data[item.attrib['comment']]) + '"\n'
 		elif item.attrib['type'] == 'DTS':
@@ -260,6 +249,24 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
 		else:  # for text, text_are, drop_down, radio
 			params = params + str(item.attrib['rvarname']) + ' <- "' + str(
 				data.cleaned_data[item.attrib['comment']]) + '"\n'
+	return params
+
+# TODO integrate in Jobs or Runnable and integrate with reports' equivalent funct
+def assemble_job_folder(jname, juser, tree, data, code, header, files, job=None):
+	"""
+		Builds (singe) R-executable file: puts together sources, header
+		and input parameters from user
+	"""
+	# create job folder
+	directory = get_job_folder(jname, juser)
+	if not os.path.exists(directory):
+		os.makedirs(directory)
+
+	rexec = open(str(settings.TEMP_FOLDER) + 'rexec.r', 'w')
+	script_header = open(str(settings.MEDIA_ROOT) + str(header), "rb").read()
+	script_code = open(str(settings.MEDIA_ROOT) + str(code), "rb").read()
+
+	gen_params_string_job_temp(tree, data, job, files)
 
 	tree.write(str(settings.TEMP_FOLDER) + 'job.xml')
 
@@ -298,23 +305,17 @@ def add_file_to_report(directory, f):
 		for chunk in f.chunks():
 			destination.write(chunk)
 
+# DELETED add_file_to_job on 13/07/2015 (now replaced by add_file_to_report)
 
-def add_file_to_job(job_name, user_name, f):
-	directory = get_job_folder(job_name, user_name)
-
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-	with open(directory + f.name, 'wb+') as destination:
-		for chunk in f.chunks():
-			destination.write(chunk)
 
 # TODO : replace with job.folder_path
 def get_job_folder(name, user=None):
 	return str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', name, user))
 
+
 # TODO : replace with job.folder_name but has to be checked
 def get_folder_name(loc, name, user=None):
+	#return Jobs.objects.get()
 	if loc == "jobs":
 		slug = slugify(name + '_' + str(user))
 	else:
@@ -322,6 +323,7 @@ def get_folder_name(loc, name, user=None):
 	return '%s/%s/' % (loc, slug)
 
 
+# TODO : seems useless
 def get_dataset_info(path):
 	path = str(settings.MEDIA_ROOT) + str(path)
 	lst = list()
@@ -338,12 +340,13 @@ def get_dataset_info(path):
 	return lst
 
 
-def gen_params_string(docxml, data, dir, files):
+def gen_params_string(docxml, data, runnable_inst, files):
 	"""
-        Iterates over script's/tag's parameters to bind param names and user input;
-        Produces a (R-specific) string with one parameter definition per lines,
-        so the string can be pushed directly to R file.
-    """
+		Iterates over script's/tag's parameters to bind param names and user input;
+		Produces a (R-specific) string with one parameter definition per lines,
+		so the string can be pushed directly to R file.
+	"""
+	assert isinstance(runnable_inst, Report) or isinstance(runnable_inst, Jobs)
 	tmp = dict()
 	params = str()
 	for item in docxml.getroot().iter('inputItem'):
@@ -368,7 +371,8 @@ def gen_params_string(docxml, data, dir, files):
 
 			if files:
 				try:
-					add_file_to_report(dir, files[item.attrib['comment']])
+					#add_file_to_report(runnable_inst.home_folder_full_path, files[item.attrib['comment']])
+					runnable_inst.add_file(files[item.attrib['comment']])
 					params = params + str(item.attrib['rvarname']) + ' <- "' + str(
 						files[item.attrib['comment']].name) + '"\n'
 				except:
@@ -477,34 +481,8 @@ def get_report_overview(report_type, instance_name, instance_id):
 
 	return summary_srting
 
-
-def dump_project_parameters(project, report):
-	dump = '# <----------  Project Details  ----------> \n'
-	dump += 'report.author          <- \"%s\"\n' % report.author.username
-	dump += 'report.pipeline        <- \"%s\"\n' % report.type
-	dump += 'project.name           <- \"%s\"\n' % project.name
-	dump += 'project.manager        <- \"%s\"\n' % project.manager
-	dump += 'project.pi             <- \"%s\"\n' % project.pi
-	dump += 'project.author         <- \"%s\"\n' % project.author
-	dump += 'project.collaborative  <- \"%s\"\n' % project.collaborative
-	dump += 'project.wbs            <- \"%s\"\n' % project.wbs
-	dump += 'project.external.id    <- \"%s\"\n' % project.external_id
-	dump += '# <----------  end of Project Details  ----------> \n\n'
-
-	return copy.copy(dump)
-
-
-def dump_pipeline_config(report_type, query_key):
-	dump = ''
-
-	config_path = str(settings.MEDIA_ROOT) + str(report_type.config)
-	dump += '# <----------  Pipeline Config  ----------> \n'
-	dump += 'query.key          <- \"%s\"  # id of queried RORA instance \n' % query_key
-	dump += open(config_path, 'r').read() + '\n'
-	dump += '# <------- end of Pipeline Config --------> \n\n\n'
-
-	return copy.copy(dump)
-
+# DELETED dump_project_parameters on 13/07/2015 (now part of Report)
+# DELETED dump_pipeline_config on 13/07/2015 (now part of Report)
 
 # TODO integrate in Report or Runnable and integrate with job's equivalent funct
 def build_report(report_data, request_data, report_property, sections):
@@ -555,3 +533,89 @@ def build_report(report_data, request_data, report_property, sections):
 	dbitem.submit_to_cluster()
 
 	return True
+
+
+# TODO integrate in Report or Runnable and integrate with job's equivalent funct
+def build_script(report_data, request_data, sections):
+	""" Assembles job home folder, configures DRMAA and R related files
+		and spawns a new process for reports DRMAA job on cluster.
+	"""
+
+	from breeze.models import Project, UserProfile, ReportType, Report
+	from django.contrib.auth.models import User
+
+	log = logger.getChild('build_report')
+	assert isinstance(log, logging.getLoggerClass())
+	assert isinstance(request_data.user, User)
+
+	# get the request ReportType
+	rt = ReportType.objects.get(type=report_data['report_type'])
+	# list of users that will have access to this report
+	shared_users = aux.extract_users(request_data.POST.get('Groups'), request_data.POST.get('Individuals'))
+	if shared_users == list() and request_data.POST.get('shared'):
+		shared_users = request_data.POST.getlist('shared')
+	# author
+	the_user = request_data.user
+	the_user.prof = UserProfile.objects.get(user=the_user)
+	assert isinstance(the_user.prof, UserProfile)
+
+	# create initial instance so that we can use its db id
+	dbitem = Report(
+		_type=rt,
+		_name=str(report_data['instance_name']),
+		_author=the_user,
+		progress=8,
+		project=Project.objects.get(id=request_data.POST.get('project')),
+		_institute=the_user.prof.institute_info,
+		_breeze_stat=JobStat.INIT,
+		rora_id=report_data['instance_id']
+	)
+	dbitem.assemble(request_data=request_data, shared_users=shared_users, sections=sections)
+	dbitem.submit_to_cluster()
+
+
+	#JOB
+	rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
+							   str(script.code), str(script.header), request.FILES)
+	new_job._name = head_form.cleaned_data['job_name']
+	new_job._description = head_form.cleaned_data['job_details']
+	new_job._type = script
+	# new_job.status = request.POST['job_status']
+	new_job.status = u"scheduled"
+	new_job._author = request.user
+	# TODO finish testing and debug
+	new_job.email = mail_addr
+	new_job.progress = 0
+	new_job._rexec.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
+	new_job._doc_ml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
+	new_job._rexec.close()
+	new_job._doc_ml.close()
+	new_job.breeze_stat = 'scheduled'
+
+	# shell.schedule_job(new_job, request.POST)
+	new_job.assemble()
+	try:
+		stat = Statistics.objects.get(script=script)
+		stat.times += 1
+		stat.save()
+	except Statistics.DoesNotExist:
+		stat = Statistics()
+		stat.script = script
+		stat.author = script.author
+		stat.istag = script.istag
+		stat.times = 1
+		stat.save()
+
+	# TODO ? improve the manipulation with XML - tmp folder not a good idea!
+	os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
+	os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
+
+	state = "scheduled"
+	if request.POST.get('run_job') or request.POST.get('action') and request.POST.get('action') == 'run_job':
+		# run_script(request, new_job.id)
+		new_job.breeze_stat = JobStat.RUN_WAIT
+		state = "current"
+
+	print vars(request.POST)
+
+

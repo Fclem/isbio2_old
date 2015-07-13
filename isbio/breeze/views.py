@@ -1624,14 +1624,13 @@ def edit_job(request, jid=None, mod=None):
 				job.type = tmp_script
 				job.author = request.user
 				job.breeze_stat = JobStat.SCHEDULED
-
-				job.progress = 0
+				job.progress = 8
 			else:
-				loc = rshell.get_job_folder(str(job.name), str(job.author.username))
-				shutil.rmtree(loc)
+				# loc = rshell.get_job_folder(str(job.name), str(job.author.username))
+				shutil.rmtree(job.home_folder_full_path)
 
 			rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-				str(job.type.code), str(job.type.header), request.FILES)
+				str(job.type.code), str(job.type.header), request.FILES, job)
 
 			job.name = head_form.cleaned_data['job_name']
 			job.description = head_form.cleaned_data['job_details']
@@ -1672,10 +1671,9 @@ def create_job(request, sid=None):
 	script = Rscripts.objects.get(id=sid)
 
 	new_job = Jobs()
-	tree = xml.parse(str(settings.MEDIA_ROOT) + str(script.docxml))
+	tree = xml.parse(script.xml_path)
 	script_name = str(script.name)  # tree.getroot().attrib['name']
 	script_inline = script.inln
-	#user_info = User.objects.get(username=request.user)
 	user_info = request.user
 
 	mail_addr = user_info.email
@@ -1692,8 +1690,10 @@ def create_job(request, sid=None):
 				new_job.mailing += request.POST[key]
 
 		if head_form.is_valid() and custom_form.is_valid():
+			rshell.build_script
+			# TODO pass here
 			rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-				str(script.code), str(script.header), request.FILES)
+				str(script.code), str(script.header), request.FILES, job)
 			new_job._name = head_form.cleaned_data['job_name']
 			new_job._description = head_form.cleaned_data['job_details']
 			new_job._type = script
@@ -1770,7 +1770,8 @@ def run_script(request, jid):
 		return jobs(request, error_msg="You cannot do that.")
 	job.submit_to_cluster()
 
-	return jobs(request)
+	# return jobs(request)
+	return HttpResponseRedirect('/jobs/')
 
 @login_required(login_url='/')
 def abort_sge(request, id, type):
