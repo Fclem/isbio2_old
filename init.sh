@@ -1,3 +1,4 @@
 #!/bin/bash
 
-sh ./run.sh
+source /homes/dbychkov/dev/isbio/venv/bin/activate
+python /homes/dbychkov/dev/isbio/isbio/manage.py runserver
