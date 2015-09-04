@@ -15,6 +15,39 @@
 {% endblock %}
 
 {% block content %}
+	<script type="text/javascript"> // STATUS CONFIG HERE
+		/*
+			DO NOT EDIT THE FOLLOWING
+		*/
+		function generateButton(textStatus, c_type, href, sup, refresh) {
+			if(refresh == undefined || href!='#') refresh = '';
+			return '<a type="button" class="btn btn-' + c_type + '" href="' + href + '"' + refresh + '>' + textStatus + '</a>' + sup;
+		}
+		var tab = [];
+		var PARA_MODE='para';
+		var SEQ_MODE='seq';
+		/*
+			CHANGE THE FOLLOWING FOR CONFIGURATION PURPOSES
+		*/
+		var STAT_REFRESH = 120; //default refresh time for system status (in seconds)
+		var QSTAT_REFRESH = 15; //default refresh time for qstat (in seconds)
+		var DEFAULT_TIME_OUT = 2500; //default time out time for ajax request (in milliseconds)
+		var TIME_OUT_RETRY_DELAY = 5000; //time to wait before retrying after a time out (in milliseconds)
+		var T_OUT_INCREASE_FACTOR = 1.2; //ratio to use for time-out value increase after each time-out
+		var LOADING_MODE = PARA_MODE; // use 'para' for parallel mode or 'seq' for sequential mode (PREFER PARA MODE)
+		var T_OUT_BTN_CLASS = 'warning'; // bootstrap class to use for the button after a time-out (usually warning)
+		var LOADING_BTN_CLASS = ''; // bootstrap class to use for the button during loading (usually blank, or 'info')
+		var LOADING_CONTENT =
+		  '<img src = "/static/loading.gif" width = "16" height = "16" alt = "loading..." />&nbsp;&nbsp;checking status...';
+		var LOADING_PLACE_HOLDER = generateButton(LOADING_CONTENT, LOADING_BTN_CLASS, "#", ''); // displays a loading message and animation
+		/*
+			DJANGO RELATED CONST
+		    dict indexes used in django views.status_button_json() for the json object (change accordingly in Django source)
+		 */
+		var PY_TEXT = 'text';
+		var PY_CLASS = 'class';
+		var PY_HREF = 'href';
+	</script> <!-- STATUS CONFIG HERE -->
 	<div class="container-fluid">
 		<div class="row-fluid">&nbsp;</div>
 		<div class="row-fluid" >
@@ -27,9 +60,9 @@
 					<a href="/admin/breeze/reporttype/" class="btn btn-primary btn-large btn-block"><!-- /resources/pipes/ -->
 						<strong><i class="icon-th icon-white"></i> &nbsp;Pipelines </strong>
 					</a>
-					<a href="/admin/breeze/shinyapp/" class="btn btn-primary btn-large btn-block">
+					<!-- <a href="/admin/breeze/shinyapp/" class="btn btn-primary btn-large btn-block">
 						<strong><i class="icon-th icon-white"></i> &nbsp;ShinyApps </strong>
-					</a>
+					</a> -->
 					<a href="/admin/" class="btn btn-primary btn-large btn-block">
 						<strong><i class="icon-cog icon-white"></i> &nbsp;Django administration </strong>
 					</a>
@@ -45,9 +78,35 @@
 				</div>
 			</div>
 			<div class="span9">
+				<div class="well">
+					<h4>System status <small id="checked_title"></small></h4>
+					{% for res in resources %}
+					<label> {{ res.legend }} :
+						<span id="{{ res.id }}_checked">
+							<script type="text/javascript">
+								document.write(LOADING_PLACE_HOLDER);
+							</script>
+						</span>
+					</label>
+					{% endfor %}
+					<small>
+						Refreshed every <script type="text/javascript">document.write(STAT_REFRESH);</script> seconds
+					</small>
+				</div>
+				<div class="well">
+					<h4>Qstat <small id="qstat_title"></small></h4>
+					<span id="qstat_checked"> <!-- status/qstat/ -->
+						<script type="text/javascript">
+							document.write(LOADING_CONTENT);
+						</script>
+					</span>
+					<small class="">
+						Refreshed every <script type="text/javascript">document.write(QSTAT_REFRESH);</script> seconds
+					</small>
+				</div>
 				{% for graph in usage_graph %}
 					<div class="well">
-						<label> {{ graph.legend }}
+						<label> {{ graph.legend }} <br />
 							<img src="{{ graph.url }}" alt="{{ graph.html_alt }}" title="{{ graph.html_title }}">
 						</label>
 					</div>
@@ -55,4 +114,119 @@
 			</div>
 		</div>
 	</div>
+	<script type="text/javascript"> // STATUS AJAX CODE HERE
+		var ONE_SEC = 999;
+		function default_loading(id, placeHolder, trigger) {
+			if(trigger){
+				$("#" + id)[0].innerHTML = placeHolder;
+			}else {
+				$("#" + id)[0].innerHTML = '';
+			}
+		}
+
+		function check_stuff(id, url, i, tOut, loader, unloader) {
+			if (loader == undefined)
+				loader = function () {
+					default_loading(id, LOADING_PLACE_HOLDER, true);
+				};
+			if (unloader == undefined)
+				unloader = function () {
+					default_loading(id, '', false);
+				};
+			loader(id);
+			if(tOut == undefined || isNaN(tOut) || tOut == 0) tOut = DEFAULT_TIME_OUT;
+			$.ajax({
+				url    : url,
+				error  : function (response, textStatus, jqXHR) {
+					var cdId = 'countDown_' + id;
+					var sup = '';
+					unloader();
+					next();
+					if (textStatus === "timeout")
+						sup = '&nbsp;&nbsp;&nbsp;<small>Retrying in <span id="' + cdId + '"></span> seconds</small>';
+					$("#" + id)[0].innerHTML = generateButton('refresh ' + textStatus, T_OUT_BTN_CLASS, '#', sup);
+					if (textStatus === "timeout")
+						countDown(cdId, TIME_OUT_RETRY_DELAY,
+						  function () { check_stuff(id, url, i, tOut * T_OUT_INCREASE_FACTOR);} );
+				},
+				success: function (response, textStatus, jqXHR) {
+					unloader();
+					if (typeof response === 'object') {
+						var refresh = ' onclick="check_stuff(\'' + id + '\', \'' + url + '\', ' + i + ', ' + tOut + ');"';
+						$("#" + id)[0].innerHTML = generateButton(response[PY_TEXT], response[PY_CLASS], response[PY_HREF], '', refresh);
+					}else { // direct HTML response
+						$("#" + id)[0].innerHTML = response;
+					}
+					next();
+				},
+				timeout: tOut
+			});
+
+			function next(){
+				if (LOADING_MODE === SEQ_MODE && i != undefined) {
+					i++;
+					if (tab[i] != undefined) {
+						check_stuff(tab[i][0], tab[i][1], i);
+					}
+				}
+			} // triggers the next loading function
+		} // check the status of a system through AJAX. Manage time-out, reload, sequential mode and display
+
+		function countDown(loc, t, action){
+			$("#" + loc)[0].innerHTML = (t/ONE_SEC).toString();
+			if(t <= 0) {
+				action();
+			}else {
+				setTimeout(function () { countDown(loc, t-ONE_SEC, action); }, ONE_SEC-1);
+			}
+		} // displays the live count down, and triggers the loading function
+
+		function system_stat() {
+			loader = function (id) {
+				default_loading(id, LOADING_PLACE_HOLDER, true);
+				default_loading('checked_title', '&nbsp;&nbsp;' + LOADING_CONTENT, true);
+			};
+			unloader = function () {
+				var d = new Date();
+				default_loading('checked_title', '&nbsp;&nbsp;(as of ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
+			};
+
+			if (LOADING_MODE === PARA_MODE) {
+				//parallel version
+				{% for res in resources %}
+					check_stuff('{{ res.id }}_checked', '{{ res.url|safe }}', 0, {{ res.t_out|default:"0" }}, loader, unloader);
+				{% endfor %}
+			} else if (LOADING_MODE === SEQ_MODE) {
+				//sequential version
+				{% for res in resources %}
+					tab[{{ forloop.counter0 }}] = [];
+					tab[{{ forloop.counter0 }}][0] = '{{ res.id }}_checked';
+					tab[{{ forloop.counter0 }}][1] = '{{ res.url|safe }}';
+					tab[{{ forloop.counter0 }}][2] = {{ res.t_out|default:"0" }};
+				{% endfor %}
+				var arrayLength = tab.length;
+				if (arrayLength > 0) {
+					check_stuff(tab[0][0], tab[0][1], 0, tab[0][2], loader, unloader);
+				}
+			}
+			//refresh
+			setTimeout(function () { system_stat(); }, ONE_SEC * STAT_REFRESH);
+		}
+
+		function qstat() {
+			loader = function () {
+				default_loading('qstat_title', '&nbsp;&nbsp;' + LOADING_CONTENT, true);
+			};
+			unloader = function () {
+				var d = new Date();
+				default_loading('qstat_title', '&nbsp;&nbsp;(as of ' + d.toDateString() + ' ' + d.toTimeString() + ')' , true);
+			};
+			check_stuff('qstat_checked', '/status/qstat/', 0, 0, loader, unloader);
+			//refresh
+			setTimeout(function () { qstat(); }, ONE_SEC * QSTAT_REFRESH);
+		}
+
+		system_stat();
+		qstat();
+	</script> <!-- STATUS AJAX CODE HERE -->
 {% endblock %}

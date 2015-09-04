@@ -1,0 +1,4 @@
+[ 
+	{"tname": "QC_dsrt_tbl", "path": "Results/QC_All_Plates.xlsx", "required": true},
+	{"tname": "Clindata_dsrt_tbl", "path": "Results/Clinreport/DSRT clinical report.xlsx", "required": false}
+]

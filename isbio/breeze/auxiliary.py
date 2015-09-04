@@ -12,10 +12,15 @@ from django.http import Http404, HttpResponse
 from django.template import loader
 from django.template.context import RequestContext
 from isbio import settings
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
+import sys
+import utils
 # from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+# system integrity checks moved to system_check.py on 31/08/2015
+
 
 def updateServer_routine():
 	# hotfix
@@ -61,6 +66,11 @@ def updateServer_routine():
 		'used': used or '',
 	}
 	return server, server_info
+
+
+###
+### TODO	How about moving those shits to Models ?
+###
 
 
 def update_last_active(user):
@@ -207,6 +217,11 @@ def open_folder_permissions(path, permit=0770):
 	return True
 
 
+###
+###	TODO	How about moving those shits to Managers ?
+###
+
+
 def normalize_query(query_string,
 					findterms=re.compile(r'"([^"]+)"|(\S+)').findall,
 					normspace=re.compile(r'\s{2,}').sub):
@@ -224,12 +239,13 @@ def get_query(query_string, search_fields, exact=True):
 	''' Returns a query, that is a combination of Q objects. That combination
 		aims to search keywords within a model by testing the given search fields.
 	'''
+	from breeze.managers import Q
 	query = None  # Query to search for every search term
 	terms = normalize_query(query_string) if query_string else []
 	for term in terms:
 		or_query = None  # Query to search for a given term in each field
 		for field_name in search_fields:
-			q = Q(**{ "%s"%field_name: term }) if exact else Q(**{ "%s__icontains"%field_name: term })
+			q = Q(**{ "%s" % field_name: term }) if exact else Q(**{ "%s__icontains" % field_name: term })
 			if or_query is None:
 				or_query = q
 			else:
@@ -264,6 +280,7 @@ def extract_users(groups, users):
 	return people
 
 
+# TODO get rid of that
 def merge_job_history(jobs, reports):
 	""" Merge reports and jobs in a unified object (list)
 		So that repors and jobs can be processed similatly on the client side
@@ -307,8 +324,8 @@ def merge_job_history(jobs, reports):
 			el['staged'] = item.created
 
 			el['rdownhref'] = '/get/report-%s'%str(item.id)  # results
-			el['ddownhref'] = ''  # debug
-			el['fdownhref'] = ''  # full folder
+			el['ddownhref'] = '/report/download/%s-code' % str(item.id)  # debug
+			el['fdownhref'] = '/report/download/%s' % str(item.id)  # full folder
 
 			el['home'] = item._home_folder_rel
 			el['reschedhref'] = '/reports/edit/%s'%str(item.id)
@@ -342,6 +359,10 @@ def merge_job_lst(item1, item2):
 
 	return merged
 
+
+###
+###	*** END ***
+###
 
 #02/06/2015 Clem
 def viewRange(page_index, entries_nb, total):
@@ -411,6 +432,8 @@ def report_common(request, max=15):
 	return page_index, entries_nb
 
 
+### TODO	move the following to managers ?
+
 def get_job_safe(request, job_id):
 	"""
 		Return a Jobs instance, or fail with 404 if no such job, or 403 if user has no access to this job
@@ -466,27 +489,35 @@ def get_worker_safe_abstract(request, obj_id, model):
 		raise Http404()
 
 
+### *** END ***
+
 # 10/03/2015 Clem / ShinyProxy
 def uPrint(request, url, code=None, size=None, datef=None):
 	print uPrint_sub(request, url, code, size, datef)
 
 
 def uPrint_sub(request, url, code=None, size=None, datef=None):
-	return console_print_sub("\"PROX %s   %s %s\" %s %s" % (request.method, url, request.META['SERVER_PROTOCOL'], code, size), datef=datef)
+	proto = request.META['SERVER_PROTOCOL'] if request.META.has_key('SERVER_PROTOCOL') else ''
+	return console_print_sub("\"PROX %s   %s %s\" %s %s" % (request.method, url, proto, code, size), datef=datef)
+
 
 # 25/06/2015 Clem
 def console_print(text, datef=None):
-	print console_print_sub(text, datef=datef)
+	# print console_print_sub(text, datef=datef)
+	utils.console_print(text, datef)
 
 
 def console_print_sub(text, datef=None):
-	return "[%s] %s" % (dateT(datef), text)
+	# return "[%s] %s" % (dateT(datef), text)
+	return utils.console_print_sub(text, datef)
+
 
 # 10/03/2015 Clem / ShinyProxy
 def dateT(dateF = None):
-	if dateF is None:
-		dateF = settings.USUAL_DATE_FORMAT
-	return str(datetime.now().strftime(dateF))
+	# if dateF is None:
+	# 	dateF = settings.USUAL_DATE_FORMAT
+	# return str(datetime.now().strftime(dateF))
+	return utils.dateT(dateF)
 
 
 # Used to check for missing reports, following lost report event
@@ -582,7 +613,7 @@ def fail_with404(request, errorMsg=None):
 DASHED_LINE = '---------------------------------------------------------------------------------------------------------------'
 
 
-def proxy_to(request, path, target_url, query_s=''):
+def proxy_to(request, path, target_url, query_s='', silent=False):
 	import fileinput
 	CONSOLE_DATE_F = settings.CONSOLE_DATE_F
 	log_obj = logger.getChild(sys._getframe().f_code.co_name)
@@ -662,7 +693,7 @@ def proxy_to(request, path, target_url, query_s=''):
 		if proxied_request.code != 200:
 			print 'PROX::', proxied_request.code
 		log_obj.debug(uPrint_sub(request, path + str(qs), proxied_request.code, str(len(content))))
-		if settings.DEBUG: uPrint(request, path + str(qs), proxied_request.code, str(len(content)), datef=CONSOLE_DATE_F)
+		if settings.DEBUG and not silent: uPrint(request, path + str(qs), proxied_request.code, str(len(content)), datef=CONSOLE_DATE_F)
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep
 

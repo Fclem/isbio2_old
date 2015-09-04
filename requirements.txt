@@ -29,3 +29,4 @@ setproctitle==1.1.7
 sorl-thumbnail==11.12
 supervisor==3.0b1
 wsgiref==0.1.2
+drmaa==1.0

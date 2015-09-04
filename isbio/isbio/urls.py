@@ -6,16 +6,28 @@ from breeze import views
 from django.contrib import admin
 admin.autodiscover()
 
+from django_cas.views import login as django_cas_login
+from django_cas.views import logout as django_cas_logout
 
 urlpatterns = patterns('',
     url(r'^user_list$', views.user_list),
-    url(r'^$', 'django_cas.views.login'),  # views.breeze),
+    # url(r'^$', 'django_cas.views.login'),  # views.breeze),
+    url(r'^$', django_cas_login),  # views.breeze),
     url(r'^breeze/$', views.breeze),
     # url(r'^test/$', views.dochelp),
     # url(r'^base/$', views.base),
     # url(r'^register/$', views.register_user),
-    url(r'^logout/$', 'django_cas.views.logout'),  # views.logout),
+    # url(r'^logout/$', 'django_cas.views.logout'),  # views.logout),
+    url(r'^logout/$', django_cas_logout),  # views.logout),
     url(r'^stat/$', views.ajax_user_stat),
+    url(r'^status/dotm/$', views.check_dotm),
+    url(r'^status/rora/$', views.check_rora),
+    url(r'^status/shiny/$', views.check_shiny),
+    url(r'^status/sge/$', views.check_sge),
+    url(r'^status/fs_mount/$', views.check_file_system_mounted),
+    url(r'^status/fs_ok/$', views.check_file_system_coherent),
+    url(r'^status/fs_info/$', views.file_system_info),
+    url(r'^status/qstat/$', views.qstat_live),
     url(r'^home/(?P<state>[a-z]+)?$', views.home),
     url(r'^ajax-rora-patients/(?P<which>[a-z]+)?$', views.ajax_patients_data),
     url(r'^ajax-rora/action/$', views.ajax_rora_action),
@@ -86,7 +98,8 @@ urlpatterns = patterns('',
     url(r'^jobs/run/(?P<jid>\d+)$', views.run_script),
     url(r'^jobs/edit/jobs/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.edit_job), # ReSchedule, and Edit ?
     url(r'^jobs/show-code/(?P<jid>\d+)$', views.show_rcode),
-    url(r'^jobs/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile),
+    url(r'^jobs/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile_j),
+    url(r'^report/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile_r),
     # url(r'^media/jobs/(?P<rid>\d+)_(?P<rest>[^/-]+)/(?P<fname>[^/-]+)?$', views.report_file_wrap),
     url(r'^update-jobs/(?P<jid>\d+)-(?P<item>[a-z]+)$', views.update_jobs),
     # url(r'^update-all-jobs/$', views.update_all_jobs), # DO NOT USE : TOOOOOOOO SLOW

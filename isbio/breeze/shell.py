@@ -10,7 +10,7 @@ import breeze.models
 import auxiliary as aux
 import logging
 
-from breeze.models import Report, Jobs, JobStat
+from breeze.models import Report, Jobs, JobStat, Rscripts, Runnable
 from exceptions import Exception
 # import hashlib
 # from django.utils import timezone
@@ -20,6 +20,7 @@ from exceptions import Exception
 # from views import breeze
 # from django.template.defaulttags import now
 
+
 if settings.HOST_NAME.startswith('breeze'):
 	import drmaa
 
@@ -28,14 +29,14 @@ logger = logging.getLogger(__name__)
 
 # TODO : integrate into script data model
 def init_script(name, inline, person):
-	spath = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", name, None))
+	# spath = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", name, None))
 
+	dbitem = breeze.models.Rscripts(name=name,
+									category=breeze.models.ScriptCategories.objects.get(category="general"),
+									inln=inline, author=person, details="empty", order=0)
+	spath = dbitem.home_folder_full_path
 	if not os.path.isdir(spath):
 		os.makedirs(spath)
-		dbitem = breeze.models.Rscripts(name=name,
-										category=breeze.models.Script_categories.objects.get(category="general"),
-										inln=inline, author=person, details="empty", order=0)
-
 		# create empty files for header, code and xml
 		dbitem.header.save('name.txt', base.ContentFile('# write your header here...'))
 		dbitem.code.save('name.r', base.ContentFile('# copy and paste main code here...'))
@@ -84,15 +85,17 @@ def update_script_dasics(script, form):
 		Update script name and its inline description. In case of a new name it
 		creates a new folder for script and makes file copies but preserves db istance id
 	"""
-
+	assert isinstance(script, Rscripts)
 	if str(script.name) != str(form.cleaned_data['name']):
-		new_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", str(form.cleaned_data['name']), None))
-		old_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", script.name, None))
+		# new_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", str(form.cleaned_data['name']), None))
+		# old_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", script.name, None))
+		old_folder = script.home_folder_full_path
 		new_slug = slugify(form.cleaned_data['name'])
 
-		if not os.path.isdir(new_folder):
-			os.makedirs(new_folder)
-			script.name = form.cleaned_data['name']
+		script.name = form.cleaned_data['name']
+		if not os.path.isdir(script.home_folder_full_path):
+			os.makedirs(script.home_folder_full_path)
+
 			script.inln = form.cleaned_data['inline']
 			script.save()
 			# copy folder
@@ -148,6 +151,7 @@ def update_script_xml(script, xml_data):
 
 # TODO : integrate into script data model
 def update_script_sources(script, post_data):
+	assert isinstance(script, Rscripts)
 	if post_data['source_file'] == 'Header':
 		file_path = settings.MEDIA_ROOT + str(script.header)
 	elif post_data['source_file'] == 'Main':
@@ -173,38 +177,17 @@ def update_script_logo(script, pic):
 	return True
 
 
-# TODO : integrate into script data model
-def del_script(script):
-	folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", script.name, None))
+# DELETED del_script on 		14/07/2015 (now part of Rscript)
+# DELETED del_pipe on 			14/07/2015 (now part of ReportType)
+# DELETED del_report on 		30/06/2015 (now part of Runnable)
+# DELETED del_job on 			30/06/2015 (now part of Runnable)
+# DELETED schedule_job on 		10/07/2015 (now part of Runnable.assemble)
+# DELETED run_job on 			10/07/2015 (now part of Runnable.run)
+# DELETED run_report on 		30/06/2015 (now part of Runnable.run)
+# DELETED abort_report on 		30/06/2015 (now part of Runnable.abort)
+# DELETED track_sge_job on 		30/06/2015 (now part of Watcher)
+# DELETED track_sge_job_bis on 	30/06/2015 (now part of Watcher)
 
-	if os.path.isdir(folder):
-		shutil.rmtree(folder)
-		script.delete()
-		return True
-
-	return False
-
-
-# TODO : integrate into Pipe data model
-def del_pipe(pipe):
-	slug = slugify(str(pipe.id) + '_' + pipe.type)
-	folder = str(settings.MEDIA_ROOT) + 'pipelines/%s/' % (slug)
-
-	if os.path.isdir(folder):
-		shutil.rmtree(folder)
-		pipe.delete()
-		return True
-
-	return False
-
-# DELETED del_report on 30/06/2015 (now part of Runnable.del)
-# DELETED del_job on 30/06/2015 (now part of Runnable.del)
-# DELETED schedule_job on 10/07/2015 (now part of Runnable.assemble)
-# DELETED run_job on 10/07/2015 (now part of Runnable.run)
-# DELETED run_report on 30/06/2015 (now part of Runnable.run)
-# DELETED abort_report on 30/06/2015 (now part of Runnable.abort)
-# DELETED track_sge_job on 30/06/2015 (now part of Watcher)
-# DELETED track_sge_job_bis on 30/06/2015 (now part of Watcher)
 
 def gen_params_string_job_temp(tree, data, runnable_inst, files):
 	assert isinstance(runnable_inst, Report) or isinstance(runnable_inst, Jobs)
@@ -251,41 +234,7 @@ def gen_params_string_job_temp(tree, data, runnable_inst, files):
 				data.cleaned_data[item.attrib['comment']]) + '"\n'
 	return params
 
-# TODO integrate in Jobs or Runnable and integrate with reports' equivalent funct
-def assemble_job_folder(jname, juser, tree, data, code, header, files, job=None):
-	"""
-		Builds (singe) R-executable file: puts together sources, header
-		and input parameters from user
-	"""
-	# create job folder
-	directory = get_job_folder(jname, juser)
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-	rexec = open(str(settings.TEMP_FOLDER) + 'rexec.r', 'w')
-	script_header = open(str(settings.MEDIA_ROOT) + str(header), "rb").read()
-	script_code = open(str(settings.MEDIA_ROOT) + str(code), "rb").read()
-
-	gen_params_string_job_temp(tree, data, job, files)
-
-	tree.write(str(settings.TEMP_FOLDER) + 'job.xml')
-
-	rexec.write("setwd(\"%s\")\n" % directory)
-	rexec.write("#####################################\n")
-	rexec.write("###       Code Section            ###\n")
-	rexec.write("#####################################\n")
-	rexec.write(script_code)
-	rexec.write("\n\n#####################################\n")
-	rexec.write("### Parameters Definition Section ###\n")
-	rexec.write("#####################################\n")
-	rexec.write(params)
-	rexec.write("\n\n#####################################\n")
-	rexec.write("###       Assembly Section        ###\n")
-	rexec.write("#####################################\n")
-	rexec.write(script_header)
-
-	rexec.close()
-	return 1
+# DELETED assemble_job_folder on 16/07/2015 (now part of Runnable.assemble)
 
 
 # TODO : job related find out what is this
@@ -296,31 +245,10 @@ def build_header(data):
 	header.close()
 	return header
 
-
-def add_file_to_report(directory, f):
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-	with open(directory + "/" + f.name, 'wb+') as destination:
-		for chunk in f.chunks():
-			destination.write(chunk)
-
-# DELETED add_file_to_job on 13/07/2015 (now replaced by add_file_to_report)
-
-
-# TODO : replace with job.folder_path
-def get_job_folder(name, user=None):
-	return str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', name, user))
-
-
-# TODO : replace with job.folder_name but has to be checked
-def get_folder_name(loc, name, user=None):
-	#return Jobs.objects.get()
-	if loc == "jobs":
-		slug = slugify(name + '_' + str(user))
-	else:
-		slug = slugify(name)
-	return '%s/%s/' % (loc, slug)
+# DELETED add_file_to_report on 13/07/2015 (now part of Runnable)
+# DELETED add_file_to_job on 13/07/2015 (now part of Runnable)
+# DELETED get_job_folder on 14/07/2015 (now part of Runnable)
+# DELETED get_folder_name on 14/07/2015 (now part of Rsript and ReportType)
 
 
 # TODO : seems useless
@@ -484,6 +412,7 @@ def get_report_overview(report_type, instance_name, instance_id):
 # DELETED dump_project_parameters on 13/07/2015 (now part of Report)
 # DELETED dump_pipeline_config on 13/07/2015 (now part of Report)
 
+
 # TODO integrate in Report or Runnable and integrate with job's equivalent funct
 def build_report(report_data, request_data, report_property, sections):
 	""" Assembles report home folder, configures DRMAA and R related files
@@ -523,7 +452,6 @@ def build_report(report_data, request_data, report_property, sections):
 		_type=rt,
 		_name=str(report_data['instance_name']),
 		_author=the_user,
-		progress=8,
 		project=Project.objects.get(id=request_data.POST.get('project')),
 		_institute=the_user.prof.institute_info,
 		_breeze_stat=JobStat.INIT,
@@ -536,12 +464,12 @@ def build_report(report_data, request_data, report_property, sections):
 
 
 # TODO integrate in Report or Runnable and integrate with job's equivalent funct
-def build_script(report_data, request_data, sections):
+def build_script(report_data, request_data):
 	""" Assembles job home folder, configures DRMAA and R related files
 		and spawns a new process for reports DRMAA job on cluster.
 	"""
 
-	from breeze.models import Project, UserProfile, ReportType, Report
+	from breeze.models import Project, UserProfile, Rscripts, Jobs
 	from django.contrib.auth.models import User
 
 	log = logger.getChild('build_report')
@@ -549,37 +477,19 @@ def build_script(report_data, request_data, sections):
 	assert isinstance(request_data.user, User)
 
 	# get the request ReportType
-	rt = ReportType.objects.get(type=report_data['report_type'])
-	# list of users that will have access to this report
-	shared_users = aux.extract_users(request_data.POST.get('Groups'), request_data.POST.get('Individuals'))
-	if shared_users == list() and request_data.POST.get('shared'):
-		shared_users = request_data.POST.getlist('shared')
+	rt = Rscripts.objects.get(type=report_data['report_type'])
 	# author
 	the_user = request_data.user
 	the_user.prof = UserProfile.objects.get(user=the_user)
 	assert isinstance(the_user.prof, UserProfile)
 
-	# create initial instance so that we can use its db id
-	dbitem = Report(
-		_type=rt,
-		_name=str(report_data['instance_name']),
-		_author=the_user,
-		progress=8,
-		project=Project.objects.get(id=request_data.POST.get('project')),
-		_institute=the_user.prof.institute_info,
-		_breeze_stat=JobStat.INIT,
-		rora_id=report_data['instance_id']
-	)
-	dbitem.assemble(request_data=request_data, shared_users=shared_users, sections=sections)
-	dbitem.submit_to_cluster()
-
-
 	#JOB
-	rshell.assemble_job_folder(str(head_form.cleaned_data['job_name']), str(request.user), tree, custom_form,
-							   str(script.code), str(script.header), request.FILES)
+	new_job = Jobs()
 	new_job._name = head_form.cleaned_data['job_name']
 	new_job._description = head_form.cleaned_data['job_details']
 	new_job._type = script
+	# assemble_job_folder(tree, form_data, request_data.FILES, new_job)
+
 	# new_job.status = request.POST['job_status']
 	new_job.status = u"scheduled"
 	new_job._author = request.user
