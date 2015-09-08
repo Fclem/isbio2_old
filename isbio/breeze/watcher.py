@@ -100,7 +100,7 @@ def end_tracking(proc_item): # proc_item):
 	# TODO check that
 	# proc_item.db_item.breeze_stat = JobStat.DONE
 	get_logger().info('%s%s : ending tracking' % proc_item.db_item.short_id)
-	proc_item.process.terminate()
+	# proc_item.process.terminate()
 	del proc_lst[proc_item.db_item.id]
 
 

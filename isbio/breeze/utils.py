@@ -87,6 +87,9 @@ def get_logger(name=None):
 
 # Shortcut for handling path ( TEST DESIGN )
 class Path(object):
+	import os
+	SEP = os.path.sep
+
 	def __init__(self, path_str):
 		"""
 		Path object always return the path string with a trailing slash ( / ) for folders
@@ -100,8 +103,9 @@ class Path(object):
 		return self.__path_str
 
 	def set_path(self, path_str):
-		if path_str[-1] != '/' and isdir(path_str + '/'):
-			path_str += '/'
+		if path_str is not None and path_str != '':
+			if path_str[-1] != self.SEP and isdir(path_str + self.SEP):
+				path_str += self.SEP
 		self.__path_str = path_str
 
 	path_str = property(get_path, set_path)
@@ -155,7 +159,7 @@ class Path(object):
 		from os import unlink
 
 		path = self.path_str
-		if self.is_dir() and self.path_str.endswith('/'):
+		if self.is_dir() and self.path_str.endswith(self.SEP):
 			path = path[:-1]
 
 		try:

@@ -1058,6 +1058,24 @@ class Runnable(FolderObj, models.Model):
 			pass
 		return self._author.get_profile().institute_info
 
+	@staticmethod
+	def file_n_slug(file_name):
+		"""
+		Slugify filenames, saving the . if exists, and leading path
+		:type file_name: str
+		:rtype: str
+		"""
+		import os
+		dir_n = os.path.dirname(file_name)
+		base = os.path.basename(file_name)
+		if '.' in base:
+			base = os.path.splitext(base)
+			f_name = '%s.%s' % (slugify(base[0]), slugify(base[1]))
+		else:
+			f_name = slugify(base)
+
+		return '%s%s' % (Path(dir_n), f_name)
+
 	##
 	# PROPERTIES INTERFACES
 	##
@@ -1068,14 +1086,7 @@ class Runnable(FolderObj, models.Model):
 		:return: the generated name of the folder to be used to store content of instance
 		:rtype: str
 		"""
-		import os
-		base = os.path.splitext(os.path.basename(filename))
-		f_name = slugify(base[0]) # filename.split('.')
-		ext = slugify(base[1]) # filename.split('.')
-		# ext = f_name[-1]
-		# f_name = slugify('_'.join(f_name[:-1]))
-		print '%s%s.%s' % (Path(self._home_folder_rel), f_name, ext)
-		return '%s%s.%s' % (Path(self._home_folder_rel), f_name, ext)
+		return self.file_n_slug(filename)
 
 	##
 	# OTHER SHARED PROPERTIES
@@ -1104,6 +1115,10 @@ class Runnable(FolderObj, models.Model):
 		:rtype: str
 		"""
 		return '%s%s' % (self.home_folder_full_path, self.SUCCESS_FN)
+
+	@property
+	def _rout_file(self):
+		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
 
 	@property
 	def _failed_file(self):
@@ -1158,8 +1173,8 @@ class Runnable(FolderObj, models.Model):
 		INCLUDES : FAILED, ABORTED, SUCCEED
 		:rtype: bool
 		"""
-		# if self._breeze_stat == JobStat.DONE:
-		#	return True
+		if self._breeze_stat == JobStat.DONE:
+			return True
 		return isfile(self._test_file)
 
 	@property
@@ -1191,20 +1206,22 @@ class Runnable(FolderObj, models.Model):
 		:rtype: bool
 		"""
 		return self.is_done and not isfile(self._failed_file) and not isfile(self._incomplete_file) and \
-			isfile(self._test_file)
+			isfile(self._rout_file)
 
 	##
 	# SHARED CONCRETE METHODS (JOB MANAGEMENT RELATED)
 	##
-	def add_file(self, f): # TODO check
+	def add_file(self, f):
 		import os
 		a_dir = self.home_folder_full_path
 		if not os.path.exists(a_dir):
 			os.makedirs(a_dir)
 
-		with open(a_dir + "/" + slugify(f.name), 'wb+') as destination:
+		f.name = self.file_n_slug(f.name)
+		with open(os.path.join(a_dir, f.name), 'wb+') as destination:
 			for chunk in f.chunks():
 				destination.write(chunk)
+		return f.name
 
 	@property
 	def aborting(self):
@@ -1420,6 +1437,8 @@ class Runnable(FolderObj, models.Model):
 					exit_code = 0
 
 			self.breeze_stat = JobStat.DONE
+			self.save()
+			# time.sleep(3)
 
 			# TODO this is SHITTY
 			if self.aborting:
@@ -1435,12 +1454,12 @@ class Runnable(FolderObj, models.Model):
 
 			self.progress = 100
 			if exit_code == 0:
-				# self.breeze_stat = JobStat.DONE
+				self.breeze_stat = JobStat.DONE
 				# At this point we know that SGE job is done.
 				# But R code may have failed, so we need to check a specific file.
 				log.info('%s%s : ' % self.short_id + 'sge job finished !')
 				if not self.is_r_successful:
-					if isinstance(retval, drmaa.JobInfo):
+					if isinstance(retval, drmaa.JobInfo) and isfile(self._failed_file):
 						json.dump(retval, open(self._failed_file, 'w'))
 					self.breeze_stat = JobStat.ABORTED
 					if drmaa_waiting:

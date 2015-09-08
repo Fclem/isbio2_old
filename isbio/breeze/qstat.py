@@ -125,7 +125,6 @@ class Qstat(object):
 			self._job_list[j.id] = j
 		if len(lines) == 0:
 			get_logger().debug('qstat says : No jobs running')
-			print 'No jobs running'
 		return len(lines)
 
 	def job_info(self, jid=None):

@@ -1,8 +1,9 @@
 import rpy2.robjects as ro
 import copy
 from django.conf import settings
-from utils import get_logger
 from rpy2.rinterface import RRuntimeError
+
+DISABLE_DOTM = False
 
 
 # clem on 17/06/2015
@@ -43,7 +44,7 @@ def test_rora_connect():
 # clem on 20/08/2015
 def test_dotm_connect():
 	"""
-	Test if Dotmatix server is online and connection can be made successfully
+	Test if Dotmatics server is online and connection can be made successfully
 	:return: True|False
 	:rtype: bool
 	"""
@@ -60,13 +61,13 @@ def test_dotm_connect():
 	return True
 
 
-def get_dtm_screens(disabled=True):
+def get_dtm_screens(disabled=DISABLE_DOTM):
 	"""
-		Exports Samples from Dotmatix
+		Exports Samples from Dotmatics
 	"""
 	samples = list()
 
-	if disabled: # FIXME 17/08/2015 TEMP HACK due to DTM being down
+	if disabled or not test_dotm_connect():
 		return samples
 
 	source_file('patient-module.R')
@@ -85,13 +86,13 @@ def get_dtm_screens(disabled=True):
 	return samples
 
 
-def get_dtm_screen_groups(disabled=True):
+def get_dtm_screen_groups(disabled=DISABLE_DOTM):
 	"""
-		Exports Sample Groups from Dotmatix
+		Exports Sample Groups from Dotmatics
 	"""
 	groups = list()
 
-	if disabled: # FIXME 17/08/2015 TEMP HACK due to DTM being down
+	if disabled or not test_dotm_connect():
 		return groups
 
 	source_file('patient-module.R')
@@ -130,7 +131,7 @@ def get_patients_info(params, subject):
 	start = start + 1
 
 	span = int(params.get('length',10))
-	#search_text = params.get('search', '').lower()
+	# search_text = params.get('search', '').lower()
 
 	# sorting
 	sort_ind = params.get('order[0][column]','')
@@ -179,7 +180,7 @@ def get_patients_info(params, subject):
 
 def patient_data(id):
 	"""
-		  Return one row from table by ID
+		Return one row from table by ID
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -194,7 +195,7 @@ def patient_data(id):
 
 def screen_data(id):
 	"""
-		  Return one row from table by ID
+		Return one row from table by ID
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -209,7 +210,7 @@ def screen_data(id):
 
 def get_all_patient():
 	""""
-		 Return all patients data (id and identifier)
+		Return all patients data (id and identifier)
 	"""
 
 	# Source & export R code
@@ -225,7 +226,7 @@ def get_all_patient():
 
 def sex_data():
 	""""
-		 Return all possible sex category
+		Return all possible sex category
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -241,7 +242,7 @@ def sex_data():
 
 def media_type():
 	""""
-		 Return all possible media types
+		Return all possible media types
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -256,7 +257,7 @@ def media_type():
 
 def sample_type():
 	""""
-		 Return all possible media types
+		Return all possible media types
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -271,7 +272,7 @@ def sample_type():
 
 def disease_sub_type():
 	""""
-		 Return all possible media types
+		Return all possible media types
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -286,7 +287,7 @@ def disease_sub_type():
 
 def histology():
 	""""
-		 Return all possible histology
+		Return all possible histology
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -301,7 +302,7 @@ def histology():
 
 def disease_state_data():
 	""""
-		 Return all possible disease states
+		Return all possible disease states
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -316,7 +317,7 @@ def disease_state_data():
 
 def experiment_type_data():
 	""""
-		 Return all possible disease states
+		Return all possible disease states
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -331,7 +332,7 @@ def experiment_type_data():
 
 def disease_grade_data():
 	""""
-		 Return all possible disease grades
+		Return all possible disease grades
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -346,7 +347,7 @@ def disease_grade_data():
 
 def disease_stage_data():
 	""""
-		 Return all possible disease stages
+		Return all possible disease stages
 	"""
 	# Source & export R code
 	source_file('patient-module.R')

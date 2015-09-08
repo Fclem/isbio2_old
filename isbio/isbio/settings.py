@@ -155,7 +155,8 @@ class BreezeSettings(Settings):
 		'django_cas.backends.CASBackend',
 	)
 
-	CAS_SERVER_URL = 'https://192.168.0.218:8443/cas/'
+	CAS_SERVER_IP = '192.168.0.218'
+	CAS_SERVER_URL = 'https://%s:8443/cas/' % CAS_SERVER_IP
 	CAS_REDIRECT_URL = '/home/'
 
 	ROOT_URLCONF = 'isbio.urls'
