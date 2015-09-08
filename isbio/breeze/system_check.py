@@ -1,23 +1,25 @@
-__author__ = 'clem'
-
-# from _ctypes_test import func
-# import breeze.auxiliary as aux
 from breeze import utils
 from breeze.auxiliary import proxy_to
 from isbio import settings
-# from breeze.b_exceptions import InvalidArgument, FileSystemNotMounted
+from breeze.b_exceptions import *
 from django.http import HttpRequest
+# from _ctypes_test import func
+# import breeze.auxiliary as aux
+
 
 DEBUG = False
 SKIP_SYSTEM_CHECK = False
+FAIL_ON_CRITICAL_MISSING = True
+RAISE_EXCEPTION = False
 
 if DEBUG:
-	# quick fix to solve PyCharm Django console environnement issue
+	# quick fix to solve PyCharm Django console environment issue
 	from breeze.process import Process
 else:
 	from multiprocessing import Process
 
-class bcolors:
+
+class Bcolors:
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
 	OKGREEN = '\033[92m'
@@ -27,70 +29,177 @@ class bcolors:
 	BOLD = '\033[1m'
 	UNDERLINE = '\033[4m'
 
+	@staticmethod
+	def ok_blue(text):
+		return Bcolors.OKBLUE + text + Bcolors.ENDC
 
-OK = '[' + bcolors.OKGREEN + 'OK' + bcolors.ENDC + ']'
-BAD = '[' + bcolors.FAIL + 'NO' + bcolors.ENDC + ']'
+	@staticmethod
+	def ok_green(text):
+		return Bcolors.OKGREEN + text + Bcolors.ENDC
+
+	@staticmethod
+	def fail(text):
+		return Bcolors.FAIL + text + Bcolors.ENDC
+
+	@staticmethod
+	def warning(text):
+		return Bcolors.WARNING + text + Bcolors.ENDC
+
+	@staticmethod
+	def header(text):
+		return Bcolors.HEADER + text + Bcolors.ENDC
+
+	@staticmethod
+	def bold(text):
+		return Bcolors.BOLD + text + Bcolors.ENDC
+
+	@staticmethod
+	def underlined(text):
+		return Bcolors.UNDERLINE + text + Bcolors.ENDC
+
+
+OK = '[' + Bcolors.ok_green('OK') + ']'
+BAD = '[' + Bcolors.fail('NO') + ']'
+WARN = '[' + Bcolors.warning('NO') + ']'
 
 # Manage checks process for rendez-vous
 proc_lst = list()
 
 
-# clem 25/08/2015
-def refresh_proc(): # Rendez-vous for processes
-	while len(proc_lst) > 0:
-		for proc in proc_lst:
-			assert isinstance(proc, Process)
-			if not proc.is_alive():
-				proc_lst.remove(proc)
-				del proc
+# clem 08/09/2015
+class RunType:
+	@staticmethod
+	@property
+	def runtime():
+		pass
 
-	print 'All checks done, system is up and running !'
+	@staticmethod
+	@property
+	def boot_time():
+		pass
+
+	@staticmethod
+	@property
+	def both():
+		pass
 
 
-# clem 25/08/2015
-def split_run(message, function, arg=None, supl=None):
-	p = Process(target=split_runner, args=(message, function, arg, supl,))
-	p.start()
-	proc_lst.append(p) # add process to the rendez-vous list
-
-
-# clem 25/08/2015
-def split_runner(message, function, arg=None, supl=None):
-	res = None
-	if callable(function):
-		if arg is not None:
-			res = function(arg)
+# clem 08/09/2015
+class SysCheckUnit:
+	def __init__(self, funct, url, legend, msg, type, t_out=0, arg=None, supl=None, ex=SystemCheckFailed, mandatory=False):
+		if type is RunType.runtime or callable(funct):
+			self.checker_function = funct
+			self.url = url
+			self.legend = legend
+			self._msg = msg
+			self.t_out = int(t_out)
+			self.arg = arg
+			self.type = type
+			self.supl = supl
+			self.mandatory = mandatory
+			self.ex = ex
 		else:
-			res = function()
-	else:
-		raise InvalidArgument('Argument function must be a callable object')
+			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
 
-	sup = ''
-	if supl is not None and callable(supl):
-		sup = supl()
+	def s_check(self):
+		if (self.type is RunType.boot_time or self.type is RunType.both) and callable(self.checker_function):
+			self.split_run()
+			return True
+		return False
 
-	print message, OK if res else BAD, sup
+	# clem 08/09/2015
+	def split_run(self):
+		"""
+		Runs each checker function in a separate process for concurrency and speed
+		"""
+		p = Process(target=self.split_runner)
+		p.start()
+		proc_lst.append({ 'proc': p, 'chk': self }) # add process to the rendez-vous list
+
+	# clem 08/09/2015
+	def split_runner(self):
+		"""
+		Checker function runner.
+		Call the function, display console message and exception if appropriate
+		"""
+		res = False
+		if callable(self.checker_function):
+			if self.arg is not None:
+				res = self.checker_function(self.arg)
+			else:
+				res = self.checker_function()
+		else:
+			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
+
+		sup = ''
+		sup2 = ''
+		if self.supl is not None and callable(self.supl):
+			sup = self.supl()
+
+		if not res:
+			if self.mandatory:
+				sup2 = Bcolors.warning('required and critical !')
+			else:
+				sup2 = Bcolors.warning('NOT critical')
+
+		print self.msg, OK if res else BAD if self.mandatory else WARN, sup, sup2
+		if not res:
+			if RAISE_EXCEPTION:
+				raise self.ex
+			if self.mandatory:
+				import sys
+				sys.exit(1)
 
 
-# clem 31/08/2015
+	@property
+	def msg(self):
+		return Bcolors.ok_blue(self._msg)
+
+
+# clem 08/09/2015
+def check_rdv(): # Rendez-vous for processes
+	"""
+	New version, replaces the 25/08/2015 one, use rendez-vous instead of busy-waiting
+	"""
+	for each in proc_lst:
+		proc = each['proc']
+		chk = each['chk']
+		assert isinstance(proc, Process) and isinstance(chk, SysCheckUnit)
+		proc.join()
+		if FAIL_ON_CRITICAL_MISSING and proc.exitcode != 0 and chk.mandatory:
+			print Bcolors.fail('BREEZE INIT FAILED')
+			raise chk.ex()
+
+	print Bcolors.ok_green('All checks done, system is up and running !')
+
+# split_run(message, function, arg=None, supl=None): DELETED on 08/09/2015
+# split_runner(message, function, arg=None, supl=None): DELETED on 08/09/2015
+
+
+# clem 08/09/2015
 def run_system_test():
+	"""
+	NEW ONE 08/09/2015
+	replacing old version from 31/08/2015
+	"""
 	global SKIP_SYSTEM_CHECK
 	if not SKIP_SYSTEM_CHECK:
-		print 'Running Breeze system integrity checks ......'
-		if check_file_system_mounted():
-			print 'FILE SYSTEM\t\t' + OK
-			split_run('saving file index...\t', save_file_index, None, supl=saved_fs_sig)
-			split_run('RORA DB\t\t\t', check_rora)
-			split_run('SGE MASTER\t\t', check_sge)
-			split_run('DOTM DB\t\t\t', check_dotm)
-			split_run('SHINY HTTP\t\t', check_shiny, HttpRequest())
+		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
+		if fs_mount.checker_function():
+			print fs_mount.msg + OK
+			for each in check_list:
+				each.s_check()
 
-			refresh_proc()
+			check_rdv()
 		else:
 			print 'FS\t\t' + BAD
 			raise FileSystemNotMounted
 	else:
-		print 'Skipping Breeze system integrity checks ......'
+		print Bcolors.ok_blue('Skipping Breeze system integrity checks ......')
+
+##
+# Special file system snapshot systems
+##
 
 
 # clem on 21/08/2015
@@ -175,6 +284,11 @@ def file_system_check(verbose=False):
 # clem on 21/08/2015
 def saved_fs_sig():
 	return open(settings.FS_SIG_FILE).readline()
+
+
+##
+# Checkers functions, called on boot and/or runtime
+##
 
 
 # clem on 21/08/2015
@@ -340,3 +454,49 @@ def check_sge():
 		except Exception:
 			pass
 	return False
+
+
+# clem 08/09/2015
+def check_cas(request):
+	"""
+	Check if CAS server is responding
+	:rtype: bool
+	"""
+	if utils.is_host_online(settings.CAS_SERVER_IP, '2'):
+		try:
+			r = proxy_to(request, '', settings.CAS_SERVER_URL, silent=True)
+			if r.status_code == 200:
+				return True
+			else:
+				print r
+		except Exception:
+			pass
+	return False
+
+	CAS_SERVER_URL
+
+check_list = list()
+
+# Collection of system checks that is used to run all the test automatically, and display run-time status
+check_list.append( SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t',
+								RunType.both, 6000, supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True))
+fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ',
+								RunType.runtime, ex=FileSystemNotMounted, mandatory=True)
+check_list.append(fs_mount)
+check_list.append( SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t',
+								RunType.both, arg=HttpRequest(), ex=CASUnreachable, mandatory=True))
+check_list.append( SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable))
+check_list.append( SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t',
+								RunType.both, ex=SGEUnreachable, mandatory=True))
+check_list.append( SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t',
+								RunType.both, ex=DOTMUnreachable))
+check_list.append( SysCheckUnit(check_shiny, 'shiny', 'Shiny server', 'SHINY HTTP\t\t',
+								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
+
+
+# clem 08/09/2015
+def get_template_check_list():
+	res = list()
+	for each in check_list:
+		res.append({ 'url': '/status/%s/' % each.url, 'legend': each.legend, 'id': each.url, 't_out': each.t_out })
+	return res

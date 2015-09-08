@@ -31,7 +31,7 @@
 		*/
 		var STAT_REFRESH = 120; //default refresh time for system status (in seconds)
 		var QSTAT_REFRESH = 15; //default refresh time for qstat (in seconds)
-		var DEFAULT_TIME_OUT = 2500; //default time out time for ajax request (in milliseconds)
+		var DEFAULT_TIME_OUT = 4000; //default time out time for ajax request (in milliseconds)
 		var TIME_OUT_RETRY_DELAY = 5000; //time to wait before retrying after a time out (in milliseconds)
 		var T_OUT_INCREASE_FACTOR = 1.2; //ratio to use for time-out value increase after each time-out
 		var LOADING_MODE = PARA_MODE; // use 'para' for parallel mode or 'seq' for sequential mode (PREFER PARA MODE)
@@ -78,17 +78,27 @@
 				</div>
 			</div>
 			<div class="span9">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h3 class="panel-title">Panel title</h3>
+					</div>
+					<div class="panel-body">
+						Panel content
+					</div>
+				</div>
 				<div class="well">
 					<h4>System status <small id="checked_title"></small></h4>
-					{% for res in resources %}
-					<label> {{ res.legend }} :
-						<span id="{{ res.id }}_checked">
-							<script type="text/javascript">
-								document.write(LOADING_PLACE_HOLDER);
-							</script>
-						</span>
-					</label>
-					{% endfor %}
+						<div class="row-fluid">
+							{% for res in resources %}
+							<label class="row-fluid"><span class="span2"> {{ res.legend }} :</span>
+								<span id="{{ res.id }}_checked"> <!--  class="span6" -->
+									<script type="text/javascript">
+										document.write(LOADING_PLACE_HOLDER);
+									</script>
+								</span>
+							</label>
+							{% endfor %}
+						</div>
 					<small>
 						Refreshed every <script type="text/javascript">document.write(STAT_REFRESH);</script> seconds
 					</small>
@@ -115,7 +125,7 @@
 		</div>
 	</div>
 	<script type="text/javascript"> // STATUS AJAX CODE HERE
-		var ONE_SEC = 999;
+		var ONE_SEC = 1000;
 		function default_loading(id, placeHolder, trigger) {
 			if(trigger){
 				$("#" + id)[0].innerHTML = placeHolder;

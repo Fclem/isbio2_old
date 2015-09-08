@@ -1,37 +1,54 @@
 __author__ = 'clem'
 __date__ = '25/05/2015'
+#
+# System checks
+#
 
 
-class InvalidArgument(BaseException):
+class SystemCheckFailed(RuntimeWarning):
+	pass
+
+class FileSystemNotMounted(SystemCheckFailed):
 	pass
 
 
-class FileSystemNotMounted(BaseException):
+class FileServerUnreachable(SystemCheckFailed):
 	pass
 
 
-class FileServerUnreachable(BaseException):
+class NetworkUnreachable(SystemCheckFailed):
 	pass
 
 
-class NetworkUnreachable(BaseException):
+class InternetUnreachable(SystemCheckFailed):
 	pass
 
 
-class InternetUnreachable(RuntimeWarning):
+class RORAUnreachable(SystemCheckFailed):
 	pass
 
 
-class RORAUnreachable(RuntimeWarning):
+class DOTMUnreachable(SystemCheckFailed):
 	pass
 
 
-class ShinyUnreachable(RuntimeWarning):
+class ShinyUnreachable(SystemCheckFailed):
 	pass
 
 
-class SGEUnreachable(RuntimeWarning):
+class SGEUnreachable(SystemCheckFailed):
 	pass
+
+
+class CASUnreachable(SystemCheckFailed):
+	pass
+
+
+class GlobalSystemChecksFailed(SystemError):
+	pass
+#
+# END
+#
 
 
 class SGEError(RuntimeWarning):
@@ -39,6 +56,10 @@ class SGEError(RuntimeWarning):
 
 
 class NoSuchJob(RuntimeWarning):
+	pass
+
+
+class InvalidArgument(BaseException):
 	pass
 
 
@@ -52,3 +73,4 @@ class ReadOnlyAttribute(RuntimeWarning):
 
 class NotDefined(BaseException):
 	pass
+

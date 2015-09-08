@@ -1099,6 +1099,7 @@ def search(request, what=None):
 
 @login_required(login_url='/')
 def resources(request):
+	from breeze.system_check import get_template_check_list
 	usage_graph = (
 		{'url': 'http://192.168.0.225/S/D', 'html_alt': 'queue stats on the last 24h',
 			'html_title': 'queue stats on the last 24h', 'legend': 'queue stats on the last 24h', 'href': ''},
@@ -1106,17 +1107,9 @@ def resources(request):
 			'html_title': 'This is an example of another graph',
 			'legend': 'This is an example of another graph', }
 	)
-	res = (
-		{ 'url': '/status/rora/', 'legend': 'RORA db', 'id': 'rora' },
-		{ 'url': '/status/fs_mount/', 'legend': 'File server', 'id': 'fs_mount' },
-		{ 'url': '/status/shiny/', 'legend': 'Shiny server', 'id': 'shiny'},
-		{ 'url': '/status/sge/', 'legend': 'SGE DRMAA', 'id': 'drmaa'},
-		{ 'url': '/status/dotm/', 'legend': 'DotMatics server', 'id': 'dtm'},
-		{ 'url': '/status/fs_ok/', 'legend': 'File System', 'id': 'fs_ok', 't_out': 5000 },
-	)
 
 	return render_to_response('resources.html', RequestContext(request, {'resources_status': 'active',
-								'usage_graph': usage_graph, 'resources': res}))
+								'usage_graph': usage_graph, 'resources': get_template_check_list()}))
 
 
 def qstat_live(request):
@@ -1128,7 +1121,7 @@ def qstat_live(request):
 		result += '<code>%s</code><br />' % each.raw_out
 
 	if result == '':
-		result = 'There is no SGE jobs running at the moment.'
+		result = 'There is no SGE jobs running at the moment.<br />'
 
 	return HttpResponse(result, mimetype='text/html')
 
@@ -2809,6 +2802,12 @@ def check_shiny(request):
 @login_required(login_url='/')
 def check_sge(request):
 	return status_button_json(check.check_sge())
+
+
+# clem on 07/09/2015
+@login_required(login_url='/')
+def check_cas(request):
+	return status_button_json(check.check_cas(request))
 
 
 # clem on 21/08/2015
