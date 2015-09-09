@@ -18,6 +18,7 @@ import breeze.system_check as check
 from breeze.models import * # Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
 # Statistics, Institute, Script_categories, CartInfo  # , User_date
 from collections import OrderedDict
+from rpy2.rinterface import RRuntimeError
 from dateutil.relativedelta import relativedelta
 from django import http
 from django.conf import settings
@@ -917,6 +918,7 @@ def dbPolicy(request):
 
 @login_required(login_url='/')
 def report_overview(request, rtype, iname=None, iid=None, mod=None):
+	from django.http import HttpResponseServerError
 	tags_data_list = list()
 	files = None
 	title = None
@@ -965,7 +967,10 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		# Validates input info and creates (submits) a report
 		property_form = breezeForms.ReportPropsForm(request.POST, request=request)
 		#property_form = breezeForms.ReportPropsForm(request=request)
-		tags_data_list = breezeForms.validate_report_sections(tags, request)
+		try:
+			tags_data_list = breezeForms.validate_report_sections(tags, request)
+		except RRuntimeError:
+			return HttpResponseServerError()
 
 		sections_valid = breezeForms.check_validity(tags_data_list)
 
@@ -998,10 +1003,16 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		if mod == 'reload' and report:
 			property_form = breezeForms.ReportPropsFormRE(instance=report, request=request)
 			loc = str(settings.MEDIA_ROOT) + report._home_folder_rel
-			tags_data_list = breezeForms.create_report_sections(tags, request, data, files, path=loc)
+			try:
+				tags_data_list = breezeForms.create_report_sections(tags, request, data, files, path=loc)
+			except RRuntimeError:
+				return HttpResponseServerError()
 		else:
 			property_form = breezeForms.ReportPropsForm(request=request)
-			tags_data_list = breezeForms.create_report_sections(tags, request, data, files)
+			try:
+				tags_data_list = breezeForms.create_report_sections(tags, request, data, files)
+			except RRuntimeError:
+				return HttpResponseServerError()
 		#print('Not posted')
 		for x in tags_data_list:
 			if not 'value' in x: x['value'] = '0'
@@ -1112,29 +1123,21 @@ def resources(request):
 								'usage_graph': usage_graph, 'resources': get_template_check_list()}))
 
 
-def qstat_live(request):
-	from qstat import Qstat
-	q = Qstat().job_list
-
-	result = ''
-	for each in q:
-		result += '<code>%s</code><br />' % each.raw_out
-
-	if result == '':
-		result = 'There is no SGE jobs running at the moment.<br />'
-
-	return HttpResponse(result, mimetype='text/html')
-
-
 @login_required(login_url='/')
 def manage_scripts(request):
-	all_scripts = Rscripts.objects.all()
+	# all_scripts = Rscripts.objects.all()
+	assert isinstance(request.user, User)
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+
+	if 'all' in request.GET.keys() and request.user.is_superuser and settings.SU_ACCESS_OVERRIDE:
+		all_scripts = Rscripts.objects.all()
+	else:
+		all_scripts = Rscripts.objects.all().filter(author=request.user)
 	paginator = Paginator(all_scripts, 25)
 
-	# If AJAX - check page from the request
-	# Otherwise return the first page
-	if request.is_ajax() and request.method == 'GET':
-		page = request.GET.get('page')
+	def page_sub(request, page_id, paginator):
+		page = page_id
 		try:
 			# TODO change this, since it's not the way to do it
 			# this session var is for the paginator to stay on the same page number after
@@ -1147,14 +1150,24 @@ def manage_scripts(request):
 		except EmptyPage:  # if page out of bounds
 			request.session['manage-scripts-page'] = paginator.num_pages
 			scripts = paginator.page(paginator.num_pages)
+		return scripts
+
+	# TODO ACL
+	# request.session['manage-scripts-page'] = 1
+
+	# If AJAX - check page from the request
+	# Otherwise return the first page
+	if request.is_ajax() and request.method == 'GET':
+		scripts = page_sub(request, request.GET.get('page'), paginator)
 		return render_to_response('manage-scripts-paginator.html', RequestContext(request, {'script_list': scripts}))
 
 	else:
+		page = 1
 		if 'manage-scripts-page' in request.session:
 			page = request.session['manage-scripts-page']
-		else:
-			page = 1
-		scripts = paginator.page(page)
+
+		scripts = page_sub(request, page, paginator)
+
 		return render_to_response('manage-scripts.html', RequestContext(request, {
 			'resources_status': 'active',
 			'script_list': scripts,
@@ -1169,7 +1182,7 @@ def manage_pipes(request):
 	paginator = Paginator(all_pipelines, 10)
 
 	# If AJAX - check page from the request
-	# Otherwise ruturn the first page
+	# Otherwise return the first page
 	if request.is_ajax() and request.method == 'GET':
 		page = request.GET.get('page')
 		try:
@@ -1288,7 +1301,18 @@ def installreport(request, sid=None):
 
 @login_required(login_url='/')
 def script_editor(request, sid=None, tab=None):
-	script = Rscripts.objects.get(id=sid)
+	assert isinstance(request.user, User)
+	# ACL
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+	try:
+		script = Rscripts.objects.secure_get(id=sid, user=request.user)
+	except ObjectDoesNotExist:
+		return aux.fail_with404(request, 'There is no Rscript with id ' + sid + ' in database')
+
+	assert isinstance(script, Rscripts)
+
+	# script = Rscripts.objects.get(id=sid)
 
 	f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln})
 	f_attrs = breezeForms.ScriptAttributes(instance=script)
@@ -1309,7 +1333,16 @@ def script_editor(request, sid=None, tab=None):
 
 @login_required(login_url='/')
 def script_editor_update(request, sid=None):
-	script = Rscripts.objects.get(id=sid)
+	# script = Rscripts.objects.get(id=sid)
+	# ACL
+	assert isinstance(request.user, User)
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+	try:
+		script = Rscripts.objects.secure_get(id=sid, user=request.user)
+	except ObjectDoesNotExist:
+		return aux.fail_with404(request, 'There is no Rscript with id ' + sid + ' in database')
+
 	if request.method == 'POST':
 		# General Tab
 		if request.POST['form_name'] == 'general':
@@ -1370,7 +1403,15 @@ def script_editor_update(request, sid=None):
 
 @login_required(login_url='/')
 def get_form(request, sid=None):
-	script = Rscripts.objects.get(id=sid)
+	# script = Rscripts.objects.get(id=sid)
+	# ACL
+	assert isinstance(request.user, User)
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+	try:
+		script = Rscripts.objects.secure_get(id=sid, user=request.user)
+	except ObjectDoesNotExist:
+		return aux.fail_with404(request, 'There is no Rscript with id ' + sid + ' in database')
 	builder_form = ""
 
 	if request.method == 'GET' and sid is not None:
@@ -1390,7 +1431,15 @@ def get_form(request, sid=None):
 
 @login_required(login_url='/')
 def get_rcode(request, sid=None, sfile=None):
-	script = Rscripts.objects.get(id=sid)
+	# ACL
+	assert isinstance(request.user, User)
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+	try:
+		script = Rscripts.objects.secure_get(id=sid, user=request.user)
+	except ObjectDoesNotExist:
+		return aux.fail_with404(request, 'There is no Rscript with id ' + sid + ' in database')
+	# script = Rscripts.objects.get(id=sid)
 	rcode = ""
 	if request.method == 'GET' and sid is not None:
 
@@ -1592,6 +1641,7 @@ def check_reports(request):
 
 @login_required(login_url='/')
 def edit_job(request, jid=None, mod=None):
+	from django.http import HttpResponseServerError
 	job = aux.get_job_safe(request, jid)
 
 	tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.doc_ml))
@@ -1609,7 +1659,10 @@ def edit_job(request, jid=None, mod=None):
 
 	if request.method == 'POST':
 		head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
-		custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
+		try:
+			custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
+		except RRuntimeError:
+			return HttpResponseServerError()
 		if head_form.is_valid() and custom_form.is_valid():
 
 			if mode == 'replicate':
@@ -1646,7 +1699,10 @@ def edit_job(request, jid=None, mod=None):
 		head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.name),
 			initial={'job_name': str(tmp_name), 'job_details': str(job.description),
 			'report_to': str(job.email if job.email else user_info.email)})
-		custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
+		try:
+			custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
+		except RRuntimeError:
+			return HttpResponseServerError()
 
 	return render_to_response('forms/user_modal.html', RequestContext(request, {
 		'url': "/jobs/edit/" + str(jid),
@@ -1663,6 +1719,7 @@ def edit_job(request, jid=None, mod=None):
 # TODO rewrite
 @login_required(login_url='/')
 def create_job(request, sid=None):
+	from django.http import HttpResponseServerError
 	script = Rscripts.objects.get(id=sid)
 
 	new_job = Jobs()
@@ -1677,7 +1734,10 @@ def create_job(request, sid=None):
 	if request.method == 'POST':
 		# after fill the forms for creating the new job
 		head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
-		custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
+		try:
+			custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
+		except RRuntimeError:
+			return HttpResponseServerError()
 		mail_addr = request.POST['report_to']
 		for key in mails:
 			if key in request.POST:
@@ -1734,7 +1794,10 @@ def create_job(request, sid=None):
 	else:
 		mails = {'Started': u'checked', 'Ready': u'checked', 'Aborted': u'checked'}
 		head_form = breezeForms.BasicJobForm(user=request.user, edit=None, initial={'report_to': mail_addr})
-		custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
+		try:
+			custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
+		except RRuntimeError:
+			return HttpResponseServerError()
 
 	data = {
 		'url': "/scripts/apply-script/" + str(sid),
@@ -2338,7 +2401,7 @@ def update_jobs(request, jid, item):
 @login_required(login_url='/')
 def send_dbcontent(request, content, iid=None):
 	response = dict()
-
+	# TODO ACL ?
 	if content == "datasets":
 		clist = DataSet.objects.all()
 	elif content == "templates":
@@ -2758,67 +2821,41 @@ def custom_404_view(request, message=None):
 		'messages': ['test'],
 	})))
 
-
-# clem on 20/08/2015 # TODO delete as it's legacy code
-def status_button(stat, text=['Online', 'Offline'], href=['#', '#']):
-	if stat:
-		return HttpResponse('<a type="button" class="btn btn-success" href="%s">%s</a>' % (href[0], text[0]),
-							mimetype='text/html')
-	else:
-		return HttpResponse('<a type="button" class="btn btn-danger" href="%s">%s</a>' % (href[1], text[1]),
-							mimetype='text/html')
+# DELETED on 08/09/2015 status_button(stat, text=['Online', 'Offline'], href=['#', '#']):
 
 
 # clem on 24/08/2015
 def status_button_json(stat, text=['Online', 'Offline'], href=['#', '#'], c_type=['success', 'danger']):
+	if type(stat) != bool:
+		return stat
 	sel = 0 if stat else 1
 	return HttpResponse(simplejson.dumps({ 'class': c_type[sel], 'text': text[sel], 'href': href[sel] }),
 						mimetype='application/json')
 
 
-# clem on 20/08/2015
-@csrf_exempt
+# clem on 09/09/2015
+# all the checker view in one proxy
 @login_required(login_url='/')
-def check_rora(request):
-	return status_button_json(check.check_rora())
+def checker(request, what):
+	return status_button_json(check.ui_checker_proxy(what))
 
 
-# clem on 20/08/2015
-@csrf_exempt
 @login_required(login_url='/')
-def check_dotm(request):
-	return status_button_json(check.check_dotm())
+def qstat_live(request):
+	from qstat import Qstat
+	q = Qstat().job_list
 
+	result = ''
+	for each in q:
+		result += '<code>%s</code><br />' % each.raw_out
 
-# clem on 20/08/2015
-@csrf_exempt
-@login_required(login_url='/')
-def check_shiny(request):
-	return status_button_json(check.check_shiny(request))
+	if result == '':
+		result = 'There is no SGE jobs running at the moment.<br />'
 
-
-# clem on 20/08/2015
-@csrf_exempt
-@login_required(login_url='/')
-def check_sge(request):
-	return status_button_json(check.check_sge())
-
-
-# clem on 07/09/2015
-@login_required(login_url='/')
-def check_cas(request):
-	return status_button_json(check.check_cas(request))
+	return HttpResponse(result, mimetype='text/html')
 
 
 # clem on 21/08/2015
-@csrf_exempt
-@login_required(login_url='/')
-def check_file_system_mounted(request):
-	return status_button_json(check.check_file_system_mounted())
-
-
-# clem on 21/08/2015
-@csrf_exempt
 @login_required(login_url='/')
 def check_file_system_coherent(request):
 	not_changed, not_broken, errors = check.check_is_file_system_unchanged()

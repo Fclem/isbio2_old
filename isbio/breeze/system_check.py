@@ -108,16 +108,22 @@ class SysCheckUnit:
 		return False
 
 	# clem 08/09/2015
-	def split_run(self):
+	def split_run(self, from_ui=False):
 		"""
-		Runs each checker function in a separate process for concurrency and speed
+		Runs each checker function in a separate process for
+			_ concurrency and speed (from console)
+			_ process isolation, and main thread segfault avoidance (from UI)
 		"""
-		p = Process(target=self.split_runner)
+		p = Process(target=self.split_runner, args=(from_ui, ))
 		p.start()
-		proc_lst.append({ 'proc': p, 'chk': self }) # add process to the rendez-vous list
+		if not from_ui:
+			proc_lst.append({ 'proc': p, 'chk': self }) # add process to the rendez-vous list
+		else:
+			p.join() # wait for process to finish
+			return p.exitcode == 0
 
 	# clem 08/09/2015
-	def split_runner(self):
+	def split_runner(self, from_ui=False):
 		"""
 		Checker function runner.
 		Call the function, display console message and exception if appropriate
@@ -142,14 +148,16 @@ class SysCheckUnit:
 			else:
 				sup2 = Bcolors.warning('NOT critical')
 
-		print self.msg, OK if res else BAD if self.mandatory else WARN, sup, sup2
+		if not from_ui:
+			print self.msg, OK if res else BAD if self.mandatory else WARN, sup, sup2
+
 		if not res:
 			if RAISE_EXCEPTION:
 				raise self.ex
-			if self.mandatory:
+			if from_ui or self.mandatory:
 				import sys
 				sys.exit(1)
-
+		# implicit exit(0)
 
 	@property
 	def msg(self):
@@ -438,6 +446,12 @@ def check_shiny(request):
 	return False
 
 
+# clem on 09/09/2015
+def check_watcher():
+	from breeze.middlewares import JobKeeper
+	return JobKeeper.p.is_alive()
+
+
 # clem on 20/08/2015
 def check_sge():
 	"""
@@ -473,13 +487,30 @@ def check_cas(request):
 			pass
 	return False
 
-	CAS_SERVER_URL
+
+# clem 09/09/2015
+def ui_checker_proxy(what):
+	# from breeze import views
+	# return views.custom_404_view(HttpRequest())
+	if what not in check_dict:
+		from breeze import auxiliary as aux
+		return aux.fail_with404(HttpRequest(), 'NOT FOUND')
+	obj = check_dict[what]
+	assert isinstance(obj, SysCheckUnit)
+
+	if what == 'watcher':
+		return check_watcher()
+	else:
+		return obj.split_run(from_ui=True)
+
+
+
 
 check_list = list()
 
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 check_list.append( SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t',
-								RunType.both, 6000, supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True))
+								RunType.both, 10000, supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True))
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ',
 								RunType.runtime, ex=FileSystemNotMounted, mandatory=True)
 check_list.append(fs_mount)
@@ -492,6 +523,12 @@ check_list.append( SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB
 								RunType.both, ex=DOTMUnreachable))
 check_list.append( SysCheckUnit(check_shiny, 'shiny', 'Shiny server', 'SHINY HTTP\t\t',
 								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
+check_list.append(SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t',
+								RunType.runtime, ex=WatcherIsNotRunning))
+
+check_dict = dict()
+for each in check_list:
+	check_dict.update({ each.url: each })
 
 
 # clem 08/09/2015

@@ -9,14 +9,17 @@ logger = logging.getLogger(__name__)
 
 
 class JobKeeper:
+	p = Process()
+
 	def __init__(self):
 		# from breeze.watcher import runner
-		self.p = Process(target=runner)
-		self.p.start()
+		JobKeeper.p = Process(target=runner)
+		JobKeeper.p.start()
+		# print JobKeeper.p.pid
 
 	def process_request(self, request):
-		if not self.p.is_alive():
-			self.p.terminate()
+		if not JobKeeper.p.is_alive():
+			JobKeeper.p.terminate()
 			log = logger.getChild('watcher_guard')
 			log.warning('watcher was down, restarting...')
 			self.__init__()

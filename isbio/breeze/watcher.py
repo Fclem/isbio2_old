@@ -100,6 +100,7 @@ def end_tracking(proc_item): # proc_item):
 	# TODO check that
 	# proc_item.db_item.breeze_stat = JobStat.DONE
 	get_logger().info('%s%s : ending tracking' % proc_item.db_item.short_id)
+	a = proc_item.db_item.is_r_successful
 	# proc_item.process.terminate()
 	del proc_lst[proc_item.db_item.id]
 
@@ -208,7 +209,7 @@ def runner():
 	Run until killed or crashed
 	TO BE RUN ONLY_ONCE IN A SEPARATE BACKGROUND PROCESS
 	"""
-	get_logger().info('Watcher is running')
+	get_logger().info('now running')
 	# watching = Watcher()
 
 	i = 0

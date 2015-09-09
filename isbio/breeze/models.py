@@ -803,7 +803,7 @@ class ScriptCategories(models.Model):
 		db_table = 'breeze_script_categories'
 
 
-class UserDate(models.Model):
+class User_Date(models.Model):
 	user = ForeignKey(User)
 	install_date = models.DateField(auto_now_add=True)
 	
@@ -815,6 +815,8 @@ class UserDate(models.Model):
 
 
 class Rscripts(FolderObj, models.Model):
+	objects = managers.ObjectsWithAuth() # The default manager.
+
 	BASE_FOLDER_NAME = settings.RSCRIPTS_FN
 
 	name = models.CharField(max_length=35, unique=True)
@@ -835,7 +837,7 @@ class Rscripts(FolderObj, models.Model):
 	# report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
 	access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name="users")
 	# install date info
-	install_date = models.ManyToManyField(UserDate, blank=True, null=True, default=None, related_name="installdate")
+	install_date = models.ManyToManyField(User_Date, blank=True, null=True, default=None, related_name="installdate")
 	
 	def file_name(self, filename): # TODO check this
 		fname, dot, extension = filename.rpartition('.')
@@ -1065,6 +1067,7 @@ class Runnable(FolderObj, models.Model):
 		:type file_name: str
 		:rtype: str
 		"""
+		# print 'fn before', file_name # TODO del
 		import os
 		dir_n = os.path.dirname(file_name)
 		base = os.path.basename(file_name)
@@ -1074,6 +1077,7 @@ class Runnable(FolderObj, models.Model):
 		else:
 			f_name = slugify(base)
 
+		# print 'fn after', '%s%s' % (Path(dir_n), f_name) # TODO del
 		return '%s%s' % (Path(dir_n), f_name)
 
 	##
@@ -1086,7 +1090,7 @@ class Runnable(FolderObj, models.Model):
 		:return: the generated name of the folder to be used to store content of instance
 		:rtype: str
 		"""
-		return self.file_n_slug(filename)
+		return self.home_folder_full_path + self.file_n_slug(filename)
 
 	##
 	# OTHER SHARED PROPERTIES
@@ -1100,8 +1104,8 @@ class Runnable(FolderObj, models.Model):
 		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
 
 	@property # used by write_sh_file()
-	def _r_exec_path(self): # TODO problem here with jobs
-		return '%s%s' % (settings.MEDIA_ROOT, self._rexec)
+	def _r_exec_path(self):
+		return self._rexec
 
 	@property # UNUSED ?
 	def _html_full_path(self):
@@ -1173,9 +1177,10 @@ class Runnable(FolderObj, models.Model):
 		INCLUDES : FAILED, ABORTED, SUCCEED
 		:rtype: bool
 		"""
-		if self._breeze_stat == JobStat.DONE:
-			return True
-		return isfile(self._test_file)
+		# if self._breeze_stat == JobStat.DONE:
+		# 	return True
+		# return isfile(self._test_file)
+		return self._breeze_stat == JobStat.DONE or isfile(self._test_file)
 
 	@property
 	def is_sge_successful(self):
@@ -1186,7 +1191,7 @@ class Runnable(FolderObj, models.Model):
 		INCLUDES : ABORTED, SUCCEED
 		:rtype: bool
 		"""
-		return self.is_done and self._status != JobStat.FAILED
+		return self._status != JobStat.FAILED and self.is_done
 
 	@property
 	def is_successful(self):
@@ -1197,7 +1202,7 @@ class Runnable(FolderObj, models.Model):
 		This means completed run from sge, no user abort, and verified R success
 		:rtype: bool
 		"""
-		return self.is_r_successful and self._status == JobStat.SUCCEED
+		return self._status == JobStat.SUCCEED and self.is_r_successful
 
 	@property
 	def is_r_successful(self):
@@ -1319,7 +1324,6 @@ class Runnable(FolderObj, models.Model):
 			self.created = timezone.now() # important to be able to timeout sgeid
 			self.breeze_stat = JobStat.RUN_WAIT
 
-	# TODO re-check
 	def run(self):
 		"""
 			Submits reports as an R-job to cluster with SGE;

@@ -276,6 +276,8 @@ class DevSettings(BreezeSettings):
 	MODE_PROD = RUN_MODE == 'prod'
 	PHARMA_MODE = False
 
+	SU_ACCESS_OVERRIDE = True
+
 	# contains everything else (including breeze generated content) than the breeze web source code and static files
 	PROJECT_FOLDER = '/fs/projects/'
 	# BREEZE_FOLDER = 'breeze-dev/' if DEV_MODE else 'breeze/'

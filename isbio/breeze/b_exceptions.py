@@ -36,6 +36,10 @@ class ShinyUnreachable(SystemCheckFailed):
 	pass
 
 
+class WatcherIsNotRunning(SystemCheckFailed):
+	pass
+
+
 class SGEUnreachable(SystemCheckFailed):
 	pass
 

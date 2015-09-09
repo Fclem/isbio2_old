@@ -1,5 +1,8 @@
 from django.db.models.query import QuerySet as __original_QS
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 import django.db.models.query_utils
+from django.conf import settings
+from breeze.b_exceptions import InvalidArguments
 
 
 class Trans:
@@ -246,3 +249,33 @@ class WorkersManager(django.db.models.Manager):
 	@property
 	def f(self):
 		return self.all()
+
+
+# TODO extend to all objects
+class ObjectsWithAuth(django.db.models.Manager):
+	def secure_get(self, *args, **kwargs):
+
+		if 'id' not in kwargs.keys() or 'user' not in kwargs.keys():
+			raise InvalidArguments
+
+		try:
+			obj = self.get(id=kwargs.pop('id'))
+			# obj = super(WorkersManager, self).get(*args, **kwargs)
+		except ObjectDoesNotExist:
+			# return aux.fail_with404(request, 'There is no record with id ' + sid + ' in DB')
+			raise ObjectDoesNotExist
+
+		# Enforce user access restrictions
+		user = kwargs.pop('user')
+		auth = None
+		if hasattr(obj, 'author'):
+			auth = obj.author
+		elif hasattr(obj, 'juser'): # Jobs
+			auth = obj.juser
+		elif hasattr(obj, '_author'):
+			auth = obj._author
+
+		if not (auth == user or (user.is_superuser and settings.SU_ACCESS_OVERRIDE)):
+			raise PermissionDenied
+
+		return obj
