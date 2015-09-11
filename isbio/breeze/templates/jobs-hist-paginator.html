@@ -1,3 +1,5 @@
+<form id="del-sel" method="POST" action="/runnable/delete/">
+{% csrf_token %}
 {% for job in history %}
 	<tr>
 		<td>{{ job.staged }}</td>
@@ -16,19 +18,23 @@
 		<!-- Download Button -->
 		<td>
 			<div class="btn-group">
-				<a class="btn btn-inverse" href="{{ job.rdownhref }}"><i class="icon-white icon-download-alt"></i> {{ job.instance|capfirst }} </a>
-				<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button>
+				<a class="btn btn-inverse" href="{{ job.rdownhref }}"><i
+				  class="icon-white icon-download-alt"></i> {{ job.instance|capfirst }} </a>
+				<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span>
+				</button>
 				<ul class="dropdown-menu">
 					<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>
 					<li class="divider"></li>
-					<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a></li>
+					<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a>
+					</li>
 					<!-- Re-Run -->
 					<li class="divider"></li>
 					<li align="right">
 						{% if job.instance == "report" %}
 							<a href="{{ job.reschedhref }}">
 						{% else %}
-							<a href="#" data-toggle="modal" data-target="#Apply" class="apply" data-param="{{ job.reschedhref }}">
+							<a href="#" data-toggle="modal" data-target="#Apply" class="apply"
+							   data-param="{{ job.reschedhref }}">
 						{% endif %}
 						Re-Run / Duplicate
 						<i class="icon-repeat"></i>
@@ -36,13 +42,13 @@
 					</li>
 					<!-- Shiny tab -->
 					{% if job.instance == "report" and job.status == "succeed" and  job.shiny_key %}
-					<li class="divider"></li>
-					<li align="right">
-						<a href="/reports/shiny-tab/{{ job.id }}">
-							Shiny report
-							<i class="icon-eye-open"></i>
-						</a>
-					</li>
+						<li class="divider"></li>
+						<li align="right">
+							<a href="/reports/shiny-tab/{{ job.id }}">
+								Shiny report
+								<i class="icon-eye-open"></i>
+							</a>
+						</li>
 					{% endif %}
 				</ul>
 			</div>
@@ -56,7 +62,8 @@
 		<td>
 			{% if job.instance == 'script' %}
 				<!-- { if job.status == 'failed' or job.status == 'aborted' } -->
-				<a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="{{ job.reschedhref }}" >
+				<a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply"
+				   data-param="{{ job.reschedhref }}">
 					<!--{ else %}
 					<a href="#"class="btn btn-inverse disabled" disabled>
 				{ endif %}-->
@@ -67,17 +74,24 @@
 					<i class="icon-white icon-repeat"></i>
 				</a>
 			{% else %}
-				<a class="btn btn-primary" href="/reports/view/{{ job.id }}/" target="_blank" >
+				<a class="btn btn-primary" href="/reports/view/{{ job.id }}/" target="_blank">
 					<i class="icon-white icon-eye-open"></i>
 				</a>
 			{% endif %}
 		</td>
 
-		<!-- Delete Button -->
-		<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del" onclick="$('#del_btn').attr('href', '{{ job.delhref }}?page={{ page }}'); $('#del_title').text('{{ job.jname }}');" ><i class="icon-trash"></i></a></td>
+		<!-- Delete Button
+		<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del"
+		       onclick="$('#del_btn').attr('href', '{{ job.delhref }}?page={{ page }}'); $('#del_title').text('{{ job.jname }}');"><i
+		  class="icon-trash"></i></a></td>
+		-->
+		<!-- new Delete Button -->
+		<td><label><input type="checkbox" name="delete" value="{{ job.instance }}-{{ job.id }}">&nbsp;&nbsp;<i class="icon-trash"></i></label></td>
 	</tr>
 	{% empty %}
 	<tr>
 		<td colspan="7">No scheduled job at the moment.</td>
 	</tr>
 {% endfor %}
+<a href="#" onclick="$('#del_btn').attr('onclick', 'document.getElementById(\'del-sel\').submit();');" data-toggle="modal" class="btn btn-danger" data-target="#Del"><i class="icon-trash"></i></a> <!-- onclick="document.getElementById('del-sel').submit();"-->
+</form>

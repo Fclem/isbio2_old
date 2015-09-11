@@ -6,6 +6,7 @@ from django.contrib.auth.models import User # as DjangoUser
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+from pandas.tslib import re_compile
 from breeze import managers
 from utils import *
 from os.path import isfile # , isdir, islink, exists, getsize
@@ -244,6 +245,61 @@ class FolderObj(object):
 		"""
 		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
 
+	@staticmethod
+	def file_n_slug(file_name):
+		"""
+		Slugify filenames, saving the . if exists, and leading path
+		:type file_name: str
+		:rtype: str
+		"""
+		# print 'fn before', file_name # TODO del
+		import os
+		dir_n = os.path.dirname(file_name)
+		base = os.path.basename(file_name)
+		if '.' in base:
+			base = os.path.splitext(base)
+			f_name = '%s.%s' % (slugify(base[0]), slugify(base[1]))
+		else:
+			f_name = slugify(base)
+
+		# print 'fn after', '%s%s' % (Path(dir_n), f_name) # TODO del
+		return '%s%s' % (Path(dir_n), f_name)
+
+	def file_name(self, filename):
+		"""
+		Special property
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		return self.home_folder_full_path + self.file_n_slug(filename)
+
+	def grant_write_access(self):
+		"""
+		Make the home folder writable for group
+		"""
+		import os
+		import stat
+		# open home's folder for others
+		st = os.stat(self.home_folder_full_path)
+		os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
+
+	def add_file(self, f):
+		"""
+		write a file object at a specific location and return the slugified name
+		:type f: file
+		:rtype: str
+		"""
+		import os
+		a_dir = self.home_folder_full_path
+		if not os.path.exists(a_dir):
+			os.makedirs(a_dir)
+
+		f.name = self.file_n_slug(f.name)
+		with open(os.path.join(a_dir, f.name), 'wb+') as destination:
+			for chunk in f.chunks():
+				destination.write(chunk)
+		return f.name
+
 	def not_imp(self):
 		if self.__class__ == Runnable.__class__:
 			raise NotImplementedError("Class % doesn't implement %s, because it's an abstract/interface class." % (
@@ -347,6 +403,7 @@ class ShinyReport(models.Model):
 	RES_FOLDER = settings.SHINY_RES_FOLDER
 	SHINY_REPORTS = settings.SHINY_REPORTS
 	REPORT_TEMPLATE_PATH = settings.SHINY_REPORT_TEMPLATE_PATH
+	SYSTEM_FILE_LIST = [FILE_UI_NAME, FILE_SERVER_NAME, FILE_GLOBAL, FILE_HEADER_NAME, RES_FOLDER]
 	FS_ACL = 0775
 
 	title = models.CharField(max_length=55, unique=True, blank=False, help_text="Choose a title for this Shiny Report")
@@ -496,7 +553,7 @@ class ShinyReport(models.Model):
 				for each in j: # for every required registered file
 					path = '%s%s' % (report_home, each['path'])
 					if each['required'] and not (os.path.isfile(path) and os.access(path, os.R_OK)):
-						log_obj.critical("%s missing required file %s" % (report.id, path))
+						log_obj.warning("%s missing required file %s" % (report.id, path))
 						return
 			if force or not os.path.islink(report_link):
 				# make of soft-link for each files/folder of the shinyReport folder into the Report folder
@@ -549,20 +606,24 @@ class ShinyReport(models.Model):
 		assert isinstance(tag, ShinyTag)
 		copy_tree(tag.path_res_folder, self.res_folder_path) # TODO replace with symlimks ?
 
-	@staticmethod
-	def related_files(formatted=False):
+	def related_files(self, formatted=False):
 		"""
 		Returns a list of related files for the report
 		:rtype: dict or list
 		"""
+		# fixed on 11/09/2015
+		# TODO check expected behavior regarding templates
 		import json
-
+		log_obj = get_logger()
 		try:
-			jfile = open(ShinyReport.path_file_lst_template)
-			j = json.load(jfile)
-			jfile.close()
-		except Exception as e:
-			j = list()
+			# jfile = open(ShinyReport.path_file_lst_template)
+			# j = json.load(jfile)
+			j = json.loads(self.custom_files)
+			# jfile.close()
+		except ValueError as e:
+			log_obj.exception(e.message)
+			raise ValueError(e)
+		#	j = list()
 		if formatted:
 			d = dict()
 			for each in j:
@@ -570,14 +631,15 @@ class ShinyReport(models.Model):
 			return d
 		return j
 
-	@staticmethod
-	def get_parsed_loader():
+	# TODO expired design
+	def get_parsed_loader(self):
 		from string import Template
 
 		file_loaders = open(ShinyReport.path_loader_r_template)
 		src = Template(file_loaders.read())
 		file_loaders.close()
-		return src.safe_substitute(ShinyReport.related_files(formatted=True))
+		# return src.safe_substitute(ShinyReport.related_files(formatted=True))
+		return src.safe_substitute(self.related_files(formatted=True))
 
 	def generate_server(self, a_user=None): # generate the report server.R file to include all the tags
 		from string import Template
@@ -603,7 +665,7 @@ class ShinyReport(models.Model):
 				else:
 					alist.append('### DISABLED Tag %s by %s (%s) %s' % (
 						each.name, each.author.get_full_name(), each.author, each.created))
-		loaders = self.get_parsed_loader()
+		loaders = self.get_parsed_loader() # TODO redo
 		alist.append('') # avoid join errors if list is empty
 		d = { 'title': self.title,
 				'generated': generated,
@@ -713,7 +775,10 @@ class ShinyReport(models.Model):
 
 	def save(self, *args, **kwargs):
 		super(ShinyReport, self).save(*args, **kwargs) # Call the "real" save() method.
+		# try:
 		self.regen_report()
+		# except ValueError:
+		#	return False
 
 	def delete(self, using=None):
 		import shutil
@@ -749,7 +814,8 @@ class ReportType(FolderObj, models.Model):
 	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
 	
 	def file_name(self, filename):
-		fname, dot, extension = filename.rpartition('.') # FIXME
+		# FIXME check for FolderObj property fitness
+		fname, dot, extension = filename.rpartition('.')
 		return '%s%s/%s' % (self.BASE_FOLDER_NAME, self.folder_name, filename)
 	
 	config = models.FileField(upload_to=file_name, blank=True, null=True)
@@ -765,7 +831,7 @@ class ReportType(FolderObj, models.Model):
 
 	@property
 	def is_shiny_enabled(self):
-		return self.shiny_report_id > 0
+		return self.shiny_report_id > 0 and self.shiny_report.enabled
 
 	def save(self, *args, **kwargs):
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
@@ -840,6 +906,7 @@ class Rscripts(FolderObj, models.Model):
 	install_date = models.ManyToManyField(User_Date, blank=True, null=True, default=None, related_name="installdate")
 	
 	def file_name(self, filename): # TODO check this
+		# TODO check for FolderObj fitness
 		fname, dot, extension = filename.rpartition('.')
 		slug = self.folder_name
 		return '%s%s/%s.%s' % (self.BASE_FOLDER_NAME, slug, slug, slugify(extension))
@@ -1009,6 +1076,8 @@ class Runnable(FolderObj, models.Model):
 	SH_CL = '#!/bin/bash \ntouch ./%s' % INC_RUN_FN + ' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
 		% (SUCCESS_FN, INC_RUN_FN) + 'txt="%s"\nCMD=`tail -n1<%s`\nif [ "$CMD" = "%s" ];' % \
 		(FAILED_R, R_OUT_FILE_NAME, FAILED_R) + '\nthen\n	touch ./%s\nfi' % FAILED_FN
+	SYSTEM_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, INC_RUN_FN, FAILED_FN, SUCCESS_FN, FILE_MAKER_FN]
+	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN] # TODO add FM file ?
 
 	objects = managers.WorkersManager() # The default manager.
 
@@ -1060,41 +1129,33 @@ class Runnable(FolderObj, models.Model):
 			pass
 		return self._author.get_profile().institute_info
 
-	@staticmethod
-	def file_n_slug(file_name):
-		"""
-		Slugify filenames, saving the . if exists, and leading path
-		:type file_name: str
-		:rtype: str
-		"""
-		# print 'fn before', file_name # TODO del
-		import os
-		dir_n = os.path.dirname(file_name)
-		base = os.path.basename(file_name)
-		if '.' in base:
-			base = os.path.splitext(base)
-			f_name = '%s.%s' % (slugify(base[0]), slugify(base[1]))
-		else:
-			f_name = slugify(base)
-
-		# print 'fn after', '%s%s' % (Path(dir_n), f_name) # TODO del
-		return '%s%s' % (Path(dir_n), f_name)
-
-	##
-	# PROPERTIES INTERFACES
-	##
-	# special interface (Generic)
-	def file_name(self, filename):
-		"""
-		Special property
-		:return: the generated name of the folder to be used to store content of instance
-		:rtype: str
-		"""
-		return self.home_folder_full_path + self.file_n_slug(filename)
-
 	##
 	# OTHER SHARED PROPERTIES
 	##
+	@property
+	def get_shiny_report(self):
+		"""
+		:rtype: ShinyReport
+		"""
+		if self.is_shiny_enabled:
+			return self._type.shiny_report
+
+	@property
+	def is_shiny_enabled(self):
+		"""
+		To be overridden by Report
+		:rtype: bool
+		"""
+		return False
+
+	def has_access_to_shiny(self, this_user=None):
+		"""
+		To be overridden by Report
+		:type this_user: User | OrderedUser
+		:rtype: bool
+		"""
+		return False
+
 	@property # UNUSED ?
 	def html_path(self):
 		return '%s%s' % (self.home_folder_full_path, self.REPORT_FILE_NAME)
@@ -1103,7 +1164,7 @@ class Runnable(FolderObj, models.Model):
 	def _r_out_path(self):
 		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
 
-	@property # used by write_sh_file()
+	@property # used by write_sh_file() # useless #Future ?
 	def _r_exec_path(self):
 		return self._rexec
 
@@ -1143,7 +1204,28 @@ class Runnable(FolderObj, models.Model):
 		return '%s%s' % (self.home_folder_full_path, self.INC_RUN_FN)
 
 	@property
-	def sh_file_path(self):
+	def _sge_log_file(self):
+		"""
+		Return the name of the autogenerated debug/warning file from SGE
+		:rtype: str
+		"""
+		return '%s_%s.o%s' % (self._name.lower(), self.instance_of.__name__, self.sgeid)
+
+	# clem 11/09/2015
+	@property
+	def _shiny_files(self):
+		"""
+		Return a list of files related to shiny if applicable, empty list otherwise
+		:rtype: list
+		"""
+		res = list()
+		shiny_rep = self.get_shiny_report
+		if shiny_rep is not None:
+			res = shiny_rep.SYSTEM_FILE_LIST
+		return res
+
+	@property
+	def _sh_file_path(self):
 		"""
 		the full path of the sh file used to run the job on the cluster.
 		This is the file that SGE has to instruct the cluster to run.
@@ -1151,18 +1233,27 @@ class Runnable(FolderObj, models.Model):
 		"""
 		return '%s%s' % (self.home_folder_full_path, self.SH_NAME)
 
+	# clem 11/09/2015
 	@property
-	def fm_file_path(self):
+	def system_files(self):
 		"""
-		The full path of the file use for FileMaker transfer
-		:rtype: str
+		Return a list of system requires files
+		:rtype: list
 		"""
-		return '%s%s' % (self.home_folder_full_path, self.FILE_MAKER_FN)
+		return self.SYSTEM_FILES + [self._sge_log_file] + self._shiny_files
+
+	# clem 11/09/2015
+	@property
+	def hidden_files(self):
+		"""
+		Return a list of system requires files
+		:rtype: list
+		"""
+		return self.HIDDEN_FILES + [self._sge_log_file] + self._shiny_files
 
 	@property
 	def sge_job_name(self):
-		"""
-		The job name to submit to SGE
+		"""The job name to submit to SGE
 		:rtype: str
 		"""
 		return '%s_%s' % (slugify(self._name), self.instance_type.capitalize())
@@ -1206,39 +1297,24 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def is_r_successful(self):
-		"""
-		Tells if the job R job completed successfully
+		"""Tells if the job R job completed successfully
 		:rtype: bool
 		"""
 		return self.is_done and not isfile(self._failed_file) and not isfile(self._incomplete_file) and \
 			isfile(self._rout_file)
 
-	##
-	# SHARED CONCRETE METHODS (JOB MANAGEMENT RELATED)
-	##
-	def add_file(self, f):
-		import os
-		a_dir = self.home_folder_full_path
-		if not os.path.exists(a_dir):
-			os.makedirs(a_dir)
-
-		f.name = self.file_n_slug(f.name)
-		with open(os.path.join(a_dir, f.name), 'wb+') as destination:
-			for chunk in f.chunks():
-				destination.write(chunk)
-		return f.name
-
 	@property
 	def aborting(self):
-		"""
-		state if job is being aborted
+		"""Tells if job is being aborted
 		:rtype: bool
 		"""
 		return self.breeze_stat == JobStat.ABORT or self.breeze_stat == JobStat.ABORTED
 
+	##
+	# SHARED CONCRETE METHODS (SGE_JOB MANAGEMENT RELATED)
+	##
 	def abort(self):
-		"""
-		Abort the job using qdel
+		""" Abort the job using qdel
 		:rtype: bool
 		"""
 		if self.breeze_stat != JobStat.DONE:
@@ -1257,26 +1333,16 @@ class Runnable(FolderObj, models.Model):
 		import os
 		import stat
 		# configure shell-file
-		config = open(self.sh_file_path, 'w')
+		config = open(self._sh_file_path, 'w')
 
 		# config should be executable
-		st = os.stat(self.sh_file_path)
-		os.chmod(self.sh_file_path, st.st_mode | stat.S_IEXEC)
+		st = os.stat(self._sh_file_path)
+		os.chmod(self._sh_file_path, st.st_mode | stat.S_IEXEC)
 
 		# Thanks to ' && touch ./done' breeze can always asses if the run was completed (successful or not)
 		command = self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path)
 		config.write(command)
 		config.close()
-
-	def grant_write_access(self):
-		"""
-		Make the home folder writable for group
-		"""
-		import os
-		import stat
-		# open home's folder for others
-		st = os.stat(self.home_folder_full_path)
-		os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
 
 	# interface for extending assembling process
 	def deferred_instance_specific(self, *args, **kwargs):
@@ -1339,7 +1405,7 @@ class Runnable(FolderObj, models.Model):
 		if settings.HOST_NAME.startswith('breeze'):
 			import drmaa
 
-		config = self.sh_file_path
+		config = self._sh_file_path
 		log = get_logger('run_%s' % self.instance_type )
 		default_dir = os.getcwd() # Jobs specific ? or Report specific ?
 
@@ -1377,7 +1443,7 @@ class Runnable(FolderObj, models.Model):
 			import copy
 			if not self.aborting:
 				self.sgeid = copy.deepcopy(s.runJob(jt))
-				log.debug('%s%s : ' % self.short_id + 'returned sgedid "%s"' % self.sgeid)
+				log.debug('%s%s : ' % self.short_id + 'returned sge_id "%s"' % self.sgeid)
 				self.breeze_stat = JobStat.SUBMITTED
 			# waiting for the job to end
 			self.waiter(s, True)
@@ -1388,9 +1454,8 @@ class Runnable(FolderObj, models.Model):
 
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				Exception) as e:
-			log.exception('%s%s : ' % self.short_id + 'drmaa error %s' % e)
-			log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated')
-			self.breeze_stat = JobStat.FAILED
+			log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated : %s' % e)
+			self.__manage_run_failed(None, '', None)
 			if s is not None:
 				s.exit()
 			return 1
@@ -1416,8 +1481,6 @@ class Runnable(FolderObj, models.Model):
 		"""
 		import drmaa
 		import copy
-		import json
-		import os
 		import time
 
 		exit_code = 42
@@ -1425,11 +1488,11 @@ class Runnable(FolderObj, models.Model):
 		log = get_logger()
 		if self.is_sgeid_empty:
 			return
-		SGEID = copy.deepcopy(self.sgeid) # uselees
+		sge_id = copy.deepcopy(self.sgeid) # uselees
 		try:
-			retval = None
+			ret_val = None
 			if drmaa_waiting:
-				retval = s.wait(SGEID, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+				ret_val = s.wait(sge_id, drmaa.Session.TIMEOUT_WAIT_FOREVER)
 			else:
 				try:
 					while True:
@@ -1440,63 +1503,132 @@ class Runnable(FolderObj, models.Model):
 				except NoSuchJob:
 					exit_code = 0
 
+			# ?? FIXME
 			self.breeze_stat = JobStat.DONE
 			self.save()
-			# time.sleep(3)
 
-			# TODO this is SHITTY
+			# FIXME this is SHITTY
 			if self.aborting:
 				aborted = True
 				exit_code = 1
 				self.breeze_stat = JobStat.ABORTED
 
-			if isinstance(retval, drmaa.JobInfo):
-				if retval.hasExited:
-					exit_code = retval.exitStatus
-				dic = retval.resourceUsage # FUTURE use for mail reporting
-				aborted = retval.wasAborted
+			if isinstance(ret_val, drmaa.JobInfo):
+				if ret_val.hasExited:
+					exit_code = ret_val.exitStatus
+				dic = ret_val.resourceUsage # FUTURE use for mail reporting
+				aborted = ret_val.wasAborted
 
 			self.progress = 100
-			if exit_code == 0:
+			if exit_code == 0:  # normal termination
 				self.breeze_stat = JobStat.DONE
-				# At this point we know that SGE job is done.
-				# But R code may have failed, so we need to check a specific file.
 				log.info('%s%s : ' % self.short_id + 'sge job finished !')
-				if not self.is_r_successful:
-					if isinstance(retval, drmaa.JobInfo) and isfile(self._failed_file):
-						json.dump(retval, open(self._failed_file, 'w'))
-					self.breeze_stat = JobStat.ABORTED
-					if drmaa_waiting:
-						log.info('%s%s : ' % self.short_id + 'But R process failed !')
-						# TODO is R failure on 1st level wait
-					else:
-						log.info('%s%s : ' % self.short_id + 'But R process failed OR user abort !')
-						# TODO or 2nd level wait either R failure or user abort
-				else:
-					if isinstance(retval, drmaa.JobInfo):
-						json.dump(retval, open(self._test_file, 'w'))
-					self.breeze_stat = JobStat.SUCCEED # FULL SUCCESS
-					log.info('%s%s : ' % self.short_id + ' SUCCESS !')
-					# Report specific
-					if self.is_report and self.fm_flag and isfile(self.fm_file_path):
-						run = open(self.fm_file_path).read().split("\"")[1]
-						os.system(run)
-			else:
-				if not aborted:
-					json.dump(retval, open(self._failed_file, 'w'))
-					log.warning('%s%s : ' % self.short_id + 'exit code %s, SGE failed' % exit_code)
-					self.breeze_stat = JobStat.FAILED
-				else:
-					log.info('%s%s : ' % self.short_id + 'exit code %s, user aborted' % exit_code)
-					self.breeze_stat = JobStat.ABORTED # TODO change for user abort
-
+				if not self.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
+					self.__manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
+				else: # FULL SUCCESS
+					self.__manage_run_success(ret_val)
+			else: # abnormal termination
+				if not aborted: # SGE FAILED
+					self.__manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
+				else: # USER ABORTED
+					self.__manage_run_aborted(ret_val, exit_code)
 			return exit_code
 		except Exception as e:
-			# TODO this is SHITTY
+			# FIXME this is SHITTY
+			log.error('%s%s : ' % self.short_id + ' while waiting : %s' % e)
 			if e.message == 'code 24: no usage information was returned for the completed job' or self.aborting:
-				self.breeze_stat = JobStat.ABORTED
-			log.exception('%s%s : ' % self.short_id + ' while waiting : %s' % e)
+				self.__manage_run_failed(None, exit_code)
+				log.info('%s%s : ' % self.short_id + ' FAIL CODE 24 (FIXME) : %s' % e)
 		return 1
+
+	@staticmethod
+	def __auto_json_dump(ret_val, file_n):
+		""" Dumps JobInfo retval from drmaa to failed or succeed file
+		:type ret_val: drmaa.JobInfo
+		:type file_n: str
+		"""
+		import json
+
+		if isinstance(ret_val, drmaa.JobInfo):
+			json.dump(ret_val, open(file_n, 'w'))
+
+	# Clem 11/09/2015
+	def __manage_run_success(self, ret_val):
+		""" !!! DO NOT OVERRIDE !!!
+		instead do override 'trigger_run_success'
+
+		Actions on Job successful completion
+
+		:type ret_val: drmaa.JobInfo
+		"""
+		log = get_logger()
+		self.__auto_json_dump(ret_val, self._test_file)
+		self.breeze_stat = JobStat.SUCCEED
+		log.info('%s%s : ' % self.short_id + ' SUCCESS !')
+
+		self.trigger_run_success(ret_val)
+
+	# Clem 11/09/2015
+	def __manage_run_aborted(self, ret_val, exit_code):
+		""" !!! DO NOT OVERRIDE !!!
+		instead do override 'trigger_run_user_aborted'
+
+		Actions on Job abortion
+
+		:type ret_val: drmaa.JobInfo
+		"""
+		log = get_logger()
+		# self.__auto_json_dump(ret_val, ## )
+		self.breeze_stat = JobStat.ABORTED
+		log.info('%s%s : ' % self.short_id + 'exit code %s, user aborted' % exit_code)
+		self.trigger_run_user_aborted(ret_val, exit_code)
+
+	# Clem 11/09/2015
+	def __manage_run_failed(self, ret_val, exit_code, drmaa_waiting=None, type=''):
+		""" !!! DO NOT OVERRIDE !!!
+		instead do override ''
+
+		Actions on Job Failure
+
+		:type ret_val: drmaa.JobInfo
+		"""
+		self.__auto_json_dump(ret_val, self._failed_file)
+		log = get_logger()
+		log.info('%s%s : ' % self.short_id + 'exit code %s, SGE failed !' % exit_code)
+
+		if drmaa_waiting is not None:
+			if drmaa_waiting:
+				log.info('%s%s : ' % self.short_id + 'But R process failed !')
+				# TODO is R failure on 1st level wait
+			else:
+				log.info('%s%s : ' % self.short_id + 'But R process failed OR user abort !')
+				return self.__manage_run_aborted(ret_val, exit_code)
+				# TODO or 2nd level wait either R failure or user abort (for ex when job was aborted before it started)
+		self.breeze_stat = JobStat.FAILED
+
+		self.trigger_run_failed(ret_val, exit_code)
+
+	# Clem 11/09/2015
+	def trigger_run_success(self, ret_val):
+		"""
+		Trigger for subclass to override
+		:type ret_val: drmaa.JobInfo
+		"""
+		pass
+
+	def trigger_run_user_aborted(self, ret_val, exit_code):
+		"""
+		Trigger for subclass to override
+		:type ret_val: drmaa.JobInfo
+		"""
+		pass
+
+	def trigger_run_failed(self, ret_val, exit_code):
+		"""
+		Trigger for subclass to override
+		:type ret_val: drmaa.JobInfo
+		"""
+		pass
 
 	def _set_status(self, status):
 		"""
@@ -1622,7 +1754,9 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def instance_type(self):
-		return 'report' if self.is_report else 'job' if self.is_job else 'abstract'
+		# print self.ins
+		# return 'report' if self.is_report else 'job' if self.is_job else 'abstract'
+		return self.instance_of.__name__.lower()
 
 	@property
 	def instance_of(self):
@@ -1779,6 +1913,14 @@ class Report(Runnable):
 		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
 
 	@property
+	def fm_file_path(self):
+		"""
+		The full path of the file use for FileMaker transfer
+		:rtype: str
+		"""
+		return '%s%s' % (self.home_folder_full_path, self.FILE_MAKER_FN)
+
+	@property
 	def nozzle_url(self):
 		"""
 		Return the url to nozzle view of this report
@@ -1801,10 +1943,20 @@ class Report(Runnable):
 		else:
 			return ''
 
+	# clem 11/09/2015
+	@property
+	def is_shiny_enabled(self):
+		return self._type.is_shiny_enabled
+
 	def has_access_to_shiny(self, this_user):
+		"""
+		States if specific user is entitled to access this report through Shiny
+		:type this_user: User | OrderedUser
+		:rtype: bool
+		"""
 		assert isinstance(this_user, (User, OrderedUser))
 		return this_user and (this_user in self.shared.all() or self._author == this_user) \
-			and self._type.shiny_report.enabled
+			and self.is_shiny_enabled
 
 	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
 
@@ -1879,6 +2031,18 @@ class Report(Runnable):
 		result = src.substitute(d)
 		# save r-file
 		self._rexec.save(self.R_FILE_NAME, base.ContentFile(result))
+
+	# Clem 11/09/2015
+	def trigger_run_success(self, ret_val):
+		"""
+		Specific actions to do on SUCCESSFUL report runs
+		:type ret_val: drmaa.JobInfo
+		"""
+		import os
+		# TODO even migrate to SGE
+		if self.is_report and self.fm_flag and isfile(self.fm_file_path):
+			run = open(self.fm_file_path).read().split("\"")[1]
+			os.system(run)
 
 	@property
 	def dump_project_parameters(self):

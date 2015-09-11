@@ -6,6 +6,18 @@
 	<li class="{{ current_tab }}"><a href="#current" data-toggle="tab" id="current_tab_li_a">
 		In Progress {% if current_nb > 0 %}<span class="badge">{{ current_nb }}</span>{% endif %}</a></li>
 </ul>
+<script type="text/javascript">
+	function check_all(status){
+
+		if($(status).attr('checked')=='checked') {
+			$("input[name='delete']").attr('checked', 'checked');
+		}else {
+			$("input[name='delete']").removeAttr('checked');
+		}
+		//$("delete").attr('checked', 'checked');
+	}
+
+</script>
 <!-- Tabs' Content -->
 <div class="tab-content">
 	<!-- HISTORY -->
@@ -19,7 +31,8 @@
 					<th>Status</th>
 					<th>Download</th>
 					<th>Misc</th>
-					<th>Delete</th>
+					<th>Delete <input type="checkbox" name="del-all" value="" onclick="check_all(this);" /></th>
+
 				</tr>
 			</head>
 			<tbody id="history_top">

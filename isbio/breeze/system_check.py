@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from breeze import utils
 from breeze.auxiliary import proxy_to
 from isbio import settings
@@ -7,7 +8,7 @@ from django.http import HttpRequest
 # import breeze.auxiliary as aux
 
 
-DEBUG = False
+DEBUG = True
 SKIP_SYSTEM_CHECK = False
 FAIL_ON_CRITICAL_MISSING = True
 RAISE_EXCEPTION = False
@@ -66,6 +67,42 @@ WARN = '[' + Bcolors.warning('NO') + ']'
 proc_lst = list()
 
 
+# clem 10/09/2015
+def gen_test_report(the_user, gen_number=10, job_duration=30, time_break=1):
+	from breeze.views import report_overview
+	import time
+
+	posted = dict()
+	posted["project"] = 1
+	posted["Section_dbID_9"] = 0
+	posted["9_opened"] = 'False'
+	posted["Dropdown"] = 'Enter'
+	posted["Textarea"] = ''
+	posted["Section_dbID_81"] = 0
+	posted["81_opened"] = 'False'
+	posted["Section_dbID_118"] = '1'
+	posted["118_opened"] = 'True'
+	posted["sleep duration"] = str(job_duration)
+	posted["sleep_duration"] = str(job_duration)
+	posted["wait_time"] = str(job_duration)
+	posted["Groups"] = ''
+	posted["Individuals"] = ''
+
+	rq = HttpRequest()
+	# del rq.POST
+	rq.POST = posted
+	rq.user = the_user
+	rq.method = 'POST'
+
+	for i in range(1, gen_number+1):
+		name = 'SelfTest%s' % i
+		print name
+		report_overview(rq, 'TestPipe', name, '00000')
+		time.sleep(time_break)
+
+	print 'done.'
+
+
 # clem 08/09/2015
 class RunType:
 	@staticmethod
@@ -120,6 +157,7 @@ class SysCheckUnit:
 			proc_lst.append({ 'proc': p, 'chk': self }) # add process to the rendez-vous list
 		else:
 			p.join() # wait for process to finish
+			p.terminate()
 			return p.exitcode == 0
 
 	# clem 08/09/2015
@@ -177,6 +215,7 @@ def check_rdv(): # Rendez-vous for processes
 		if FAIL_ON_CRITICAL_MISSING and proc.exitcode != 0 and chk.mandatory:
 			print Bcolors.fail('BREEZE INIT FAILED')
 			raise chk.ex()
+		proc.terminate()
 
 	print Bcolors.ok_green('All checks done, system is up and running !')
 
@@ -258,8 +297,12 @@ def save_file_index():
 
 	fs_sig, save_obj = file_system_check()
 
-	open(settings.FS_SIG_FILE, 'w').write(fs_sig)
-	simplejson.dump(save_obj, open(settings.FS_LIST_FILE, 'w'))
+	f = open(settings.FS_SIG_FILE, 'w')
+	f.write(fs_sig)
+	f.close()
+	f = open(settings.FS_LIST_FILE, 'w')
+	simplejson.dump(save_obj, f)
+	f.close()
 	return True
 
 
@@ -291,7 +334,10 @@ def file_system_check(verbose=False):
 
 # clem on 21/08/2015
 def saved_fs_sig():
-	return open(settings.FS_SIG_FILE).readline()
+	f = open(settings.FS_SIG_FILE)
+	txt = f.readline()
+	f.close()
+	return txt
 
 
 ##
@@ -324,7 +370,9 @@ def deep_fs_check():
 
 	folders_state = list()
 	current_state = file_system_check()[1]
-	saved_state = simplejson.load(open(settings.FS_LIST_FILE))
+	f = open(settings.FS_LIST_FILE)
+	saved_state = simplejson.load(f)
+	f.close()
 	flag_changed = False
 	flag_invalid = False
 	errors = 0
@@ -502,9 +550,6 @@ def ui_checker_proxy(what):
 		return check_watcher()
 	else:
 		return obj.split_run(from_ui=True)
-
-
-
 
 check_list = list()
 

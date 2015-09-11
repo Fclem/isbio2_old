@@ -167,7 +167,7 @@ class Path(object):
 			unlink(path)
 			return True
 		except OSError as e:
-			get_logger().warning("unable to unlink : %s" % e)
+			get_logger().debug("unable to unlink : %s" % e)
 		return False
 
 	def auto_symlink(self, holder):

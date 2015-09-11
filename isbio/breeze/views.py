@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from Bio.Sequencing.Ace import rt
 from openid.yadis.parsehtml import ent_pat
+from os import lstat
 from social_auth.backends.pipeline import user
 import auxiliary as aux
 import forms as breezeForms
@@ -916,6 +917,7 @@ def dbPolicy(request):
 	return HttpResponseRedirect('/dbviewer/')
 
 
+@csrf_exempt
 @login_required(login_url='/')
 def report_overview(request, rtype, iname=None, iid=None, mod=None):
 	from django.http import HttpResponseServerError
@@ -963,10 +965,10 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		overview['manual'] = settings.MEDIA_URL + manual
 
 	if request.method == 'POST':
-		#pprint.pprint(request.POST)
+		# pprint.pprint(request.POST)
 		# Validates input info and creates (submits) a report
 		property_form = breezeForms.ReportPropsForm(request.POST, request=request)
-		#property_form = breezeForms.ReportPropsForm(request=request)
+		# property_form = breezeForms.ReportPropsForm(request=request)
 		try:
 			tags_data_list = breezeForms.validate_report_sections(tags, request)
 		except RRuntimeError:
@@ -1533,6 +1535,31 @@ def delete_report(request, rid, redir):
 	return HttpResponseRedirect('/reports/')
 
 
+# clem 11/09/2015
+@login_required(login_url='/')
+def runnable_del(request):
+	report = None
+	lst_del = request.POST.getlist('delete')
+	for each in lst_del:
+		r_id = str(each).replace('report-', '').replace('jobs-', '')
+		if str(each).startswith('report'):
+			obj = Report
+		elif str(each).startswith('job'):
+			obj = Jobs
+		try:
+			report = obj.objects.get(id=r_id)
+			# Enforce access rights
+			if report.author == request.user:
+				report.delete()
+		except ObjectDoesNotExist:
+			pass
+		except Exception as e:
+			pass
+
+	return dash_redir(request, report)
+	# return HttpResponseRedirect('/reports/')
+
+
 @login_required(login_url='/')
 def edit_report_access(request, rid):
 	report_inst = Report.objects.get(id=rid)
@@ -1843,7 +1870,10 @@ def abort_sge(request, id, type):
 		log.exception("job/report %s does not exists" % id)
 		return jobs(request, error_msg="job/report  %s  does not exists\nPlease contact Breeze support" % id)
 
-	s = item.abort()
+	try:
+		s = item.abort()
+	except Exception:
+		pass
 
 	if s:
 		return HttpResponseRedirect('/jobs/')
@@ -2061,9 +2091,11 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 		return aux.fail_with404(request, 'There is no record with id ' + jid + ' in DB')
 
 	# Enforce user access restrictions
-	if not(	('shared' in job.__dict__ and request.user in job.shared.all()) or
+	if not(('shared' in job.__dict__ and request.user in job.shared.all()) or
 			job.author == request.user or request.user.is_superuser):
 		raise PermissionDenied
+
+	# TODO move code to Runnable or FolderObj
 
 	loc = job.home_folder_full_path
 	files_list = os.listdir(loc)
@@ -2074,7 +2106,8 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 
 	if mod is None:
 		for item in files_list:
-			archive.write(loc + item, str(item))
+			if item not in job.hidden_files:
+				archive.write(loc + item, str(item))
 	elif mod == "-code":
 		for item in files_list:
 			if fnmatch.fnmatch(item, '*.r') or fnmatch.fnmatch(item, '*.Rout'):
@@ -2082,7 +2115,8 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 	elif mod == "-result":
 		for item in files_list:
 			if not fnmatch.fnmatch(item, '*.xml') and\
-				not fnmatch.fnmatch(item, '*.r*') and not fnmatch.fnmatch(item, '*.sh*'):
+				not fnmatch.fnmatch(item, '*.r*') and not fnmatch.fnmatch(item, '*.sh*') and\
+				item not in job.hidden_files:
 				archive.write(loc + item, str(item))
 
 	archive.close()

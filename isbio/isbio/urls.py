@@ -87,7 +87,8 @@ urlpatterns = patterns('',
 	# sub-level access control wrapper (out)
 	# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/rep/(?P<path>.*)$', views.report_shiny_out_wrapper),
 	# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/nozzle$', views.report_nozzle_out_wrapper),
-	# fusion thoses lines
+	url(r'^runnable/delete/', views.runnable_del),
+	# fusion theses lines
 	url(r'^jobs/current', views.jobs, {'state': "current"}),
 	url(r'^jobs/scheduled?$', views.jobs, {'state': "scheduled"}),
 	url(r'^jobs/history?$', views.jobs),

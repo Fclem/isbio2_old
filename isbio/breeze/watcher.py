@@ -61,35 +61,24 @@ class ProcItem(object):
 
 def refresh_db():
 	"""
-	Scan the db for new reports tu be run or updated
-	:return: if any changed occurred
-	:rtype: bool
+	Scan the db for new reports to be run or updated
 	"""
-	changed = False
-	django.db.close_connection()
+	# django.db.close_connection()
+	lst_r = Report.objects.f.get_run_wait()
+	lst_j = Jobs.objects.f.get_run_wait()
+	for item in lst_r:
+		_spawn_the_job(item)
+	for item in lst_j:
+		_spawn_the_job(item)
 
-	lst = Report.objects.f.get_active()
-	for item in lst:
+	lst_r = Report.objects.f.get_active()
+	lst_j = Jobs.objects.f.get_active()
+	for item in lst_r:
 		if item.id not in proc_lst.keys():
 			_reattach_the_job(item)
-
-	lst = Report.objects.f.get_run_wait()
-	for item in lst:
-		_spawn_the_job(item)
-		changed = True
-	# TODO merge this
-	lst = Jobs.objects.f.get_active()
-	for item in lst:
+	for item in lst_j:
 		if item.id not in proc_lst.keys():
 			_reattach_the_job(item)
-			# proc_lst.update({ item.id: (None, item) })
-
-	lst = Jobs.objects.f.get_run_wait()
-	for item in lst:
-		_spawn_the_job(item)
-		changed = True
-
-	return changed
 
 
 def end_tracking(proc_item): # proc_item):
@@ -99,7 +88,7 @@ def end_tracking(proc_item): # proc_item):
 	"""
 	# TODO check that
 	# proc_item.db_item.breeze_stat = JobStat.DONE
-	get_logger().info('%s%s : ending tracking' % proc_item.db_item.short_id)
+	get_logger().debug('%s%s : ending tracking' % proc_item.db_item.short_id)
 	a = proc_item.db_item.is_r_successful
 	# proc_item.process.terminate()
 	del proc_lst[proc_item.db_item.id]
@@ -218,13 +207,16 @@ def runner():
 	while True:
 		i += 1 # DB refresh time counter
 		j += 1 # PROC refresh time counter
-		if j == (PROC_REFRESH / sleep_time):
-			# console_print('proc_refresh')
-			j = 0
-			refresh_proc()
 		if i == (DB_REFRESH / sleep_time):
 			# console_print('db_refresh')
 			i = 0
+			# Process(target=refresh_db).start()
 			refresh_db()
+
+		if j == (PROC_REFRESH / sleep_time):
+			# console_print('proc_refresh')
+			j = 0
+			# Process(target=refresh_proc).start()
+			refresh_proc()
 
 		time.sleep(sleep_time)
