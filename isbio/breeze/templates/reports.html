@@ -51,8 +51,17 @@
 {% endblock %}
 
 {% block content %}
+	<!-- site map bar -->
+	<div class="row-fluid">
+		<div class="span10 offset1">
+			<ul class="breadcrumb pull-left" style="background-color: transparent;">
+				<li><a href="/home/">Breeze</a> <span class="divider">/</span></li>
+				<li class="active"> Reports</li>
+			</ul>
+		</div>
+	</div>
 	<!-- FILTER & CREATE BUTTONS ROW -->
-	<div class="row-fluid" style="padding-top: 15pt;">
+	<div class="row-fluid">
 		<!-- CREATE button -->
 		<a href="#" id="new_popover" class="btn btn-primary input-medium btn-left" rel="popover">
 			<strong><i class="icon-plus icon-white"></i> &nbsp;New Report </strong>

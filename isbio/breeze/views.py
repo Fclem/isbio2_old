@@ -174,16 +174,29 @@ def home(request, state="feed"):
 	# get all the script info
 	# rscripts = Rscripts.objects.all().get(draft=True)
 	# get all the report info
-	stats = Statistics.objects.all()
-	occurrences['jobs_running'] = Jobs.objects.filter(_author__exact=request.user).filter(_status__exact="active").count()
-	occurrences['jobs_scheduled'] = Jobs.objects.filter(_author__exact=request.user).filter(
-		_status__exact="scheduled").count()
-	occurrences['jobs_history'] = Jobs.objects.filter(_author__exact=request.user).exclude(
-		_status__exact="scheduled").exclude(status__exact="active").count()
+	occurrences['jobs_running'] = len(Jobs.objects.f.get_active()) + len(Report.objects.f.get_active())
+	occurrences['jobs_scheduled'] = len(Jobs.objects.f.get_scheduled()) + len(Report.objects.f.get_scheduled())
+	occurrences['jobs_history'] = len(Jobs.objects.f.get_done())
+	occurrences['reports_history'] = len(Report.objects.f.get_done())
 
 	occurrences['scripts_total'] = Rscripts.objects.filter(draft="0").count()
 	occurrences['scripts_tags'] = Rscripts.objects.filter(draft="0").filter(istag="1").count()
+	occurrences['report_types'] = len(ReportType.objects.all())
+
 	contacts = OffsiteUser.objects.filter(belongs_to=request.user).order_by('-created')
+
+	stats = list()
+	for each in Rscripts.objects.all().order_by('name'): # .order_by('author', 'name'):
+		assert isinstance(each, Rscripts)
+		# script author istag times
+		if each.istag:
+			count = 0
+			for element in each.report_type.all():
+				count += Report.objects.filter(type=element).count()
+		else:
+			count = Jobs.objects.filter(script=each).count()
+		stats.append({'script': each, 'author': each.author, 'istag': each.istag, 'times': count})
+
 
 	# Get Screens
 	screens = dict()  # rora.get_screens_info()
@@ -242,7 +255,7 @@ def updateServer(request):
 
 
 @login_required(login_url='/')
-def jobs(request, state="", error_msg=""):
+def jobs(request, state="", error_msg="", page=1):
 	if state == "scheduled":
 		tab = "scheduled_tab"
 		show_tab = "show_sched"
@@ -266,9 +279,9 @@ def jobs(request, state="", error_msg=""):
 	# merged_active = active_jobs | active_reports
 	merged_history = aux.merge_job_history(history_jobs, ready_reports)
 
-	paginator = Paginator(merged_history, 15)  # show 15 items per page
+	paginator = Paginator(merged_history, 12)  # show 15 items per page
 
-	page = request.REQUEST.get('page') or 1
+	# page = request.REQUEST.get('page') or 1
 	try:
 		hist_jobs = paginator.page(page)
 	except PageNotAnInteger:  # if page isn't an integer
@@ -311,7 +324,7 @@ def jobs(request, state="", error_msg=""):
 		str(tab): 'active',
 		str(show_tab): 'active',
 		'active_tab': state,
-		# 'jobs_status': 'active',
+		'jobs_status': 'active', # high light navbar tab
 		'dash_history': paginator.page(1)[0:3],
 		'scheduled': scheduled_jobs,
 		'history': hist_jobs,
@@ -461,7 +474,8 @@ def send_report(request, rid):
 			for each in send_form.cleaned_data['recipients']:
 				try:
 					report_inst.offsiteuser_set.add(each)
-				except IntegrityError:
+				except IntegrityError as e:
+					console_print('Exception in send_report : %s' % e)
 					pass
 				off_user = report_inst.offsiteuser_set.get(pk=each)
 				data = {
@@ -994,7 +1008,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			"""
 			return HttpResponse(True)
 		else:
-			#print('Has posted, not valid')
+			#  print('Has posted, not valid')
 			for x in tags_data_list:
 				x['value'] = request.POST.get('Section_dbID_' + str(x['id']))
 				if not 'size' in x:
@@ -1004,7 +1018,8 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		# Renders report overview and available tags
 		if mod == 'reload' and report:
 			property_form = breezeForms.ReportPropsFormRE(instance=report, request=request)
-			loc = str(settings.MEDIA_ROOT) + report._home_folder_rel
+			# loc = str(settings.MEDIA_ROOT) + report._home_folder_rel
+			loc = report.home_folder_full_path
 			try:
 				tags_data_list = breezeForms.create_report_sections(tags, request, data, files, path=loc)
 			except RRuntimeError:
@@ -1417,7 +1432,7 @@ def get_form(request, sid=None):
 	builder_form = ""
 
 	if request.method == 'GET' and sid is not None:
-		file_path = rshell.settings.MEDIA_ROOT + str(script.docxml)
+		file_path = rshell.settings.MEDIA_ROOT + str(script.docxml) # TODO check for path fitness (MEDIA ROOT)
 
 		if os.path.isfile(file_path):
 			tree = xml.parse(file_path)
@@ -1446,9 +1461,9 @@ def get_rcode(request, sid=None, sfile=None):
 	if request.method == 'GET' and sid is not None:
 
 		if sfile == 'Header':
-			file_path = rshell.settings.MEDIA_ROOT + str(script.header)
+			file_path = rshell.settings.MEDIA_ROOT + str(script.header) # TODO check MEDIA_PATH
 		elif sfile == 'Main':
-			file_path = rshell.settings.MEDIA_ROOT + str(script.code)
+			file_path = rshell.settings.MEDIA_ROOT + str(script.code) # TODO check MEDIA_PATH
 
 		if os.path.isfile(file_path):
 			handle = open(file_path, 'r')
@@ -1479,7 +1494,7 @@ def dash_redir(request, job=None, state=None):
 
 
 @login_required(login_url='/')
-def delete_job(request, jid, state):
+def delete_job(request, jid, state='', page=1):
 	job = None
 	try:
 		job = Jobs.objects.get(id=jid)
@@ -1491,6 +1506,7 @@ def delete_job(request, jid, state):
 	except ObjectDoesNotExist:
 		return aux.fail_with404(request, 'There is no job with id ' + str(jid) + ' in database')
 	except Exception as e:
+		console_print('Exception in delete_job : %s' % e)
 		pass
 
 	return dash_redir(request, job)
@@ -1528,6 +1544,7 @@ def delete_report(request, rid, redir):
 	except ObjectDoesNotExist:
 		return aux.fail_with404(request, 'There is no report with id ' + str(rid) + ' in database')
 	except Exception as e:
+		console_print('Exception in delete_report : %s' % e)
 		pass
 
 	if redir == '-dash':
@@ -1537,27 +1554,29 @@ def delete_report(request, rid, redir):
 
 # clem 11/09/2015
 @login_required(login_url='/')
-def runnable_del(request):
+@csrf_exempt
+def runnable_del(request, page=1, state=None):
 	report = None
 	lst_del = request.POST.getlist('delete')
 	for each in lst_del:
-		r_id = str(each).replace('report-', '').replace('jobs-', '')
+		r_id = str(each).replace('report-', '').replace('script-', '')
 		if str(each).startswith('report'):
 			obj = Report
-		elif str(each).startswith('job'):
+		elif str(each).startswith('script'):
 			obj = Jobs
 		try:
 			report = obj.objects.get(id=r_id)
 			# Enforce access rights
 			if report.author == request.user:
 				report.delete()
-		except ObjectDoesNotExist:
+		except ObjectDoesNotExist as e:
+			console_print('Object does not exist: %s' % e)
 			pass
 		except Exception as e:
+			console_print('Exception in delete_report : %s' % e)
 			pass
 
-	return dash_redir(request, report)
-	# return HttpResponseRedirect('/reports/')
+	return HttpResponseRedirect('/jobs/' + page)
 
 
 @login_required(login_url='/')
@@ -1668,71 +1687,48 @@ def check_reports(request):
 
 @login_required(login_url='/')
 def edit_job(request, jid=None, mod=None):
+	# TODO FIXME
 	from django.http import HttpResponseServerError
 	job = aux.get_job_safe(request, jid)
-
-	tree = xml.parse(str(settings.MEDIA_ROOT) + str(job.doc_ml))
-	# user_info = User.objects.get(username=request.user)
 	user_info = request.user
+	assert isinstance(job, Jobs)
 
 	if mod is not None:
 		mode = 'replicate'
 		tmp_name = str(job.name) + '_REPL'
-		edit = ""
+		edit = None
 	else:
 		mode = 'edit'
 		tmp_name = str(job.name)
 		edit = str(job.name)
+	try:
+		if request.method == 'POST':
+			if edit is None:
+				custom_form, head_form = rshell.build_script(request, job._type, job_inst=job)
 
-	if request.method == 'POST':
-		head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
-		try:
-			custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
-		except RRuntimeError:
-			return HttpResponseServerError()
-		if head_form.is_valid() and custom_form.is_valid():
-
-			if mode == 'replicate':
-				tmp_script = job.type
-				job = Jobs()
-				job.type = tmp_script
-				job.author = request.user
-				job.breeze_stat = JobStat.SCHEDULED
-				job.progress = 8
+				return HttpResponseRedirect('/jobs')
 			else:
-				# loc = rshell.get_job_folder(str(job.name), str(job.author.username))
-				shutil.rmtree(job.home_folder_full_path)
+				# EDIT :
+				head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
+				custom_form = breezeForms.form_from_xml(xml=job.xml_tree, req=request, usr=request.user)
+				if head_form.is_valid() and custom_form.is_valid():
+					job._name = head_form.cleaned_data['job_name']
+					job._description = head_form.cleaned_data['job_details']
+					job.mailing = rshell.gen_mail_str(request)
+					job.email = head_form.cleaned_data['report_to']
+					job.assemble(sections=job.xml_tree, request_data=request)
 
-			job.name = head_form.cleaned_data['job_name']
-			job.description = head_form.cleaned_data['job_details']
-
-			# rshell.assemble_job_folder(tree, custom_form, request.FILES, job)
-			# del request.POST
-			request.POST = custom_form
-			job.assemble(sections=tree, request_data=request)
-
-			# job.rexec.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
-			job.doc_ml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
-			# job.rexec.close()
-			job.doc_ml.close()
-
-			# rshell.schedule_job(job, request.POST)
-
-			# improve the manipulation with XML - tmp folder not a good idea!
-			os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
-			# os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
-			return HttpResponseRedirect('/jobs')
-	else:
-		head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.name),
-			initial={'job_name': str(tmp_name), 'job_details': str(job.description),
-			'report_to': str(job.email if job.email else user_info.email)})
-		try:
-			custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
-		except RRuntimeError:
-			return HttpResponseServerError()
+					return HttpResponseRedirect('/jobs')
+		else:
+			head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.name),
+				initial={'job_name': str(tmp_name), 'job_details': str(job.description),
+				'report_to': str(job.email if job.email else user_info.email)})
+			custom_form = breezeForms.form_from_xml(xml=job.xml_tree, usr=request.user)
+	except RRuntimeError:
+		return HttpResponseServerError()
 
 	return render_to_response('forms/user_modal.html', RequestContext(request, {
-		'url': "/jobs/edit/" + str(jid),
+		'url': "/jobs/edit/%s%s" % (str(jid), mod if mod is not None else ''),
 		'name': str(job.type.name),
 		'inline': str(job.type.inln),
 		'headform': head_form,
@@ -1745,91 +1741,33 @@ def edit_job(request, jid=None, mod=None):
 
 # TODO rewrite
 @login_required(login_url='/')
-def create_job(request, sid=None):
+def create_job(request, sid=None, page=1):
 	from django.http import HttpResponseServerError
 	script = Rscripts.objects.get(id=sid)
+	mail_addr = request.user.email
+	mails = dict
 
-	new_job = Jobs()
-	tree = xml.parse(script.xml_path)
-	script_name = str(script.name)  # tree.getroot().attrib['name']
-	script_inline = script.inln
-	user_info = request.user
-
-	mail_addr = user_info.email
-	mails = {'Started': '', 'Ready': '', 'Aborted': ''}
-	# print(request.method)
-	if request.method == 'POST':
-		# after fill the forms for creating the new job
-		head_form = breezeForms.BasicJobForm(request.user, None, request.POST)
-		try:
-			custom_form = breezeForms.form_from_xml(xml=tree, req=request, usr=request.user)
-		except RRuntimeError:
-			return HttpResponseServerError()
-		mail_addr = request.POST['report_to']
-		for key in mails:
-			if key in request.POST:
-				mails[key] = u'checked'
-				new_job.mailing += request.POST[key]
-
-		if head_form.is_valid() and custom_form.is_valid():
-			#rshell.build_script()
-			# TODO pass here
-			new_job._name = head_form.cleaned_data['job_name']
-			new_job._type = script
-			# rshell.assemble_job_folder(tree, custom_form, request.FILES, new_job)
-			new_job._description = head_form.cleaned_data['job_details']
-			# new_job.status = request.POST['job_status']
-			new_job.status = u"scheduled"
-			new_job._author = request.user
-			# TODO finish testing and debug
-			new_job.email = mail_addr
-			# new_job._rexec.save('name.r', File(open(str(settings.TEMP_FOLDER) + 'rexec.r')))
-			new_job._doc_ml.save('name.xml', File(open(str(settings.TEMP_FOLDER) + 'job.xml')))
-			# new_job._rexec.close()
-			new_job._doc_ml.close()
-			# shell.schedule_job(new_job, request.POST)
-			new_job.assemble(sections=tree, request_data=request)
-			new_job.breeze_stat = 'scheduled'
-			try:
-				stat = Statistics.objects.get(script=script)
-				stat.times += 1
-				stat.save()
-			except Statistics.DoesNotExist:
-				stat = Statistics()
-				stat.script = script
-				stat.author = script.author
-				stat.istag = script.istag
-				stat.times = 1
-				stat.save()
-
-			# TODO ? improve the manipulation with XML - tmp folder not a good idea!
-			os.remove(str(settings.TEMP_FOLDER) + 'job.xml')
-			os.remove(str(settings.TEMP_FOLDER) + 'rexec.r')
-
+	try:
+		if request.method == 'POST':
+			go_run = request.POST.get('run_job') or request.POST.get('action') and request.POST.get('action') == 'run_job'
+			custom_form, head_form = rshell.build_script(request, script, go_run)
+			request.POST = custom_form
 			state = "scheduled"
-			if request.POST.get('run_job') or request.POST.get('action') and request.POST.get('action') == 'run_job':
-				# run_script(request, new_job.id)
-				new_job.breeze_stat = JobStat.RUN_WAIT
+			if go_run:
 				state = "current"
-
-			print vars(request.POST)
-
-			# return HttpResponseRedirect('/jobs/')
-			# request = HttpResponse()
-			# request.method = "GET"
-			return jobs(request, state)
-	else:
-		mails = {'Started': u'checked', 'Ready': u'checked', 'Aborted': u'checked'}
-		head_form = breezeForms.BasicJobForm(user=request.user, edit=None, initial={'report_to': mail_addr})
-		try:
-			custom_form = breezeForms.form_from_xml(xml=tree, usr=request.user)
-		except RRuntimeError:
-			return HttpResponseServerError()
+			return jobs(request, page, state)
+		else:
+			# Empty form
+			mails = {'Started': u'checked', 'Ready': u'checked', 'Aborted': u'checked'}
+			head_form = breezeForms.BasicJobForm(user=request.user, edit=None, initial={'report_to': mail_addr})
+			custom_form = breezeForms.form_from_xml(xml=script.xml_tree, usr=request.user)
+	except RRuntimeError:
+		return HttpResponseServerError()
 
 	data = {
 		'url': "/scripts/apply-script/" + str(sid),
-		'name': script_name,
-		'inline': script_inline,
+		'name': script.name,
+		'inline': script.inln,
 		'headform': head_form,
 		'custform': custom_form,
 		'layout': "horizontal",
@@ -1872,7 +1810,8 @@ def abort_sge(request, id, type):
 
 	try:
 		s = item.abort()
-	except Exception:
+	except Exception as e:
+		console_print('Exception in abort sge : %s' % e)
 		pass
 
 	if s:
@@ -2031,7 +1970,8 @@ def save(request): # TODO : WTF is this ??
 
 def show_rcode(request, jid):
 	job = Jobs.objects.get(id=jid)
-	docxml = xml.parse(str(settings.MEDIA_ROOT) + str(job._doc_ml))
+	# docxml = xml.parse(str(settings.MEDIA_ROOT) + str(job._doc_ml))
+	docxml = xml.parse(str(job._doc_ml))
 	script = job._name  # docxml.getroot().attrib["name"]
 	inline = job._type.inln  # docxml.getroot().find('inline').text
 
@@ -2079,7 +2019,7 @@ def send_zipfile_j(request, jid, mod=None):
 	return send_zipfile(request, jid, mod, Jobs)
 
 
-# TODO Move to aux
+# TODO Move to aux or FolderObj or Runnable
 @login_required(login_url='/')
 def send_zipfile(request, jid, mod=None, serv_obj=None):
 	# 28/08/2015 changes : ACL, object agnostic, added Reports
@@ -2099,29 +2039,47 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 
 	loc = job.home_folder_full_path
 	files_list = os.listdir(loc)
-	zip_name = 'attachment; filename=' + str(job.name) + '.zip'
+	name = str(job.name)
 
 	temp = tempfile.TemporaryFile()
 	archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
 
+	if mod != "-result" and not request.user.is_superuser and not request.user.is_staff:
+		raise PermissionDenied
+
 	if mod is None:
+		name += '_full'
 		for item in files_list:
-			if item not in job.hidden_files:
+			# if item not in job.hidden_files:
+			try:
 				archive.write(loc + item, str(item))
+			except OSError as e:
+				print 'OSError', e
+				pass
 	elif mod == "-code":
+		name += '_Rcode'
 		for item in files_list:
-			if fnmatch.fnmatch(item, '*.r') or fnmatch.fnmatch(item, '*.Rout'):
-				archive.write(loc + item, str(item))
+			if fnmatch.fnmatch(item, '*.r') or fnmatch.fnmatch(item, '*.Rout') or item in job.system_files:
+				try:
+					archive.write(loc + item, str(item))
+				except OSError as e:
+					print 'OSError', e
 	elif mod == "-result":
+		name += '_result'
 		for item in files_list:
 			if not fnmatch.fnmatch(item, '*.xml') and\
 				not fnmatch.fnmatch(item, '*.r*') and not fnmatch.fnmatch(item, '*.sh*') and\
 				item not in job.hidden_files:
-				archive.write(loc + item, str(item))
+				try:
+					archive.write(loc + item, str(item))
+				except OSError as e:
+					print 'OSError', e
+
+	zip_name = 'attachment; filename=' + name + '.zip'
 
 	archive.close()
 	wrapper = FileWrapper(temp)
-	response = HttpResponse(wrapper, content_type='application/zip')
+	response = HttpResponse(wrapper, content_type='application/zip', mimetype='application/zip')
 	response['Content-Disposition'] = zip_name  # 'attachment; filename=test.zip'
 	response['Content-Length'] = temp.tell()
 	temp.seek(0)
@@ -2141,6 +2099,7 @@ def send_template(request, name):
 
 
 @login_required(login_url='/')
+# FIXEME : DEPRECATED
 def send_file(request, ftype, fname):
 	"""
 		Supposed to be generic function that can send single file to client.

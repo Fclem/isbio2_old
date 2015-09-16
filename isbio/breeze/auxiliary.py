@@ -305,14 +305,15 @@ def merge_job_history(jobs, reports):
 			el['ddownhref'] = '/jobs/download/%s-code'%str(item.id)  # debug
 			el['fdownhref'] = '/jobs/download/%s'%str(item.id)  # full folder
 			
-			el['home'] = ''
-			el['reschedhref'] = 'jobs/%s-repl'%str(item.id)
+			el['home'] = item._home_folder_rel
+			el['reschedhref'] = '/jobs/edit/%s-repl'%str(item.id)
 
 			el['delhref'] = '/jobs/delete/%s'%str(item.id)
 			el['abohref'] = '/abortjobs/%s'%str(item.id)
 
 			el['progress'] = item.progress
 			el['type'] = item.script
+			el['r_error'] = item.r_error
 
 			el['shiny_key'] = ''
 
@@ -323,7 +324,8 @@ def merge_job_history(jobs, reports):
 			el['status'] = item.status
 			el['staged'] = item.created
 
-			el['rdownhref'] = '/get/report-%s'%str(item.id)  # results
+			# el['rdownhref'] = '/get/report-%s'%str(item.id)  # results
+			el['rdownhref'] = '/report/download/%s-result'%str(item.id)  # results
 			el['ddownhref'] = '/report/download/%s-code' % str(item.id)  # debug
 			el['fdownhref'] = '/report/download/%s' % str(item.id)  # full folder
 
@@ -335,6 +337,7 @@ def merge_job_history(jobs, reports):
 
 			el['progress'] = item.progress
 			el['type'] = item.type
+			el['r_error'] = item.r_error
 
 			el['shiny_key'] = item.shiny_key
 

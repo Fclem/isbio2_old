@@ -279,3 +279,4 @@ class ObjectsWithAuth(django.db.models.Manager):
 			raise PermissionDenied
 
 		return obj
+

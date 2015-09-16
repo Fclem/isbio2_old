@@ -32,12 +32,20 @@
 {% endblock %}
 
 {% block content %}
-
+	<!-- site map bar -->
+	<div class="row-fluid">
+		<div class="span10 offset1">
+			<ul class="breadcrumb pull-left" style="background-color: transparent;">
+				<li><a href="/home/">Breeze</a> <span class="divider">/</span></li>
+				<li class="active"> Markets</li>
+			</ul>
+		</div>
+	</div>
 <div class="row-fluid">
     <!-- nav bar -->
     <div class="span2 offset1">
         <div data-spy="affix" >
-          <ul class="nav nav-list" id="scriptTabs" style="margin-top: 55px;">
+          <ul class="nav nav-list" id="scriptTabs" style="margin-top: 15px;">
             <li> <a href="#mycart" data-toggle="tab" data-param="/mycart" class="showcart" ><i class="icon-shopping-cart"></i> <strong> My Cart <span class='label label-success' id="countcart"> {{ count_mycart }} </span> </strong></li>
             <li class="nav-header"><strong>CATEGORIES:</strong></li>
             <li class="active"><a href="#all" data-toggle="tab"><strong>All</strong></a></li>
@@ -54,12 +62,7 @@
     
     <!-- show the products -->
     <div class="span8">
-        <div class="row-fluid">
-          <div class="span12">
-            <p><br>&nbsp;<br></p>
-          </div>
-        </div>
-        
+
         <div class=" row-fluid">
             <div class="span12">
                 <div class="tab-content">

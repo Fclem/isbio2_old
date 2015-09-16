@@ -1,6 +1,6 @@
 {% load bootstrap_toolkit %}
 <!-- Apply Modal -->
-  <form id="form_modal_apply" class="form-horizontal script-form" action={{ url }} method="post" enctype="multipart/form-data">
+  <form id="form_modal_apply" class="form-horizontal script-form" action="{{ url }}" method="POST" enctype="multipart/form-data">
     <div id="form_modal_apply_div">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -38,14 +38,14 @@
         {% endfor %}
 
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer"><!-- TODO fix thoses diabled stuff because they are broken -->
         {% if  mode == "create" %}
-        <input class="btn" name="schedule_job" id="schedule_job" type="submit" value="Schedule" form="form_modal_apply"/>
+        <input class="btn" title="This functionality is deprecated" name="schedule_job" id="schedule_job" type="submit" value="Schedule" disabled form="form_modal_apply"/>
         <input class="btn btn-primary" name="run_job" id="run_job" type="submit" value="Run" form="form_modal_apply"/>
         {% elif  mode == "edit" %}
-        <input class="btn btn-primary" type="submit" value="Save" data-loading-text="Loading..." />
+        <input class="btn btn-primary" type="submit" value="Save" data-loading-text="Loading..." form="form_modal_apply" />
         {% elif  mode == "replicate" %}
-        <input class="btn btn-primary" type="submit" value="ReSchedule" />
+        <input class="btn btn-primary" title="This functionality is deprecated" type="submit" value="ReSchedule" form="form_modal_apply" disabled/>
         {% endif %}
         <a class="btn btn-inverse" data-dismiss="modal">Close</a>
       </div>

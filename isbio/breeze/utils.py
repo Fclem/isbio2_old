@@ -10,6 +10,45 @@ from breeze.b_exceptions import *
 logger = logging.getLogger(__name__)
 
 
+class Bcolors:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
+
+	@staticmethod
+	def ok_blue(text):
+		return Bcolors.OKBLUE + text + Bcolors.ENDC
+
+	@staticmethod
+	def ok_green(text):
+		return Bcolors.OKGREEN + text + Bcolors.ENDC
+
+	@staticmethod
+	def fail(text):
+		return Bcolors.FAIL + text + Bcolors.ENDC
+
+	@staticmethod
+	def warning(text):
+		return Bcolors.WARNING + text + Bcolors.ENDC
+
+	@staticmethod
+	def header(text):
+		return Bcolors.HEADER + text + Bcolors.ENDC
+
+	@staticmethod
+	def bold(text):
+		return Bcolors.BOLD + text + Bcolors.ENDC
+
+	@staticmethod
+	def underlined(text):
+		return Bcolors.UNDERLINE + text + Bcolors.ENDC
+
+
 # 25/06/2015 Clem
 def console_print(text, datef=None):
 	print console_print_sub(text, datef=datef)

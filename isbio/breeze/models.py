@@ -36,6 +36,11 @@ class JobState(drmaa.JobState):
 	PENDING = 'pending'
 	ON_HOLD = 'pending'
 
+	@staticmethod
+	@property
+	def R_FAILDED():
+		pass
+
 
 _JOB_PS = {
 	'': JobState.UNDETERMINED,
@@ -80,6 +85,7 @@ class JobStat(object):
 	SUCCEED = 'succeed'
 	SUBMITTED = 'submitted'
 	PREPARE_RUN = 'prep_run'
+	R_FAILED = JobState.R_FAILDED
 
 	__decode_status = {
 		JobState.UNDETERMINED: 'process status cannot be determined',
@@ -92,7 +98,8 @@ class JobStat(object):
 		JobState.USER_SUSPENDED: 'job is user suspended',
 		JobState.DONE: 'job finished normally',
 		SUCCEED: 'job finished normally',
-		JobState.FAILED: 'job finished, but failed',
+		JobState.FAILED: 'job finished, but SGE failed',
+		JobState.R_FAILDED: 'job finished but R script failed',
 		ABORTED: 'job has been aborted',
 		ABORT: 'job is being aborted...',
 		INIT: 'job instance is being generated...',
@@ -119,7 +126,7 @@ class JobStat(object):
 		if stat is Exception:
 			return 66
 		elif stat == JobStat.SCHEDULED:
-			return 0
+			return 2
 		elif stat == JobStat.INIT:
 			return 4
 		elif stat == JobStat.RUN_WAIT:
@@ -180,7 +187,7 @@ class JobStat(object):
 			self.status = status
 		self.stat_text = self.textual(status) # clear text status description
 
-		return self.status, self.breeze_stat, progress, self.textual(status)
+		return self.status, self.breeze_stat, progress, self.stat_text
 
 	def __init__(self, status):
 		self._init_stat = None
@@ -194,7 +201,7 @@ class JobStat(object):
 			raise InvalidArgument
 
 	@staticmethod
-	def textual(stat):
+	def textual(stat, obj=None):
 		"""
 		Return string representation of current status
 		:param stat: current status
@@ -202,6 +209,9 @@ class JobStat(object):
 		:return: string representation of current status
 		:rtype: str
 		"""
+		if stat == JobStat.FAILED:
+			if isinstance(obj, Runnable) and obj.is_r_failure:
+				stat = JobStat.R_FAILED
 		if stat in JobStat.__decode_status:
 			return JobStat.__decode_status[stat]
 		else:
@@ -939,6 +949,13 @@ class Rscripts(FolderObj, models.Model):
 	def xml_path(self):
 		return settings.MEDIA_ROOT + str(self.docxml)
 
+	@property
+	def xml_tree(self):
+		if not hasattr(self, '_xml_tree'): # caching
+			import xml.etree.ElementTree as xml
+			self._xml_tree = xml.parse(self.xml_path)
+		return self._xml_tree
+
 	def is_valid(self):
 		"""
 		Return true if the tag XML file is present and non empty
@@ -1070,12 +1087,13 @@ class Runnable(FolderObj, models.Model):
 	RQ_FIELDS = ['_name', '_author', '_type']
 	R_FILE_NAME_BASE = 'script'
 	R_FILE_NAME = R_FILE_NAME_BASE + '.r'
-	R_OUT_FILE_NAME = R_FILE_NAME + '.Rout'
+	R_OUT_EXT = '.Rout'
+	R_OUT_FILE_NAME = R_FILE_NAME + R_OUT_EXT
 	RQ_SPECIFICS = ['request_data', 'sections']
 	FAILED_R = 'Execution halted'
 	SH_CL = '#!/bin/bash \ntouch ./%s' % INC_RUN_FN + ' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
-		% (SUCCESS_FN, INC_RUN_FN) + 'txt="%s"\nCMD=`tail -n1<%s`\nif [ "$CMD" = "%s" ];' % \
-		(FAILED_R, R_OUT_FILE_NAME, FAILED_R) + '\nthen\n	touch ./%s\nfi' % FAILED_FN
+		% (SUCCESS_FN, INC_RUN_FN) + 'txt="%s"\n' % FAILED_R + 'CMD=`tail -n1<%s`\n' \
+			+ 'if [ "$CMD" = "%s" ]; \nthen\n	touch ./%s\nfi' % (FAILED_FN, FAILED_FN)
 	SYSTEM_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, INC_RUN_FN, FAILED_FN, SUCCESS_FN, FILE_MAKER_FN]
 	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN] # TODO add FM file ?
 
@@ -1156,13 +1174,17 @@ class Runnable(FolderObj, models.Model):
 		"""
 		return False
 
+	@property
+	def sh_command_line(self):
+		return self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path, self._rout_file)
+
 	@property # UNUSED ?
 	def html_path(self):
 		return '%s%s' % (self.home_folder_full_path, self.REPORT_FILE_NAME)
 
 	@property # UNUSED ?
 	def _r_out_path(self):
-		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
+		return self._rout_file
 
 	@property # used by write_sh_file() # useless #Future ?
 	def _r_exec_path(self):
@@ -1183,7 +1205,8 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def _rout_file(self):
-		return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
+		# return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
+		return '%s%s' % (self._rexec, self.R_OUT_EXT)
 
 	@property
 	def _failed_file(self):
@@ -1242,6 +1265,21 @@ class Runnable(FolderObj, models.Model):
 		"""
 		return self.SYSTEM_FILES + [self._sge_log_file] + self._shiny_files
 
+	# clem 16/09/2015
+	@property
+	def r_error(self):
+		out = ''
+		if self.is_r_failure:
+			lines = open(self._rout_file).readlines()
+			i = len(lines)
+			size = i
+			for i in range(len(lines)-1, 0, -1):
+				if lines[i].startswith('>'):
+					break
+			if i != size:
+				out = ''.join(lines[i:])[:-1]
+		return out
+
 	# clem 11/09/2015
 	@property
 	def hidden_files(self):
@@ -1249,7 +1287,7 @@ class Runnable(FolderObj, models.Model):
 		Return a list of system requires files
 		:rtype: list
 		"""
-		return self.HIDDEN_FILES + [self._sge_log_file] + self._shiny_files
+		return self.HIDDEN_FILES + [self._sge_log_file, self._rout_file, self._r_exec_path] + self._shiny_files
 
 	@property
 	def sge_job_name(self):
@@ -1304,6 +1342,14 @@ class Runnable(FolderObj, models.Model):
 			isfile(self._rout_file)
 
 	@property
+	def is_r_failure(self):
+		"""Tells if the job R job has failed (not equal to the oposite of is_r_successful)
+		:rtype: bool
+		"""
+		return self.is_done and isfile(self._failed_file) and not isfile(self._incomplete_file) and \
+			isfile(self._rout_file)
+
+	@property
 	def aborting(self):
 		"""Tells if job is being aborted
 		:rtype: bool
@@ -1340,16 +1386,23 @@ class Runnable(FolderObj, models.Model):
 		os.chmod(self._sh_file_path, st.st_mode | stat.S_IEXEC)
 
 		# Thanks to ' && touch ./done' breeze can always asses if the run was completed (successful or not)
-		command = self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path)
+		command = self.sh_command_line # self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path)
 		config.write(command)
 		config.close()
 
-	# interface for extending assembling process
+	# INTERFACE for extending assembling process
+	def generate_r_file(self, *args, **kwargs):
+		""" Place Holder for instance specific R files generation
+		THIS METHOD MUST BE overridden in subclasses
+		"""
+		raise self.not_imp()
+
+	# INTERFACE for extending assembling process
 	def deferred_instance_specific(self, *args, **kwargs):
 		"""
 		Specific operations to generate job or report instance dependencies.
 		N.B. : you CANNOT use m2m relations before this point
-		YOU MUST DEFINE THIS METHOD
+		THIS METHOD MUST BE overridden in subclasses
 		"""
 		raise self.not_imp()
 
@@ -1421,44 +1474,45 @@ class Runnable(FolderObj, models.Model):
 		except Exception as e:
 			log.exception('%s%s : ' % self.short_id + 'pre-run error %s (process continues)' % e)
 
-		try:
-			s = drmaa.Session()
-			s.initialize()
+		#try:
+		s = drmaa.Session()
+		s.initialize()
 
-			jt = s.createJobTemplate()
-			jt.workingDirectory = self.home_folder_full_path
-			jt.jobName = self.sge_job_name
-			jt.email = [str(self._author.email)]
-			if self.mailing != '':
-				jt.nativeSpecification = "-m " + self.mailing
-			if self.email != '':
-				jt.email = jt.email.append(str(self.email))
-			jt.blockEmail = False
+		jt = s.createJobTemplate()
+		jt.workingDirectory = self.home_folder_full_path
+		jt.jobName = self.sge_job_name
+		jt.email = [str(self._author.email)]
+		if self.mailing != '':
+			jt.nativeSpecification = "-m " + self.mailing
+		if self.email is not None and self.email != '':
+			jt.email.append(str(self.email))
+		jt.blockEmail = False
 
-			jt.remoteCommand = config
-			jt.joinFiles = True
+		jt.remoteCommand = config
+		jt.joinFiles = True
 
-			self.progress = 25
-			self.save()
-			import copy
-			if not self.aborting:
-				self.sgeid = copy.deepcopy(s.runJob(jt))
-				log.debug('%s%s : ' % self.short_id + 'returned sge_id "%s"' % self.sgeid)
-				self.breeze_stat = JobStat.SUBMITTED
-			# waiting for the job to end
-			self.waiter(s, True)
+		self.progress = 25
+		self.save()
+		import copy
+		if not self.aborting:
+			self.sgeid = copy.deepcopy(s.runJob(jt))
+			log.debug('%s%s : ' % self.short_id + 'returned sge_id "%s"' % self.sgeid)
+			self.breeze_stat = JobStat.SUBMITTED
+		# waiting for the job to end
+		self.waiter(s, True)
 
-			jt.delete()
-			s.exit()
-			os.chdir(default_dir)
+		jt.delete()
+		s.exit()
+		os.chdir(default_dir)
 
-		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
-				Exception) as e:
-			log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated : %s' % e)
-			self.__manage_run_failed(None, '', None)
-			if s is not None:
-				s.exit()
-			return 1
+		#except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
+		#		Exception) as e:
+		#	log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated : %s' % e)
+		#	self.__manage_run_failed(None, '', None)
+		#	if s is not None:
+		#		s.exit()
+		#	raise e
+		#	return 1
 
 		log.debug('%s%s : ' % self.short_id + 'drmaa job submit terminated successfully !')
 		return 0
@@ -1671,6 +1725,7 @@ class Runnable(FolderObj, models.Model):
 		""" Textual representation of current status
 		:rtype: str
 		"""
+		return JobStat.textual(self._status, self)
 		try:
 			return self._stat_text
 		except AttributeError:
@@ -1823,8 +1878,22 @@ class Jobs(Runnable):
 
 	_path_r_template = settings.SCRIPT_TEMPLATE_PATH
 
+	@property
+	def xml_tree(self):
+		if not hasattr(self, '_xml_tree'): # caching
+			import xml.etree.ElementTree as xml
+			self._xml_tree = xml.parse(self._doc_ml)
+		return self._xml_tree
+
 	def deferred_instance_specific(self, *args, **kwargs):
-		kwargs['sections'].write(str(settings.TEMP_FOLDER) + 'job.xml') # change with ml
+		if 'sections' in kwargs:
+			tree = kwargs.pop('sections')
+			a_path = self.file_name('form.xml')
+			tree.write(a_path)
+			self._doc_ml = a_path
+		else:
+			raise InvalidArgument
+		# kwargs['sections'].write(str(settings.TEMP_FOLDER) + 'job.xml') # change with ml
 
 	def generate_r_file(self, tree, request_data):
 		"""
@@ -2100,20 +2169,6 @@ class Report(Runnable):
 	class Meta(Runnable.Meta): # TODO check if inheritance is required here
 		abstract = False
 		db_table = 'breeze_report'
-
-
-class Statistics(models.Model):
-	# script = models.CharField(max_length=55)
-	script = ForeignKey(Rscripts)
-	author = ForeignKey(User)
-	istag = models.BooleanField(default=False)
-	times = models.PositiveSmallIntegerField(default=0)
-	
-	def __unicode__(self):
-		return self.script
-	
-	class Meta:
-		ordering = ['-times']
 
 
 class ShinyTag(models.Model):

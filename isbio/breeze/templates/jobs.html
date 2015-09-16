@@ -8,12 +8,68 @@
 		}
 	</style>
 	<script type="text/javascript" src="/static/js/bootstrap-paginator.min.js"></script>
+
+	<script type="text/javascript" src="/static/js/bootstrap-multiselect.js"></script>
+	<link rel="stylesheet" href="/static/css/bootstrap-multiselect.css" type="text/css"/>
+	<link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
+	<script src="/static/js/bootstrapSwitch.js"></script>
+
+	<style type="text/css">
+		#main_table td { text-align: center; vertical-align: middle; }
+
+		#main_table th { text-align: center; vertical-align: middle; }
+
+		.popover .left {
+			max-width: 1050px;
+			width: auto;
+		}
+
+		div.popover.fade.right {
+			z-index: 1500;
+		}
+
+		.pagination {
+			margin-top: 15px;
+			margin-right: 0px;
+			margin-bottom: 15px;
+			margin-left: 0px;
+		}
+
+		.btn-left {
+			top: 0px;
+			left: 9%;
+			position: relative;
+			float: left;
+			z-index: 200;
+		}
+
+		.btn-right {
+			top: 0px;
+			right: 9%;
+			position: relative;
+			float: right;
+			z-index: 200;
+		}
+
+		#demo {
+			z-index: 150;
+		}
+	</style>
+
 {% endblock %}
 {% block content %}
 	<!-- TODO : TOTAL REDISIGN OF THIS PAGE, REMOVE THE BS JS code and go full AJAX -->
+	<!-- site map bar -->
 	<div class="row-fluid">
-		&nbsp;
+		<div class="span10 offset1">
+			<ul class="breadcrumb pull-left" style="background-color: transparent;">
+				<li><a href="/home/">Breeze</a> <span class="divider">/</span></li>
+				<li class="active"> Dashboard</li>
+			</ul>
+		</div>
 	</div>
+
+	<!-- MAIN container -->
 	<div class="row-fluid">
 		<!-- LEFT DASH PANEL -->
 		<div class="span3 offset1">
@@ -51,7 +107,8 @@
 	<!-- TODO redesign due to : very poor design :: (too much) duplicated code -->
 	<script type="text/javascript">
 		function changePage(e, oldPage, newPage, callback) {
-			$.get("/jobs/", {page: newPage}, function (data) {
+			//$.get("/jobs/" , {page: newPage}, function (data) {
+			$.get("/jobs/" + newPage + "/", {}, function (data) {
 				$('#history_top').html(data);
 				if('function'==typeof callback) {
 					callback();
@@ -118,7 +175,7 @@
 	<script type="text/javascript">
 		function submitItemModalFormBind(url){
 			$('#form_modal_apply').submit(function(ev){
-				var formData = new FormData($('form')[0]);
+				var formData = new FormData($('#form_modal_apply')[0]);
 				$.ajax({
 					type: "POST",
 					url: url,
@@ -133,7 +190,7 @@
 
 							$('#form_modal_apply_div').html(form);
 
-							$("input:file").each(function(){
+							$("input:file").each(function(){ // FIXME : realy dirty hack
 								if ( $(this).hasClass('TPL') ){
 									var which = $(this).attr('which');
 									$(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
@@ -151,7 +208,7 @@
 							//document.write(response);
 							//document.close();
 							//$("#Apply").modal('hide');
-							window.location.href = '/jobs/';
+							window.location.href = '/jobs/{{ page|default:1 }}/';
 						}
 					},
 					error: function (request, status, error) {
@@ -173,11 +230,11 @@
 			$(".apply").click(function(ev) {
 				ev.preventDefault(); // prevent navigation
 				var par = $(this).data("param");
-				$.get("/jobs/edit/"+par, function(results){
+				$.get(par, function(results){
 					//update the dom with the received form
 					$('#Apply').html(results);
 
-					$("input:file").each(function(){
+					$("input:file").each(function(){ //FIXME dirty hack
 						if ( $(this).hasClass('TPL') ){
 							var which = $(this).attr('which');
 							$(this).after('<br/><a href="/get/template/' + which.toString() + '" class="btn btn-mini btn-primary"> Click to download a template<a/>');
@@ -189,7 +246,7 @@
 					$("#Apply").modal('show');
 					$(document).ready(function () {
 						//bind the form to an ajax call. ajax call will be set to the received update url
-						submitItemModalFormBind("/jobs/edit/"+par);
+						submitItemModalFormBind(par);
 					});
 
 				}, "html");
@@ -200,9 +257,14 @@
 		var last_state = [];
 
 		function updateJobs(jid, item, has_error) {
+			if(item=='script') {
+				var type = 'jobs';
+			}else {
+				var type = 'reports';
+			}
 			$.ajax({
 				type: "GET",
-				url: "/update-jobs/"+jid+"-"+item,
+				url: "/" + type + "/info/"+jid,
 				dataType : 'json',
 				success: function (msg) {
 					var arg = "width: " + msg.progress.toString() + "%";

@@ -56,7 +56,8 @@
 			<!-- Download button (only if user has access) -->
 			<td>
 				{% if report.user_has_access %}
-					<a class="Glyph" data-toggle="tooltip" title="Download HTML<br>NB: Embedded links won't work" href="/reports/get/{{ report.id }}">
+					<!--<a class="Glyph" data-toggle="tooltip" title="Download HTML<br>NB: Embedded links won't work" href="/reports/get/{{ report.id }}">-->
+					<a class="Glyph" target="_blank" href="/report/download/{{ report.id }}-result" data-toggle="tooltip" title="Download result archive<br />Includes everything">
 						<i class="icon-download-alt"></i>
 					</a>
 				{% else %}

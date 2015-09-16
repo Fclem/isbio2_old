@@ -8,6 +8,45 @@ from datetime import datetime
 # TODO : redesign
 
 
+class Bcolors:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
+
+	@staticmethod
+	def ok_blue(text):
+		return Bcolors.OKBLUE + text + Bcolors.ENDC
+
+	@staticmethod
+	def ok_green(text):
+		return Bcolors.OKGREEN + text + Bcolors.ENDC
+
+	@staticmethod
+	def fail(text):
+		return Bcolors.FAIL + text + Bcolors.ENDC
+
+	@staticmethod
+	def warning(text):
+		return Bcolors.WARNING + text + Bcolors.ENDC
+
+	@staticmethod
+	def header(text):
+		return Bcolors.HEADER + text + Bcolors.ENDC
+
+	@staticmethod
+	def bold(text):
+		return Bcolors.BOLD + text + Bcolors.ENDC
+
+	@staticmethod
+	def underlined(text):
+		return Bcolors.UNDERLINE + text + Bcolors.ENDC
+
+
 def recur(nb, funct, args):
 	while nb > 0:
 		args = funct(args)
@@ -20,10 +59,12 @@ def recur_rec(nb, funct, args):
 		return recur_rec(nb - 1, funct, funct(args))
 	return args
 
+MAINTENANCE = False
 USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S%z"
 DB_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_FOLDER = '/var/log/breeze/'
 log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
-LOG_PATH = '/var/log/breeze/%s' % log_fname
+LOG_PATH = '%s%s' % (LOG_FOLDER, log_fname)
 
 
 class BreezeSettings(Settings):
@@ -86,14 +127,14 @@ class BreezeSettings(Settings):
 
 	# !CUSTOM!
 	# Tempory folder for the application
-	TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
+	#TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
 	# Path to R installation
 	R_ENGINE_PATH = 'R '
 
 	# Absolute filesystem path to the directory that will hold user-uploaded files.
 	# Example: "/home/media/media.lawrence.com/media/"
-	MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
-	RORA_LIB = '/home/comrade/Projects/fimm/roralib/'
+	#MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
+	#RORA_LIB = '/home/comrade/Projects/fimm/roralib/'
 
 	# URL that handles the media served from MEDIA_ROOT. Make sure to use a
 	# trailing slash.
@@ -112,7 +153,7 @@ class BreezeSettings(Settings):
 
 	# Additional locations of static files
 	STATICFILES_DIRS = (
-		"/home/comrade/Projects/fimm/isbio/breeze/",
+		#"/home/comrade/Projects/fimm/isbio/breeze/",
 		# Put strings here, like "/home/html/static" or "C:/www/django/static".
 		# Always use forward slashes, even on Windows.
 		# Don't forget to use absolute paths, not relative paths.
@@ -183,6 +224,7 @@ class BreezeSettings(Settings):
 		'django.contrib.staticfiles',
 		'bootstrap_toolkit',
 		'breeze',
+		'down',
 		'south',
 		'gunicorn',
 		# Uncomment the next line to enable the admin:
@@ -199,12 +241,26 @@ class BreezeSettings(Settings):
 	LOGGING = {
 		'version': 1,
 		'disable_existing_loggers': False,
+		'formatters': {
+			'standard': {
+				'format': '%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
+				'datefmt': USUAL_DATE_FORMAT,
+			},
+		},
 		'filters': {
 			'require_debug_false': {
 				'()': 'django.utils.log.RequireDebugFalse'
 			}
 		},
 		'handlers': {
+			'default': {
+				'level': 'DEBUG',
+				'class': 'logging.handlers.RotatingFileHandler',
+				'filename': '%srotary.log' % LOG_FOLDER,
+				'maxBytes': 1024 * 1024 * 5, # 5 MB
+				'backupCount': 10,
+				'formatter': 'standard',
+			},
 			'mail_admins': {
 				'level': 'ERROR',
 				'filters': ['require_debug_false'],
@@ -212,6 +268,11 @@ class BreezeSettings(Settings):
 			}
 		},
 		'loggers': {
+			'': {
+				'handlers': ['default'],
+				'level': logging.INFO,
+				'propagate': True
+			},
 			'django.request': {
 				'handlers': ['mail_admins'],
 				'level': 'ERROR',
@@ -227,8 +288,8 @@ class BreezeSettings(Settings):
 		'breeze.context.user_context'
 	)
 
+
 class DevSettings(BreezeSettings):
-# class DevSettings(Settings):
 	global USUAL_DATE_FORMAT, LOG_PATH
 	DEBUG = True
 	VERBOSE = False
@@ -466,8 +527,10 @@ class DevSettings(BreezeSettings):
 		DEBUG = False
 		VERBOSE = False
 
-	print 'Logging on %s\nSettings loaded. Running %s on %s' % (LOG_PATH, RUN_MODE, FULL_HOST_NAME)
+	print 'Logging on %s\nSettings loaded. Running %s on %s' %\
+	(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME))
 	if PHARMA_MODE:
-		print 'RUNNING WITH PHARMA'
-	logging.info('Settings loaded. Running %s on %s' % (RUN_MODE, FULL_HOST_NAME))
+		print Bcolors.bold('RUNNING WITH PHARMA')
+	logging.info('Settings loaded. Running %s on %s' % (
+	Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME)))
 
