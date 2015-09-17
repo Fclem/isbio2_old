@@ -361,13 +361,14 @@ def check_is_file_system_unchanged():
 
 
 # clem 25/08/2015
-def deep_fs_check():
+def deep_fs_check(): # TODO optimize (too slow)
 	"""
 	Return flag_changed, flag_invalid, files_state, folders_state
 	:return: flag_changed, flag_invalid, files_state, folders_state
 	:rtype:
 	"""
 	from django.utils import simplejson
+	from hurry.filesize import size, si
 	files_state = list()
 
 	folders_state = list()
@@ -379,14 +380,33 @@ def deep_fs_check():
 	flag_invalid = False
 	errors = 0
 
+	def getFolderSize(folder):
+		import os
+		total_size = os.path.getsize(folder)
+		for item in os.listdir(folder):
+			itempath = os.path.join(folder, item)
+			if os.path.isfile(itempath):
+				total_size += os.path.getsize(itempath)
+			elif os.path.isdir(itempath):
+				total_size += getFolderSize(itempath)
+		return total_size
+
+	folder = dict()
+
 	for each in saved_state:
 		status = dict()
 		status['name'] = each
+		status['size'] = 0
 		if each not in current_state:
 			status['status'] = 'MISSING'
 			flag_changed = True
 			errors += len(saved_state[each])
 		else:
+			folder_count = len(saved_state[each])
+			folder_size = size(getFolderSize(each), system=si)
+			folder[each] = { 'count': folder_count, 'size': folder_size}
+			status['count'] = folder_count
+			status['size'] = folder_size
 			if saved_state[each] == current_state[each]:
 				status['status'] = 'OK'
 			else:
@@ -426,7 +446,7 @@ def deep_fs_check():
 		for file_n in cs:
 			flag_changed = True
 			files_tmp.append({ 'name': file_n, 'status': 'ADDED' })
-		files_state.append({ 'name': each, 'list': files_tmp, 'count': len(files_tmp) })
+		files_state.append({ 'name': each, 'size': folder[each]['size'], 'count': len(files_tmp), 'list': files_tmp })
 
 	if errors > 0:
 		flag_invalid = True
