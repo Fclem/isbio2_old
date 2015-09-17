@@ -177,8 +177,6 @@ class SysCheckUnit:
 
 		sup = ''
 		sup2 = ''
-		if self.supl is not None and callable(self.supl):
-			sup = self.supl()
 
 		if not res:
 			if self.mandatory:
@@ -187,7 +185,10 @@ class SysCheckUnit:
 				sup2 = Bcolors.warning('NOT critical')
 
 		if not from_ui:
-			print self.msg, OK if res else BAD if self.mandatory else WARN, sup, sup2
+			print self.msg,
+			if self.supl is not None and callable(self.supl):
+				sup = self.supl()
+			print OK if res else BAD if self.mandatory else WARN, sup, sup2
 
 		if not res:
 			if RAISE_EXCEPTION:
@@ -229,8 +230,9 @@ def run_system_test():
 	NEW ONE 08/09/2015
 	replacing old version from 31/08/2015
 	"""
+	from breeze.middlewares import is_on
 	global SKIP_SYSTEM_CHECK
-	if not SKIP_SYSTEM_CHECK:
+	if not SKIP_SYSTEM_CHECK and is_on():
 		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
 		if fs_mount.checker_function():
 			print fs_mount.msg + OK
@@ -529,8 +531,6 @@ def check_cas(request):
 			r = proxy_to(request, '', settings.CAS_SERVER_URL, silent=True)
 			if r.status_code == 200:
 				return True
-			else:
-				print r
 		except Exception:
 			pass
 	return False
