@@ -138,7 +138,7 @@
 									<li class="{{ projects_tab }}"><a href="#projects_tab" data-toggle="tab">Projects</a></li>
 									<li class="{{ usergroups_tab }}"><a href="#usergroups_tab" data-toggle="tab">User Groups</a></li>
 									<li class="{{ contacts_tab }}"><a href="#contacts_tab" data-toggle="tab">Contacts list</a></li>
-									<li class="{{ statistics_tab }}"><a href="#statistics_tab" data-toggle="tab">Statistics</a></li>
+
 								</ul>
 								<!-- Tabs' Content -->
 								<div class="tab-content">
@@ -226,33 +226,13 @@
 										</div>
 									</div>
 
-									<!-- DB STATISTICS -->
-									<div id="statistics_tab" class="tab-pane {{ show_statistics }}">
-										<div class="row-fluid">
-											<div class="span 12">
-												<table class="table table-bordered table-condensed">
-<tbody>
-<tr class="warning"><td>&nbsp; <strong>Jobs / Reports running:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_running }}</span>&nbsp; </td></tr>
-<tr class="warning"><td>&nbsp; <strong>Jobs sheduled:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_scheduled }}</span>&nbsp; </td></tr>
-<tr class="warning"><td>&nbsp; <strong>Jobs in history:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_history }}</span>&nbsp; </td></tr>
-<tr class="warning"><td>&nbsp; <strong>Reports in history:</strong> <span class="badge badge-info pull-right">{{ dbStat.reports_history }}</span>&nbsp; </td></tr>
-<tr class="info"><td>&nbsp; <strong>Scripts types in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.scripts_total }}</span>&nbsp; </td></tr>
-<tr class="info"><td>&nbsp; <strong>Reports tags in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.scripts_tags }}</span>&nbsp; </td></tr>
-<tr class="info"><td>&nbsp; <strong>Pipelines types in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.report_types }}</span>&nbsp; </td></tr>
-<!--<tr class="info"><td>&nbsp; <strong>Instances in db:</strong> <span class="badge badge-info pull-right">?</span>&nbsp; </td></tr>-->
-</tbody>
-												</table>
-											</div>
-										</div>
-										<p><br>&nbsp;<br></p>
-									</div>
 								</div> <!-- END of Tabs' Content -->
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- Statistics -->
+				<!-- STATISTICS -->
 				<div class="tab-pane {{ show_statistics }}" id="statistics_menu">
 					<!-- User Statistics / Analysis Statistics -->
 					<div class="row-fluid">
@@ -261,6 +241,8 @@
 								<!-- Tabs' Header -->
 								<ul class="nav nav-tabs">
 									<li class="{{ analysis_stat_tab }}"><a href="#analysis_stat_tab" data-toggle="tab">Analysis Statistics</a></li>
+									<li class="{{ statistics_tab }}"><a href="#statistics_tab"
+									                                    data-toggle="tab">Breeze stats</a></li>
 									<li class="{{ user_stat_tab }}"><a href="#user_stat_tab" data-toggle="tab">User Statistics</a></li>
 
 								</ul>
@@ -276,6 +258,55 @@
 												</div>
 											</div>
 										</div>
+									</div>
+
+									<!-- DB STATISTICS -->
+									<div id="statistics_tab" class="tab-pane {{ show_statistics }}">
+										<div class="row-fluid">
+											<div class="span 12">
+												<table class="table table-bordered table-condensed">
+													<tbody>
+													<tr class="warning">
+														<td>&nbsp; <strong>Jobs / Reports running:</strong> <span
+														  class="badge badge-info pull-right">{{ dbStat.jobs_running }}</span>&nbsp;
+														</td>
+													</tr>
+													<tr class="warning">
+														<td>&nbsp; <strong>Jobs sheduled:</strong> <span
+														  class="badge badge-info pull-right">{{ dbStat.jobs_scheduled }}</span>&nbsp;
+														</td>
+													</tr>
+													<tr class="warning">
+														<td>&nbsp; <strong>Jobs in history:</strong> <span
+														  class="badge badge-info pull-right">{{ dbStat.jobs_history }}</span>&nbsp;
+														</td>
+													</tr>
+													<tr class="warning">
+														<td>&nbsp; <strong>Reports in history:</strong> <span
+														  class="badge badge-info pull-right">{{ dbStat.reports_history }}</span>&nbsp;
+														</td>
+													</tr>
+													<tr class="info">
+														<td>&nbsp; <strong>Scripts types in db:</strong> <span
+														  class="badge badge-info pull-right">{{ dbStat.scripts_total }}</span>&nbsp;
+														</td>
+													</tr>
+													<tr class="info">
+														<td>&nbsp; <strong>Reports tags in db:</strong> <span
+														  class="badge badge-info pull-right">{{ dbStat.scripts_tags }}</span>&nbsp;
+														</td>
+													</tr>
+													<tr class="info">
+														<td>&nbsp; <strong>Pipelines types in db:</strong> <span
+														  class="badge badge-info pull-right">{{ dbStat.report_types }}</span>&nbsp;
+														</td>
+													</tr>
+													<!--<tr class="info"><td>&nbsp; <strong>Instances in db:</strong> <span class="badge badge-info pull-right">?</span>&nbsp; </td></tr>-->
+													</tbody>
+												</table>
+											</div>
+										</div>
+										<p><br>&nbsp;<br></p>
 									</div>
 
 									<!-- analysis statistics -->
