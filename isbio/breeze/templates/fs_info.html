@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+{% load user_translate %}
+
+{% block title %}File System{% endblock %}
+
+{% block extra_head %}
+	<style>
+	h4 {
+		padding-top: 45px;
+	}
+	</style>
+{% endblock %}
+
+{% block content %}
+
+	<!-- LIST OF EXISTING REPORTS -->
+	<div class="row-fluid">
+		<!-- site map bar -->
+		<div class="row-fluid">
+			<div class="span10 offset1">
+				<ul class="breadcrumb pull-left" style="background-color: transparent;">
+					<li><a href="/home/">Breeze</a> <span class="divider">/</span></li>
+					<li> <a href="/resources/"> Manage Resources</a> <span class="divider">/</span></li>
+					<li class="active"> File System status</li>
+				</ul>
+			</div>
+		</div>
+		<div class="span10 offset1">
+			<h3>Folder list :</h3>
+			<ul>
+				{% for file in folders %}
+					<li>[{{ file.status }}] : <small><a href="#{{ file.name }}">{{ file.name }}</a></small></li>
+					{% empty %}
+				{% endfor %}
+			</ul>
+
+			<h3>File list :</h3>
+			{% for folder in files %}
+				<a name="{{ folder.name }}" href="#" class="anchor"></a>
+				<h4><small>Folder : {{ folder.name }} ({{ folder.count }} files)</small></h4>
+
+				<ul>
+				{% for file in folder.list %}
+
+					<li>[{% if file.status != 'OK' %}<strong>{{ file.status }}</strong>{% else %}{{ file.status }}{% endif %}] :
+						<small>{{ file.name }}</small>
+					</li>
+					{% empty %}
+				{% endfor %}
+				</ul>
+			{% endfor %}
+		</div>
+	</div>
+
+
+{% endblock %}

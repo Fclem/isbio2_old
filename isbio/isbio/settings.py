@@ -7,6 +7,46 @@ from datetime import datetime
 
 # TODO : redesign
 
+
+class Bcolors:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
+
+	@staticmethod
+	def ok_blue(text):
+		return Bcolors.OKBLUE + text + Bcolors.ENDC
+
+	@staticmethod
+	def ok_green(text):
+		return Bcolors.OKGREEN + text + Bcolors.ENDC
+
+	@staticmethod
+	def fail(text):
+		return Bcolors.FAIL + text + Bcolors.ENDC
+
+	@staticmethod
+	def warning(text):
+		return Bcolors.WARNING + text + Bcolors.ENDC
+
+	@staticmethod
+	def header(text):
+		return Bcolors.HEADER + text + Bcolors.ENDC
+
+	@staticmethod
+	def bold(text):
+		return Bcolors.BOLD + text + Bcolors.ENDC
+
+	@staticmethod
+	def underlined(text):
+		return Bcolors.UNDERLINE + text + Bcolors.ENDC
+
+
 def recur(nb, funct, args):
 	while nb > 0:
 		args = funct(args)
@@ -19,11 +59,13 @@ def recur_rec(nb, funct, args):
 		return recur_rec(nb - 1, funct, funct(args))
 	return args
 
-
+MAINTENANCE = False
 USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S%z"
 DB_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_FOLDER = '/var/log/breeze/'
 log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
-LOG_PATH = '/var/log/breeze/%s' % log_fname
+LOG_PATH = '%s%s' % (LOG_FOLDER, log_fname)
+
 
 class BreezeSettings(Settings):
 	global USUAL_DATE_FORMAT, LOG_PATH
@@ -85,14 +127,14 @@ class BreezeSettings(Settings):
 
 	# !CUSTOM!
 	# Tempory folder for the application
-	TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
+	#TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
 	# Path to R installation
 	R_ENGINE_PATH = 'R '
 
 	# Absolute filesystem path to the directory that will hold user-uploaded files.
 	# Example: "/home/media/media.lawrence.com/media/"
-	MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
-	RORA_LIB = '/home/comrade/Projects/fimm/roralib/'
+	#MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
+	#RORA_LIB = '/home/comrade/Projects/fimm/roralib/'
 
 	# URL that handles the media served from MEDIA_ROOT. Make sure to use a
 	# trailing slash.
@@ -111,7 +153,7 @@ class BreezeSettings(Settings):
 
 	# Additional locations of static files
 	STATICFILES_DIRS = (
-		"/home/comrade/Projects/fimm/isbio/breeze/",
+		#"/home/comrade/Projects/fimm/isbio/breeze/",
 		# Put strings here, like "/home/html/static" or "C:/www/django/static".
 		# Always use forward slashes, even on Windows.
 		# Don't forget to use absolute paths, not relative paths.
@@ -142,7 +184,7 @@ class BreezeSettings(Settings):
 		'django.contrib.auth.middleware.AuthenticationMiddleware',
 		'django.contrib.messages.middleware.MessageMiddleware',
 		'django.middleware.doc.XViewMiddleware',
-		'breeze.jobKeeper',
+		'breeze.middlewares.JobKeeper',
 		'breeze.middlewares.CheckUserProfile',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
@@ -154,7 +196,8 @@ class BreezeSettings(Settings):
 		'django_cas.backends.CASBackend',
 	)
 
-	CAS_SERVER_URL = 'https://192.168.0.218:8443/cas/'
+	CAS_SERVER_IP = '192.168.0.218'
+	CAS_SERVER_URL = 'https://%s:8443/cas/' % CAS_SERVER_IP
 	CAS_REDIRECT_URL = '/home/'
 
 	ROOT_URLCONF = 'isbio.urls'
@@ -181,6 +224,7 @@ class BreezeSettings(Settings):
 		'django.contrib.staticfiles',
 		'bootstrap_toolkit',
 		'breeze',
+		'down',
 		'south',
 		'gunicorn',
 		# Uncomment the next line to enable the admin:
@@ -197,12 +241,26 @@ class BreezeSettings(Settings):
 	LOGGING = {
 		'version': 1,
 		'disable_existing_loggers': False,
+		'formatters': {
+			'standard': {
+				'format': '%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
+				'datefmt': USUAL_DATE_FORMAT,
+			},
+		},
 		'filters': {
 			'require_debug_false': {
 				'()': 'django.utils.log.RequireDebugFalse'
 			}
 		},
 		'handlers': {
+			'default': {
+				'level': 'DEBUG',
+				'class': 'logging.handlers.RotatingFileHandler',
+				'filename': '%srotary.log' % LOG_FOLDER,
+				'maxBytes': 1024 * 1024 * 5, # 5 MB
+				'backupCount': 10,
+				'formatter': 'standard',
+			},
 			'mail_admins': {
 				'level': 'ERROR',
 				'filters': ['require_debug_false'],
@@ -210,6 +268,11 @@ class BreezeSettings(Settings):
 			}
 		},
 		'loggers': {
+			'': {
+				'handlers': ['default'],
+				'level': logging.INFO,
+				'propagate': True
+			},
 			'django.request': {
 				'handlers': ['mail_admins'],
 				'level': 'ERROR',
@@ -224,6 +287,7 @@ class BreezeSettings(Settings):
 		'django.core.context_processors.static',
 		'breeze.context.user_context'
 	)
+
 
 class DevSettings(BreezeSettings):
 	global USUAL_DATE_FORMAT, LOG_PATH
@@ -273,6 +337,8 @@ class DevSettings(BreezeSettings):
 	MODE_PROD = RUN_MODE == 'prod'
 	PHARMA_MODE = False
 
+	SU_ACCESS_OVERRIDE = True
+
 	# contains everything else (including breeze generated content) than the breeze web source code and static files
 	PROJECT_FOLDER = '/fs/projects/'
 	# BREEZE_FOLDER = 'breeze-dev/' if DEV_MODE else 'breeze/'
@@ -298,25 +364,42 @@ class DevSettings(BreezeSettings):
 
 	R_ENGINE_PATH = PROJECT_PATH + 'R/bin/R '
 	TEMP_FOLDER = SOURCE_ROOT + 'tmp/' # /homes/dbychkov/dev/isbio/tmp/
-	#
+	####
 	# 'db' folder, containing : reports, scripts, jobs, datasets, pipelines, upload_temp
-	#
+	####
 	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
+	DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
+	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
+	GENERAL_SH_NAME = 'sgeconfig.sh'
+	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
+
+
+	##
+	# Report config
+	##
 	NOZZLE_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'nozzle_templates/'
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
 	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
-	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
-	GENERAL_SH_NAME = 'sgeconfig.sh'
-	# Reports config
+
+	RSCRIPTS_FN = 'scripts/'
+	RSCRIPTS_PATH = MEDIA_ROOT + RSCRIPTS_FN
+
+	REPORT_TYPE_FN = 'pipelines/'
+	REPORT_TYPE_PATH = MEDIA_ROOT + REPORT_TYPE_FN
+
 	REPORTS_FN = 'reports/'
 	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FN)
 	REPORTS_SH = GENERAL_SH_NAME
 	REPORTS_FM_FN = 'transfer_to_fm.txt'
+	##
 	# Jobs configs
+	##
+	SCRIPT_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'script_templates/'
+	SCRIPT_TEMPLATE_PATH = SCRIPT_TEMPLATE_FOLDER + 'script.R'
 	JOBS_FN = 'jobs/'
 	JOBS_PATH = '%s%s' % (MEDIA_ROOT, JOBS_FN)
 	JOBS_SH = '_config.sh'
@@ -324,7 +407,7 @@ class DevSettings(BreezeSettings):
 	#
 	# WATCHER RELATED CONFIG
 	#
-	WATCHER_DB_REFRESH = 5 # number of seconds to wait before refreshing reports from DB
+	WATCHER_DB_REFRESH = 2 # number of seconds to wait before refreshing reports from DB
 	WATCHER_PROC_REFRESH = 2 # number of seconds to wait before refreshing processes
 
 	#
@@ -357,6 +440,27 @@ class DevSettings(BreezeSettings):
 	# NOZZLE_TARGET_URL = 'http://' + FULL_HOST_NAME + '/'
 	# Install shiny library : install.packages('name of the lib', lib='/usr/local/lib/R/site-library', dependencies=TRUE)
 
+	FOLDERS_LST = [TEMPLATE_FOLDER, SHINY_REPORT_TEMPLATE_PATH, SHINY_REPORTS, SHINY_TAGS, SHINY_APPS,
+		NOZZLE_TEMPLATE_FOLDER, SCRIPT_TEMPLATE_FOLDER, JOBS_PATH, REPORT_TYPE_PATH, REPORTS_PATH, RSCRIPTS_PATH, MEDIA_ROOT,
+		PROJECT_FHRB_PM_PATH, RORA_LIB, STATIC_ROOT]
+
+
+	##
+	# System Autocheck config
+	##
+	SGE_MASTER_FILE = '/var/lib/gridengine/default/common/act_qmaster'
+	SGE_MASTER_IP = '192.168.67.2'
+	DOTM_SERVER_IP = '128.214.64.5'
+	RORA_SERVER_IP = '192.168.0.219'
+	FILE_SERVER_IP = '192.168.0.107'
+	SPECIAL_CODE_FOLDER = PROJECT_PATH + 'code/'
+	MOULD_FOLDER = MEDIA_ROOT + 'mould/'
+	FS_SIG_FILE = PROJECT_PATH + 'fs_sig.md5'
+	FS_LIST_FILE = PROJECT_PATH + 'fs_checksums.json'
+	FOLDERS_TO_CHECK = [TEMPLATE_FOLDER, SHINY_REPORTS, SHINY_TAGS, REPORT_TYPE_PATH,
+						RSCRIPTS_PATH, RORA_LIB, MOULD_FOLDER, STATIC_ROOT]
+
+
 	# STATIC URL MAPPINGS
 	SHINY_URL = '/shiny/rep/'
 	STATIC_URL = '/static/'
@@ -370,11 +474,6 @@ class DevSettings(BreezeSettings):
 		"",
 	)
 
-	logging.basicConfig(level=logging.DEBUG,
-						format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
-						datefmt=USUAL_DATE_FORMAT, # "%d/%b/%Y %H:%M:%S%z",
-						filename='/var/log/breeze/breeze-dev.log', filemode='w+')
-
 	# mail config
 	EMAIL_HOST = 'smtp.gmail.com'
 	EMAIL_HOST_USER = 'breeze.fimm@gmail.com'
@@ -383,7 +482,40 @@ class DevSettings(BreezeSettings):
 	EMAIL_SUBJECT_PREFIX = '[' + FULL_HOST_NAME + '] '
 	EMAIL_USE_TLS = True
 
+
 	if DEBUG:
+		import sys
+		LOGGING = {
+			'version': 1,
+			'disable_existing_loggers': False,
+			'formatters': {
+				'verbose': {
+					'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
+				},
+			},
+			'handlers': {
+				'console': {
+					'level': 'INFO',
+					'class': 'logging.StreamHandler',
+					'stream': sys.stdout,
+					'formatter': 'verbose',
+				},
+			},
+			'loggers': {
+				'isbio': {
+					'handlers': ['console'],
+					'level': 'DEBUG',
+					'propagate': True,
+				},
+				'breeze': {
+					'handlers': ['console'],
+					'level': 'DEBUG',
+					'propagate': True,
+				}
+			}
+		}
+		import logging.config
+		logging.config.dictConfig(LOGGING)
 		print 'source home : ' + SOURCE_ROOT
 		logging.info('source home : ' + SOURCE_ROOT)
 		print 'project home : ' + PROJECT_PATH
@@ -395,7 +527,10 @@ class DevSettings(BreezeSettings):
 		DEBUG = False
 		VERBOSE = False
 
-	print 'Logging on %s\nSettings loaded. Running %s on %s' % (LOG_PATH, RUN_MODE, FULL_HOST_NAME)
+	print 'Logging on %s\nSettings loaded. Running %s on %s' %\
+	(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME))
 	if PHARMA_MODE:
-		print 'RUNNING WITH PHARMA'
-	logging.info('Settings loaded. Running %s on %s' % (RUN_MODE, FULL_HOST_NAME))
+		print Bcolors.bold('RUNNING WITH PHARMA')
+	logging.info('Settings loaded. Running %s on %s' % (
+	Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME)))
+

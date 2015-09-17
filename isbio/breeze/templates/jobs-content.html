@@ -1,33 +1,34 @@
 <!-- Tabs' Header -->
 <ul class="nav nav-tabs" id="jobTabs">
 	<li class="{{ history_tab }}"><a href="#history" data-toggle="tab">History</a></li>
-	<li class="{{ scheduled_tab }}"><a href="#scheduled" data-toggle="tab">
+	<!--<li class="{{ scheduled_tab }}"><a href="#scheduled" data-toggle="tab" disabled>-->
+	<li class="disabled"><a href="#" disabled title="This functionality is deprecated">
 		Scheduled {% if scheduled.count > 0 %}<span class="badge">{{ scheduled.count }}</span>{% endif %}</a></li>
 	<li class="{{ current_tab }}"><a href="#current" data-toggle="tab" id="current_tab_li_a">
 		In Progress {% if current_nb > 0 %}<span class="badge">{{ current_nb }}</span>{% endif %}</a></li>
 </ul>
+<script type="text/javascript">
+	function check_all(status){
+
+		if($(status).attr('checked')=='checked') {
+			$("input[name='delete']").attr('checked', 'checked');
+		}else {
+			$("input[name='delete']").removeAttr('checked');
+		}
+		//$("delete").attr('checked', 'checked');
+	}
+
+</script>
 <!-- Tabs' Content -->
 <div class="tab-content">
 	<!-- HISTORY -->
 	<div class="tab-pane {{ show_hist }}" id="history">
-		<table class="table table-striped">
-			<head>
-				<tr>
-					<th>Finished</th>
-					<th>Job Name</th>
-					<th>Type</th>
-					<th>Status</th>
-					<th>Download</th>
-					<th>Misc</th>
-					<th>Delete</th>
-				</tr>
-			</head>
-			<tbody id="history_top">
-			{% include "jobs-hist-paginator.html" %}
-			</tbody>
-		</table>
-		<p><br>&nbsp;<br></p>
+		<div class="tab-pane {{ show_hist }}" id="history_top">
 
+						{% include "jobs-hist-paginator.html" %}
+
+		</div>
+		<p><br>&nbsp;<br></p>
 		<div id="paginator_control"></div>
 	</div>
 	<!-- SCHEDULED -->
@@ -53,9 +54,9 @@
 					<td></td>
 					<td></td>
 					<td><a href="/jobs/run/{{ job.id }}" class="btn btn-success"> <i class="icon-play-circle"></i></a></td>
-					<td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script" data-param={{ job.id }}><i
+					<td><a href="#" data-toggle="modal" class="btn btn-inverse rtext" data-target="#script" data-param="{{ job.id }}"><i
 					  class="icon-white icon-info-sign"></i></a></td>
-					<td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param={{ job.id }}><i
+					<td><a href="#" data-toggle="modal" class="btn btn-inverse apply" data-target="#Apply" data-param="edit/{{ job.id }}"><i
 					  class="icon-white icon-edit"></i></a></td>
 					<td><a href="#" data-toggle="modal" class="btn btn-danger" data-target="#Del"
 						   onclick="$('#del_btn').attr('href', '/jobs/delete/{{ job.id }}?{{ active_tab }}'); $('#del_title').text('{{ job.jname }}');">

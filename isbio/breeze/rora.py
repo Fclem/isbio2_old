@@ -1,6 +1,10 @@
 import rpy2.robjects as ro
 import copy
 from django.conf import settings
+from rpy2.rinterface import RRuntimeError
+
+DISABLE_DOTM = False
+
 
 # clem on 17/06/2015
 def source_file(file_name):
@@ -19,11 +23,52 @@ def source_file(file_name):
 
 	return True
 
-def get_dtm_screens():
+
+# clem on 20/08/2015
+def test_rora_connect():
 	"""
-		Exports Samples from Dotmatix
+	Test if RORA server is online and connection can be made successfully
+	:return: True|False
+	:rtype: bool
+	"""
+	rcode = 'source("%sconnection.R");' % settings.RORA_LIB
+	rcode += 'roraConnect();'
+	try:
+		x = ro.r(rcode)
+	except RRuntimeError:
+		return False
+
+	return True
+
+
+# clem on 20/08/2015
+def test_dotm_connect():
+	"""
+	Test if Dotmatics server is online and connection can be made successfully
+	:return: True|False
+	:rtype: bool
+	"""
+	rcode = 'source("%sconnection.R");' % settings.RORA_LIB
+	rcode += 'dotmConnect();'
+	# source_file('connection.R')
+	try:
+		x = ro.r(rcode)
+		# test = ro.globalenv['dotmConnect']
+		# res = test()
+	except RRuntimeError:
+		return False
+
+	return True
+
+
+def get_dtm_screens(disabled=DISABLE_DOTM):
+	"""
+		Exports Samples from Dotmatics
 	"""
 	samples = list()
+
+	if disabled or not test_dotm_connect():
+		return samples
 
 	source_file('patient-module.R')
 
@@ -33,18 +78,22 @@ def get_dtm_screens():
 
 	# If the data frame is of appropriate format
 	if len(res) == 2:
-		for row in range(1,len(res[0])+1):
+		for row in range(1, len(res[0]) + 1):
 			rn = res.rx(row, True)
 			gid = 'ScreenID_' + rn[0][0]
 			samples.append( tuple((gid, rn[1][0])) )
 
 	return samples
 
-def get_dtm_screen_groups():
+
+def get_dtm_screen_groups(disabled=DISABLE_DOTM):
 	"""
-		Exports Sample Groups from Dotmatix
+		Exports Sample Groups from Dotmatics
 	"""
 	groups = list()
+
+	if disabled or not test_dotm_connect():
+		return groups
 
 	source_file('patient-module.R')
 
@@ -54,12 +103,13 @@ def get_dtm_screen_groups():
 
 	# If the data frame is of appropriate format
 	if len(res) == 2:
-		for row in range(1,len(res[0])+1):
+		for row in range(1, len(res[0]) + 1):
 			rn = res.rx(row, True)
 			sid = 'GroupID_' + rn[0][0]
 			groups.append( tuple((sid, rn[1][0])) )
 
 	return groups
+
 
 def get_patients_info(params, subject):
 	"""
@@ -81,7 +131,7 @@ def get_patients_info(params, subject):
 	start = start + 1
 
 	span = int(params.get('length',10))
-	#search_text = params.get('search', '').lower()
+	# search_text = params.get('search', '').lower()
 
 	# sorting
 	sort_ind = params.get('order[0][column]','')
@@ -127,9 +177,10 @@ def get_patients_info(params, subject):
 
 	return response
 
+
 def patient_data(id):
 	"""
-		  Return one row from table by ID
+		Return one row from table by ID
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -141,9 +192,10 @@ def patient_data(id):
 	data = r_getterFunc(id)
 	return data
 
+
 def screen_data(id):
 	"""
-		  Return one row from table by ID
+		Return one row from table by ID
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -155,9 +207,10 @@ def screen_data(id):
 	data = r_getterFunc(id)
 	return data
 
+
 def get_all_patient():
 	""""
-		 Return all patients data (id and identifier)
+		Return all patients data (id and identifier)
 	"""
 
 	# Source & export R code
@@ -173,7 +226,7 @@ def get_all_patient():
 
 def sex_data():
 	""""
-		 Return all possible sex category
+		Return all possible sex category
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -186,9 +239,10 @@ def sex_data():
 
 	return data
 
+
 def media_type():
 	""""
-		 Return all possible media types
+		Return all possible media types
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -200,9 +254,10 @@ def media_type():
 	data = r_getterFunc()
 	return data
 
+
 def sample_type():
 	""""
-		 Return all possible media types
+		Return all possible media types
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -217,7 +272,7 @@ def sample_type():
 
 def disease_sub_type():
 	""""
-		 Return all possible media types
+		Return all possible media types
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -229,9 +284,10 @@ def disease_sub_type():
 	data = r_getterFunc()
 	return data
 
+
 def histology():
 	""""
-		 Return all possible histology
+		Return all possible histology
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -243,9 +299,10 @@ def histology():
 	data = r_getterFunc()
 	return data
 
+
 def disease_state_data():
 	""""
-		 Return all possible disease states
+		Return all possible disease states
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -257,9 +314,10 @@ def disease_state_data():
 	data = r_getterFunc()
 	return data
 
+
 def experiment_type_data():
 	""""
-		 Return all possible disease states
+		Return all possible disease states
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -271,9 +329,10 @@ def experiment_type_data():
 	data = r_getterFunc()
 	return data
 
+
 def disease_grade_data():
 	""""
-		 Return all possible disease grades
+		Return all possible disease grades
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -285,9 +344,10 @@ def disease_grade_data():
 	data = r_getterFunc()
 	return data
 
+
 def disease_stage_data():
 	""""
-		 Return all possible disease stages
+		Return all possible disease stages
 	"""
 	# Source & export R code
 	source_file('patient-module.R')
@@ -298,6 +358,7 @@ def disease_stage_data():
 	# R call
 	data = r_getterFunc()
 	return data
+
 
 def organism_data():
 	""""
@@ -314,6 +375,7 @@ def organism_data():
 
 	return data
 
+
 def read_out_data():
 	""""
 		Return all possible organism options
@@ -329,6 +391,7 @@ def read_out_data():
 
 	return data
 
+
 def update_patient(data):
 	# Source & export R code
 	source_file('patient-module.R')
@@ -339,6 +402,7 @@ def update_patient(data):
 	update = r_getterFunc(ro.DataFrame(data))
 	return True
 
+
 def update_screen(data):
 	# Source & export R code
 	source_file('patient-module.R')
@@ -348,6 +412,7 @@ def update_screen(data):
 	# R call
 	update = r_getterFunc(ro.DataFrame(data))
 	return True
+
 
 def insert_row(table, data):
 	"""
@@ -368,6 +433,7 @@ def insert_row(table, data):
 		print(ro.DataFrame(data))
 		r_getter_output = r_getterFunc(ro.DataFrame(data))
 	return True
+
 
 def remove_row(table, ids):
 	"""
@@ -398,6 +464,7 @@ def remove_row(table, ids):
 
 	return r_remover_output
 
+
 def update_row(table, content, iid):
 	"""
 		UPdaTE
@@ -419,6 +486,7 @@ def update_row(table, content, iid):
 
 	return r_output
 
+
 def request_data(table, iid):
 	source_file('patient-module.R')
 
@@ -429,6 +497,7 @@ def request_data(table, iid):
 
 	return r_output
 
+
 def updateScreenGroupContent(content, groupid):
 	# Source & export R code
 	source_file('patient-module.R')
@@ -436,6 +505,7 @@ def updateScreenGroupContent(content, groupid):
 	r_updateFunc = ro.globalenv['updateSampleGroups']
 	r_output = r_updateFunc(content, groupid)
 	return r_output
+
 
 def getScreenGroupContent(groupID):
 	"""
@@ -463,6 +533,7 @@ def getScreenGroupContent(groupID):
 
 
 	return screens
+
 
 def getScreenGroup(groupID):
 	""""

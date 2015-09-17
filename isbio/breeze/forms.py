@@ -760,16 +760,10 @@ class BasicJobForm(forms.Form):
 		max_length=75
 	)
 
-	# report_to = forms.CheckboxSelectMultiple(
-	#    widget=forms.TextInput(attrs={'placeholder': u'first.last@helsinki.fi'}),
-	#    max_length=75
-	#)
-
-
 	def clean_job_name(self):
 		job_name = self.cleaned_data.get('job_name')
 		try:
-			exst = breeze.models.Jobs.objects.filter(juser__exact=self._user).get(jname=job_name)
+			exst = breeze.models.Jobs.objects.filter(juser__exact=self._user).get(jname=job_name).name
 		except breeze.models.Jobs.DoesNotExist:
 			return job_name
 		else:
@@ -785,6 +779,9 @@ class CustomForm(forms.Form):
 		keys.sort()
 		for k in keys:
 			self.fields[k] = kwds[k]
+
+	def get(self, k, d=None):
+		return self.__dict__.get(k, d)
 
 
 ### Forms for script submissions ###

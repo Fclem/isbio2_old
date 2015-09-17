@@ -10,7 +10,7 @@ import breeze.models
 import auxiliary as aux
 import logging
 
-from breeze.models import Report, Jobs, JobStat
+from breeze.models import Report, Jobs, JobStat, Rscripts, Runnable
 from exceptions import Exception
 # import hashlib
 # from django.utils import timezone
@@ -20,6 +20,7 @@ from exceptions import Exception
 # from views import breeze
 # from django.template.defaulttags import now
 
+
 if settings.HOST_NAME.startswith('breeze'):
 	import drmaa
 
@@ -28,14 +29,14 @@ logger = logging.getLogger(__name__)
 
 # TODO : integrate into script data model
 def init_script(name, inline, person):
-	spath = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", name, None))
+	# spath = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", name, None))
 
+	dbitem = breeze.models.Rscripts(name=name,
+									category=breeze.models.ScriptCategories.objects.get(category="general"),
+									inln=inline, author=person, details="empty", order=0)
+	spath = dbitem.home_folder_full_path
 	if not os.path.isdir(spath):
 		os.makedirs(spath)
-		dbitem = breeze.models.Rscripts(name=name,
-										category=breeze.models.Script_categories.objects.get(category="general"),
-										inln=inline, author=person, details="empty", order=0)
-
 		# create empty files for header, code and xml
 		dbitem.header.save('name.txt', base.ContentFile('# write your header here...'))
 		dbitem.code.save('name.r', base.ContentFile('# copy and paste main code here...'))
@@ -84,15 +85,17 @@ def update_script_dasics(script, form):
 		Update script name and its inline description. In case of a new name it
 		creates a new folder for script and makes file copies but preserves db istance id
 	"""
-
+	assert isinstance(script, Rscripts)
 	if str(script.name) != str(form.cleaned_data['name']):
-		new_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", str(form.cleaned_data['name']), None))
-		old_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", script.name, None))
+		# new_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", str(form.cleaned_data['name']), None))
+		# old_folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", script.name, None))
+		old_folder = script.home_folder_full_path
 		new_slug = slugify(form.cleaned_data['name'])
 
-		if not os.path.isdir(new_folder):
-			os.makedirs(new_folder)
-			script.name = form.cleaned_data['name']
+		script.name = form.cleaned_data['name']
+		if not os.path.isdir(script.home_folder_full_path):
+			os.makedirs(script.home_folder_full_path)
+
 			script.inln = form.cleaned_data['inline']
 			script.save()
 			# copy folder
@@ -148,6 +151,7 @@ def update_script_xml(script, xml_data):
 
 # TODO : integrate into script data model
 def update_script_sources(script, post_data):
+	assert isinstance(script, Rscripts)
 	if post_data['source_file'] == 'Header':
 		file_path = settings.MEDIA_ROOT + str(script.header)
 	elif post_data['source_file'] == 'Main':
@@ -173,58 +177,30 @@ def update_script_logo(script, pic):
 	return True
 
 
-# TODO : integrate into script data model
-def del_script(script):
-	folder = str(settings.MEDIA_ROOT) + str(get_folder_name("scripts", script.name, None))
+# DELETED del_script on 		14/07/2015 (now part of Rscript)
+# DELETED del_pipe on 			14/07/2015 (now part of ReportType)
+# DELETED del_report on 		30/06/2015 (now part of Runnable)
+# DELETED del_job on 			30/06/2015 (now part of Runnable)
+# DELETED schedule_job on 		10/07/2015 (now part of Runnable.assemble)
+# DELETED run_job on 			10/07/2015 (now part of Runnable.run)
+# DELETED run_report on 		30/06/2015 (now part of Runnable.run)
+# DELETED abort_report on 		30/06/2015 (now part of Runnable.abort)
+# DELETED track_sge_job on 		30/06/2015 (now part of Watcher)
+# DELETED track_sge_job_bis on 	30/06/2015 (now part of Watcher)
 
-	if os.path.isdir(folder):
-		shutil.rmtree(folder)
-		script.delete()
-		return True
 
-	return False
-
-
-# TODO : integrate into Pipe data model
-def del_pipe(pipe):
-	slug = slugify(str(pipe.id) + '_' + pipe.type)
-	folder = str(settings.MEDIA_ROOT) + 'pipelines/%s/' % (slug)
-
-	if os.path.isdir(folder):
-		shutil.rmtree(folder)
-		pipe.delete()
-		return True
-
-	return False
-
-# DELETED del_report on 30/06/2015 (now part of Runnable.del)
-# DELETED del_job on 30/06/2015 (now part of Runnable.del)
-# DELETED schedule_job on 10/07/2015 (now part of Runnable.assemble)
-# DELETED run_job on 10/07/2015 (now part of Runnable.run)
-# DELETED run_report on 30/06/2015 (now part of Runnable.run)
-# DELETED abort_report on 30/06/2015 (now part of Runnable.abort)
-# DELETED track_sge_job on 30/06/2015 (now part of Watcher)
-# DELETED track_sge_job_bis on 30/06/2015 (now part of Watcher)
-
-# TODO integrate in Jobs or Runnable and integrate with reports' equivalent funct
-def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
+# Jobs
+def gen_params_string_job_temp(tree, data, runnable_inst, files):
 	"""
-        Builds (singe) R-exacutable file: puts together sources, header
-        and input parameters from user
-    """
-
-	# create job folder
-	directory = get_job_folder(jname, juser)
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-	rexec = open(str(settings.TEMP_FOLDER) + 'rexec.r', 'w')
-	script_header = open(str(settings.MEDIA_ROOT) + str(header), "rb").read()
-	script_code = open(str(settings.MEDIA_ROOT) + str(code), "rb").read()
-
+		Iterates over script's/tag's parameters to bind param names and user input;
+		Produces a (R-specific) string with one parameter definition per lines,
+		so the string can be pushed directly to R file.
+	"""
+	return gen_params_string(tree, data, runnable_inst, files)
+	assert isinstance(runnable_inst, Report) or isinstance(runnable_inst, Jobs)
+	tmp = dict()
 	params = ''
-	for item in tree.getroot().iter('inputItem'):
-		item.set('val', str(data.cleaned_data[item.attrib['comment']]))
+	for item in tree.getroot().iter('inputItem'): # 	for item in tree.getroot().iter('inputItem'): #  item.set('val', str(data.cleaned_data[item.attrib['comment']]))
 		if item.attrib['type'] == 'CHB':
 			params = params + str(item.attrib['rvarname']) + ' <- ' + str(
 				data.cleaned_data[item.attrib['comment']]).upper() + '\n'
@@ -236,11 +212,14 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
 			seq = 'c('
 			for itm in lst:
 				if itm != "":
-					seq = seq + '\"%s\",' % itm
-			seq = seq[:-1] + ')'
+					seq += '\"%s\",' % itm
+
+			seq = seq + ')' if lst == [''] else seq[:-1] + ')'
 			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
 		elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
-			add_file_to_job(jname, juser, FILES[item.attrib['comment']])
+			# add_file_to_job(jname, juser, FILES[item.attrib['comment']])
+			# add_file_to_report(runnable_inst.home_folder_full_path, files[item.attrib['comment']])
+			runnable_inst.add_file(files[item.attrib['comment']])
 			params = params + str(item.attrib['rvarname']) + ' <- "' + str(
 				data.cleaned_data[item.attrib['comment']]) + '"\n'
 		elif item.attrib['type'] == 'DTS':
@@ -253,32 +232,16 @@ def assemble_job_folder(jname, juser, tree, data, code, header, FILES):
 			for itm in data.cleaned_data[item.attrib['comment']]:
 				if itm != "":
 					res += str(itm) + ','
-					seq = seq + '\"%s\",' % itm
+					seq += '\"%s\",' % itm
 			seq = seq[:-1] + ')'
 			item.set('val', res[:-1])
 			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
 		else:  # for text, text_are, drop_down, radio
 			params = params + str(item.attrib['rvarname']) + ' <- "' + str(
 				data.cleaned_data[item.attrib['comment']]) + '"\n'
+	return params
 
-	tree.write(str(settings.TEMP_FOLDER) + 'job.xml')
-
-	rexec.write("setwd(\"%s\")\n" % directory)
-	rexec.write("#####################################\n")
-	rexec.write("###       Code Section            ###\n")
-	rexec.write("#####################################\n")
-	rexec.write(script_code)
-	rexec.write("\n\n#####################################\n")
-	rexec.write("### Parameters Definition Section ###\n")
-	rexec.write("#####################################\n")
-	rexec.write(params)
-	rexec.write("\n\n#####################################\n")
-	rexec.write("###       Assembly Section        ###\n")
-	rexec.write("#####################################\n")
-	rexec.write(script_header)
-
-	rexec.close()
-	return 1
+# DELETED assemble_job_folder on 16/07/2015 (now part of Runnable.assemble)
 
 
 # TODO : job related find out what is this
@@ -289,39 +252,13 @@ def build_header(data):
 	header.close()
 	return header
 
-
-def add_file_to_report(directory, f):
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-	with open(directory + "/" + f.name, 'wb+') as destination:
-		for chunk in f.chunks():
-			destination.write(chunk)
+# DELETED add_file_to_report on 13/07/2015 (now part of Runnable)
+# DELETED add_file_to_job on 13/07/2015 (now part of Runnable)
+# DELETED get_job_folder on 14/07/2015 (now part of Runnable)
+# DELETED get_folder_name on 14/07/2015 (now part of Rsript and ReportType)
 
 
-def add_file_to_job(job_name, user_name, f):
-	directory = get_job_folder(job_name, user_name)
-
-	if not os.path.exists(directory):
-		os.makedirs(directory)
-
-	with open(directory + f.name, 'wb+') as destination:
-		for chunk in f.chunks():
-			destination.write(chunk)
-
-# TODO : replace with job.folder_path
-def get_job_folder(name, user=None):
-	return str(settings.MEDIA_ROOT) + str(get_folder_name('jobs', name, user))
-
-# TODO : replace with job.folder_name but has to be checked
-def get_folder_name(loc, name, user=None):
-	if loc == "jobs":
-		slug = slugify(name + '_' + str(user))
-	else:
-		slug = slugify(name)
-	return '%s/%s/' % (loc, slug)
-
-
+# TODO : seems useless
 def get_dataset_info(path):
 	path = str(settings.MEDIA_ROOT) + str(path)
 	lst = list()
@@ -338,82 +275,81 @@ def get_dataset_info(path):
 	return lst
 
 
-def gen_params_string(docxml, data, dir, files):
+# Reports
+def gen_params_string(docxml, data, runnable_inst, files):
 	"""
-        Iterates over script's/tag's parameters to bind param names and user input;
-        Produces a (R-specific) string with one parameter definition per lines,
-        so the string can be pushed directly to R file.
-    """
+		Iterates over script's/tag's parameters to bind param names and user input;
+		Produces a (R-specific) string with one parameter definition per lines,
+		so the string can be pushed directly to R file.
+	"""
+	assert isinstance(runnable_inst, Report) or isinstance(runnable_inst, Jobs)
 	tmp = dict()
 	params = str()
 	for item in docxml.getroot().iter('inputItem'):
+
 		if item.attrib['type'] == 'CHB':
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(
+			params += str(item.attrib['rvarname']) + ' <- ' + str(
 				data.get(item.attrib['comment'], "NA")).upper() + '\n'
 		elif item.attrib['type'] == 'NUM':
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(data.get(item.attrib['comment'], "NA")) + '\n'
+			params += str(item.attrib['rvarname']) + ' <- ' + str(data.get(item.attrib['comment'], "NA")) + '\n'
 		elif item.attrib['type'] == 'TAR':
 			lst = re.split(', |,|\n|\r| ', str(data.get(item.attrib['comment'], "NA")))
 			seq = 'c('
 			for itm in lst:
 				if itm != "":
-					seq = seq + '\"%s\",' % itm
+					seq += '\"%s\",' % itm
 
-			if lst == ['']:
-				seq = seq + ')'
-			else:
-				seq = seq[:-1] + ')'
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+			seq = seq + ')' if lst == [''] else seq[:-1] + ')'
+			params += str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
 		elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
-
 			if files:
 				try:
-					add_file_to_report(dir, files[item.attrib['comment']])
-					params = params + str(item.attrib['rvarname']) + ' <- "' + str(
+					runnable_inst.add_file(files[item.attrib['comment']])
+					params += str(item.attrib['rvarname']) + ' <- "' + str(
 						files[item.attrib['comment']].name) + '"\n'
 				except:
 					pass
 			else:
-				params = params + str(item.attrib['rvarname']) + ' <- ""\n'
+				params += str(item.attrib['rvarname']) + ' <- ""\n'
 		elif item.attrib['type'] == 'DTS':
 			path_to_datasets = str(settings.MEDIA_ROOT) + "datasets/"
 			slug = slugify(data.get(item.attrib['comment'], "NA")) + '.RData'
-			params = params + str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
+			params += str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
 		elif item.attrib['type'] == 'MLT':
 			res = ''
 			seq = 'c('
 			for itm in data.getlist(item.attrib['comment'], "NA"):
 				if itm != "":
 					res += str(itm) + ','
-					seq = seq + '\"%s\",' % itm
+					seq += '\"%s\",' % itm
 			seq = seq[:-1] + ')'
 			item.set('val', res[:-1])
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+			params += str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
 		elif item.attrib['type'] == 'DTM_SAMPLES':
 			res = ''
 			seq = 'c('
 			for itm in data.getlist(item.attrib['comment'], "NA"):
 				if itm != "":
 					res += str(itm) + ','
-					seq = seq + '\"%s\",' % itm
+					seq += '\"%s\",' % itm
 			seq = seq[:-1] + ')'
 			item.set('val', res[:-1])
-			params = params + '# First character of each element in the vector below\n# serves to distinguish Group (G) and Sample (S) Ids;\n# ! You have to trim each element to get original Id !\n'
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+			params += '# First character of each element in the vector below\n# serves to distinguish Group (G) and Sample (S) Ids;\n# ! You have to trim each element to get original Id !\n'
+			params += str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
 		elif item.attrib['type'] == 'SCREEN_GROUPS':
 			res = ''
 			seq = 'c('
 			for itm in data.getlist(item.attrib['comment'], "NA"):
 				if itm != "":
 					res += str(itm) + ','
-					seq = seq + '\"%s\",' % itm
+					seq += '\"%s\",' % itm
 			seq = seq[:-1] + ')'
 			item.set('val', res[:-1])
-			params = params + '# This shows the selected screen group IDs!\n'
-			params = params + "Screen_groups" + ' <- ' + str(seq) + '\n'
+			params += '# This shows the selected screen group IDs!\n'
+			params += "Screen_groups" + ' <- ' + str(seq) + '\n'
 		# params = params + "Screen_groups" + ' <- "' + str(data.get(item.attrib['comment'], "NA")) + '"\n'
 		else:  # for text, text_are, drop_down, radio
-			params = params + str(item.attrib['rvarname']) + ' <- "' + str(
+			params += str(item.attrib['rvarname']) + ' <- "' + str(
 				data.get(item.attrib['comment'], "NA")) + '"\n'
 
 	return params
@@ -421,11 +357,11 @@ def gen_params_string(docxml, data, dir, files):
 
 def report_search(data_set, report_type, query):
 	"""
-        Each report type assumes its own search implementation;
-        RPy2 could be a good option (use local installation on VM):
-            - each report is assosiated with an r-script for searching;
-            - each report should have another r-script to generate an overview
-    """
+	Each report type assumes its own search implementation;
+	RPy2 could be a good option (use local installation on VM):
+		- each report is associated with an r-script for searching;
+		- each report should have another r-script to generate an overview
+	"""
 	lst = list()
 
 	# !!! HANDLE EXCEPTIONS IN THIS FUNCTION !!! #
@@ -455,9 +391,9 @@ def report_search(data_set, report_type, query):
 
 def get_report_overview(report_type, instance_name, instance_id):
 	"""
-        Most likely will call rCode to generate overview in order
-        to separate BREEZE and report content.
-    """
+	Most likely will call rCode to generate overview in order
+	to separate BREEZE and report content.
+	"""
 	summary_srting = str()
 
 	if str(report_type) == 'Drug' and len(instance_name) > 0:
@@ -477,36 +413,11 @@ def get_report_overview(report_type, instance_name, instance_id):
 
 	return summary_srting
 
-
-def dump_project_parameters(project, report):
-	dump = '# <----------  Project Details  ----------> \n'
-	dump += 'report.author          <- \"%s\"\n' % report.author.username
-	dump += 'report.pipeline        <- \"%s\"\n' % report.type
-	dump += 'project.name           <- \"%s\"\n' % project.name
-	dump += 'project.manager        <- \"%s\"\n' % project.manager
-	dump += 'project.pi             <- \"%s\"\n' % project.pi
-	dump += 'project.author         <- \"%s\"\n' % project.author
-	dump += 'project.collaborative  <- \"%s\"\n' % project.collaborative
-	dump += 'project.wbs            <- \"%s\"\n' % project.wbs
-	dump += 'project.external.id    <- \"%s\"\n' % project.external_id
-	dump += '# <----------  end of Project Details  ----------> \n\n'
-
-	return copy.copy(dump)
+# DELETED dump_project_parameters on 13/07/2015 (now part of Report)
+# DELETED dump_pipeline_config on 13/07/2015 (now part of Report)
 
 
-def dump_pipeline_config(report_type, query_key):
-	dump = ''
-
-	config_path = str(settings.MEDIA_ROOT) + str(report_type.config)
-	dump += '# <----------  Pipeline Config  ----------> \n'
-	dump += 'query.key          <- \"%s\"  # id of queried RORA instance \n' % query_key
-	dump += open(config_path, 'r').read() + '\n'
-	dump += '# <------- end of Pipeline Config --------> \n\n\n'
-
-	return copy.copy(dump)
-
-
-# TODO integrate in Report or Runnable and integrate with job's equivalent funct
+# TODO integrate in BreezeForm ? or Report or Runnable
 def build_report(report_data, request_data, report_property, sections):
 	""" Assembles report home folder, configures DRMAA and R related files
 		and spawns a new process for reports DRMAA job on cluster.
@@ -545,7 +456,6 @@ def build_report(report_data, request_data, report_property, sections):
 		_type=rt,
 		_name=str(report_data['instance_name']),
 		_author=the_user,
-		progress=8,
 		project=Project.objects.get(id=request_data.POST.get('project')),
 		_institute=the_user.prof.institute_info,
 		_breeze_stat=JobStat.INIT,
@@ -555,3 +465,63 @@ def build_report(report_data, request_data, report_property, sections):
 	dbitem.submit_to_cluster()
 
 	return True
+
+
+# clem 15/09/2015
+# TODO finish
+# TODO integrate in BreezeForm or fuse with the report one
+def build_script(request_data, script, go_run=False, job_inst=None):
+	""" Assembles job home folder, configures DRMAA and R related files
+		and spawns a new process for reports DRMAA job on cluster.
+	"""
+
+	from breeze.models import Jobs
+	from django.contrib.auth.models import User
+	from breeze.forms import BasicJobForm, form_from_xml
+
+	log = logger.getChild('build_job')
+	assert isinstance(log, logging.getLoggerClass())
+	assert isinstance(request_data.user, User)
+
+	# author
+	the_user = request_data.user
+	if job_inst is not None:
+		assert isinstance(job_inst, Jobs)
+		tree = job_inst.xml_tree
+	else:
+		tree = script.xml_tree
+
+	# after fill the forms for creating the new job
+	head_form = BasicJobForm(the_user, None, request_data.POST)
+	custom_form = form_from_xml(xml=tree, req=request_data, usr=the_user)
+
+	if head_form.is_valid() and custom_form.is_valid():
+		# create initial instance so that we can use its db id
+		dbitem = Jobs(
+			_type=script,
+			_name=str(head_form.cleaned_data['job_name']),
+			_description=head_form.cleaned_data['job_details'],
+			_author=the_user,
+			# project=Project.objects.get(id=request_data.POST.get('project')),
+			# _institute=the_user.prof.institute_info,
+			_breeze_stat=JobStat.SCHEDULED,
+			mailing=gen_mail_str(request_data),
+			email=head_form.cleaned_data['report_to']
+		)
+		dbitem.assemble(sections=tree, request_data=request_data)
+
+		if go_run:
+			dbitem.submit_to_cluster()
+
+	return custom_form, head_form
+
+
+# clem 15/09/2015
+def gen_mail_str(request_data):
+	mails = { 'Started': '', 'Ready': '', 'Aborted': '' }
+	mail_str = str()
+	for key in mails:
+		if key in request_data.POST:
+			mails[key] = u'checked'
+			mail_str += request_data.POST[key]
+	return mail_str

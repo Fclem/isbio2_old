@@ -231,14 +231,16 @@
 										<div class="row-fluid">
 											<div class="span 12">
 												<table class="table table-bordered table-condensed">
-													<tbody>
-													<tr class="warning"><td>&nbsp; <strong>Jobs running:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_running }}</span>&nbsp; </td></tr>
-													<tr class="warning"><td>&nbsp; <strong>Jobs sheduled:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_scheduled }}</span>&nbsp; </td></tr>
-													<tr class="warning"><td>&nbsp; <strong>Jobs in history:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_history }}</span>&nbsp; </td></tr>
-													<tr class="info"><td>&nbsp; <strong>Scripts in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.scripts_total }}</span>&nbsp; </td></tr>
-													<tr class="info"><td>&nbsp; <strong>Reports in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.scripts_tags }}</span>&nbsp; </td></tr>
-													<tr class="info"><td>&nbsp; <strong>Instances in db:</strong> <span class="badge badge-info pull-right">9999</span>&nbsp; </td></tr>
-													</tbody>
+<tbody>
+<tr class="warning"><td>&nbsp; <strong>Jobs / Reports running:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_running }}</span>&nbsp; </td></tr>
+<tr class="warning"><td>&nbsp; <strong>Jobs sheduled:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_scheduled }}</span>&nbsp; </td></tr>
+<tr class="warning"><td>&nbsp; <strong>Jobs in history:</strong> <span class="badge badge-info pull-right">{{ dbStat.jobs_history }}</span>&nbsp; </td></tr>
+<tr class="warning"><td>&nbsp; <strong>Reports in history:</strong> <span class="badge badge-info pull-right">{{ dbStat.reports_history }}</span>&nbsp; </td></tr>
+<tr class="info"><td>&nbsp; <strong>Scripts types in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.scripts_total }}</span>&nbsp; </td></tr>
+<tr class="info"><td>&nbsp; <strong>Reports tags in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.scripts_tags }}</span>&nbsp; </td></tr>
+<tr class="info"><td>&nbsp; <strong>Pipelines types in db:</strong> <span class="badge badge-info pull-right">{{ dbStat.report_types }}</span>&nbsp; </td></tr>
+<!--<tr class="info"><td>&nbsp; <strong>Instances in db:</strong> <span class="badge badge-info pull-right">?</span>&nbsp; </td></tr>-->
+</tbody>
 												</table>
 											</div>
 										</div>
@@ -454,7 +456,7 @@
 							var elementExists = document.getElementById(prop);
 							if (elementExists != null) $('#' + prop).text(msg.server_info[prop]);
 						}
-						window.setTimeout(updateServer, 750);
+						window.setTimeout(updateServer, 2000);
 					}
 				});
 			}

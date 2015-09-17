@@ -1,29 +1,29 @@
-from symbol import argument
-
-__author__ = 'clem'
 import django.db
 import os
-from datetime import datetime
 from multiprocessing import Process
-from django.conf import settings
-import logging
-from django.utils import timezone
-from datetime import timedelta
-from auxiliary import console_print as cp
+from utils import console_print as cp
 import time
-from exceptions import Exception
 from breeze.models import Report, Jobs, JobStat
 import drmaa
+from utils import *
+from b_exceptions import *
+from django.conf import settings
 
-logger = logging.getLogger(__name__)
+# from exceptions import Exception
+# import logging
+# logger = logging.getLogger(__name__)
 DB_REFRESH = settings.WATCHER_DB_REFRESH
 PROC_REFRESH = settings.WATCHER_PROC_REFRESH
 
+if settings.HOST_NAME.startswith('breeze'):
+	s = None
+	proc_lst = dict()
 
-def console_print(text, report=None):
+
+def console_print(text, dbitem=None):
 	sup = ''
-	if report is not None:
-		sup = ' report %s, ' % report
+	if dbitem is not None:
+		sup = '%s%s ' % (dbitem.instance_type[0], dbitem.id)
 	cp("PID%s : %s" % (os.getpid(), sup + text), settings.CONSOLE_DATE_F)
 
 
@@ -36,168 +36,170 @@ def with_drmaa(func):
 	:rtype:
 	"""
 	def inner(*args, **kwargs):
-		self = args[0]
-		self.s = drmaa.Session()
-		self.s.initialize()
+		global s
+		# self = args[0]
+		s = drmaa.Session()
+		s.initialize()
 		func(*args, **kwargs)
-		self.s.exit()
+		s.exit()
 
 	return inner
 
-class Watcher:
-	truc = 'machin'
 
-	def __init__(self):
-		if settings.HOST_NAME.startswith('breeze'):
-
-			self.s = None
-
-			self.jobs_lst = dict()
-			self.report_lst = list()
-			self.report_p = dict()
-
-	@staticmethod
-	def report(id):
-		django.db.close_connection()
-		return Report.objects.get(id=id)
-
-	def refresh_db(self):
-		"""
-		Scan the db for new reports tu be run or updated
-		:return: if any changed occured
-		:rtype: bool
-		"""
-		changed = False
-		django.db.close_connection()
-
-		lst = Report.objects.get_active()
-		for item in lst:
-			self.refresh_drmaa(item.id)
-
-		lst = Report.objects.get_run_wait()
-		for item in lst:
-			self._run_report(item)
-			changed = True
-		# TODO merge this
-		lst = Jobs.objects.get_active()
-		for item in lst:
-			self.refresh_drmaa(item.id)
-
-		lst = Jobs.objects.get_run_wait()
-		for item in lst:
-			self._run_report(item)
-			changed = True
-
-		return changed
-
-	def refresh_proc(self):
-		"""
-		Ping each running process that waits against an DRMAA job to end
-		"""
-		for each in self.report_p.keys():
-			report = self.report(each[1])
-			proc = self.report_p[each]
-			assert isinstance(proc, Process)
-			if not proc.is_alive():
-				exit_c = proc.exitcode
-				console_print('exited with code : %s' % exit_c, report.id)
-				proc.terminate()
-				console_print('%s : %s report says : %s' % (each, proc, report.status), report.id)
-				del self.report_p[each]
-				# at that point, ether the run was successful and the proccess saed that state,
-				# or we have to deal with a uncompleted run
-				if report.status != JobStat.SUCCEED and report.breeze_stat != JobStat.ABORT \
-					and report.status != JobStat.ABORTED:
-					console_print('failing job', report.id)
-					report.breeze_stat = JobStat.FAILED
-			else:
-				self.refresh_drmaa(each[1])
-
-	@with_drmaa
-	def refresh_drmaa(self, rid):
-		"""
-		Update the status of one Report
-		Can trigger job abortion if instructed to
-		:param rid: a Report id
-		:type rid: int
-		"""
-		s = self.s
-		if s is None:
-			console_print('NO DRMAA instance available', rid)
-			return
-
-		log = logger.getChild('watcher.refresh_drmaa')
-		job = self.report(rid)
-		type = job.instance_type[1]
-		status = None
-		if job.breeze_stat == JobStat.ABORT:
-			job.breeze_stat = JobStat.ABORTED
-			if job.sgeid is not None and job.sgeid != '' and job.sgeid > 0:
-				s.control(job.sgeid, drmaa.JobControlAction.TERMINATE)
-		elif job.sgeid is not None and job.sgeid != '' and int(job.sgeid) > 0:
-			try:
-				status = str(s.jobStatus(job.sgeid))
-				log.info('%s%s : drmaa says %s' % (type, job.id, status) )
-			except drmaa.InvalidArgumentException:
-				log.exception('%s%s : drmaa InvalidArgumentException' % (type, job.id))
-				# if settings.DEBUG: console_print("InvalidArgumentException", rid)
-			except drmaa.InvalidJobException:
-				log.warning('%s%s : drmaa InvalidJobException' % (type, job.id))
-				# if settings.DEBUG: console_print("InvalidJobException", rid)
-				if job.is_done:
-					status = JobStat.SUCCEED
-				else:
-					status = JobStat.ABORTED
-			except drmaa.AlreadyActiveSessionException:
-				if settings.DEBUG: console_print("AlreadyActiveSessionException", rid)
-				log.error('%s%s : drmaa AlreadyActiveSessionException' % (type, job.id))
-
-			if status != job.status:
-				job.breeze_stat = status
-				# No need to save, _set_status take care of that
-		else:
-			now_t = timezone.now()  # .time()
-			crea = job.created
-			tdelta = now_t - crea
-			assert isinstance(tdelta, timedelta)
-			log.warning('%s%s : sgeid has been empty for %s sec' % (type, job.id, tdelta.seconds))
-			if settings.DEBUG: console_print('sgeid has been empty for ' + str(tdelta.seconds) + ' sec', rid)
-			if tdelta > timedelta(seconds=settings.NO_SGEID_EXPIRY):
-				log.warning('%s%s : reseting job status' % (type, job.id))
-				if settings.DEBUG: console_print('reseting job status', rid)
-				# TODO : move this to _set_status
-				job.created = datetime.now().strftime(settings.USUAL_DATE_FORMAT)
-				# reset job status to RUN_WAIT which will trigger job.run
-				job.breeze_stat = JobStat.RUN_WAIT
-
-		# s.exit()
-
-	def _run_report(self, dbitem):
-		log = logger.getChild('watcher.run_report')
-		assert isinstance(log, logging.getLoggerClass())
+class ProcItem(object):
+	def __init__(self, proc, dbitem):
+		assert isinstance(proc, Process) or proc is None
 		assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
-		try:
-			# submit r-code
+		self.process = proc
+		self._db_item_id = dbitem.id
+		self._inst_type = dbitem.instance_of
 
+	@property
+	def db_item(self):
+		return self._inst_type.objects.get(pk=self._db_item_id)
+
+
+def refresh_db():
+	"""
+	Scan the db for new reports to be run or updated
+	"""
+	# django.db.close_connection()
+	lst_r = Report.objects.f.get_run_wait()
+	lst_j = Jobs.objects.f.get_run_wait()
+	for item in lst_r:
+		_spawn_the_job(item)
+	for item in lst_j:
+		_spawn_the_job(item)
+
+	lst_r = Report.objects.f.get_active()
+	lst_j = Jobs.objects.f.get_active()
+	for item in lst_r:
+		if item.id not in proc_lst.keys():
+			_reattach_the_job(item)
+	for item in lst_j:
+		if item.id not in proc_lst.keys():
+			_reattach_the_job(item)
+
+
+def end_tracking(proc_item): # proc_item):
+	"""
+	:param proc_item:
+	:type proc_item: ProcItem
+	"""
+	# TODO check that
+	# proc_item.db_item.breeze_stat = JobStat.DONE
+	get_logger().debug('%s%s : ending tracking' % proc_item.db_item.short_id)
+	a = proc_item.db_item.is_r_successful
+	# proc_item.process.terminate()
+	del proc_lst[proc_item.db_item.id]
+
+
+def refresh_proc():
+	"""
+		Checks each running process that waits against an DRMAA job to end
+		There might also be jobs on the list that have no process :
+		i.e. if the waiter crashed, server restarted etc
+	"""
+	for each in proc_lst.keys():
+		proc_item = proc_lst[each]
+		assert isinstance(proc_item, ProcItem)
+		dbitem = proc_item.db_item
+		proc = proc_item.process
+
+		if not proc.is_alive(): # process finished
+			exit_c = proc.exitcode
+			end_tracking(proc_item)
+			get_logger().debug('%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,)))
+			if exit_c != 0:
+				# drmaa waiter failed on first wait run
+				dbitem.breeze_stat = JobStat.FAILED
+				# relunch wait to check out
+				_reattach_the_job(dbitem)
+			# else : clean exit, success accessment code is managed by waiter
+		else:
+			refresh_qstat(proc_item)
+
+
+def refresh_qstat(proc_item):
+	"""
+	Update the status of one Report
+	Can trigger job abortion if instructed to
+	:param proc_item: a ProcItem object
+	:type proc_item: ProcItem
+	"""
+	# from qstat import Qstat
+	assert isinstance(proc_item, ProcItem)
+	dbitem = proc_item.db_item
+	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
+	log = get_logger()
+
+	status = None
+	if not dbitem.is_sgeid_empty:
+		if not dbitem.is_done:
+			try:
+				status = dbitem.qstat_stat()
+				log.debug('%s%s : qstat says %s' % (dbitem.short_id + (status,)) )
+			except NoSuchJob as e:
+				log.warning('%s%s : qstat InvalidJobException (%s)' % (dbitem.short_id + (e,)))
+				end_tracking(proc_item)
+			if status is not None and status != dbitem.status and not dbitem.aborting:
+				dbitem.breeze_stat = status
+	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
+		end_tracking(proc_item)
+		dbitem.re_submit_to_cluster()
+
+
+@with_drmaa
+def _reattach_the_job(dbitem):
+	"""
+	:param dbitem:
+	:type dbitem: Report | Jobs
+	"""
+	log = get_logger()
+	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
+	#if not dbitem.aborting:
+	try:
+		p = Process(target=dbitem.waiter, args=(s, ))
+		p.start()
+		proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
+
+		log.debug('%s%s : reattaching job.waiter in PID%s' % (dbitem.short_id + (p.pid,)))
+	except Exception as e:
+		log.exception('%s%s : unhandled exception : %s' % (dbitem.short_id + (e,)))
+		return False
+
+
+def _spawn_the_job(dbitem):
+	"""
+	:param dbitem:
+	:type dbitem: Report | Jobs
+	"""
+	log = get_logger()
+	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
+	if not dbitem.aborting:
+		try:
 			p = Process(target=dbitem.run)
 			p.start()
-			self.report_p.update({ (p.pid, dbitem.id): p })
+			# proc_lst.update({ dbitem.id: (p, dbitem) })
+			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
-			console_print('running report in blocking process %s', (dbitem.id, p.pid))
-			log.info('r%s : running report in blocking process %s' % (p.pid, dbitem.id))
+			log.debug('%s%s : spawning job.run in PID%s' % (dbitem.short_id + (p.pid,)))
 		except Exception as e:
-			log.exception('r%s : unhandled error while starting run_process thread : %s' % (dbitem.id, e))
+			log.exception('%s%s : unhandled exception : %s' % (dbitem.short_id + (e,)))
 			return False
+	else:
+		# abort_sub(ProcItem(None, dbitem), s)
+		dbitem.breeze_stat = JobStat.ABORTED
 
-# TO BE RUN ONLY_ONCE IN A SEPARATE BACKGROUND PROCESS
+
 def runner():
 	"""
 	Worker that post the jobs, and update their status
 	Run until killed or crashed
 	TO BE RUN ONLY_ONCE IN A SEPARATE BACKGROUND PROCESS
 	"""
-	console_print("Running watcher")
-	watching = Watcher()
+	get_logger().info('now running')
+	# watching = Watcher()
 
 	i = 0
 	j = 0
@@ -208,10 +210,13 @@ def runner():
 		if i == (DB_REFRESH / sleep_time):
 			# console_print('db_refresh')
 			i = 0
-			watching.refresh_db()
+			# Process(target=refresh_db).start()
+			refresh_db()
+
 		if j == (PROC_REFRESH / sleep_time):
 			# console_print('proc_refresh')
 			j = 0
-			watching.refresh_proc()
+			# Process(target=refresh_proc).start()
+			refresh_proc()
 
 		time.sleep(sleep_time)

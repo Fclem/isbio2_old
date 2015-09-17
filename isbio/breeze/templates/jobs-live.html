@@ -13,7 +13,7 @@
 					</div>
 				</td>
 			</tr>
-		{% elif job.status == "queued_active" or job.status == "init" %}
+		{% elif job.status == "queued_active" or job.status == "init" or job.status == 'aborted' %}
 			<tr id="{{ job.id }}_tr1" class="info">
 				<td id="{{ job.id }}_SGEstatus"><strong>{{ job.jname }}</strong> - checking status... - {{ job.staged }}</td>
 			</tr>
