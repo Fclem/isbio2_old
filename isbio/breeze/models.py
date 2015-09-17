@@ -1138,6 +1138,37 @@ class Runnable(FolderObj, models.Model):
 		super(Runnable, self).__setattr__(attr_name, value)
 
 	# SPECIFICS
+	# clem 17/09/2015
+	def find_sge_instance(self, sgeid):
+		"""
+		Return a runnable instance from an sge_id
+		:param sgeid: an sgeid from qstat
+		:type sgeid: str | int
+		:rtype: Runnable
+		"""
+		if sgeid == self.sgeid:
+			return self
+		return Runnable.find_sge_instance(sgeid)
+
+	@staticmethod
+	def find_sge_instance(sgeid):
+		"""
+		Return a runnable instance from an sge_id
+		:param sgeid: an sgeid from qstat
+		:type sgeid: str | int
+		:rtype: Runnable
+		"""
+		result = None
+		try:
+			result = Report.objects.get(sgeid=sgeid)
+		except ObjectDoesNotExist:
+			pass
+		try:
+			result = Jobs.objects.get(sgeid=sgeid)
+		except ObjectDoesNotExist:
+			pass
+		return result
+
 	@property
 	def institute(self):
 		try:

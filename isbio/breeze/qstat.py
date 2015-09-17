@@ -25,19 +25,28 @@ class SgeJob(object):
 		:type output: str
 		:rtype: None
 		"""
+		from breeze.models import Runnable, Report, Jobs
 		init = output.replace('\n', '').replace('     ', ' ')
 		while init != init.replace('  ', ' '):
 			init = init.replace('  ', ' ')
 		a_list = init.split(' ')
-		self.id = int(a_list[0])
+		self.id = int(a_list[0]) # SgeId
 		self.prior = a_list[1]
 		self.name = a_list[2]
+		self.full_name = ''
 		self.user = a_list[3]
+		self.full_user = ''
 		self._state = a_list[4]
 		self.start_d = a_list[5]
 		self.start_t = a_list[6]
 		self.queue = a_list[7]
 		self.slot = a_list[8]
+		self.runnable = Runnable.find_sge_instance(self.id)
+		if self.runnable:
+			self.user = str(self.runnable._author)
+			self.full_user = self.runnable._author.get_full_name()
+			self.full_name = self.runnable.sge_job_name
+
 
 	@property
 	def state(self):
@@ -57,8 +66,15 @@ class SgeJob(object):
 		displays text line output similar to qstat output
 		:rtype: str
 		"""
-		return '\t'.join(
-			[str(self.id), self.prior, self.name, self.user, self._state, self.start_d, self.start_t, self.queue, self.slot])
+		return '\t'.join(self.raw_out_tab)
+
+	@property
+	def raw_out_tab(self):
+		"""
+		displays text line output similar to qstat output
+		:rtype: str
+		"""
+		return [str(self.id), self.prior, self.name, self.user, self.state, self.start_d, self.start_t, self.queue, self.slot]
 
 	def abort(self):
 		"""

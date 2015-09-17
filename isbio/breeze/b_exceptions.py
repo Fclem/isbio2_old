@@ -1,3 +1,4 @@
+from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 __author__ = 'clem'
 __date__ = '25/05/2015'
 #

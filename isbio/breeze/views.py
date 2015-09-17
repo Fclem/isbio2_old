@@ -2835,12 +2835,16 @@ def checker(request, what):
 
 @login_required(login_url='/')
 def qstat_live(request):
-	from qstat import Qstat
+	from qstat import Qstat, SgeJob
 	q = Qstat().job_list
 
 	result = ''
 	for each in q:
-		result += '<code>%s</code><br />' % each.raw_out
+		assert isinstance(each, SgeJob)
+		tab = each.raw_out_tab
+		tab[2] = "<span title='%s'>%s</span>" % (each.full_name, each.name)
+		tab[3] = "<span title='%s'>%s</span>" % (each.full_user, each.user)
+		result += '<code>%s</code><br />' % '\t'.join(tab)
 
 	if result == '':
 		result = 'There is no SGE jobs running at the moment.<br />'
