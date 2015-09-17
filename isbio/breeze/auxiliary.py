@@ -622,8 +622,8 @@ def proxy_to(request, path, target_url, query_s='', silent=False):
 	log_obj = logger.getChild(sys._getframe().f_code.co_name)
 	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
 	# TODO deploy on prod and then remove
-	if not settings.DEV_MODE:
-		raise PermissionDenied
+	# if not settings.DEV_MODE:
+	# 	raise PermissionDenied
 	qs = ''
 	url = '%s%s'%(target_url, path)
 	if query_s and query_s != '':
