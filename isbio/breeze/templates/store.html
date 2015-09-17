@@ -44,9 +44,16 @@
 <div class="row-fluid">
     <!-- nav bar -->
     <div class="span2 offset1">
-        <div data-spy="affix" >
-          <ul class="nav nav-list" id="scriptTabs" style="margin-top: 15px;">
-            <li> <a href="#mycart" data-toggle="tab" data-param="/mycart" class="showcart" ><i class="icon-shopping-cart"></i> <strong> My Cart <span class='label label-success' id="countcart"> {{ count_mycart }} </span> </strong></li>
+        <div data-spy="affix" class="well">
+          <ul class="nav nav-list" id="scriptTabs" style="">
+            <li>
+	            <a href="#mycart" data-toggle="tab" data-param="/mycart" class="showcart" >
+		            <i class="icon-shopping-cart"></i>
+		            <strong>
+			            My Cart <span class='label label-success' id="countcart"> {{ count_mycart }} </span>
+		            </strong>
+	            </a>
+            </li>
             <li class="nav-header"><strong>CATEGORIES:</strong></li>
             <li class="active"><a href="#all" data-toggle="tab"><strong>All</strong></a></li>
             {% for cat in cate%}
