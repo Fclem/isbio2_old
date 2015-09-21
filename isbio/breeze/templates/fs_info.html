@@ -7,7 +7,7 @@
 
 {% block extra_head %}
 	<style>
-	h4 {
+	h2 {
 		padding-top: 45px;
 	}
 	</style>
@@ -31,7 +31,7 @@
 			<h3>Folder list :</h3>
 			<ul>
 				{% for file in folders %}
-					<li>[{{ file.status }}] : <small><a href="#{{ file.name }}">{{ file.name }}</a></small></li>
+					<li>[{{ file.status }}] : <small><a href="#{{ file.name }}">{{ file.name }}</a> ({{ file.count }} files {{ file.size }})</small></li>
 					{% empty %}
 				{% endfor %}
 			</ul>
@@ -39,7 +39,7 @@
 			<h3>File list :</h3>
 			{% for folder in files %}
 				<a name="{{ folder.name }}" href="#" class="anchor"></a>
-				<h4><small>Folder : {{ folder.name }} ({{ folder.count }} files)</small></h4>
+				<h2><small>Folder : {{ folder.name }} ({{ folder.count }} files, {{ folder.size }})</small></h2>
 
 				<ul>
 				{% for file in folder.list %}
