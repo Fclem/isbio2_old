@@ -1093,7 +1093,7 @@ class Runnable(FolderObj, models.Model):
 	FAILED_R = 'Execution halted'
 	SH_CL = '#!/bin/bash \ntouch ./%s' % INC_RUN_FN + ' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
 		% (SUCCESS_FN, INC_RUN_FN) + 'txt="%s"\n' % FAILED_R + 'CMD=`tail -n1<%s`\n' \
-			+ 'if [ "$CMD" = "%s" ]; \nthen\n	touch ./%s\nfi' % (FAILED_FN, FAILED_FN)
+			+ 'if [ "$CMD" = "$txt" ]; \nthen\n	touch ./%s\nfi' % FAILED_FN
 	SYSTEM_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, INC_RUN_FN, FAILED_FN, SUCCESS_FN, FILE_MAKER_FN]
 	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN] # TODO add FM file ?
 
