@@ -32,10 +32,12 @@ def test_rora_connect():
 	:rtype: bool
 	"""
 	rcode = 'source("%sconnection.R");' % settings.RORA_LIB
-	rcode += 'roraConnect();'
+	rcode += 'link <- roraConnect();'
+	rcode += 'dbDisconnect(link);'
 	try:
 		x = ro.r(rcode)
-	except RRuntimeError:
+	except RRuntimeError as e:
+		print e
 		return False
 
 	return True
@@ -49,13 +51,12 @@ def test_dotm_connect():
 	:rtype: bool
 	"""
 	rcode = 'source("%sconnection.R");' % settings.RORA_LIB
-	rcode += 'dotmConnect();'
-	# source_file('connection.R')
+	rcode += 'link <- dotmConnect();'
+	rcode += 'dbDisconnect(link);'
 	try:
 		x = ro.r(rcode)
-		# test = ro.globalenv['dotmConnect']
-		# res = test()
-	except RRuntimeError:
+	except RRuntimeError as e:
+		print e
 		return False
 
 	return True
