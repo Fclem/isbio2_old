@@ -141,9 +141,9 @@
 			$(".jbar").each(function(){
 				var par = $(this).data("param");
 				var itm = $(this).data("inst");
-				updateJobs(par, itm);
+				//updateJobs(par, itm);
+				updateJobsLp(par, itm);
 			});
-			//updateAllJobs();
 		});
 
 
@@ -256,6 +256,102 @@
 
 		var last_state = [];
 
+		function updateJobsLp(jid, item, has_error, md5) {
+			if (md5 == undefined) {
+				md5 = ''
+			}
+			if (item == 'script') {
+				var type = 'jobs';
+			} else {
+				var type = 'reports';
+			}
+			$.ajax({
+				type: "GET",
+				url: "/" + type + "/info_lp/" + jid + '/' + md5,
+				dataType: 'json',
+				success: function (msg) {
+					console.log(msg)
+					var arg = "width: " + msg.progress.toString() + "%";
+
+					if (has_error != 1) {
+						$("#" + jid.toString() + "_bar").attr('style', arg);
+						$("#" + jid.toString() + "_SGEstatus").html("<strong>" + msg.name.toString() + "</strong> - " + msg.sge.toString());
+						$("#" + jid.toString() + "_list_td").text(msg.sge.toString());
+					}
+
+					//A job is not running anymore
+					if (msg.status != "running" && msg.status != "queued_active" && msg.status != "init" && has_error != 1) {
+						//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
+						changePage(null, 1, 1, modalConnect);
+
+						var jstatus = '';
+						var jbar = '';
+						if (msg.status == "succeed") {
+							jstatus = "success";
+							jbar = "success";
+						}
+						else if (msg.status == "failed") {
+							jstatus = "error";
+							jbar = "danger";
+						}
+						else if (msg.status == "aborted") {
+							jstatus = "error";
+							jbar = "warning";
+						}
+
+						$("#" + jid.toString() + "_tr1").attr('class', jstatus);
+						$("#" + jid.toString() + "_tr2").attr('class', jstatus);
+						$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+
+						modalConnect();
+
+						// Remove line from 'In progress tab'
+						$("#" + jid.toString() + "_list_tr").remove();
+						// Decrease or remove the counter
+						var a = parseInt($("#current_tab_li_a .badge").html()) - 1;
+						if (a > 0) {
+							$("#current_tab_li_a .badge").html(a.toString())
+						} else {
+							$("#current_tab_li_a .badge").remove();
+						}
+					} else {
+						if (msg.status != last_state[jid]) {
+							var jstatus = '';
+							var jbar = '';
+							if (msg.status == "running") {
+								jstatus = "success";
+								jbar = "info";
+							}
+							else if (msg.status == "queued_active" || msg.status == "init") {
+								jstatus = "success";
+								jbar = "warning";
+							}
+
+							$("#" + jid.toString() + "_tr1").attr('class', jstatus);
+							$("#" + jid.toString() + "_tr2").attr('class', jstatus);
+							$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+						}
+						// delay = 1000;
+						// window.setTimeout(updateJobs, delay, jid, item);
+						updateJobsLp(jid, item, 0, msg.md5)
+					}
+					last_state[jid] = msg.status;
+				},
+				error: function (request, status, error) {
+					//implement proper error handling
+					$("#" + jid.toString() + "_tr1").attr('class', 'error');
+					$("#" + jid.toString() + "_tr2").attr('class', 'error');
+					$("#" + jid.toString() + "_div").attr('class', "progress progress-warning");
+					$("#" + jid.toString() + "_SGEstatus").html($("#" + jid.toString() + "_SGEstatus strong").text() +
+					  " - <strong>ERROR</strong> while checking status !");
+					last_state[jid] = 'error';
+					window.setTimeout(function () { updateJobs(jid, item, 1); }, 3000);
+				}
+			});
+		}
+		;
+
+
 		function updateJobs(jid, item, has_error) {
 			if(item=='script') {
 				var type = 'jobs';
@@ -319,7 +415,7 @@
 							$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
 						}
 						delay = 1000;
-						window.setTimeout(updateJobs, delay, jid, item);
+						// window.setTimeout(updateJobs, delay, jid, item);
 					}
 					last_state[jid] = msg.status;
 				},
@@ -347,26 +443,6 @@
 			refresh = true;
 		}
 		var refresh = true;
-
-		// not finished, WIP
-		/*
-		function reload () {
-			//window.setTimeout(updateJobs, delay, jid, item);
-			//$("#pagination-content").fadeTo(0, 0.33);
-			//var formData = $('#filter_form').serialize();
-			$.ajax({
-				type   : 'GET',
-				url    : '/jobs/live-container',
-				data   : {'get-live': 1},
-				success: function (response, textStatus, jqXHR) {
-					//$("#pagination-content").fadeTo(0, 1);
-					$("#live-container").html(response);
-				},
-				error  : function (request, status, error) { console.log(error); }
-			});
-			//call refresh
-			//apply_pg(pagOptions);
-		} */
 	</script>
 {% endblock %}
 

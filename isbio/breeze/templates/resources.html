@@ -197,8 +197,7 @@
 			$.ajax({
 				url    : url + md5,
 				error  : function (response, textStatus, jqXHR) {
-					// unloader();
-					// check_stuff_lp(id, url, loader, unloader);
+					var d = new Date();
 					default_loading('qstat_title', '&nbsp;&nbsp;(ERROR, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
 					setTimeout(function () { qstat_lp(); }, TIME_OUT_RETRY_DELAY);
 				},

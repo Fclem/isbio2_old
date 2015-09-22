@@ -281,7 +281,7 @@ def extract_users(groups, users):
 
 
 # TODO get rid of that
-def merge_job_history(jobs, reports):
+def merge_job_history(jobs, reports, user=None):
 	""" Merge reports and jobs in a unified object (list)
 		So that repors and jobs can be processed similatly on the client side
 	"""
@@ -316,6 +316,7 @@ def merge_job_history(jobs, reports):
 			el['r_error'] = item.r_error
 
 			el['shiny_key'] = ''
+			el['go_shiny'] = False
 
 		else:                             # report
 			el['instance'] = 'report'
@@ -340,6 +341,7 @@ def merge_job_history(jobs, reports):
 			el['r_error'] = item.r_error
 
 			el['shiny_key'] = item.shiny_key
+			el['go_shiny'] = item.is_shiny_enabled and item.has_access_to_shiny(user)
 
 		merged.append(copy.deepcopy(el))
 
