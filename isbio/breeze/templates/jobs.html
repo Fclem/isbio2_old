@@ -345,7 +345,7 @@
 					$("#" + jid.toString() + "_SGEstatus").html($("#" + jid.toString() + "_SGEstatus strong").text() +
 					  " - <strong>ERROR</strong> while checking status !");
 					last_state[jid] = 'error';
-					window.setTimeout(function () { updateJobs(jid, item, 1); }, 3000);
+					window.setTimeout(function () { updateJobsLp(jid, item, 0); }, 2000);
 				}
 			});
 		}

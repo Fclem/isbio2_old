@@ -198,20 +198,18 @@
 				url    : url + md5,
 				error  : function (response, textStatus, jqXHR) {
 					var d = new Date();
-					default_loading('qstat_title', '&nbsp;&nbsp;(ERROR, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
+					default_loading('qstat_title', '&nbsp;&nbsp;(<strong>ERROR</strong>, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
 					setTimeout(function () { qstat_lp(); }, TIME_OUT_RETRY_DELAY);
 				},
 				success: function (response, textStatus, jqXHR) {
 					// unloader();
 					if (typeof response === 'object') {
 						$("#" + id)[0].innerHTML = response['html'];
-						// $("#" + id)[0].innerHTML = generateButton(response[PY_TEXT], response[PY_CLASS], response[PY_HREF], '', '');
 						unloader();
 						check_stuff_lp(id, url, loader, unloader, response['md5']);
 					} else { // direct HTML response
 						$("#" + id)[0].innerHTML = response;
 					}
-					// check_stuff_lp(id, url, loader, unloader);
 				},
 				timeout: 0
 			});
@@ -277,8 +275,6 @@
 				default_loading('qstat_title', '&nbsp;&nbsp;(live feed, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
 			};
 			check_stuff_lp('qstat_checked', '/status_lp/qstat/', undefined, unloader);
-			//refresh
-			// setTimeout(function () { qstat(); }, ONE_SEC * QSTAT_REFRESH);
 		}
 
 		system_stat();
