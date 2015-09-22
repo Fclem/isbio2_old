@@ -175,7 +175,12 @@ class Qstat(object):
 			tab = each.raw_out_tab
 			tab[2] = "<span title='%s'>%s</span>" % (each.full_name, each.name)
 			tab[3] = "<span title='%s'>%s</span>" % (each.full_user, each.user)
-			result += '<code>%s</code><br />' % '\t'.join(tab)
+			sup = ''
+			if each.runnable is None:
+				sup = ' &lt;ext&gt; '
+			result += '<code>%s%s%s</code><br />' % (sup, '\t'.join(tab), sup)
+
+
 
 		if result == '':
 			result = 'There is no SGE jobs running at the moment.<br />'
