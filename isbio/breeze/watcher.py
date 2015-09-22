@@ -148,7 +148,7 @@ def refresh_qstat(proc_item):
 			if status is not None and status != dbitem.status and not dbitem.aborting:
 				dbitem.breeze_stat = status
 	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
-		log.warning('%s%s : SgeId timeout ! (%s)' % (dbitem.short_id + (e,)))
+		log.warning('%s%s : SgeId timeout !' % dbitem.short_id)
 		end_tracking(proc_item)
 		dbitem.re_submit_to_cluster()
 

@@ -458,6 +458,7 @@ class DevSettings(BreezeSettings):
 	##
 	# System Autocheck config
 	##
+	LONG_POLL_TIME_OUT_REFRESH = 540 # 9 minutes
 	SGE_MASTER_FILE = '/var/lib/gridengine/default/common/act_qmaster'
 	SGE_MASTER_IP = '192.168.67.2'
 	DOTM_SERVER_IP = '128.214.64.5'

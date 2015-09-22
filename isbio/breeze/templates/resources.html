@@ -111,9 +111,11 @@
 							document.write(LOADING_CONTENT);
 						</script>
 					</span>
+					<!--
 					<small class="">
 						Refreshed every <script type="text/javascript">document.write(QSTAT_REFRESH);</script> seconds
 					</small>
+					-->
 				</div>
 				{% for graph in usage_graph %}
 					<div class="well">
@@ -183,6 +185,39 @@
 			} // triggers the next loading function
 		} // check the status of a system through AJAX. Manage time-out, reload, sequential mode and display
 
+		function check_stuff_lp(id, url, loader, unloader, md5) {
+			if (loader !== undefined)
+				loader(id);
+			if (unloader == undefined)
+				unloader = function () {
+					default_loading(id, '', false);
+				};
+			if (md5 == undefined)
+				md5 = '';
+			$.ajax({
+				url    : url + md5,
+				error  : function (response, textStatus, jqXHR) {
+					// unloader();
+					// check_stuff_lp(id, url, loader, unloader);
+					default_loading('qstat_title', '&nbsp;&nbsp;(ERROR, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
+					setTimeout(function () { qstat_lp(); }, TIME_OUT_RETRY_DELAY);
+				},
+				success: function (response, textStatus, jqXHR) {
+					// unloader();
+					if (typeof response === 'object') {
+						$("#" + id)[0].innerHTML = response['html'];
+						// $("#" + id)[0].innerHTML = generateButton(response[PY_TEXT], response[PY_CLASS], response[PY_HREF], '', '');
+						unloader();
+						check_stuff_lp(id, url, loader, unloader, response['md5']);
+					} else { // direct HTML response
+						$("#" + id)[0].innerHTML = response;
+					}
+					// check_stuff_lp(id, url, loader, unloader);
+				},
+				timeout: 0
+			});
+		} // check the status of a system through AJAX. Manage time-out, reload, sequential mode and display
+
 		function countDown(loc, t, action){
 			$("#" + loc)[0].innerHTML = (t/ONE_SEC).toString();
 			if(t <= 0) {
@@ -237,7 +272,18 @@
 			setTimeout(function () { qstat(); }, ONE_SEC * QSTAT_REFRESH);
 		}
 
+		function qstat_lp() {
+			unloader = function () {
+				var d = new Date();
+				default_loading('qstat_title', '&nbsp;&nbsp;(live feed, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
+			};
+			check_stuff_lp('qstat_checked', '/status_lp/qstat/', undefined, unloader);
+			//refresh
+			// setTimeout(function () { qstat(); }, ONE_SEC * QSTAT_REFRESH);
+		}
+
 		system_stat();
-		qstat();
+		qstat_lp();
+		//qstat();
 	</script> <!-- STATUS AJAX CODE HERE -->
 {% endblock %}

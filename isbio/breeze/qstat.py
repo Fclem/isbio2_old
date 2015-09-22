@@ -139,8 +139,8 @@ class Qstat(object):
 		for e in lines:
 			j = SgeJob(e)
 			self._job_list[j.id] = j
-		if len(lines) == 0:
-			get_logger().debug('qstat says : No jobs running')
+		# if len(lines) == 0:
+			# get_logger().debug('qstat says : No jobs running')
 		return len(lines)
 
 	def job_info(self, jid=None):
@@ -157,3 +157,29 @@ class Qstat(object):
 			else:
 				raise NoSuchJob('%s was not found. SgeJob run was completed or SgeJob never existed.' % jid)
 				# return None, self.job_list[jid]
+
+	# Clem 22/09/2015
+	@property
+	def html(self):
+		q = self.job_list
+
+		result = ''
+		for each in q:
+			assert isinstance(each, SgeJob)
+			tab = each.raw_out_tab
+			tab[2] = "<span title='%s'>%s</span>" % (each.full_name, each.name)
+			tab[3] = "<span title='%s'>%s</span>" % (each.full_user, each.user)
+			result += '<code>%s</code><br />' % '\t'.join(tab)
+
+		if result == '':
+			result = 'There is no SGE jobs running at the moment.<br />'
+
+		return result
+
+	# Clem 22/09/2015
+	@property
+	def md5(self):
+		from hashlib import md5
+		m = md5()
+		m.update(str(self.html))
+		return m.hexdigest()

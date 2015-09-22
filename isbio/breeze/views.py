@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from _mysql import result
 from Bio.Sequencing.Ace import rt
 from openid.yadis.parsehtml import ent_pat
 from os import lstat
@@ -2833,10 +2834,12 @@ def checker(request, what):
 	return status_button_json(check.ui_checker_proxy(what))
 
 
+# Clem 22/09/2015
 @login_required(login_url='/')
-def qstat_live(request):
+def qstat_html(request):
 	from qstat import Qstat, SgeJob
-	q = Qstat().job_list
+	obj = Qstat()
+	q = obj.job_list
 
 	result = ''
 	for each in q:
@@ -2849,7 +2852,41 @@ def qstat_live(request):
 	if result == '':
 		result = 'There is no SGE jobs running at the moment.<br />'
 
+	return result, obj
+
+
+@login_required(login_url='/')
+def qstat_live(request):
+	result, _ = qstat_html(request)
 	return HttpResponse(result, mimetype='text/html')
+
+
+# Clem 22/09/2015
+@login_required(login_url='/')
+def qstat_json(request):
+	result, obj = qstat_html(request)
+	return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': result }),
+								mimetype='application/json')
+
+
+# Clem 22/09/2015
+@login_required(login_url='/')
+def qstat_lp(request, md5_t=None):
+	if md5_t is None:
+		return qstat_json(request)
+
+	from qstat import Qstat, SgeJob
+	from time import sleep
+	refresh_time = 0.5
+	q = Qstat()
+	last_sig = md5_t
+	i = 0
+	while last_sig == q.md5:
+		i += refresh_time
+		if i > settings.LONG_POLL_TIME_OUT_REFRESH:
+			break
+		sleep(refresh_time)
+	return qstat_json(request)
 
 
 # clem on 21/08/2015
