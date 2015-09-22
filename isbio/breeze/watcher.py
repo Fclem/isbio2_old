@@ -141,7 +141,7 @@ def refresh_qstat(proc_item):
 		if not dbitem.is_done:
 			try:
 				status = dbitem.qstat_stat()
-				log.debug('%s%s : qstat says %s' % (dbitem.short_id + (status,)) )
+				# log.debug('%s%s : qstat says %s' % (dbitem.short_id + (status,)) )
 			except NoSuchJob as e:
 				log.warning('%s%s : qstat InvalidJobException (%s)' % (dbitem.short_id + (e,)))
 				end_tracking(proc_item)
