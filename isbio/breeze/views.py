@@ -2834,44 +2834,39 @@ def checker(request, what):
 	return status_button_json(check.ui_checker_proxy(what))
 
 
-# Clem 22/09/2015
-@login_required(login_url='/')
-def qstat_html(request):
-	from qstat import Qstat, SgeJob
-	obj = Qstat()
-	q = obj.job_list
-
-	result = ''
-	for each in q:
-		assert isinstance(each, SgeJob)
-		tab = each.raw_out_tab
-		tab[2] = "<span title='%s'>%s</span>" % (each.full_name, each.name)
-		tab[3] = "<span title='%s'>%s</span>" % (each.full_user, each.user)
-		result += '<code>%s</code><br />' % '\t'.join(tab)
-
-	if result == '':
-		result = 'There is no SGE jobs running at the moment.<br />'
-
-	return result, obj
-
-
+# FIXME del DEPRECATED
 @login_required(login_url='/')
 def qstat_live(request):
-	result, _ = qstat_html(request)
-	return HttpResponse(result, mimetype='text/html')
+	"""
+	OLD AJAX qstat DEPRECATED
+	:return: json
+	:rtype: HttpResponse
+	"""
+	from qstat import Qstat
+	return HttpResponse(Qstat().html, mimetype='text/html')
 
 
 # Clem 22/09/2015
 @login_required(login_url='/')
 def qstat_json(request):
-	result, obj = qstat_html(request)
-	return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': result }),
-								mimetype='application/json')
+	"""
+	Returns a smart HTML view of qstat and associated md5,
+	:return: json
+	:rtype: HttpResponse
+	"""
+	from qstat import Qstat
+	obj = Qstat()
+	return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': obj.html }), mimetype='application/json')
 
 
 # Clem 22/09/2015
 @login_required(login_url='/')
 def qstat_lp(request, md5_t=None):
+	"""
+	Long-Polling view for qstat
+	Returns a smart HTML view of qstat and associated md5,
+	Only upon changes from last client's known output.
+	"""
 	if md5_t is None:
 		return qstat_json(request)
 

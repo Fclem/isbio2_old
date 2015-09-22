@@ -161,6 +161,12 @@ class Qstat(object):
 	# Clem 22/09/2015
 	@property
 	def html(self):
+		"""
+		Format job_list as an smart HTML output
+		replace default sge user, by job owner, and owner fullname as tooltip
+		and add the job full name as tooltip
+		:rtype: str
+		"""
 		q = self.job_list
 
 		result = ''
@@ -179,6 +185,14 @@ class Qstat(object):
 	# Clem 22/09/2015
 	@property
 	def md5(self):
+		"""
+		Return the md5 of the current qstat full output
+		Used for long_poll refresh :
+		Client check his last known status md5 against this,
+		and only get a reply when this output changes compared to his md5
+		:return:
+		:rtype: str
+		"""
 		from hashlib import md5
 		m = md5()
 		m.update(str(self.html))
