@@ -1505,45 +1505,45 @@ class Runnable(FolderObj, models.Model):
 		except Exception as e:
 			log.exception('%s%s : ' % self.short_id + 'pre-run error %s (process continues)' % e)
 
-		#try:
-		s = drmaa.Session()
-		s.initialize()
+		try:
+			s = drmaa.Session()
+			s.initialize()
 
-		jt = s.createJobTemplate()
-		jt.workingDirectory = self.home_folder_full_path
-		jt.jobName = self.sge_job_name
-		jt.email = [str(self._author.email)]
-		if self.mailing != '':
-			jt.nativeSpecification = "-m " + self.mailing
-		if self.email is not None and self.email != '':
-			jt.email.append(str(self.email))
-		jt.blockEmail = False
+			jt = s.createJobTemplate()
+			jt.workingDirectory = self.home_folder_full_path
+			jt.jobName = self.sge_job_name
+			jt.email = [str(self._author.email)]
+			if self.mailing != '':
+				jt.nativeSpecification = "-m " + self.mailing
+			if self.email is not None and self.email != '':
+				jt.email.append(str(self.email))
+			jt.blockEmail = False
 
-		jt.remoteCommand = config
-		jt.joinFiles = True
+			jt.remoteCommand = config
+			jt.joinFiles = True
 
-		self.progress = 25
-		self.save()
-		import copy
-		if not self.aborting:
-			self.sgeid = copy.deepcopy(s.runJob(jt))
-			log.debug('%s%s : ' % self.short_id + 'returned sge_id "%s"' % self.sgeid)
-			self.breeze_stat = JobStat.SUBMITTED
-		# waiting for the job to end
-		self.waiter(s, True)
+			self.progress = 25
+			self.save()
+			import copy
+			if not self.aborting:
+				self.sgeid = copy.deepcopy(s.runJob(jt))
+				log.debug('%s%s : ' % self.short_id + 'returned sge_id "%s"' % self.sgeid)
+				self.breeze_stat = JobStat.SUBMITTED
+			# waiting for the job to end
+			self.waiter(s, True)
 
-		jt.delete()
-		s.exit()
-		os.chdir(default_dir)
+			jt.delete()
+			s.exit()
+			os.chdir(default_dir)
 
-		#except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
-		#		Exception) as e:
-		#	log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated : %s' % e)
-		#	self.__manage_run_failed(None, '', None)
-		#	if s is not None:
-		#		s.exit()
-		#	raise e
-		#	return 1
+		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
+				Exception) as e:
+			log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated : %s' % e)
+			self.__manage_run_failed(None, '', None)
+			if s is not None:
+				s.exit()
+			raise e
+			return 1
 
 		log.debug('%s%s : ' % self.short_id + 'drmaa job submit terminated successfully !')
 		return 0

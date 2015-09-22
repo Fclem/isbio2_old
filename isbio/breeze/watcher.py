@@ -109,13 +109,16 @@ def refresh_proc():
 		if not proc.is_alive(): # process finished
 			exit_c = proc.exitcode
 			end_tracking(proc_item)
-			get_logger().debug('%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,)))
+			msg = '%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,))
 			if exit_c != 0:
+				get_logger().error(msg)
 				# drmaa waiter failed on first wait run
 				dbitem.breeze_stat = JobStat.FAILED
 				# relunch wait to check out
 				_reattach_the_job(dbitem)
-			# else : clean exit, success accessment code is managed by waiter
+			else:
+				get_logger().debug(msg)
+			# else : clean exit, success assessment code is managed by waiter
 		else:
 			refresh_qstat(proc_item)
 
@@ -145,6 +148,7 @@ def refresh_qstat(proc_item):
 			if status is not None and status != dbitem.status and not dbitem.aborting:
 				dbitem.breeze_stat = status
 	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
+		log.warning('%s%s : SgeId timeout ! (%s)' % (dbitem.short_id + (e,)))
 		end_tracking(proc_item)
 		dbitem.re_submit_to_cluster()
 
