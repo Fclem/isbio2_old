@@ -104,7 +104,6 @@
 			<a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
 		</div>
 	</div>
-	<!-- TODO redesign due to : very poor design :: (too much) duplicated code -->
 	<script type="text/javascript">
 		function changePage(e, oldPage, newPage, callback) {
 			//$.get("/jobs/" , {page: newPage}, function (data) {
@@ -146,7 +145,6 @@
 			});
 		});
 
-
 		$(".abort").click(function(ev){
 			ev.preventDefault(); // prevent navigation
 			var par = $(this).data("param");
@@ -162,6 +160,7 @@
 				}
 			});
 		});
+
 		$(".rtext").click(function(ev) {
 			ev.preventDefault(); // prevent navigation
 			var par = $(this).data("param");
@@ -256,6 +255,31 @@
 
 		var last_state = [];
 
+		function update_status(msg, jid) {
+			var jstatus = '';
+			var jbar = '';
+			if (msg.status == "running") {
+				jstatus = "success";
+				jbar = "info";
+			}else if (msg.status == "queued_active" || msg.status == "init") {
+				jstatus = "success";
+				jbar = "warning";
+			}else if (msg.status == "succeed") {
+				jstatus = "success";
+				jbar = "success";
+			}else if (msg.status == "failed") {
+				jstatus = "error";
+				jbar = "danger";
+			}else if (msg.status == "aborted") {
+				jstatus = "error";
+				jbar = "warning";
+			}
+
+			$("#" + jid.toString() + "_tr1").attr('class', jstatus);
+			$("#" + jid.toString() + "_tr2").attr('class', jstatus);
+			$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+		}
+
 		function updateJobsLp(jid, item, has_error, md5) {
 			if (md5 == undefined) {
 				md5 = ''
@@ -270,7 +294,7 @@
 				url: "/" + type + "/info_lp/" + jid + '/' + md5,
 				dataType: 'json',
 				success: function (msg) {
-					console.log(msg)
+					console.log(msg);
 					var arg = "width: " + msg.progress.toString() + "%";
 
 					if (has_error != 1) {
@@ -284,24 +308,7 @@
 						//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
 						changePage(null, 1, 1, modalConnect);
 
-						var jstatus = '';
-						var jbar = '';
-						if (msg.status == "succeed") {
-							jstatus = "success";
-							jbar = "success";
-						}
-						else if (msg.status == "failed") {
-							jstatus = "error";
-							jbar = "danger";
-						}
-						else if (msg.status == "aborted") {
-							jstatus = "error";
-							jbar = "warning";
-						}
-
-						$("#" + jid.toString() + "_tr1").attr('class', jstatus);
-						$("#" + jid.toString() + "_tr2").attr('class', jstatus);
-						$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+						update_status(msg, jid);
 
 						modalConnect();
 
@@ -316,20 +323,7 @@
 						}
 					} else {
 						if (msg.status != last_state[jid]) {
-							var jstatus = '';
-							var jbar = '';
-							if (msg.status == "running") {
-								jstatus = "success";
-								jbar = "info";
-							}
-							else if (msg.status == "queued_active" || msg.status == "init") {
-								jstatus = "success";
-								jbar = "warning";
-							}
-
-							$("#" + jid.toString() + "_tr1").attr('class', jstatus);
-							$("#" + jid.toString() + "_tr2").attr('class', jstatus);
-							$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+							update_status(msg, jid);
 						}
 						// delay = 1000;
 						// window.setTimeout(updateJobs, delay, jid, item);
@@ -348,10 +342,9 @@
 					window.setTimeout(function () { updateJobsLp(jid, item, 0); }, 2000);
 				}
 			});
-		}
-		;
+		};
 
-
+		// FIXME deprecated
 		function updateJobs(jid, item, has_error) {
 			if(item=='script') {
 				var type = 'jobs';
@@ -376,15 +369,7 @@
 						//window.setTimeout(function() {window.location.href = '/jobs/';} , 150);
 						changePage(null, 1, 1, modalConnect);
 
-						var jstatus = '';
-						var jbar = '';
-						if (msg.status == "succeed") { jstatus = "success"; jbar = "success"; }
-						else if (msg.status == "failed") { jstatus = "error"; jbar = "danger"; }
-						else if (msg.status == "aborted") { jstatus = "error"; jbar = "warning"; }
-
-						$("#" + jid.toString() + "_tr1").attr('class', jstatus);
-						$("#" + jid.toString() + "_tr2").attr('class', jstatus);
-						$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+						update_status(msg, jid);
 
 						modalConnect();
 
@@ -399,23 +384,10 @@
 						}
 					}else{
 						if(msg.status!= last_state[jid]) {
-							var jstatus = '';
-							var jbar = '';
-							if (msg.status == "running") {
-								jstatus = "success";
-								jbar = "info";
-							}
-							else if (msg.status == "queued_active" || msg.status == "init") {
-								jstatus = "success";
-								jbar = "warning";
-							}
-
-							$("#" + jid.toString() + "_tr1").attr('class', jstatus);
-							$("#" + jid.toString() + "_tr2").attr('class', jstatus);
-							$("#" + jid.toString() + "_div").attr('class', "progress progress-" + jbar + " progress-striped active");
+							update_status(msg, jid);
 						}
 						delay = 1000;
-						// window.setTimeout(updateJobs, delay, jid, item);
+						window.setTimeout(updateJobs, delay, jid, item);
 					}
 					last_state[jid] = msg.status;
 				},

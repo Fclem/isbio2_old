@@ -199,7 +199,7 @@
 				error  : function (response, textStatus, jqXHR) {
 					var d = new Date();
 					default_loading('qstat_title', '&nbsp;&nbsp;(<strong>ERROR</strong>, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
-					setTimeout(function () { check_stuff_lp(id, url, loader, unloader; }, TIME_OUT_RETRY_DELAY);
+					setTimeout(function () { check_stuff_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
 				},
 				success: function (response, textStatus, jqXHR) {
 					// unloader();
