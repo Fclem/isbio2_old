@@ -1325,6 +1325,7 @@ class Runnable(FolderObj, models.Model):
 		"""The job name to submit to SGE
 		:rtype: str
 		"""
+
 		name = self._name if not self._name[0].isdigit() else '_%s' % self._name
 		return '%s_%s' % (slugify(name), self.instance_type.capitalize())
 
