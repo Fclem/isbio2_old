@@ -99,7 +99,7 @@ class BreezeSettings(Settings):
 			# 'OPTIONS': { "init_command": "SET foreign_key_checks = 0;", },
 			'OPTIONS': {
 				"init_command": "SET storage_engine=INNODB, SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", }
-			}
+		}
 	}
 
 	# Local time zone for this installation. Choices can be found here:
@@ -127,14 +127,14 @@ class BreezeSettings(Settings):
 
 	# !CUSTOM!
 	# Tempory folder for the application
-	#TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
+	# # TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
 	# Path to R installation
 	R_ENGINE_PATH = 'R '
 
 	# Absolute filesystem path to the directory that will hold user-uploaded files.
 	# Example: "/home/media/media.lawrence.com/media/"
-	#MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
-	#RORA_LIB = '/home/comrade/Projects/fimm/roralib/'
+	# #MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
+	# #RORA_LIB = '/home/comrade/Projects/fimm/roralib/'
 
 	# URL that handles the media served from MEDIA_ROOT. Make sure to use a
 	# trailing slash.
@@ -337,6 +337,7 @@ class DevSettings(BreezeSettings):
 	MODE_PROD = RUN_MODE == 'prod'
 	PHARMA_MODE = False
 
+	# Super User on breeze can Access all datas
 	SU_ACCESS_OVERRIDE = True
 
 	# contains everything else (including breeze generated content) than the breeze web source code and static files
@@ -373,6 +374,7 @@ class DevSettings(BreezeSettings):
 	DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
+	MOULD_FOLDER = MEDIA_ROOT + 'mould/'
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
 	GENERAL_SH_NAME = 'sgeconfig.sh'
 	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
@@ -384,6 +386,7 @@ class DevSettings(BreezeSettings):
 	NOZZLE_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'nozzle_templates/'
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
 	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
+	NOZZLE_REPORT_FN = 'report'
 
 	RSCRIPTS_FN = 'scripts/'
 	RSCRIPTS_PATH = MEDIA_ROOT + RSCRIPTS_FN
@@ -413,23 +416,38 @@ class DevSettings(BreezeSettings):
 	#
 	# SHINY RELATED CONFIG
 	#
-	SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
-	SHINY_TAGS = MEDIA_ROOT + 'shinyTags/'
-	SHINY_REPORTS = MEDIA_ROOT + 'shinyReports/'
-	SHINY_REPORT_TEMPLATE_PATH = TEMPLATE_FOLDER + 'shiny_templates/'
+	# SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
+	SHINY_FN_REPORTS = 'shinyReports'
+	SHINY_FN_TAGS = 'shinyTags'
+	SHINY_FN_TEMPLATE = 'shiny_templates'
+	SHINY_TAGS = '%s%s/' % (MEDIA_ROOT, SHINY_FN_TAGS)
+	SHINY_REPORTS = '%s%s/' % (MEDIA_ROOT, SHINY_FN_REPORTS)
+	SHINY_REPORT_TEMPLATE_PATH = '%s%s/' % (TEMPLATE_FOLDER, SHINY_FN_TEMPLATE)
 	SHINY_ORIG_TARGET_URL = 'http://%s/breeze/'
 	SHINY_ORIG_LIBS_TARGET_URL = 'http://%s/libs/'
-	SHINY_REMOTE_IP = '86.50.169.70:3838'
+	# local Shiny
+	SHINY_LOCAL_ENABLE = True
 	SHINY_LOCAL_IP = '127.0.0.1:3838'
+	SHINY_LOCAL_TARGET_URL = SHINY_ORIG_TARGET_URL % SHINY_LOCAL_IP
+	SHINY_LOCAL_LIBS_TARGET_URL = SHINY_ORIG_LIBS_TARGET_URL % SHINY_LOCAL_IP
+	SHINY_LOCAL_LIBS_BREEZE_URL = '/libs/'
+	# remote Shiny
+	SHINY_REMOTE_ENABLE = True
+	SHINY_REMOTE_IP = '86.50.169.70:3838'
+	SHINY_REMOTE_LOCAL_PATH = '/shiny-csc/'
+	SHINY_REMOTE_CSC_LOCAL_PATH = '/home/shiny/shiny/'
+	SHINY_REMOTE_BREEZE_REPORTS_PATH = SHINY_REMOTE_LOCAL_PATH + REPORTS_FN
+	SHINY_REMOTE_REPORTS = '%s%s/' % (SHINY_REMOTE_LOCAL_PATH, SHINY_FN_REPORTS)
+	SHINY_REMOTE_REPORTS_INTERNAL = '%s%s/' % (SHINY_REMOTE_CSC_LOCAL_PATH, SHINY_FN_REPORTS)
+	SHINY_REMOTE_TAGS = '%s%s/' % (SHINY_REMOTE_LOCAL_PATH, SHINY_FN_TAGS)
+	SHINY_REMOTE_TAGS_INTERNAL = '%s%s/' % (SHINY_REMOTE_CSC_LOCAL_PATH, SHINY_FN_TAGS)
+	SHINY_REMOTE_TARGET_URL = SHINY_ORIG_TARGET_URL % SHINY_REMOTE_IP
+	SHINY_REMOTE_LIBS_TARGET_URL = SHINY_ORIG_LIBS_TARGET_URL % SHINY_REMOTE_IP
+	SHINY_REMOTE_LIBS_BREEZE_URL = '/libs/'
+
+	# LEGACY ONLY (single Shiny old system)
 	SHINY_MODE = 'local'
-	if SHINY_MODE == 'remote':
-		SHINY_TARGET_URL = SHINY_ORIG_TARGET_URL % SHINY_REMOTE_IP
-		SHINY_LIBS_TARGET_URL = SHINY_ORIG_LIBS_TARGET_URL % SHINY_REMOTE_IP
-		SHINY_LIBS_BREEZE_URL = '/libs/'
-	else:
-		SHINY_TARGET_URL = SHINY_ORIG_TARGET_URL % SHINY_LOCAL_IP
-		SHINY_LIBS_TARGET_URL = SHINY_ORIG_LIBS_TARGET_URL % SHINY_LOCAL_IP
-		SHINY_LIBS_BREEZE_URL = '/shiny/libs/'
+
 	SHINY_HEADER_FILE_NAME = 'header.R'
 	SHINY_LOADER_FILE_NAME = 'loader.R'
 	SHINY_GLOBAL_FILE_NAME = 'global.R'
@@ -437,20 +455,20 @@ class DevSettings(BreezeSettings):
 	SHINY_SERVER_FILE_NAME = 'server.R'
 	SHINY_FILE_LIST = 'files.json'
 	# SHINY_SERVER_FOLDER = 'scripts_server/'
-	SHINY_UI_FOLDER = 'scripts_body/'
-	SHINY_SERVER_FOLDER = 'scripts_server/'
+	# SHINY_UI_FOLDER = 'scripts_body/'
+	# SHINY_SERVER_FOLDER = 'scripts_server/'
 	SHINY_RES_FOLDER = 'www/'
-	SHINY_DASH_UI_FILE = 'dash_ui.R'
-	SHINY_DASH_SERVER_FILE = 'dashboard_serverside.R'
-	SHINY_DASH_UI_FN = SHINY_UI_FOLDER + SHINY_DASH_UI_FILE
-	SHINY_DASH_SERVER_FN = SHINY_SERVER_FOLDER + SHINY_DASH_SERVER_FILE
-	SHINY_TAG_CANVAS_FN = 'mould/shinyTagTemplate.zip'
-	SHINY_TAG_CANVAS_PATH = MEDIA_ROOT + SHINY_TAG_CANVAS_FN
+	# SHINY_DASH_UI_FILE = 'dash_ui.R'
+	# HINY_DASH_SERVER_FILE = 'dashboard_serverside.R'
+	# SHINY_DASH_UI_FN = SHINY_UI_FOLDER + SHINY_DASH_UI_FILE
+	# SHINY_DASH_SERVER_FN = SHINY_SERVER_FOLDER + SHINY_DASH_SERVER_FILE
+	SHINY_TAG_CANVAS_FN = 'shinyTagTemplate.zip'
+	SHINY_TAG_CANVAS_PATH = MOULD_FOLDER + SHINY_TAG_CANVAS_FN
 	SHINY_MIN_FILE_SIZE = 14 # library(shiny) is 14 byte long
 	# NOZZLE_TARGET_URL = 'http://' + FULL_HOST_NAME + '/'
 	# Install shiny library : install.packages('name of the lib', lib='/usr/local/lib/R/site-library', dependencies=TRUE)
 
-	FOLDERS_LST = [TEMPLATE_FOLDER, SHINY_REPORT_TEMPLATE_PATH, SHINY_REPORTS, SHINY_TAGS, SHINY_APPS,
+	FOLDERS_LST = [TEMPLATE_FOLDER, SHINY_REPORT_TEMPLATE_PATH, SHINY_REPORTS, SHINY_TAGS,
 		NOZZLE_TEMPLATE_FOLDER, SCRIPT_TEMPLATE_FOLDER, JOBS_PATH, REPORT_TYPE_PATH, REPORTS_PATH, RSCRIPTS_PATH, MEDIA_ROOT,
 		PROJECT_FHRB_PM_PATH, RORA_LIB, STATIC_ROOT]
 
@@ -458,6 +476,7 @@ class DevSettings(BreezeSettings):
 	##
 	# System Autocheck config
 	##
+	# this is used to avoid 504 Gateway time-out from ngnix with is currently set to 600 sec = 10 min
 	LONG_POLL_TIME_OUT_REFRESH = 540 # 9 minutes
 	SGE_MASTER_FILE = '/var/lib/gridengine/default/common/act_qmaster'
 	SGE_MASTER_IP = '192.168.67.2'
@@ -465,20 +484,18 @@ class DevSettings(BreezeSettings):
 	RORA_SERVER_IP = '192.168.0.219'
 	FILE_SERVER_IP = '192.168.0.107'
 	SPECIAL_CODE_FOLDER = PROJECT_PATH + 'code/'
-	MOULD_FOLDER = MEDIA_ROOT + 'mould/'
 	FS_SIG_FILE = PROJECT_PATH + 'fs_sig.md5'
 	FS_LIST_FILE = PROJECT_PATH + 'fs_checksums.json'
 	FOLDERS_TO_CHECK = [TEMPLATE_FOLDER, SHINY_REPORTS, SHINY_TAGS, REPORT_TYPE_PATH,
 						RSCRIPTS_PATH, RORA_LIB, MOULD_FOLDER, STATIC_ROOT]
-
 
 	# STATIC URL MAPPINGS
 	SHINY_URL = '/shiny/rep/'
 	STATIC_URL = '/static/'
 	MEDIA_URL = '/media/'
 
-	# number of seconds after witch a job that has not received a sgeid should be marked as aborted
-	NO_SGEID_EXPIRY = 60
+	# number of seconds after witch a job that has not received a sgeid should be marked as aborted or re-run
+	NO_SGEID_EXPIRY = 30
 
 	# Additional locations of static files
 	STATICFILES_DIRS = (
@@ -493,6 +510,10 @@ class DevSettings(BreezeSettings):
 	EMAIL_SUBJECT_PREFIX = '[' + FULL_HOST_NAME + '] '
 	EMAIL_USE_TLS = True
 
+	#
+	# END OF CONFIG
+	# RUN-MODE SPECIFICS FOLLOWING
+	#
 
 	if DEBUG:
 		import sys
@@ -533,10 +554,21 @@ class DevSettings(BreezeSettings):
 		logging.info('project home : ' + PROJECT_PATH)
 	else:
 		VERBOSE = False
-	# if dev mode then auto disable DEBUG, for safety
+	# if prod mode then auto disable DEBUG, for safety
 	if MODE_PROD:
+		SHINY_MODE = 'remote'
+		SHINY_LOCAL_ENABLE = False
 		DEBUG = False
 		VERBOSE = False
+
+	if SHINY_MODE == 'remote':
+		SHINY_TARGET_URL = SHINY_ORIG_TARGET_URL % SHINY_REMOTE_IP
+		SHINY_LIBS_TARGET_URL = SHINY_ORIG_LIBS_TARGET_URL % SHINY_REMOTE_IP
+		SHINY_LIBS_BREEZE_URL = SHINY_REMOTE_LIBS_BREEZE_URL
+	else:
+		SHINY_TARGET_URL = SHINY_ORIG_TARGET_URL % SHINY_LOCAL_IP
+		SHINY_LIBS_TARGET_URL = SHINY_ORIG_LIBS_TARGET_URL % SHINY_LOCAL_IP
+		SHINY_LIBS_BREEZE_URL = SHINY_LOCAL_LIBS_BREEZE_URL
 
 	print 'Logging on %s\nSettings loaded. Running %s on %s' %\
 	(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME))

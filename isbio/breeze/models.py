@@ -31,6 +31,26 @@ Trans = managers.Trans
 # TODO : move all the logic into objects here
 
 
+class ACL:
+	__R = 4
+	__RX = 5
+	__W = 6
+	__X = 7
+	__OTHER = 1
+	__GROUP = 10
+	__OWNER = 100
+
+	R__ = 0400
+	RW__ = 0600
+	RWX__ = 0700
+	RW_RW_R = 0664
+	RW_RW_ = 0660
+	RW_R_ = 0640
+	R_R_ = 0440
+	RWX_RWX_R = 774
+
+
+
 class JobState(drmaa.JobState):
 	SUSPENDED = 'suspended'
 	PENDING = 'pending'
@@ -402,19 +422,21 @@ def shiny_files():
 class ShinyReport(models.Model):
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
 	FILE_SERVER_NAME = settings.SHINY_SERVER_FILE_NAME
-	FILE_DASH_UI = settings.SHINY_DASH_UI_FN
-	FILE_DASH_SERVER = settings.SHINY_DASH_SERVER_FN
+	# FILE_DASH_UI = settings.SHINY_DASH_UI_FN
+	# FILE_DASH_SERVER = settings.SHINY_DASH_SERVER_FN
 	FILE_HEADER_NAME = settings.SHINY_HEADER_FILE_NAME
 	FILE_GLOBAL = settings.SHINY_GLOBAL_FILE_NAME
 	FILE_LIST = settings.SHINY_FILE_LIST
-	FILE_LOADER = settings.SHINY_LOADER_FILE_NAME
-	SERVER_FOLDER = settings.SHINY_SERVER_FOLDER
-	UI_FOLDER = settings.SHINY_UI_FOLDER
+	# FILE_LOADER = settings.SHINY_LOADER_FILE_NAME
+	# SERVER_FOLDER = settings.SHINY_SERVER_FOLDER
+	# UI_FOLDER = settings.SHINY_UI_FOLDER
 	RES_FOLDER = settings.SHINY_RES_FOLDER
 	SHINY_REPORTS = settings.SHINY_REPORTS
 	REPORT_TEMPLATE_PATH = settings.SHINY_REPORT_TEMPLATE_PATH
-	SYSTEM_FILE_LIST = [FILE_UI_NAME, FILE_SERVER_NAME, FILE_GLOBAL, FILE_HEADER_NAME, RES_FOLDER]
-	FS_ACL = 0775
+	SYSTEM_FILE_LIST = [FILE_UI_NAME, FILE_SERVER_NAME, FILE_GLOBAL, FILE_HEADER_NAME, RES_FOLDER, RES_FOLDER[:-1]]
+	# FS_ACL = 0775
+	FS_ACL = ACL.RW_RW_
+	FS_REMOTE_ACL = ACL.RW_R_
 
 	title = models.CharField(max_length=55, unique=True, blank=False, help_text="Choose a title for this Shiny Report")
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
@@ -446,100 +468,152 @@ class ShinyReport(models.Model):
 		return slugify(str(self.title))
 
 	@property
+	def __folder_path_remote(self):
+		return str('%s%s/app/' % (settings.SHINY_REMOTE_REPORTS_INTERNAL, self.get_name))
+
+	def __folder_path_base_gen(self, remote=False):
+		return str('%s%s/' % (self.SHINY_REPORTS if not remote else settings.SHINY_REMOTE_REPORTS, self.get_name))
+
+	@property
 	def _folder_path_base(self):
-		return str('%s%s/' % (self.SHINY_REPORTS, self.get_name))
+		return self.__folder_path_base_gen()
+
+	def __folder_path_gen(self, remote=False):
+		return str('%sapp/' % self.__folder_path_base_gen(remote))
 
 	@property
 	def folder_path(self):
-		return str('%sapp/' % self._folder_path_base)
+		return self.__folder_path_gen()
 
-	@property
-	def server_path(self):
-		return str('%s%s' % (self.folder_path, self.FILE_SERVER_NAME))
+	def server_path(self, remote=False):
+		return str('%s%s' % (self.__folder_path_gen(remote), self.FILE_SERVER_NAME))
 
-	@property
-	def ui_path(self):
-		return str('%s%s' % (self.folder_path, self.FILE_UI_NAME))
+	def ui_path(self, remote=False):
+		return str('%s%s' % (self.__folder_path_gen(remote), self.FILE_UI_NAME))
 
-	@property
-	def global_path(self):
-		return str('%s%s' % (self.folder_path, self.FILE_GLOBAL))
+	def global_path(self, remote=False):
+		return str('%s%s' % (self.__folder_path_gen(remote), self.FILE_GLOBAL))
 
-	@property
-	def res_folder_path(self):
-		return str('%s%s' % (self.folder_path, self.RES_FOLDER))
+	def res_folder_path(self, remote=False):
+		return str('%s%s' % (self.__folder_path_gen(remote), self.RES_FOLDER))
 
-	path_template_folder = REPORT_TEMPLATE_PATH
+	# path_template_folder = REPORT_TEMPLATE_PATH
 	path_server_r_template = REPORT_TEMPLATE_PATH + FILE_SERVER_NAME
 	path_ui_r_template = REPORT_TEMPLATE_PATH + FILE_UI_NAME
 	path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
-	path_heade_r_template = REPORT_TEMPLATE_PATH + FILE_HEADER_NAME
+	# path_heade_r_template = REPORT_TEMPLATE_PATH + FILE_HEADER_NAME
 	# path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
 	# path_loader_r_template = str(REPORT_TEMPLATE_PATH + FILE_LOADER)
-	path_file_lst_template = str(REPORT_TEMPLATE_PATH + FILE_LIST)
-	path_dash_ui_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_UI
-	path_dash_server_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_SERVER
+	# path_file_lst_template = str(REPORT_TEMPLATE_PATH + FILE_LIST)
+	# path_dash_ui_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_UI
+	# path_dash_server_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_SERVER
 
 	@property # relative path to link holder directory
 	def _link_holder_rel_path(self):
 		# the point of this property, is that you can change the folder structure by only changing this
 		return '%s/lnk' % self.get_name
 
-	@property
-	def _link_holder_path(self): # full path to lnk holder directory
-		return '%s%s/' % (self.SHINY_REPORTS, self._link_holder_rel_path)
+	def _link_holder_path(self, remote=False): # full path to lnk holder directory
+		return '%s%s/' % (self.SHINY_REPORTS if not remote else settings.SHINY_REMOTE_REPORTS, self._link_holder_rel_path)
 
-	def report_link_rel_path(self, report):
+	def report_link_rel_path(self, data):
 		"""
 		Return the path to the symlink file to the actual report WITHOUT a trailing /
-		:param report: a valid Report instance
-		:type report: Report
+		:param data: a valid Report id
 		:return: path to the symlink file to the actual report WITHOUT a trailing /
 		:rtype: str
 		"""
-		return '%s/%s' % (self._link_holder_rel_path, report.id)
+		return '%s/%s' % (self._link_holder_rel_path, data)
 
-	def report_link(self, report, rel=False):
+	def report_link(self, data, rel=False, remote=False):
 		if rel:
-			return self.report_link_rel_path(report)
-		return '%s%s' % (self.SHINY_REPORTS, self.report_link_rel_path(report))
+			return self.report_link_rel_path(data)
+		return '%s%s' % (self.SHINY_REPORTS if not remote else settings.SHINY_REMOTE_REPORTS, self.report_link_rel_path(data))
+
+	# Clem 22/09/2015
+	@staticmethod
+	def check_csc_mount():
+		from system_check import check_csc_mount
+		return check_csc_mount()
+
+	# Clem 23/09/2015
+	@property
+	def _make_remote_too(self):
+		"""
+		If remote Shiny report should be generated, if SHINY_REMOTE_ENABLE and CSC FS is mounted
+		:return:
+		:rtype:
+		"""
+		return settings.SHINY_REMOTE_ENABLE and self.check_csc_mount()
 
 	def update_folder(self):
 		"""
 		Creates the directory structure, removing any previously existing content,
 		creates sever and ui sub-folders and link server and ui dashboard 'tag'
+		Handles both local and remote Shiny
 		"""
-		import shutil
-		import os.path
+		# import os.path
+		from os import mkdir
 
-		shutil.rmtree(self._folder_path_base, ignore_errors=True)
-		os.mkdir(self._folder_path_base, self.FS_ACL)
-		os.mkdir(self._link_holder_path, self.FS_ACL)
-		os.mkdir(self.folder_path, self.FS_ACL)
-		# os.mkdir('%s%s/' % (self.folder_path, self.UI_FOLDER), self.FS_ACL)
-		# os.mkdir('%s%s/' % (self.folder_path, self.SERVER_FOLDER), self.FS_ACL)
-		os.mkdir('%s%s/' % (self.folder_path, self.RES_FOLDER), self.FS_ACL)
+		if settings.SHINY_LOCAL_ENABLE:
+			safe_rm(self._folder_path_base, ignore_errors=True)
+			mkdir(self._folder_path_base, self.FS_ACL)
+			mkdir(self._link_holder_path(), self.FS_ACL)
+			mkdir(self.folder_path, self.FS_ACL)
+			mkdir('%s%s/' % (self.folder_path, self.RES_FOLDER), self.FS_ACL)
 
-	# link the dashboard 'tag'
-	# auto_symlink(self.path_dash_ui_r_template, self.folder_path + self.FILE_DASH_UI)
-	# auto_symlink(self.path_dash_server_r_template, self.folder_path + self.FILE_DASH_SERVER)
+		if settings.SHINY_REMOTE_ENABLE and self.check_csc_mount():
+			safe_rm(self.__folder_path_base_gen(True), ignore_errors=True)
+			mkdir(self.__folder_path_base_gen(True), self.FS_REMOTE_ACL)
+			mkdir(self.report_link('', remote=True), self.FS_REMOTE_ACL)
+			mkdir(self.__folder_path_gen(True), self.FS_REMOTE_ACL)
+			mkdir('%s%s/' % (self.__folder_path_gen(True), self.RES_FOLDER), self.FS_REMOTE_ACL)
 
 	def _link_all_reports(self, force=False):
 		"""
 		Triggers the linking of each Reports that exists of every attached ReportType
+		Handle both local and remote Shiny
 		:param force: force linking of each Reports, even if files are missing, or the link already existent
 		:type force: bool
 		"""
+		has_remote = self._make_remote_too
 		if ReportType.objects.filter(shiny_report=self).count() > 0: # if attached to any Report
 			for rtype in ReportType.objects.filter(shiny_report=self):
-				for report in Report.objects.filter(type=rtype):
-					self.link_report(report, force)
+				for report in Report.objects.f.get_done(False, False).filter(type=rtype):
+					if True: # report.is_r_successful:
+						self.link_report(report, force, has_remote)
 
-	def link_report(self, report, force=False):
+	# Clem 24/09/2015
+	def _remote_ignore_wrapper(self, report):
+		"""
+		return the remote_ignore with specific report context to be called by copythree
+		:type report: Report
+		:rtype: callable()
+		"""
+		assert isinstance(report, Report)
+
+		def remote_ignore(_, names):
+			"""
+			:type names: str
+			:rtype: list
+			Return a list of files to ignores amongst names
+			"""
+			ignore_list = self.SYSTEM_FILE_LIST + report.hidden_files
+			print names
+			out = list()
+			for each in names:
+				if each in ignore_list:
+					out.append(each)
+			return out
+
+		return remote_ignore
+
+	def link_report(self, report, force=False, remote_too=False):
 		"""
 		Link a standard report to this ShinyReport using soft-links. (updates or creates linking)
 		If the ShinyReport skeleton has previously been generated,
 			this step is enough to enable a report to be visualized through Shiny
+		Handle both local and remote Shiny (with remote_too = True)
 		:param report: a valid Report instance
 		:type report: Report
 		:param force: force linking even if files are missing, or the link already existent
@@ -549,32 +623,54 @@ class ShinyReport(models.Model):
 		log_obj.debug(
 			"updating shinyReport %s slink for report %s %s" % (self.id, report.id, 'FORCING' if force else ''))
 
-		import os
+		from os.path import isdir, isfile, islink
+		from os import listdir, access, R_OK
 
 		assert isinstance(report, Report)
 		# handles individually each generated report of this type
 		report_home = report.home_folder_full_path
-		report_link = self.report_link(report)
+		report_link = self.report_link(report.id)
+		report_remote_link = self.report_link(report.shiny_key, remote=True) if remote_too else ''
 		# if the home folder of the report exists, and the link doesn't yet
-		if os.path.isdir(report_home[:-1]) and report_home != settings.MEDIA_ROOT:
+		if isdir(report_home[:-1]) and report_home != settings.MEDIA_ROOT:
 			# check that the report has all required files
 			if not force:
 				j = self.related_files()
 				for each in j: # for every required registered file
 					path = '%s%s' % (report_home, each['path'])
-					if each['required'] and not (os.path.isfile(path) and os.access(path, os.R_OK)):
+					if each['required'] and not (isfile(path) and access(path, R_OK)):
 						log_obj.warning("%s missing required file %s" % (report.id, path))
 						return
-			if force or not os.path.islink(report_link):
-				# make of soft-link for each files/folder of the shinyReport folder into the Report folder
-				for item in os.listdir(self.folder_path):
+			# LOCAL make of soft-link for each files/folder of the shinyReport folder into the Report folder
+			if settings.SHINY_LOCAL_ENABLE and (force or not islink(report_link)):
+				for item in listdir(self.folder_path):
 					auto_symlink('%s%s' % (self.folder_path, item), '%s%s' % (report_home, item))
 				# Creates a slink in shinyReports to the actual report
 				auto_symlink(report_home, report_link)
+			# REMOTE make of soft-link for each files/folder of the shinyReport folder into the Report folder
+			if remote_too and (force or not islink(report_remote_link)):
+				# del the remote report copy folder
+				safe_rm(report.remote_shiny_path, ignore_errors=True)
+				# safe_rm('%s%s' % (report.remote_shiny_path, settings.SHINY_RES_FOLDER))
+				# remove_file_safe('%s%s' % (report.remote_shiny_path, self.FILE_SERVER_NAME))
+				# remove_file_safe('%s%s' % (report.remote_shiny_path, self.FILE_UI_NAME))
+				# remove_file_safe('%s%s' % (report.remote_shiny_path, self.FILE_GLOBAL))
+				for item in listdir(self.folder_path):
+					# remove_file_safe('%s%s' % (report.remote_shiny_path, item))
+					auto_symlink('%s%s' % (self.__folder_path_remote, item), '%s%s' % (report.remote_shiny_path, item))
+				# copy the data content of the report
+				try:
+					safe_copytree(report.home_folder_full_path, report.remote_shiny_path,
+									ignore=self._remote_ignore_wrapper(report))
+				except Exception as e:
+					log_obj.warning("%s copy error %s" % (report.id, e))
+				# Creates a slink in shinyReports to the actual report
+				auto_symlink(report.remote_shiny_path, report_remote_link)
 		else: # the target report is missing we remove the link
 			self.unlink_report(report)
 
-	def unlink_report(self, report):
+	# TODO upgrade to remote shiny
+	def unlink_report(self, report, remote=False):
 		"""
 		Do the opposite of link_report, useful if a specific Report has been individually deleted
 		:param report: a valid Report instance
@@ -584,7 +680,7 @@ class ShinyReport(models.Model):
 		import os
 		# handles individually each generated report of this type
 		report_home = report.home_folder_full_path
-		report_link = self.report_link(report)
+		report_link = self.report_link(report.id)
 
 		# if the home folder of the report exists, and the link doesn't yet
 		if os.path.isdir(report_home) and report_home != settings.MEDIA_ROOT:
@@ -595,7 +691,8 @@ class ShinyReport(models.Model):
 			# removes the slink in shinyReports to the actual report
 			remove_file_safe(report_link) # unlink from shiny TODO check
 
-	def _unlink_all_reports(self):
+	# TODO upgrade to remote shiny
+	def _unlink_all_reports(self, remote=False):
 		"""
 		Do the opposite of _link_all_reports , usefull if a this ShinyReport has been delete, or unlink from a ReportType
 		Triggers the unlinking of each Reports that exists of every attached ReportType
@@ -603,7 +700,7 @@ class ShinyReport(models.Model):
 		if ReportType.objects.filter(shiny_report=self).count() > 0: # if attached to any Report
 			for rtype in ReportType.objects.filter(shiny_report=self):
 				for report in Report.objects.filter(type=rtype):
-					self.unlink_report(report)
+					self.unlink_report(report, remote)
 
 	def import_tag_res(self, tag):
 		"""
@@ -614,7 +711,9 @@ class ShinyReport(models.Model):
 		from distutils.dir_util import copy_tree
 
 		assert isinstance(tag, ShinyTag)
-		copy_tree(tag.path_res_folder, self.res_folder_path) # TODO replace with symlimks ?
+		copy_tree(tag.path_res_folder, self.res_folder_path()) # TODO replace with symlimks ?
+		if self._make_remote_too:
+			copy_tree(tag.path_res_folder, self.res_folder_path(True)) # TODO replace with symlimks ?
 
 	def related_files(self, formatted=False):
 		"""
@@ -652,7 +751,16 @@ class ShinyReport(models.Model):
 		# return src.safe_substitute(ShinyReport.related_files(formatted=True))
 		return src.safe_substitute(self.related_files(formatted=True))
 
-	def generate_server(self, a_user=None): # generate the report server.R file to include all the tags
+	def generate_server(self, a_user=None, remote=False): # generate the report server.R file to include all the tags
+		"""
+		Handle either LOCAL or REMOTE at once
+		:param a_user:
+		:type a_user:
+		:param remote:
+		:type remote:
+		:return:
+		:rtype:
+		"""
 		from string import Template
 		import auxiliary as aux
 
@@ -672,7 +780,8 @@ class ShinyReport(models.Model):
 				if each.enabled:
 					# add it to the source list
 					alist.append('### Tag %s by %s (%s) %s%ssource("%s",local = TRUE)' % (
-						each.name, each.author.get_full_name(), each.author, each.created, SEP, each.path_dashboard_server))
+						each.name, each.author.get_full_name(), each.author, each.created, SEP,
+						each.path_dashboard_server(remote)))
 				else:
 					alist.append('### DISABLED Tag %s by %s (%s) %s' % (
 						each.name, each.author.get_full_name(), each.author, each.created))
@@ -686,12 +795,21 @@ class ShinyReport(models.Model):
 			}
 		assert (isinstance(src, Template))
 		result = src.safe_substitute(d)
-		f = open(self.server_path, 'w')
+		f = open(self.server_path(remote), 'w')
 		f.write(result)
 		f.close()
 		return
 
-	def generate_ui(self, a_user=None):  # generate the report ui.R file to include all the tags
+	def generate_ui(self, a_user=None, remote=False):  # generate the report ui.R file to include all the tags
+		"""
+		Handle either LOCAL or REMOTE at once
+		:param a_user:
+		:type a_user:
+		:param remote:
+		:type remote:
+		:return:
+		:rtype:
+		"""
 		from string import Template
 		import auxiliary as aux
 
@@ -715,7 +833,8 @@ class ShinyReport(models.Model):
 				if each.enabled:
 					self.import_tag_res(each)
 					alist.append('### Tag %s by %s (%s) %s%ssource("%s",local = TRUE)' % (
-						each.name, each.author.get_full_name(), each.author, each.created, SEP, each.path_dashboard_body))
+						each.name, each.author.get_full_name(), each.author, each.created, SEP,
+						each.path_dashboard_body(remote)))
 					tag_vars.append(each.get_name.upper())
 					menu_list.append(each.menu_entry)
 				else:
@@ -733,12 +852,21 @@ class ShinyReport(models.Model):
 			}
 		# do the substitution
 		result = src.substitute(d)
-		f = open(self.ui_path, 'w')
+		f = open(self.ui_path(remote), 'w')
 		f.write(result)
 		f.close()
 		return
 
-	def generate_global(self, a_user=None):  # generate the report ui.R file to include all the tags
+	def generate_global(self, a_user=None, remote=False):  # generate the report ui.R file to include all the tags
+		"""
+		Handle either LOCAL or REMOTE at once
+		:param a_user:
+		:type a_user:
+		:param remote:
+		:type remote:
+		:return:
+		:rtype:
+		"""
 		from string import Template
 		import auxiliary as aux
 
@@ -767,18 +895,32 @@ class ShinyReport(models.Model):
 			}
 		# do the substitution
 		result = src.substitute(d)
-		f = open(self.global_path, 'w')
+		f = open(self.global_path(remote), 'w')
 		f.write(result)
 		f.close()
 		return
 
 	def regen_report(self, a_user=None):
+		"""
+		Handle BOTH local and remote Shiny at Once
+		:param a_user:
+		:type a_user:
+		:return:
+		:rtype:
+		"""
 		log_obj = get_logger()
 		log_obj.info("rebuilding shinyReport %s for user %s" % (self.id, a_user))
 		self.update_folder()
-		self.generate_server(a_user)
-		self.generate_ui(a_user)
-		self.generate_global(a_user)
+		# local : TODO should generate disregarding of local shiny status ?
+		if settings.SHINY_LOCAL_ENABLE:
+			self.generate_server(a_user)
+			self.generate_ui(a_user)
+			self.generate_global(a_user)
+		# remote
+		if self._make_remote_too:
+			self.generate_server(a_user, True)
+			self.generate_ui(a_user, True)
+			self.generate_global(a_user, True)
 		self._link_all_reports()
 
 	def clean(self):
@@ -786,10 +928,7 @@ class ShinyReport(models.Model):
 
 	def save(self, *args, **kwargs):
 		super(ShinyReport, self).save(*args, **kwargs) # Call the "real" save() method.
-		# try:
 		self.regen_report()
-		# except ValueError:
-		#	return False
 
 	def delete(self, using=None):
 		import shutil
@@ -800,6 +939,10 @@ class ShinyReport(models.Model):
 		self._unlink_all_reports()
 		# Deleting the folder
 		shutil.rmtree(self._folder_path_base, ignore_errors=True)
+		if self._make_remote_too:
+			log_obj.info("deleted remote shinyReport %s : %s" % (self.id, self))
+			self._unlink_all_reports(True)
+			shutil.rmtree(self.__folder_path_base_gen(True), ignore_errors=True)
 		super(ShinyReport, self).delete(using=using) # Call the "real" delete() method.
 
 	class Meta:
@@ -842,6 +985,9 @@ class ReportType(FolderObj, models.Model):
 
 	@property
 	def is_shiny_enabled(self):
+		""" Is this report associated to a ShinyReport, and if so is this ShinyReport enabled ?
+		:rtype: bool
+		"""
 		return self.shiny_report_id > 0 and self.shiny_report.enabled
 
 	def save(self, *args, **kwargs):
@@ -1193,7 +1339,8 @@ class Runnable(FolderObj, models.Model):
 	@property
 	def is_shiny_enabled(self):
 		"""
-		To be overridden by Report
+		To be overridden by Report :
+		Is this report's type associated to a ShinyReport, and if so is this ShinyReport enabled ?
 		:rtype: bool
 		"""
 		return False
@@ -1326,7 +1473,8 @@ class Runnable(FolderObj, models.Model):
 		"""The job name to submit to SGE
 		:rtype: str
 		"""
-		return '%s_%s' % (slugify(self._name), self.instance_type.capitalize())
+		name = self._name if not self._name[0].isdigit() else '_%s' % self._name
+		return '%s_%s' % (slugify(name), self.instance_type.capitalize())
 
 	@property
 	def is_done(self):
@@ -2013,7 +2161,7 @@ class Report(Runnable):
 	# 26/06/15
 	@property
 	def _dochtml(self):
-		return '%sreport' % self.home_folder_full_path
+		return '%s%s' % (self.home_folder_full_path, settings.NOZZLE_REPORT_FN)
 
 	@property
 	def _rtype_config_path(self):
@@ -2057,17 +2205,31 @@ class Report(Runnable):
 	# clem 11/09/2015
 	@property
 	def is_shiny_enabled(self):
+		""" Is this report's type associated to a ShinyReport, and if so is this ShinyReport enabled ?
+		:rtype: bool
+		"""
 		return self._type.is_shiny_enabled
 
-	def has_access_to_shiny(self, this_user):
+	def has_access_to_shiny(self, this_user=None):
 		"""
-		States if specific user is entitled to access this report through Shiny
+		States if specific user is entitled to access this report through Shiny and if this report is entitled to Shiny
+		And the attached Shiny Report if any is Enabled
 		:type this_user: User | OrderedUser
 		:rtype: bool
 		"""
 		assert isinstance(this_user, (User, OrderedUser))
 		return this_user and (this_user in self.shared.all() or self._author == this_user) \
 			and self.is_shiny_enabled
+
+	# clem 23/09/2015
+	@property
+	def remote_shiny_path(self):
+		if self.shiny_key is None or self.shiny_key == '':
+			if self.is_shiny_enabled:
+				self.generate_shiny_key()
+				self.save()
+		# return settings.SHINY_REMOTE_BREEZE_REPORTS_PATH + self.shiny_key
+		return '%s%s/' % (settings.SHINY_REMOTE_BREEZE_REPORTS_PATH, self.shiny_key)
 
 	_path_r_template = settings.NOZZLE_REPORT_TEMPLATE_PATH
 
@@ -2090,7 +2252,7 @@ class Report(Runnable):
 		# generate shiny access for offsite users
 		# if report_data['report_type'] == 'ScreenReport': # TODO dynamic
 		# if self._type ==  'ScreenReport': # TODO dynamic
-		if self._type.is_shiny_enabled:
+		if self.is_shiny_enabled:
 			self.generate_shiny_key()
 
 		if 'shared_users' in kwargs.keys():
@@ -2198,9 +2360,9 @@ class Report(Runnable):
 	def save(self, *args, **kwargs):
 		super(Report, self).save(*args, **kwargs) # Call the "real" save() method.
 		# if self.type.shiny_report_id > 0 and len(self._home_folder_rel) > 1:
-		if self._type.is_shiny_enabled and self.is_successful:
+		if self.is_shiny_enabled and self.is_successful:
 			# call symbolic link update
-			self.type.shiny_report.link_report(self, True)
+			self.type.shiny_report.link_report(self, True, self.type.shiny_report._make_remote_too)
 
 	def delete(self, using=None):
 		if self.type.shiny_report_id > 0:
@@ -2214,10 +2376,10 @@ class Report(Runnable):
 
 
 class ShinyTag(models.Model):
-	ACL_RW_RW_R = 0664
+	# ACL_RW_RW_R = 0664
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
 	FILE_SERVER_NAME = settings.SHINY_SERVER_FILE_NAME
-	FILE_DASH_UI = settings.SHINY_DASH_UI_FILE
+	# FILE_DASH_UI = settings.SHINY_DASH_UI_FILE
 	TAG_FOLDER = settings.SHINY_TAGS
 	RES_FOLDER = settings.SHINY_RES_FOLDER
 	FILE_TEMPLATE = settings.SHINY_TAG_CANVAS_PATH
@@ -2254,21 +2416,38 @@ class ShinyTag(models.Model):
 		except os.error:
 			pass
 
+	def folder_name_gen(self, remote=False):
+		return str('%s%s/' % (self.TAG_FOLDER if not remote else settings.SHINY_REMOTE_TAGS, self.get_name))
+
+	@property
+	def folder_name_remote_internal(self):
+		return str('%s%s/' % (settings.SHINY_REMOTE_TAGS_INTERNAL, self.get_name))
+
 	@property
 	def folder_name(self):
-		return str('%s%s/' % (self.TAG_FOLDER, self.get_name))
+		return self.folder_name_gen()
 
-	@property
-	def path_dashboard_server(self):
-		return str('%s%s' % (self.folder_name, self.FILE_SERVER_NAME))
+	def path_dashboard_server(self, remote=False):
+		if not remote:
+			return str('%s%s' % (self.folder_name, self.FILE_SERVER_NAME))
+		else:
+			return str('%s%s' % (self.folder_name_remote_internal, self.FILE_SERVER_NAME))
 
-	@property
-	def path_dashboard_body(self):
-		return str('%s%s' % (self.folder_name, self.FILE_UI_NAME))
+	def path_dashboard_body(self, remote=False):
+		if not remote:
+			return str('%s%s' % (self.folder_name, self.FILE_UI_NAME))
+		else:
+			return str('%s%s' % (self.folder_name_remote_internal, self.FILE_UI_NAME))
+
+	def path_res_folder_gen(self, remote=False):
+		if not remote:
+			return str('%s%s' % (self.folder_name, self.RES_FOLDER))
+		else:
+			return str('%s%s' % (self.folder_name_remote_internal, self.RES_FOLDER))
 
 	@property
 	def path_res_folder(self):
-		return str('%s%s' % (self.folder_name, self.RES_FOLDER))
+		return self.path_res_folder_gen()
 
 	def file_name_zip(self, filename):
 		import os
@@ -2285,8 +2464,9 @@ class ShinyTag(models.Model):
 	enabled = models.BooleanField()
 	attached_report = models.ManyToManyField(ShinyReport)
 
-	def save(self, *args, **kwargs):
+	def save(self, *args, **kwargs):# TODO copy tag folder to CSC_Shiny
 		super(ShinyTag, self).save(*args, **kwargs) # Call the "real" save() method.
+		# TODO copy tag folder to CSC_Shiny
 		for each in self.attached_report.all():
 			each.regen_report()
 
@@ -2337,7 +2517,7 @@ class ShinyTag(models.Model):
 			path = '%s%s' % (self.folder_name, item)
 			if os.path.isfile(path):
 				# print 'chmod %s' % path, self.ACL_RW_RW_R
-				os.chmod(path, self.ACL_RW_RW_R)
+				os.chmod(path, ACL.RW_RW_R)
 		# removes the zip from temp upload folder
 		#temp_cleanup()
 		self.save()
@@ -2441,4 +2621,3 @@ class OffsiteUser(models.Model):
 	def __unicode__(self):
 		return unicode(self.full_name)
 
-from watcher import with_drmaa

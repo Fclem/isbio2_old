@@ -223,20 +223,65 @@ class Path(object):
 		return True
 
 
-def safe_rm(path):
+def safe_rm(path, ignore_errors=False):
+	"""
+	Delete a folder recursively
+	Provide a smart shutil.rmtree wrapper with system folder protection
+	Avoid mistake caused by malformed auto generated paths
+	:param path: folder to delete
+	:type path: str
+	:type ignore_errors: bool
+	:return:
+	:rtype: bool
+	"""
 	import os
 	import shutil
 	if path not in settings.FOLDERS_LST:
 		if os.path.isdir(path):
-			logtxt = 'rmtree %s had %s object(s)' % (path, len(os.listdir(path)))
-			get_logger().debug(logtxt)
-			shutil.rmtree(path)
+			log_txt = 'rmtree %s had %s object(s)' % (path, len(os.listdir(path)))
+			get_logger().debug(log_txt)
+			shutil.rmtree(path, ignore_errors)
+			return True
 		else:
-			logtxt = 'not a folder : %s' % path
-			get_logger().warning(logtxt)
+			log_txt = 'not a folder : %s' % path
+			get_logger().warning(log_txt)
 	else:
-		logtxt = 'attempting to delete system folder : %s' % path
-		get_logger().exception(logtxt)
+		log_txt = 'attempting to delete system folder : %s' % path
+		get_logger().exception(log_txt)
+	return False
+
+
+# Clem 24/09/2015
+def safe_copytree(source, destination, symlinks=True, ignore=None):
+	"""
+	Copy a folder recursively
+	Provide a smart shutil.copytree wrapper with system folder protection
+	Avoid mistake caused by malformed auto generated paths
+	Avoid non existent source folder, and warn about existent destination folders
+	:type source: str
+	:type destination: str
+	:type symlinks: bool
+	:type ignore: callable
+	:rtype: bool
+	"""
+	import os
+	import shutil
+	if destination not in settings.FOLDERS_LST:
+		if os.path.isdir(source):
+			if not os.path.isdir(destination):
+				os.mkdir(destination)
+			else:
+				log_txt = 'copytree, destination folder %s exists, continuing' % destination
+				get_logger().warning(log_txt)
+			shutil.copytree(source, destination, symlinks, ignore)
+			return True
+		else:
+			log_txt = 'copytree, source folder %s don\'t exists, STOP' % source
+			get_logger().warning(log_txt)
+	else:
+		log_txt = 'attempting to copy to a system folder : %s, STOP' % destination
+		get_logger().exception(log_txt)
+	return False
 
 
 def is_non_empty_file(file_path):

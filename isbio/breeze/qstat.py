@@ -180,8 +180,6 @@ class Qstat(object):
 				sup = ' &lt;ext&gt; '
 			result += '<code>%s%s%s</code><br />' % (sup, '\t'.join(tab), sup)
 
-
-
 		if result == '':
 			result = 'There is no SGE jobs running at the moment.<br />'
 
@@ -198,7 +196,9 @@ class Qstat(object):
 		:return:
 		:rtype: str
 		"""
-		from hashlib import md5
-		m = md5()
-		m.update(str(self.html))
-		return m.hexdigest()
+		from utils import get_md5
+		# from hashlib import md5
+		# m = md5()
+		# m.update(str(self.html))
+		# return m.hexdigest()
+		return get_md5(str(self.html))

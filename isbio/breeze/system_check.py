@@ -519,7 +519,7 @@ def check_shiny(request):
 # clem on 22/09/2015
 def check_csc_shiny(request):
 	"""
-	Check if Shiny server is responding
+	Check if CSC Shiny server is responding
 	:rtype: bool
 	"""
 	try:
@@ -529,6 +529,22 @@ def check_csc_shiny(request):
 	except Exception:
 		pass
 	return False
+
+
+# clem on 23/09/2015
+def check_csc_mount():
+	"""
+	Check if remote Shiny is mounted as part of the FS
+	:rtype: bool
+	"""
+	from os import path
+	try:
+		if path.exists(settings.SHINY_REMOTE_LOCAL_PATH) and path.isdir(settings.SHINY_REMOTE_REPORTS):
+			return True
+	except Exception:
+		pass
+	return False
+
 
 # clem on 09/09/2015
 def check_watcher():
@@ -601,10 +617,12 @@ check_list.append( SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t',
 								RunType.both, ex=SGEUnreachable, mandatory=True))
 check_list.append( SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t',
 								RunType.both, ex=DOTMUnreachable))
-check_list.append( SysCheckUnit(check_shiny, 'shiny', 'Shiny server', 'SHINY HTTP\t\t',
+check_list.append( SysCheckUnit(check_shiny, 'shiny', 'Local Shiny HTTP server', 'LOC. SHINY HTTP\t\t',
 								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
-check_list.append(SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny', 'CSC SHINY\t\t',
+check_list.append(SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTP server', 'CSC SHINY HTTP\t\t',
 								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
+check_list.append(SysCheckUnit(check_csc_mount, 'csc_mount', 'CSC Shiny File System', 'CSC SHINY FS\t\t',
+								RunType.both, ex=FileSystemNotMounted))
 check_list.append(SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t',
 								RunType.runtime, ex=WatcherIsNotRunning))
 

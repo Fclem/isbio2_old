@@ -2241,7 +2241,7 @@ def report_shiny_in_wrapper(request, rid, path=None):
 	if not fitem.has_access_to_shiny(request.user):
 		raise PermissionDenied
 
-	p1 = fitem.type.shiny_report.report_link_rel_path(fitem)
+	p1 = fitem.type.shiny_report.report_link_rel_path(fitem.id)
 	return aux.proxy_to(request, '%s/%s' % (p1, path), settings.SHINY_TARGET_URL)
 
 
