@@ -2928,6 +2928,7 @@ def file_system_info(request):
 	_, _, files_state, folders_state, _ = check.deep_fs_check()
 
 	return render_to_response('fs_info.html', RequestContext(request, {
+		'resources_status': 'active',
 		'folders': folders_state,
 		'files': files_state,
 	}))
