@@ -516,6 +516,20 @@ def check_shiny(request):
 	return False
 
 
+# clem on 22/09/2015
+def check_csc_shiny(request):
+	"""
+	Check if Shiny server is responding
+	:rtype: bool
+	"""
+	try:
+		r = proxy_to(request, '', settings.SHINY_ORIG_LIBS_TARGET_URL % settings.SHINY_REMOTE_IP, silent=True)
+		if r.status_code == 200:
+			return True
+	except Exception:
+		pass
+	return False
+
 # clem on 09/09/2015
 def check_watcher():
 	from breeze.middlewares import JobKeeper
@@ -575,7 +589,8 @@ check_list = list()
 
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 check_list.append( SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t',
-								RunType.both, 10000, supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True))
+								RunType.boot_time, 25000, supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True))
+								# TODO FIXME runtime fs_check memory leak
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ',
 								RunType.runtime, ex=FileSystemNotMounted, mandatory=True)
 check_list.append(fs_mount)
@@ -587,6 +602,8 @@ check_list.append( SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t',
 check_list.append( SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t',
 								RunType.both, ex=DOTMUnreachable))
 check_list.append( SysCheckUnit(check_shiny, 'shiny', 'Shiny server', 'SHINY HTTP\t\t',
+								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
+check_list.append(SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny', 'CSC SHINY\t\t',
 								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
 check_list.append(SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t',
 								RunType.runtime, ex=WatcherIsNotRunning))
@@ -600,5 +617,6 @@ for each in check_list:
 def get_template_check_list():
 	res = list()
 	for each in check_list:
-		res.append({ 'url': '/status/%s/' % each.url, 'legend': each.legend, 'id': each.url, 't_out': each.t_out })
+		if each.type != RunType.boot_time:
+			res.append({ 'url': '/status/%s/' % each.url, 'legend': each.legend, 'id': each.url, 't_out': each.t_out })
 	return res

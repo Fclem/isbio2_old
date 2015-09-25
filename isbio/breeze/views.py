@@ -276,9 +276,9 @@ def jobs(request, state="", error_msg="", page=1):
 	ready_reports = Report.objects.f.get_done().owned(request.user).order_by('-_created')
 
 	# TODO get rid of this merge stuff
-	merged_active = aux.merge_job_history(active_jobs, active_reports)
+	merged_active = aux.merge_job_history(active_jobs, active_reports, request.user)
 	# merged_active = active_jobs | active_reports
-	merged_history = aux.merge_job_history(history_jobs, ready_reports)
+	merged_history = aux.merge_job_history(history_jobs, ready_reports, request.user)
 
 	paginator = Paginator(merged_history, 12)  # show 15 items per page
 
@@ -2372,9 +2372,9 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 		print 'IOError', path_to_file
 		return aux.fail_with404(request, 'File not found in expected location')
 
-
+# Clem on 22/09/2015
 @login_required(login_url='/')
-def update_jobs(request, jid, item):
+def update_jobs_json(request, jid, item):
 	if item == 'script':
 		obj = Jobs.objects.get(id=jid)
 		date = obj.created
@@ -2386,10 +2386,41 @@ def update_jobs(request, jid, item):
 
 	# sge_status = rshell.track_sge_job(obj)
 	# request job instance again to be sure that the data is updated
-	response = dict(id=obj.id, name=name, staged=str(date), status=str(obj.status),
-					progress=obj.progress, sge=obj.get_status())
+	return dict(id=obj.id, name=name, staged=str(date), status=str(obj.status),
+					progress=obj.progress, sge=obj.get_status(), md5=obj.md5), obj
 
+
+@login_required(login_url='/')
+def update_jobs(request, jid, item):
+	response, _ = update_jobs_json(request, jid, item)
 	return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+
+
+@login_required(login_url='/')
+def update_jobs_lp(request, jid, item, md5_t=None):
+	if md5_t is None:
+		return update_jobs(request, jid, item)
+	from time import sleep
+	refresh_time = 0.5
+
+	if item == 'script':
+		obj = Jobs.objects.get(id=jid)
+	else:
+		obj = Report.objects.get(id=jid)
+
+	a_class = obj.instance_of
+
+	last_sig = md5_t
+	i = 0
+	while last_sig == obj.md5:
+		i += refresh_time
+		if i > settings.LONG_POLL_TIME_OUT_REFRESH:
+			break
+		sleep(refresh_time)
+		# forced refresh
+		obj = a_class.objects.get(id=jid)
+
+	return update_jobs(request, jid, item)
 
 
 @login_required(login_url='/')
@@ -2834,44 +2865,39 @@ def checker(request, what):
 	return status_button_json(check.ui_checker_proxy(what))
 
 
-# Clem 22/09/2015
-@login_required(login_url='/')
-def qstat_html(request):
-	from qstat import Qstat, SgeJob
-	obj = Qstat()
-	q = obj.job_list
-
-	result = ''
-	for each in q:
-		assert isinstance(each, SgeJob)
-		tab = each.raw_out_tab
-		tab[2] = "<span title='%s'>%s</span>" % (each.full_name, each.name)
-		tab[3] = "<span title='%s'>%s</span>" % (each.full_user, each.user)
-		result += '<code>%s</code><br />' % '\t'.join(tab)
-
-	if result == '':
-		result = 'There is no SGE jobs running at the moment.<br />'
-
-	return result, obj
-
-
+# FIXME del DEPRECATED
 @login_required(login_url='/')
 def qstat_live(request):
-	result, _ = qstat_html(request)
-	return HttpResponse(result, mimetype='text/html')
+	"""
+	OLD AJAX qstat DEPRECATED
+	:return: json
+	:rtype: HttpResponse
+	"""
+	from qstat import Qstat
+	return HttpResponse(Qstat().html, mimetype='text/html')
 
 
 # Clem 22/09/2015
 @login_required(login_url='/')
 def qstat_json(request):
-	result, obj = qstat_html(request)
-	return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': result }),
-								mimetype='application/json')
+	"""
+	Returns a smart HTML view of qstat and associated md5,
+	:return: json
+	:rtype: HttpResponse
+	"""
+	from qstat import Qstat
+	obj = Qstat()
+	return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': obj.html }), mimetype='application/json')
 
 
 # Clem 22/09/2015
 @login_required(login_url='/')
 def qstat_lp(request, md5_t=None):
+	"""
+	Long-Polling view for qstat
+	Returns a smart HTML view of qstat and associated md5,
+	Only upon changes from last client's known output.
+	"""
 	if md5_t is None:
 		return qstat_json(request)
 

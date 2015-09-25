@@ -56,7 +56,7 @@
 					</li>
 					{% endif %}
 					<!-- Shiny tab -->
-					{% if job.instance == "report" and job.status == "succeed" and  job.shiny_key %}
+					{% if job.instance == "report" and job.status == "succeed" and  job.go_shiny %}
 						<li class="divider"></li>
 						<li align="right">
 							<a href="/reports/shiny-tab/{{ job.id }}">

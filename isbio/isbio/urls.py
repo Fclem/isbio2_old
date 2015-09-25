@@ -121,6 +121,9 @@ else:
 		url(r'^jobs/info/(?P<item>[a-z]+)/(?P<jid>\d+)$', views.update_jobs),
 		url(r'^jobs/info/(?P<jid>\d+)$', views.update_jobs, { 'item': 'script' }),
 		url(r'^reports/info/(?P<jid>\d+)$', views.update_jobs, { 'item': 'report' }),
+		# new
+		url(r'^jobs/info_lp/(?P<jid>\d+)/(?P<md5_t>[a-z0-9_]{32})?$', views.update_jobs_lp, { 'item': 'script' }),
+		url(r'^reports/info_lp/(?P<jid>\d+)/(?P<md5_t>[a-z0-9_]{32})?$', views.update_jobs_lp, { 'item': 'report' }),
 		# url(r'^update-all-jobs/$', views.update_all_jobs), # DO NOT USE : TOOOOOOOO SLOW
 		url(r'^scripts/(?P<layout>[a-z]+)?$', views.scripts),
 		url(r'^scripts/delete/(?P<sid>\d+)$', views.delete_script),

@@ -475,7 +475,7 @@ class ShinyReport(models.Model):
 	path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
 	path_heade_r_template = REPORT_TEMPLATE_PATH + FILE_HEADER_NAME
 	# path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
-	path_loader_r_template = str(REPORT_TEMPLATE_PATH + FILE_LOADER)
+	# path_loader_r_template = str(REPORT_TEMPLATE_PATH + FILE_LOADER)
 	path_file_lst_template = str(REPORT_TEMPLATE_PATH + FILE_LIST)
 	path_dash_ui_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_UI
 	path_dash_server_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_SERVER
@@ -625,6 +625,7 @@ class ShinyReport(models.Model):
 		# TODO check expected behavior regarding templates
 		import json
 		log_obj = get_logger()
+		j = list()
 		try:
 			# jfile = open(ShinyReport.path_file_lst_template)
 			# j = json.load(jfile)
@@ -632,8 +633,7 @@ class ShinyReport(models.Model):
 			# jfile.close()
 		except ValueError as e:
 			log_obj.exception(e.message)
-			raise ValueError(e)
-		#	j = list()
+			# raise ValueError(e)
 		if formatted:
 			d = dict()
 			for each in j:
@@ -645,9 +645,10 @@ class ShinyReport(models.Model):
 	def get_parsed_loader(self):
 		from string import Template
 
-		file_loaders = open(ShinyReport.path_loader_r_template)
-		src = Template(file_loaders.read())
-		file_loaders.close()
+		# file_loaders = open(ShinyReport.path_loader_r_template)
+		# src = Template(file_loaders.read())
+		src = Template(self.custom_loader)
+		# file_loaders.close()
 		# return src.safe_substitute(ShinyReport.related_files(formatted=True))
 		return src.safe_substitute(self.related_files(formatted=True))
 
@@ -1325,6 +1326,7 @@ class Runnable(FolderObj, models.Model):
 		"""The job name to submit to SGE
 		:rtype: str
 		"""
+
 		name = self._name if not self._name[0].isdigit() else '_%s' % self._name
 		return '%s_%s' % (slugify(name), self.instance_type.capitalize())
 
@@ -1755,13 +1757,10 @@ class Runnable(FolderObj, models.Model):
 
 	def get_status(self):
 		""" Textual representation of current status
+		NO refresh on _status
 		:rtype: str
 		"""
 		return JobStat.textual(self._status, self)
-		try:
-			return self._stat_text
-		except AttributeError:
-			return JobStat.textual(self._status)
 
 	@property
 	def is_sgeid_empty(self):
@@ -1851,6 +1850,19 @@ class Runnable(FolderObj, models.Model):
 	def instance_of(self):
 		# return Report if self.is_report else Jobs if self.is_job else self.__class__
 		return self.__class__
+
+	@property
+	def md5(self):
+		"""
+		Return the md5 of the current object status
+		Used for long_poll refresh
+		:return:
+		:rtype: str
+		"""
+		from hashlib import md5
+		m = md5()
+		m.update('%s%s%s' % (self.text_id, self.get_status(), self.sgeid))
+		return m.hexdigest()
 
 	@property
 	def short_id(self):
