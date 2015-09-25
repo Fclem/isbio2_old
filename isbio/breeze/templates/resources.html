@@ -31,7 +31,7 @@
 		*/
 		var STAT_REFRESH = 120; //default refresh time for system status (in seconds)
 		var QSTAT_REFRESH = 15; //default refresh time for qstat (in seconds)
-		var DEFAULT_TIME_OUT = 4000; //default time out time for ajax request (in milliseconds)
+		var DEFAULT_TIME_OUT = 5000; //default time out time for ajax request (in milliseconds)
 		var TIME_OUT_RETRY_DELAY = 5000; //time to wait before retrying after a time out (in milliseconds)
 		var T_OUT_INCREASE_FACTOR = 1.2; //ratio to use for time-out value increase after each time-out
 		var LOADING_MODE = PARA_MODE; // use 'para' for parallel mode or 'seq' for sequential mode (PREFER PARA MODE)
@@ -256,6 +256,7 @@
 			setTimeout(function () { system_stat(); }, ONE_SEC * STAT_REFRESH);
 		}
 
+		// TODO remove obsolete
 		function qstat() {
 			loader = function () {
 				default_loading('qstat_title', '&nbsp;&nbsp;' + LOADING_CONTENT, true);
