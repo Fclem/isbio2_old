@@ -91,7 +91,9 @@ def end_tracking(proc_item): # proc_item):
 	get_logger().debug('%s%s : ending tracking' % proc_item.db_item.short_id)
 	a = proc_item.db_item.is_r_successful
 	# proc_item.process.terminate()
+	print proc_lst,
 	del proc_lst[proc_item.db_item.id]
+	print proc_lst
 
 
 def refresh_proc():

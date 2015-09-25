@@ -618,7 +618,7 @@ def fail_with404(request, errorMsg=None):
 DASHED_LINE = '---------------------------------------------------------------------------------------------------------------'
 
 
-def proxy_to(request, path, target_url, query_s='', silent=False):
+def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	import fileinput
 	CONSOLE_DATE_F = settings.CONSOLE_DATE_F
 	log_obj = logger.getChild(sys._getframe().f_code.co_name)
@@ -649,12 +649,16 @@ def proxy_to(request, path, target_url, query_s='', silent=False):
 	log = '/var/log/shiny-server.log'
 	log_size = os.stat(log).st_size
 	proxied_request = None
+	more = ''
 	try:
-		log_obj.debug(uPrint_sub(request, path + str(qs)))
+		if not silent :
+			log_obj.debug(uPrint_sub(request, path + str(qs)))
 		if settings.VERBOSE: uPrint(request, path + str(qs), datef=CONSOLE_DATE_F)
-		proxied_request = opener.open(url, data or None)
+		if timeout:
+			proxied_request = opener.open(url, data or None, timeout=timeout)
+		else:
+			proxied_request = opener.open(url, data or None)
 	except urllib2.HTTPError as e:
-		more = ''
 		# add the shiny-server log tail
 		if log_size < os.stat(log).st_size:
 			more = "/var/log/shiny-server.log :\n"
@@ -686,9 +690,9 @@ def proxy_to(request, path, target_url, query_s='', silent=False):
 		try:
 			content = e.read()
 		except:
-			content = 'SHINY SERVER : %s\nReason : %s\n%s\n%s'%(e.msg, e.reason, DASHED_LINE, more)
+			content = 'SHINY SERVER : %s\nReason : %s\n%s\n%s' % (e.msg, e.reason, DASHED_LINE, more)
 
-		logger.getChild('shiny_server').error(request.method + ' ' + path + str(qs) + '\n' + more)
+		logger.getChild('shiny_server').warning('%s : %s %s%s\n%s' % (e, request.method, path, str(qs), more))
 		# rep = HttpResponse(content, status=e.code, mimetype='text/plain')
 		rep = HttpResponse(content, status=e.code, mimetype=e.headers.typeheader)
 	else:
@@ -697,7 +701,8 @@ def proxy_to(request, path, target_url, query_s='', silent=False):
 		content = proxied_request.read()
 		if proxied_request.code != 200:
 			print 'PROX::', proxied_request.code
-		log_obj.debug(uPrint_sub(request, path + str(qs), proxied_request.code, str(len(content))))
+		if not silent:
+			log_obj.debug(uPrint_sub(request, path + str(qs), proxied_request.code, str(len(content))))
 		if settings.DEBUG and not silent: uPrint(request, path + str(qs), proxied_request.code, str(len(content)), datef=CONSOLE_DATE_F)
 		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
 	return rep

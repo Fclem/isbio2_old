@@ -12,6 +12,7 @@ DEBUG = True
 SKIP_SYSTEM_CHECK = False
 FAIL_ON_CRITICAL_MISSING = True
 RAISE_EXCEPTION = False
+ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-criticals
 
 if DEBUG:
 	# quick fix to solve PyCharm Django console environment issue
@@ -63,8 +64,70 @@ OK = '[' + Bcolors.ok_green('OK') + ']'
 BAD = '[' + Bcolors.fail('NO') + ']'
 WARN = '[' + Bcolors.warning('NO') + ']'
 
+
+# clem 25/09/2015
+class CheckerList(list):
+	""" list of SysCheckUnit with filtering properties """
+	def __init__(self, check_list):
+		self._list_to_check = check_list
+
+	@property
+	def runnings(self):
+		""" list of still active SysCheckUnit
+		:rtype: list
+		"""
+		new = list()
+		for each in self:
+			assert isinstance(each, SysCheckUnit)
+			if each.running:
+				new.append(each)
+		return new
+
+	@property
+	def article(self):
+		return 'is' if len(self.runnings) == 1 else 'are'
+
+	@property
+	def running_count(self):
+		return len(self.runnings)
+
+	@property
+	def any_running(self):
+		return self.running_count > 0
+
+	def check_list(self):
+		""" Boot-time run for all system checks
+		"""
+		for each in self._list_to_check:
+			if each.s_check():
+				self.append(each)
+
+	def rendez_vous(self, wait_for_all=not ONLY_WAIT_FOR_CRITICAL): # Rendez-vous for processes
+		"""
+		wait for all process in the list to complette
+		New version, replaces the 08/09/2015 one, better use of OOP
+		"""
+		for each in self[:]:
+			assert isinstance(each, SysCheckUnit) and each.has_proc
+			# Only wait for mandatory checks
+			if wait_for_all or each.mandatory:
+				each.block()
+				if FAIL_ON_CRITICAL_MISSING and each.exitcode != 0 and each.mandatory:
+					print Bcolors.fail('BREEZE INIT FAILED')
+					raise each.ex()
+				each.terminate()
+				self.remove(each)
+
+		if not self.any_running:
+			print Bcolors.ok_green('All checks done, system is up and running !')
+		else:
+			print Bcolors.ok_green('System is up and running, ') + \
+				Bcolors.warning('but %s (non critical) check%s %s still running %s') % \
+				(self.running_count, 's' if self.running_count > 1 else '', self.article,
+				self.runnings)
+
 # Manage checks process for rendez-vous
-proc_lst = list()
+# checking_list = CheckerList()
 
 
 # clem 10/09/2015
@@ -122,8 +185,44 @@ class RunType:
 
 
 # clem 08/09/2015
-class SysCheckUnit:
-	def __init__(self, funct, url, legend, msg, type, t_out=0, arg=None, supl=None, ex=SystemCheckFailed, mandatory=False):
+class SysCheckUnit(Process):
+	""" Describe a self executable unit of system test, includes all the process management part """
+	def __init__(self, funct, url, legend, msg, type, t_out=0, arg=None, supl=None, ex=SystemCheckFailed,
+				mandatory=False):
+		"""
+		init Arguments :
+		funct: the function to run to asses test result
+		url: id of test, and url part to access it
+		legend: title to display on WebUI
+		msg: title to display on Console
+		type: type of this test
+		t_out: timeout to set test as failed
+		arg: arguments to funct
+		supl: a function to run after this test
+		ex: an exception to eventually raise on check failure
+		mandatory: is this test success is required to system consistent boot
+
+		:param funct: the function to run to asses test result
+		:type funct: callable
+		:param url: id of test, and url part to access it
+		:type url: str
+		:param legend: title to display on WebUI
+		:type legend: str
+		:param msg: title to display on Console
+		:type msg: str
+		:param type: type of this test
+		:type type: RunType.property
+		:param t_out: timeout to set test as failed
+		:type t_out: int
+		:param arg: arguments to funct
+		:type arg:
+		:param supl: a function to run after this test
+		:type supl: callable
+		:param ex: an exception to eventually raise on check failure
+		:type ex: Exception
+		:param mandatory: is this test success is required to system consistent boot
+		:type mandatory: bool
+		"""
 		if type is RunType.runtime or callable(funct):
 			self.checker_function = funct
 			self.url = url
@@ -135,30 +234,46 @@ class SysCheckUnit:
 			self.supl = supl
 			self.mandatory = mandatory
 			self.ex = ex
+			# self._process = Process
 		else:
 			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
 
 	def s_check(self):
 		if (self.type is RunType.boot_time or self.type is RunType.both) and callable(self.checker_function):
-			self.split_run()
-			return True
+			return self.split_run()
 		return False
+
+	# clem 25/09/2015
+	@property
+	def has_proc(self):
+		return isinstance(self, Process)
+
+	# clem 25/09/2015
+	@property
+	def running(self):
+		return self.has_proc and self.is_alive()
+
+	# clem 25/09/2015
+	def block(self):
+		if self.running:
+			self.join()
 
 	# clem 08/09/2015
 	def split_run(self, from_ui=False):
 		"""
-		Runs each checker function in a separate process for
+		Runs checker function in a separate process for
 			_ concurrency and speed (from console)
 			_ process isolation, and main thread segfault avoidance (from UI)
 		"""
-		p = Process(target=self.split_runner, args=(from_ui, ))
-		p.start()
+		super(SysCheckUnit, self).__init__(target=self.split_runner, args=(from_ui,))
+		self.start()
 		if not from_ui:
-			proc_lst.append({ 'proc': p, 'chk': self }) # add process to the rendez-vous list
+			# checking_list.append(self) # add process to the rendez-vous list
+			return True
 		else:
-			p.join() # wait for process to finish
-			p.terminate()
-			return p.exitcode == 0
+			self.block() # wait for process to finish
+			self.terminate()
+			return self.exitcode == 0
 
 	# clem 08/09/2015
 	def split_runner(self, from_ui=False):
@@ -202,26 +317,13 @@ class SysCheckUnit:
 	def msg(self):
 		return Bcolors.ok_blue(self._msg)
 
+	# clem 25/09/2015
+	def __repr__(self):
+		return '<SysCheckUnit %s>' % self.url
+
 
 # clem 08/09/2015
-def check_rdv(): # Rendez-vous for processes
-	"""
-	New version, replaces the 25/08/2015 one, use rendez-vous instead of busy-waiting
-	"""
-	for each in proc_lst:
-		proc = each['proc']
-		chk = each['chk']
-		assert isinstance(proc, Process) and isinstance(chk, SysCheckUnit)
-		proc.join()
-		if FAIL_ON_CRITICAL_MISSING and proc.exitcode != 0 and chk.mandatory:
-			print Bcolors.fail('BREEZE INIT FAILED')
-			raise chk.ex()
-		proc.terminate()
-
-	print Bcolors.ok_green('All checks done, system is up and running !')
-
-# split_run(message, function, arg=None, supl=None): DELETED on 08/09/2015
-# split_runner(message, function, arg=None, supl=None): DELETED on 08/09/2015
+# DEL check_rdv() on 25/09/2015 replaced by checking_list.rendez_vous()
 
 
 # clem 08/09/2015
@@ -236,18 +338,20 @@ def run_system_test():
 		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
 		if fs_mount.checker_function():
 			print fs_mount.msg + OK
-			for each in check_list:
-				each.s_check()
-
-			check_rdv()
+			# for each in CHECK_LIST:
+			#	each.s_check()
+			# check_rdv()
+			checking_list = CheckerList(CHECK_LIST)
+			checking_list.check_list()
+			checking_list.rendez_vous()
 		else:
-			print 'FS\t\t' + BAD
+			print fs_mount.msg + BAD
 			raise FileSystemNotMounted
 	else:
 		print Bcolors.ok_blue('Skipping Breeze system integrity checks ......')
 
 ##
-# Special file system snapshot systems
+# Special file system snapshot and checking systems
 ##
 
 
@@ -361,7 +465,7 @@ def check_is_file_system_unchanged():
 
 
 # clem 25/08/2015
-def deep_fs_check(): # TODO optimize (too slow)
+def deep_fs_check(rush=False): # TODO optimize (too slow)
 	"""
 	Return flag_changed, flag_invalid, files_state, folders_state
 	:return: flag_changed, flag_invalid, files_state, folders_state
@@ -508,7 +612,7 @@ def check_shiny(request):
 	:rtype: bool
 	"""
 	try:
-		r = proxy_to(request, '', settings.SHINY_TARGET_URL, silent=True)
+		r = proxy_to(request, '', settings.SHINY_LOCAL_LIBS_TARGET_URL, silent=True, timeout=3)
 		if r.status_code == 200:
 			return True
 	except Exception:
@@ -523,10 +627,14 @@ def check_csc_shiny(request):
 	:rtype: bool
 	"""
 	try:
-		r = proxy_to(request, '', settings.SHINY_ORIG_LIBS_TARGET_URL % settings.SHINY_REMOTE_IP, silent=True)
+		# r = proxy_to(request, '', settings.SHINY_REMOTE_LIBS_TARGET_URL, silent=True, timeout=3)
+		r = proxy_to(request, '', settings.SHINY_REMOTE_LIBS_TARGET_URL)
 		if r.status_code == 200:
 			return True
-	except Exception:
+		else:
+			print 'prox to', settings.SHINY_REMOTE_LIBS_TARGET_URL, r.status_code
+	except Exception as e:
+		print 'prox to ex', e
 		pass
 	return False
 
@@ -578,7 +686,7 @@ def check_cas(request):
 	"""
 	if utils.is_host_online(settings.CAS_SERVER_IP, '2'):
 		try:
-			r = proxy_to(request, '', settings.CAS_SERVER_URL, silent=True)
+			r = proxy_to(request, '', settings.CAS_SERVER_URL, silent=True, timeout=3)
 			if r.status_code == 200:
 				return True
 		except Exception:
@@ -588,53 +696,57 @@ def check_cas(request):
 
 # clem 09/09/2015
 def ui_checker_proxy(what):
-	# from breeze import views
-	# return views.custom_404_view(HttpRequest())
-	if what not in check_dict:
+	"""	Run a self-test based on requested URL
+	:param what: url of the system test
+	:type what: str
+	:return: If test is successful
+	:rtype: bool
+	"""
+	if what not in CHECK_DICT:
 		from breeze import auxiliary as aux
 		return aux.fail_with404(HttpRequest(), 'NOT FOUND')
-	obj = check_dict[what]
+	obj = CHECK_DICT[what]
 	assert isinstance(obj, SysCheckUnit)
 
-	if what == 'watcher':
+	# if what == 'watcher':
+	if obj.checker_function is check_watcher:
 		return check_watcher()
 	else:
 		return obj.split_run(from_ui=True)
 
-check_list = list()
+
+# TODO FIXME runtime fs_check memory leak
+fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
+	ex=FileSystemNotMounted, mandatory=True)
 
 # Collection of system checks that is used to run all the test automatically, and display run-time status
-check_list.append( SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t',
-								RunType.boot_time, 25000, supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True))
-								# TODO FIXME runtime fs_check memory leak
-fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ',
-								RunType.runtime, ex=FileSystemNotMounted, mandatory=True)
-check_list.append(fs_mount)
-check_list.append( SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t',
-								RunType.both, arg=HttpRequest(), ex=CASUnreachable, mandatory=True))
-check_list.append( SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable))
-check_list.append( SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t',
-								RunType.both, ex=SGEUnreachable, mandatory=True))
-check_list.append( SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t',
-								RunType.both, ex=DOTMUnreachable))
-check_list.append( SysCheckUnit(check_shiny, 'shiny', 'Local Shiny HTTP server', 'LOC. SHINY HTTP\t\t',
-								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
-check_list.append(SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTP server', 'CSC SHINY HTTP\t\t',
-								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
-check_list.append(SysCheckUnit(check_csc_mount, 'csc_mount', 'CSC Shiny File System', 'CSC SHINY FS\t\t',
-								RunType.both, ex=FileSystemNotMounted))
-check_list.append(SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t',
-								RunType.runtime, ex=WatcherIsNotRunning))
+CHECK_LIST = [
+	SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t', RunType.boot_time, 25000,
+				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount,
+	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
+		mandatory=True),
+	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
+	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
+		mandatory=True),
+	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),
+	SysCheckUnit(check_shiny, 'shiny', 'Local Shiny HTTP server', 'LOC. SHINY HTTP\t\t', RunType.runtime,
+		arg=HttpRequest(), ex=ShinyUnreachable),
+	SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTPS server', 'CSC SHINY HTTPS\t\t', RunType.both,
+		arg=HttpRequest(), ex=ShinyUnreachable),
+	SysCheckUnit(check_csc_mount, 'csc_mount', 'CSC Shiny File System', 'CSC SHINY FS\t\t', RunType.runtime,
+		ex=FileSystemNotMounted),
+	SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t', RunType.runtime, ex=WatcherIsNotRunning)
+]
 
-check_dict = dict()
-for each in check_list:
-	check_dict.update({ each.url: each })
+CHECK_DICT = dict()
+for each in CHECK_LIST:
+	CHECK_DICT.update({ each.url: each })
 
 
 # clem 08/09/2015
 def get_template_check_list():
 	res = list()
-	for each in check_list:
+	for each in CHECK_LIST:
 		if each.type != RunType.boot_time:
 			res.append({ 'url': '/status/%s/' % each.url, 'legend': each.legend, 'id': each.url, 't_out': each.t_out })
 	return res
