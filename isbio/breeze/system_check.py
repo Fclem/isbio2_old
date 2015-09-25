@@ -70,6 +70,8 @@ class CheckerList(list):
 	""" list of SysCheckUnit with filtering properties """
 	def __init__(self, check_list):
 		self._list_to_check = check_list
+		self._results = dict()
+		super(CheckerList, self).__init__()
 
 	@property
 	def runnings(self):
@@ -95,10 +97,32 @@ class CheckerList(list):
 	def any_running(self):
 		return self.running_count > 0
 
+	@property
+	def boot_tests(self):
+		"""
+		list of test that are to be run at boot
+		:rtype: list
+		"""
+		result = list()
+		for each in self._list_to_check:
+			if each.type in [RunType.both, RunType.boot_time]:
+				result.append(each)
+		return result
+
+	@property
+	def suceeded(self):
+		# return len([x for x in self._results if self._results[x] == True])
+		result = list()
+		for each in self.boot_tests:
+			if self._results[each.url]:
+				result.append(each)
+		return result
+
 	def check_list(self):
 		""" Boot-time run for all system checks
 		"""
 		for each in self._list_to_check:
+			self._results[each.url] = False
 			if each.s_check():
 				self.append(each)
 
@@ -112,58 +136,29 @@ class CheckerList(list):
 			# Only wait for mandatory checks
 			if wait_for_all or each.mandatory:
 				each.block()
+				self._results[each.url] = each.exitcode == 0
 				if FAIL_ON_CRITICAL_MISSING and each.exitcode != 0 and each.mandatory:
 					print Bcolors.fail('BREEZE INIT FAILED')
 					raise each.ex()
 				each.terminate()
 				self.remove(each)
 
+		# print self._results
+		for each in self:
+			self._results[each.url] = each.exitcode == 0
+
+		success_text = 'successful : %s/%s' % (len(self.suceeded) + 1, len(self.boot_tests) + 1)
+
 		if not self.any_running:
-			print Bcolors.ok_green('All checks done, system is up and running !')
+			print Bcolors.ok_green('System is up and running, All checks done ! (%s)' % success_text)
 		else:
-			print Bcolors.ok_green('System is up and running, ') + \
+			print Bcolors.ok_green('System is up and running, %s, ') % success_text + \
 				Bcolors.warning('but %s (non critical) check%s %s still running %s') % \
 				(self.running_count, 's' if self.running_count > 1 else '', self.article,
 				self.runnings)
 
 # Manage checks process for rendez-vous
 # checking_list = CheckerList()
-
-
-# clem 10/09/2015
-def gen_test_report(the_user, gen_number=10, job_duration=30, time_break=1):
-	from breeze.views import report_overview
-	import time
-
-	posted = dict()
-	posted["project"] = 1
-	posted["Section_dbID_9"] = 0
-	posted["9_opened"] = 'False'
-	posted["Dropdown"] = 'Enter'
-	posted["Textarea"] = ''
-	posted["Section_dbID_81"] = 0
-	posted["81_opened"] = 'False'
-	posted["Section_dbID_118"] = '1'
-	posted["118_opened"] = 'True'
-	posted["sleep duration"] = str(job_duration)
-	posted["sleep_duration"] = str(job_duration)
-	posted["wait_time"] = str(job_duration)
-	posted["Groups"] = ''
-	posted["Individuals"] = ''
-
-	rq = HttpRequest()
-	# del rq.POST
-	rq.POST = posted
-	rq.user = the_user
-	rq.method = 'POST'
-
-	for i in range(1, gen_number+1):
-		name = 'SelfTest%s' % i
-		print name
-		report_overview(rq, 'TestPipe', name, '00000')
-		time.sleep(time_break)
-
-	print 'done.'
 
 
 # clem 08/09/2015
@@ -188,7 +183,7 @@ class RunType:
 class SysCheckUnit(Process):
 	""" Describe a self executable unit of system test, includes all the process management part """
 	def __init__(self, funct, url, legend, msg, type, t_out=0, arg=None, supl=None, ex=SystemCheckFailed,
-				mandatory=False):
+				mandatory=False, long_poll=False):
 		"""
 		init Arguments :
 		funct: the function to run to asses test result
@@ -234,6 +229,7 @@ class SysCheckUnit(Process):
 			self.supl = supl
 			self.mandatory = mandatory
 			self.ex = ex
+			self.lp = long_poll
 			# self._process = Process
 		else:
 			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
@@ -306,11 +302,12 @@ class SysCheckUnit(Process):
 			print OK if res else BAD if self.mandatory else WARN, sup, sup2
 
 		if not res:
+			import sys
 			if RAISE_EXCEPTION:
 				raise self.ex
 			if from_ui or self.mandatory:
-				import sys
 				sys.exit(1)
+			sys.exit(2)
 		# implicit exit(0)
 
 	@property
@@ -338,9 +335,6 @@ def run_system_test():
 		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
 		if fs_mount.checker_function():
 			print fs_mount.msg + OK
-			# for each in CHECK_LIST:
-			#	each.s_check()
-			# check_rdv()
 			checking_list = CheckerList(CHECK_LIST)
 			checking_list.check_list()
 			checking_list.rendez_vous()
@@ -353,6 +347,42 @@ def run_system_test():
 ##
 # Special file system snapshot and checking systems
 ##
+
+
+# clem 10/09/2015
+def gen_test_report(the_user, gen_number=10, job_duration=30, time_break=1):
+	from breeze.views import report_overview
+	import time
+
+	posted = dict()
+	posted["project"] = 1
+	posted["Section_dbID_9"] = 0
+	posted["9_opened"] = 'False'
+	posted["Dropdown"] = 'Enter'
+	posted["Textarea"] = ''
+	posted["Section_dbID_81"] = 0
+	posted["81_opened"] = 'False'
+	posted["Section_dbID_118"] = '1'
+	posted["118_opened"] = 'True'
+	posted["sleep duration"] = str(job_duration)
+	posted["sleep_duration"] = str(job_duration)
+	posted["wait_time"] = str(job_duration)
+	posted["Groups"] = ''
+	posted["Individuals"] = ''
+
+	rq = HttpRequest()
+	# del rq.POST
+	rq.POST = posted
+	rq.user = the_user
+	rq.method = 'POST'
+
+	for i in range(1, gen_number + 1):
+		name = 'SelfTest%s' % i
+		print name
+		report_overview(rq, 'TestPipe', name, '00000')
+		time.sleep(time_break)
+
+	print 'done.'
 
 
 # clem on 21/08/2015
@@ -580,7 +610,7 @@ def check_dotm():
 	:rtype: bool
 	"""
 	# return status_button(rora.test_dotm_connect())
-	if utils.is_host_online(settings.DOTM_SERVER_IP, '2'):
+	if utils.is_host_online(settings.DOTM_SERVER_IP, 2):
 		from breeze import rora
 		return rora.test_dotm_connect()
 	return False
@@ -592,7 +622,7 @@ def check_file_server():
 	Check if file server host is online
 	:rtype: bool
 	"""
-	return utils.is_host_online(settings.FILE_SERVER_IP, '2')
+	return utils.is_host_online(settings.FILE_SERVER_IP, 2)
 
 
 # clem on 21/08/2015
@@ -612,7 +642,7 @@ def check_shiny(request):
 	:rtype: bool
 	"""
 	try:
-		r = proxy_to(request, '', settings.SHINY_LOCAL_LIBS_TARGET_URL, silent=True, timeout=3)
+		r = proxy_to(request, '', settings.SHINY_LOCAL_LIBS_TARGET_URL, silent=True, timeout=2)
 		if r.status_code == 200:
 			return True
 	except Exception:
@@ -627,14 +657,12 @@ def check_csc_shiny(request):
 	:rtype: bool
 	"""
 	try:
-		# r = proxy_to(request, '', settings.SHINY_REMOTE_LIBS_TARGET_URL, silent=True, timeout=3)
-		r = proxy_to(request, '', settings.SHINY_REMOTE_LIBS_TARGET_URL)
+		r = proxy_to(request, '', settings.SHINY_REMOTE_LIBS_TARGET_URL, silent=True, timeout=4)
 		if r.status_code == 200:
 			return True
 		else:
 			print 'prox to', settings.SHINY_REMOTE_LIBS_TARGET_URL, r.status_code
 	except Exception as e:
-		print 'prox to ex', e
 		pass
 	return False
 
@@ -666,7 +694,7 @@ def check_sge():
 	Check if SGE queue master server host is online, and drmaa can initiate a valid session
 	:rtype: bool
 	"""
-	if utils.is_host_online(settings.SGE_MASTER_IP, '2'):
+	if utils.is_host_online(settings.SGE_MASTER_IP, 2):
 		import drmaa
 		try:
 			s = drmaa.Session()
@@ -684,7 +712,7 @@ def check_cas(request):
 	Check if CAS server is responding
 	:rtype: bool
 	"""
-	if utils.is_host_online(settings.CAS_SERVER_IP, '2'):
+	if utils.is_host_online(settings.CAS_SERVER_IP, 2):
 		try:
 			r = proxy_to(request, '', settings.CAS_SERVER_URL, silent=True, timeout=3)
 			if r.status_code == 200:
@@ -709,11 +737,17 @@ def ui_checker_proxy(what):
 	assert isinstance(obj, SysCheckUnit)
 
 	# if what == 'watcher':
-	if obj.checker_function is check_watcher:
-		return check_watcher()
+	if obj.checker_function is check_watcher or obj.lp:
+		return obj.checker_function()
 	else:
 		return obj.split_run(from_ui=True)
 
+
+# clem 25/09/2015
+def long_poll_waiter():
+	from time import sleep
+	sleep(settings.LONG_POLL_TIME_OUT_REFRESH)
+	return 'ok'
 
 # TODO FIXME runtime fs_check memory leak
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
@@ -721,6 +755,8 @@ fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'F
 
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
+	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
+	# SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
 	SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t', RunType.boot_time, 25000,
 				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount,
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
@@ -731,16 +767,16 @@ CHECK_LIST = [
 	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),
 	SysCheckUnit(check_shiny, 'shiny', 'Local Shiny HTTP server', 'LOC. SHINY HTTP\t\t', RunType.runtime,
 		arg=HttpRequest(), ex=ShinyUnreachable),
-	SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTPS server', 'CSC SHINY HTTPS\t\t', RunType.both,
+	SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTPS server', 'CSC SHINY HTTPS\t\t', RunType.runtime,
 		arg=HttpRequest(), ex=ShinyUnreachable),
 	SysCheckUnit(check_csc_mount, 'csc_mount', 'CSC Shiny File System', 'CSC SHINY FS\t\t', RunType.runtime,
 		ex=FileSystemNotMounted),
-	SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t', RunType.runtime, ex=WatcherIsNotRunning)
+	SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t', RunType.runtime, ex=WatcherIsNotRunning),
 ]
 
 CHECK_DICT = dict()
-for each in CHECK_LIST:
-	CHECK_DICT.update({ each.url: each })
+for each_e in CHECK_LIST:
+	CHECK_DICT.update({ each_e.url: each_e })
 
 
 # clem 08/09/2015
@@ -748,5 +784,8 @@ def get_template_check_list():
 	res = list()
 	for each in CHECK_LIST:
 		if each.type != RunType.boot_time:
-			res.append({ 'url': '/status/%s/' % each.url, 'legend': each.legend, 'id': each.url, 't_out': each.t_out })
+			# url_prefix = 'status' if not each.lp else 'status_lp'
+			res.append(
+				{ 'url': '/%s/%s/' % ('status', each.url), 'legend': each.legend, 'id': each.url, 't_out': each.t_out,
+				'lp': each.lp })
 	return res

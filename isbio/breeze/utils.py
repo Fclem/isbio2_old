@@ -66,13 +66,13 @@ def dateT(dateF=None):
 
 
 # clem on 20/08/2015
-def is_host_online(host, deadline='5'):
+def is_host_online(host, deadline=5):
 	"""
 	Check if given host is online (whether it respond to ping)
 	:param host: the IP address to test
 	:type host: str
 	:param deadline: the maximum time to wait in second (text format)
-	:type deadline: str
+	:type deadline: str | int
 	:rtype: bool
 	"""
 	import subprocess

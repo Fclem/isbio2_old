@@ -644,6 +644,7 @@ def dbviewer(request):
 	}))
 
 
+# FIXME no login ?
 def ajax_patients_data(request, which):
 	"""
 		Generic function to extract data from RORA tables;
@@ -671,6 +672,7 @@ def ajax_patients_data(request, which):
 	return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
 
+# FIXME no login ?
 def ajax_patients(request, which):
 	# patient_id = which
 	if request.method == 'POST':
@@ -717,6 +719,7 @@ def ajax_patients(request, which):
 	}))
 
 
+# FIXME no login ?
 def ajax_patients_new(request):
 	# patient_id = which
 	if request.method == 'POST':
@@ -795,6 +798,7 @@ def screen_data(request, which):
 	}))
 
 
+# FIXME no login ?
 def ajax_rora_screens(request, gid):
 	if request.method == 'POST':
 		screengroup_form = breezeForms.ScreenGroupInfo(request.POST)
@@ -859,12 +863,13 @@ def mycart(request):
 	items_free = CartInfo.objects.filter(script_buyer=request.user, type_app=True)
 	items_nonfree = CartInfo.objects.filter(script_buyer=request.user, type_app=False)
 	html = render_to_string('cartinfo.html', {  # 'mycart_status': 'active',
-	                                            'items_free': items_free,
-	                                            'items_nonfree': items_nonfree  # 'all_items': all_items
+		'items_free': items_free,
+		'items_nonfree': items_nonfree  # 'all_items': all_items
 	})
 	return HttpResponse(html)
 
 
+# FIXME no login ?
 def ajax_rora_action(request):
 	params = request.POST
 	table = params.get('table', '')
@@ -2695,6 +2700,7 @@ def update_user_info_dialog(request):
 	}))
 
 
+# FIXME no login ?
 def ajax_user_stat(request):
 	timeinfo = User.objects.values_list('date_joined', flat=True)
 	# only keep year and month info
@@ -2852,7 +2858,10 @@ def custom_404_view(request, message=None):
 # clem on 24/08/2015
 def status_button_json(stat, text=['Online', 'Offline'], href=['#', '#'], c_type=['success', 'danger']):
 	if type(stat) != bool:
-		return stat
+		if type(stat) == HttpResponse:
+			return stat
+		return HttpResponse(str(stat), mimetype='text/plaintext')
+
 	sel = 0 if stat else 1
 	return HttpResponse(simplejson.dumps({ 'class': c_type[sel], 'text': text[sel], 'href': href[sel] }),
 						mimetype='application/json')
@@ -2931,3 +2940,9 @@ def file_system_info(request):
 		'folders': folders_state,
 		'files': files_state,
 	}))
+
+
+def online_lp(request):
+	from time import sleep
+	sleep(settings.LONG_POLL_TIME_OUT_REFRESH)
+	return HttpResponse('ok', mimetype='text/plaintext')

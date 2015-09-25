@@ -32,6 +32,7 @@ else:
 		url(r'^status/fs_ok/$', views.check_file_system_coherent),
 		url(r'^status/qstat/$', views.qstat_live),
 		url(r'^status_lp/qstat/(?P<md5_t>[a-z0-9_]{32})?$', views.qstat_lp),
+		# url(r'^status_lp/sys/$', views.online_lp),
 		# All others system check in a wrapper
 		url(r'^status/(?P<what>[a-z_]+)?/$', views.checker),
 		#

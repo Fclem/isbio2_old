@@ -19,6 +19,7 @@
 		/*
 			DO NOT EDIT THE FOLLOWING
 		*/
+		//generate the button
 		function generateButton(textStatus, c_type, href, sup, refresh) {
 			if(refresh == undefined || href!='#') refresh = '';
 			return '<a type="button" class="btn btn-' + c_type + '" href="' + href + '"' + refresh + '>' + textStatus + '</a>' + sup;
@@ -213,6 +214,29 @@
 				},
 				timeout: 0
 			});
+		} // grab some content with long_polling, displays any change real-time
+
+		function check_online_lp(id, url, loader, unloader) {
+			// if (loader != undefined && typeof loader === 'function')
+			//	loader(id);
+			// else
+				default_loading(id, generateButton('Online', 'success', '#', '', ''), true);
+			// if (unloader == undefined)
+			unloader = function () {
+				default_loading(id, generateButton('Offline', 'danger', '#', '', ''), true);
+			};
+			$.ajax({
+				url    : url,
+				error  : function (response, textStatus, jqXHR) {
+					unloader();
+					setTimeout(function () { check_online_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
+				},
+				success: function (response, textStatus, jqXHR) {
+					// unloader();
+					check_online_lp(id, url, loader, unloader);
+				},
+				timeout: 0
+			});
 		} // check the status of a system through AJAX. Manage time-out, reload, sequential mode and display
 
 		function countDown(loc, t, action){
@@ -237,7 +261,11 @@
 			if (LOADING_MODE === PARA_MODE) {
 				//parallel version
 				{% for res in resources %}
-					check_stuff('{{ res.id }}_checked', '{{ res.url|safe }}', 0, {{ res.t_out|default:"0" }}, loader, unloader);
+					{% if not res.lp %}
+						check_stuff('{{ res.id }}_checked', '{{ res.url|safe }}', 0, {{ res.t_out|default:"0" }}, loader, unloader);
+					{% else %}
+						check_online_lp('{{ res.id }}_checked', '{{ res.url|safe }}', 0, {{ res.t_out|default:"0" }});
+					{% endif %}
 				{% endfor %}
 			} else if (LOADING_MODE === SEQ_MODE) {
 				//sequential version
@@ -246,10 +274,14 @@
 					tab[{{ forloop.counter0 }}][0] = '{{ res.id }}_checked';
 					tab[{{ forloop.counter0 }}][1] = '{{ res.url|safe }}';
 					tab[{{ forloop.counter0 }}][2] = {{ res.t_out|default:"0" }};
+					tab[{{ forloop.counter0 }}][3] = {{ res.lp }};
 				{% endfor %}
 				var arrayLength = tab.length;
 				if (arrayLength > 0) {
-					check_stuff(tab[0][0], tab[0][1], 0, tab[0][2], loader, unloader);
+					if(!tab[0][3])
+						check_stuff(tab[0][0], tab[0][1], 0, tab[0][2], loader, unloader);
+					else
+						check_online_lp(tab[0][0], tab[0][1], 0, tab[0][2]);
 				}
 			}
 			//refresh

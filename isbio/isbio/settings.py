@@ -433,7 +433,7 @@ class DevSettings(BreezeSettings):
 	SHINY_LOCAL_LIBS_BREEZE_URL = '/libs/'
 	# remote Shiny
 	SHINY_REMOTE_ENABLE = True
-	SHINY_REMOTE_IP = '86.50.169.70:3838'
+	SHINY_REMOTE_IP = 'vm0326.kaj.pouta.csc.fi'
 	SHINY_REMOTE_LOCAL_PATH = '/shiny-csc/'
 	SHINY_REMOTE_CSC_LOCAL_PATH = '/home/shiny/shiny/'
 	SHINY_REMOTE_BREEZE_REPORTS_PATH = SHINY_REMOTE_LOCAL_PATH + REPORTS_FN
