@@ -1790,6 +1790,8 @@ class Runnable(FolderObj, models.Model):
 		DO NOT WORK on SUCCEEDED JOB."""
 		if not self.is_successful:
 			get_logger().info('%s%s : resetting job status' % self.short_id)
+			self.name += '_re'
+			self.save()
 			self.submit_to_cluster()
 
 	###
