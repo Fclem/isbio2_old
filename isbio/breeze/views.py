@@ -2143,8 +2143,19 @@ def send_file(request, ftype, fname):
 # Shiny tab access from inside
 @login_required(login_url='/')
 def report_shiny_view_tab(request, rid):
-	return HttpResponseRedirect(reverse(report_shiny_in_wrapper, kwargs={ 'rid': rid }))
-	# return report_shiny_view_tab_merged(request, rid)
+	if not rid or rid == '':
+		return aux.fail_with404(request)
+	try:
+		report = Report.objects.get(id=rid)
+		assert isinstance(report, Report)
+	except ObjectDoesNotExist:
+		return aux.fail_with404(request)
+	# Enforce user access restrictions
+	if not report.has_access_to_shiny(request.user):
+		raise PermissionDenied
+
+	# return HttpResponseRedirect(reverse(report_shiny_in_wrapper, kwargs={ 'rid': rid }))
+	return HttpResponseRedirect(report.get_shiny_report.url(report))
 
 
 # Shiny tab access from outside (with the key)

@@ -435,8 +435,8 @@ class ShinyReport(models.Model):
 	REPORT_TEMPLATE_PATH = settings.SHINY_REPORT_TEMPLATE_PATH
 	SYSTEM_FILE_LIST = [FILE_UI_NAME, FILE_SERVER_NAME, FILE_GLOBAL, FILE_HEADER_NAME, RES_FOLDER, RES_FOLDER[:-1]]
 	# FS_ACL = 0775
-	FS_ACL = ACL.RW_RW_
-	FS_REMOTE_ACL = ACL.RW_R_
+	FS_ACL = 0750
+	FS_REMOTE_ACL = 0750
 
 	title = models.CharField(max_length=55, unique=True, blank=False, help_text="Choose a title for this Shiny Report")
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
@@ -508,6 +508,29 @@ class ShinyReport(models.Model):
 	# path_dash_ui_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_UI
 	# path_dash_server_r_template = REPORT_TEMPLATE_PATH + FILE_DASH_SERVER
 
+	# TODO rework the next 3 functions
+	@property
+	def shiny_mode(self):
+		if self.shiny_remote_ok:
+			return 'remote'
+		elif self.shiny_local_ok:
+			return 'local'
+
+	@property
+	def shiny_remote_ok(self):
+		return settings.SHINY_REMOTE_ENABLE and settings.SHINY_MODE == 'remote'
+
+	@property
+	def shiny_local_ok(self):
+		return settings.SHINY_LOCAL_ENABLE and settings.SHINY_MODE == 'local'
+
+	def url(self, report, force_remote=False, force_local=False):
+		assert isinstance(report, Report)
+		if force_remote or self.shiny_remote_ok and not force_local:
+			return '%s%s/' % (settings.SHINY_TARGET_URL, report.shiny_key)
+		elif self.shiny_local_ok:
+			return '%s%s/' % (settings.SHINY_TARGET_URL, self.report_link_rel_path(report.id))
+
 	@property # relative path to link holder directory
 	def _link_holder_rel_path(self):
 		# the point of this property, is that you can change the folder structure by only changing this
@@ -562,7 +585,7 @@ class ShinyReport(models.Model):
 			mkdir(self.folder_path, self.FS_ACL)
 			mkdir('%s%s/' % (self.folder_path, self.RES_FOLDER), self.FS_ACL)
 
-		if settings.SHINY_REMOTE_ENABLE and self.check_csc_mount():
+		if self._make_remote_too:
 			safe_rm(self.__folder_path_base_gen(True), ignore_errors=True)
 			mkdir(self.__folder_path_base_gen(True), self.FS_REMOTE_ACL)
 			mkdir(self.report_link('', remote=True), self.FS_REMOTE_ACL)
@@ -599,11 +622,12 @@ class ShinyReport(models.Model):
 			Return a list of files to ignores amongst names
 			"""
 			ignore_list = self.SYSTEM_FILE_LIST + report.hidden_files
-			print names
+			# print names
 			out = list()
 			for each in names:
 				if each in ignore_list:
 					out.append(each)
+			# print out
 			return out
 
 		return remote_ignore
@@ -624,7 +648,7 @@ class ShinyReport(models.Model):
 			"updating shinyReport %s slink for report %s %s" % (self.id, report.id, 'FORCING' if force else ''))
 
 		from os.path import isdir, isfile, islink
-		from os import listdir, access, R_OK
+		from os import listdir, access, R_OK, mkdir
 
 		assert isinstance(report, Report)
 		# handles individually each generated report of this type
@@ -651,19 +675,18 @@ class ShinyReport(models.Model):
 			if remote_too and (force or not islink(report_remote_link)):
 				# del the remote report copy folder
 				safe_rm(report.remote_shiny_path, ignore_errors=True)
-				# safe_rm('%s%s' % (report.remote_shiny_path, settings.SHINY_RES_FOLDER))
-				# remove_file_safe('%s%s' % (report.remote_shiny_path, self.FILE_SERVER_NAME))
-				# remove_file_safe('%s%s' % (report.remote_shiny_path, self.FILE_UI_NAME))
-				# remove_file_safe('%s%s' % (report.remote_shiny_path, self.FILE_GLOBAL))
-				for item in listdir(self.folder_path):
-					# remove_file_safe('%s%s' % (report.remote_shiny_path, item))
-					auto_symlink('%s%s' % (self.__folder_path_remote, item), '%s%s' % (report.remote_shiny_path, item))
-				# copy the data content of the report
 				try:
+					# copy the data content of the report
 					safe_copytree(report.home_folder_full_path, report.remote_shiny_path,
 									ignore=self._remote_ignore_wrapper(report))
 				except Exception as e:
 					log_obj.warning("%s copy error %s" % (report.id, e))
+
+				# link ShinyReport files
+				for item in listdir(self.folder_path):
+					# remove_file_safe('%s%s' % (report.remote_shiny_path, item))
+					auto_symlink('%s%s' % (self.__folder_path_remote, item), '%s%s' % (report.remote_shiny_path, item))
+
 				# Creates a slink in shinyReports to the actual report
 				auto_symlink(report.remote_shiny_path, report_remote_link)
 		else: # the target report is missing we remove the link

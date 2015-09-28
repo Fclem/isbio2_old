@@ -268,11 +268,11 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 	import shutil
 	if destination not in settings.FOLDERS_LST:
 		if os.path.isdir(source):
-			if not os.path.isdir(destination):
-				os.mkdir(destination)
-			else:
-				log_txt = 'copytree, destination folder %s exists, continuing' % destination
-				get_logger().warning(log_txt)
+			if os.path.isdir(destination):
+			# 	os.mkdir(destination)
+			# else:
+				log_txt = 'copytree, destination folder %s exists, STOP' % destination
+				get_logger().error(log_txt)
 			shutil.copytree(source, destination, symlinks, ignore)
 			return True
 		else:

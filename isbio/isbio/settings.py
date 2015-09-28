@@ -446,7 +446,7 @@ class DevSettings(BreezeSettings):
 	SHINY_REMOTE_LIBS_BREEZE_URL = '/libs/'
 
 	# LEGACY ONLY (single Shiny old system)
-	SHINY_MODE = 'local'
+	SHINY_MODE = 'remote'
 
 	SHINY_HEADER_FILE_NAME = 'header.R'
 	SHINY_LOADER_FILE_NAME = 'loader.R'
@@ -490,7 +490,7 @@ class DevSettings(BreezeSettings):
 						RSCRIPTS_PATH, RORA_LIB, MOULD_FOLDER, STATIC_ROOT]
 
 	# STATIC URL MAPPINGS
-	SHINY_URL = '/shiny/rep/'
+	SHINY_URL = '/shiny/rep/' # FIXME
 	STATIC_URL = '/static/'
 	MEDIA_URL = '/media/'
 
