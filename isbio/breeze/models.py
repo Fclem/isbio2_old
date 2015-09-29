@@ -2134,6 +2134,8 @@ class Report(Runnable):
 				gen_params = rshell.gen_params_string(tree, request_data.POST, self,
 					request_data.FILES)
 				tag_list.append(tag.get_R_code(gen_params) + report_specific)
+				tag_list.append(tag.get_R_code(gen_params) + Template(report_specific).substitute(
+					{ 'loc': self.home_folder_full_path[:-1] }))
 
 		d = { 'loc': self.home_folder_full_path[:-1],
 			'report_name': self.title,
