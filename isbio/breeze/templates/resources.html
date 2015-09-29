@@ -32,8 +32,8 @@
 		*/
 		var STAT_REFRESH = 120; //default refresh time for system status (in seconds)
 		var QSTAT_REFRESH = 15; //default refresh time for qstat (in seconds)
-		var DEFAULT_TIME_OUT = 5000; //default time out time for ajax request (in milliseconds)
-		var TIME_OUT_RETRY_DELAY = 5000; //time to wait before retrying after a time out (in milliseconds)
+		var DEFAULT_TIME_OUT = 15000; //default time out time for ajax request (in milliseconds)
+		var TIME_OUT_RETRY_DELAY = 30000; //time to wait before retrying after a time out (in milliseconds)
 		var T_OUT_INCREASE_FACTOR = 1.2; //ratio to use for time-out value increase after each time-out
 		var LOADING_MODE = PARA_MODE; // use 'para' for parallel mode or 'seq' for sequential mode (PREFER PARA MODE)
 		var T_OUT_BTN_CLASS = 'warning'; // bootstrap class to use for the button after a time-out (usually warning)
@@ -92,7 +92,7 @@
 					<h4>System status <small id="checked_title"></small></h4>
 						<div class="row-fluid">
 							{% for res in resources %}
-							<label class="row-fluid"><span class="span2"> {{ res.legend }} :</span>
+							<label class="row-fluid"><span class="span3"> {{ res.legend }} :</span>
 								<span id="{{ res.id }}_checked"> <!--  class="span6" -->
 									<script type="text/javascript">
 										document.write(LOADING_PLACE_HOLDER);
@@ -130,6 +130,7 @@
 	</div>
 	<script type="text/javascript"> // STATUS AJAX CODE HERE
 		var ONE_SEC = 1000;
+		var online = false;
 		function default_loading(id, placeHolder, trigger) {
 			if(trigger){
 				$("#" + id)[0].innerHTML = placeHolder;
@@ -149,41 +150,59 @@
 				};
 			loader(id);
 			if(tOut == undefined || isNaN(tOut) || tOut == 0) tOut = DEFAULT_TIME_OUT;
-			$.ajax({
-				url    : url,
-				error  : function (response, textStatus, jqXHR) {
-					var cdId = 'countDown_' + id;
-					var sup = '';
-					unloader();
-					next();
-					if (textStatus === "timeout")
-						sup = '&nbsp;&nbsp;&nbsp;<small>Retrying in <span id="' + cdId + '"></span> seconds</small>';
-					$("#" + id)[0].innerHTML = generateButton('refresh ' + textStatus, T_OUT_BTN_CLASS, '#', sup);
-					if (textStatus === "timeout")
-						countDown(cdId, TIME_OUT_RETRY_DELAY,
-						  function () { check_stuff(id, url, i, tOut * T_OUT_INCREASE_FACTOR);} );
-				},
-				success: function (response, textStatus, jqXHR) {
-					unloader();
-					if (typeof response === 'object') {
-						var refresh = ' onclick="check_stuff(\'' + id + '\', \'' + url + '\', ' + i + ', ' + tOut + ');"';
-						$("#" + id)[0].innerHTML = generateButton(response[PY_TEXT], response[PY_CLASS], response[PY_HREF], '', refresh);
-					}else { // direct HTML response
-						$("#" + id)[0].innerHTML = response;
-					}
-					next();
-				},
-				timeout: tOut
-			});
+			var last_online = online;
+			if (online===true) {
+				var refresh = ' onclick="check_stuff(\'' + id + '\', \'' + url + '\', ' + i + ', ' + tOut + ');"';
+				$.ajax({
+					cache:false,
+					url    : url,
+					error  : function (response, textStatus) {
+						var cdId = 'countDown_' + id;
+						var sup = '';
+						unloader();
+						next();
+						if (textStatus === "timeout")
+							sup = '&nbsp;&nbsp;&nbsp;<small>Retrying in <span id="' + cdId + '"></span> seconds</small>';
+						$("#" + id)[0].innerHTML = generateButton('refresh ' + textStatus, T_OUT_BTN_CLASS, '#', sup, refresh);
+						if (last_online != online)
+							check_stuff(id, url, i, tOut, loader, unloader);
+						else
+							countDown(cdId, TIME_OUT_RETRY_DELAY,
+							  function () { check_stuff(id, url, i, tOut * T_OUT_INCREASE_FACTOR, loader, unloader);} );
+					},
+					success: function (response) {
+						unloader();
+						if (typeof response === 'object') {
+							$("#" + id)[0].innerHTML = generateButton(response[PY_TEXT], response[PY_CLASS], response[PY_HREF], '', refresh);
+						}else { // direct HTML response
+							$("#" + id)[0].innerHTML = response;
+						}
+						if(last_online!=online)
+							check_stuff(id, url, i, tOut, loader, unloader);
+						else
+							setTimeout(function () { check_stuff(id, url, i, tOut, loader, unloader);}, ONE_SEC * STAT_REFRESH);
+						next();
+					},
+					timeout: tOut
+				});
 
-			function next(){
-				if (LOADING_MODE === SEQ_MODE && i != undefined) {
-					i++;
-					if (tab[i] != undefined) {
-						check_stuff(tab[i][0], tab[i][1], i, tab[i][2], loader, unloader);
+				function next(){
+					if (LOADING_MODE === SEQ_MODE && i != undefined) {
+						i++;
+						if (tab[i] != undefined) {
+							check_stuff(tab[i][0], tab[i][1], i, tab[i][2], loader, unloader);
+						}
 					}
-				}
-			} // triggers the next loading function
+				} // triggers the next loading function
+			}else {
+				// var cdId = 'countDown_' + id;
+				// var sup = '&nbsp;&nbsp;&nbsp;<small>Retrying in <span id="' + cdId + '"></span> seconds</small>';
+				//$("#" + id)[0].innerHTML = generateButton('unable to check', T_OUT_BTN_CLASS, '#', sup);
+				$("#" + id)[0].innerHTML = generateButton('unable to check', T_OUT_BTN_CLASS, '#', '');
+				//countDown(cdId, TIME_OUT_RETRY_DELAY,
+				  //function () { check_stuff(id, url, i, tOut * T_OUT_INCREASE_FACTOR);});
+				setTimeout(function () { check_stuff(id, url, i, tOut * T_OUT_INCREASE_FACTOR, loader, unloader);}, ONE_SEC-1);
+			}
 		} // check the status of a system through AJAX. Manage time-out, reload, sequential mode and display
 
 		function check_stuff_lp(id, url, loader, unloader, md5) {
@@ -195,41 +214,66 @@
 				};
 			if (md5 == undefined)
 				md5 = '';
-			$.ajax({
-				url    : url + md5,
-				error  : function (response, textStatus, jqXHR) {
-					var d = new Date();
-					default_loading('qstat_title', '&nbsp;&nbsp;(<strong>ERROR</strong>, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
-					setTimeout(function () { check_stuff_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
-				},
-				success: function (response, textStatus, jqXHR) {
-					// unloader();
-					if (typeof response === 'object') {
-						$("#" + id)[0].innerHTML = response['html'];
-						unloader();
-						check_stuff_lp(id, url, loader, unloader, response['md5']);
-					} else { // direct HTML response
-						$("#" + id)[0].innerHTML = response;
-					}
-				},
-				timeout: 0
-			});
+			if(online===true) {
+				$.ajax({
+					cache: false,
+					url    : url + md5,
+					error  : function (response, textStatus, jqXHR) {
+						var d = new Date();
+						default_loading('qstat_title', '&nbsp;&nbsp;(<strong>ERROR</strong>, last change ' + d.toDateString() + ' ' + d.toTimeString() + ')', true);
+						setTimeout(function () { check_stuff_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
+					},
+					success: function (response, textStatus, jqXHR) {
+						// unloader();
+						if (typeof response === 'object') {
+							$("#" + id)[0].innerHTML = response['html'];
+							unloader();
+							check_stuff_lp(id, url, loader, unloader, response['md5']);
+						} else { // direct HTML response
+							$("#" + id)[0].innerHTML = response;
+						}
+					},
+					timeout: 0
+				});
+			}else {
+				default_loading('qstat_title', '&nbsp;&nbsp;(<strong>OFFLINE</strong>', true);
+				setTimeout(function () { check_stuff_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
+			}
+
+
 		} // grab some content with long_polling, displays any change real-time
 
 		function check_online_lp(id, url, loader, unloader) {
 			// if (loader != undefined && typeof loader === 'function')
 			//	loader(id);
 			// else
-				default_loading(id, generateButton('Online', 'success', '#', '', ''), true);
+			online = false;
+
 			// if (unloader == undefined)
 			unloader = function () {
+				online = false;
 				default_loading(id, generateButton('Offline', 'danger', '#', '', ''), true);
+				// clearTimeout(myVar)
 			};
 			$.ajax({
 				url    : url,
+				cache: false,
+				beforeSend: function (xhr) {
+					// xhr.overrideMimeType("text/plain; charset=x-user-defined");
+					default_loading(id, generateButton('Online', 'success', '#', '', ''), true);
+					online = true;
+				},
 				error  : function (response, textStatus, jqXHR) {
+					online = false;
 					unloader();
-					setTimeout(function () { check_online_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
+					// $("#_checked").innerHTML = generateButton('unable to check', T_OUT_BTN_CLASS, '#', '');
+					$("div label.row-fluid span:last-child").each(function () {
+						if(this.id != 'breeze_checked')
+							this.innerHTML = generateButton('unable to check', T_OUT_BTN_CLASS, '#', '', '');
+					});
+				    //setTimeout(function () { check_online_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
+				    setTimeout(function () { check_online_lp(id, url, loader, unloader); }, TIME_OUT_RETRY_DELAY);
+				    //setTimeout(system_stat(), TIME_OUT_RETRY_DELAY);
 				},
 				success: function (response, textStatus, jqXHR) {
 					// unloader();
@@ -285,7 +329,7 @@
 				}
 			}
 			//refresh
-			setTimeout(function () { system_stat(); }, ONE_SEC * STAT_REFRESH);
+			// setTimeout(function () { system_stat(); }, ONE_SEC * STAT_REFRESH);
 		}
 
 		// TODO remove obsolete
