@@ -604,7 +604,7 @@ check_list.append( SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB
 check_list.append( SysCheckUnit(check_shiny, 'shiny', 'Shiny server', 'SHINY HTTP\t\t',
 								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
 check_list.append(SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny', 'CSC SHINY\t\t',
-								RunType.both, arg=HttpRequest(), ex=ShinyUnreachable))
+								RunType.runtime, arg=HttpRequest(), ex=ShinyUnreachable))
 check_list.append(SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t',
 								RunType.runtime, ex=WatcherIsNotRunning))
 
