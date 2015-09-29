@@ -519,10 +519,11 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 		total_size = os.path.getsize(folder)
 		for item in os.listdir(folder):
 			itempath = os.path.join(folder, item)
-			if os.path.isfile(itempath):
-				total_size += os.path.getsize(itempath)
-			elif os.path.isdir(itempath):
-				total_size += getFolderSize(itempath)
+			if not os.path.islink(itempath):
+				if os.path.isfile(itempath):
+					total_size += os.path.getsize(itempath)
+				elif os.path.isdir(itempath):
+					total_size += getFolderSize(itempath)
 		return total_size
 
 	folder = dict()
@@ -571,7 +572,7 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 						errors += 1
 					elif ss[file_n][1] < cs[file_n][1]:
 						status['status'] = 'NEWER'
-					else: # same time, different checksum (is that even possible ?)
+					else: # same time, different checksum (almost impossible, very unlikely)
 						status['status'] = 'EQT_DIFF'
 						errors += 1
 				del cs[file_n]
