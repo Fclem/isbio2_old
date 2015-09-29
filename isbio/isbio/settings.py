@@ -574,6 +574,5 @@ class DevSettings(BreezeSettings):
 	(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME))
 	if PHARMA_MODE:
 		print Bcolors.bold('RUNNING WITH PHARMA')
-	logging.info('Settings loaded. Running %s on %s' % (
-	Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME)))
+	logging.info('Settings loaded. Running %s on %s' % (RUN_MODE, FULL_HOST_NAME))
 

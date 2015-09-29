@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
 from breeze import utils
+from utils import Bcolors
+from utils import logger_timer
 from breeze.auxiliary import proxy_to
 from isbio import settings
 from breeze.b_exceptions import *
@@ -19,46 +21,6 @@ if DEBUG:
 	from breeze.process import Process
 else:
 	from multiprocessing import Process
-
-
-class Bcolors:
-	HEADER = '\033[95m'
-	OKBLUE = '\033[94m'
-	OKGREEN = '\033[92m'
-	WARNING = '\033[93m'
-	FAIL = '\033[91m'
-	ENDC = '\033[0m'
-	BOLD = '\033[1m'
-	UNDERLINE = '\033[4m'
-
-	@staticmethod
-	def ok_blue(text):
-		return Bcolors.OKBLUE + text + Bcolors.ENDC
-
-	@staticmethod
-	def ok_green(text):
-		return Bcolors.OKGREEN + text + Bcolors.ENDC
-
-	@staticmethod
-	def fail(text):
-		return Bcolors.FAIL + text + Bcolors.ENDC
-
-	@staticmethod
-	def warning(text):
-		return Bcolors.WARNING + text + Bcolors.ENDC
-
-	@staticmethod
-	def header(text):
-		return Bcolors.HEADER + text + Bcolors.ENDC
-
-	@staticmethod
-	def bold(text):
-		return Bcolors.BOLD + text + Bcolors.ENDC
-
-	@staticmethod
-	def underlined(text):
-		return Bcolors.UNDERLINE + text + Bcolors.ENDC
-
 
 OK = '[' + Bcolors.ok_green('OK') + ']'
 BAD = '[' + Bcolors.fail('NO') + ']'
@@ -324,6 +286,7 @@ class SysCheckUnit(Process):
 
 
 # clem 08/09/2015
+@logger_timer
 def run_system_test():
 	"""
 	NEW ONE 08/09/2015
@@ -495,6 +458,7 @@ def check_is_file_system_unchanged():
 
 
 # clem 25/08/2015
+@logger_timer
 def deep_fs_check(rush=False): # TODO optimize (too slow)
 	"""
 	Return flag_changed, flag_invalid, files_state, folders_state
@@ -750,7 +714,7 @@ def long_poll_waiter():
 	sleep(settings.LONG_POLL_TIME_OUT_REFRESH)
 	return 'ok'
 
-# TODO FIXME runtime fs_check memory leak
+# TODO FIXME runtime fs_check slow and memory leak ?
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
 	ex=FileSystemNotMounted, mandatory=True)
 
