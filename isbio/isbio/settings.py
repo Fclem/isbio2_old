@@ -477,7 +477,9 @@ class DevSettings(BreezeSettings):
 	# System Autocheck config
 	##
 	# this is used to avoid 504 Gateway time-out from ngnix with is currently set to 600 sec = 10 min
-	LONG_POLL_TIME_OUT_REFRESH = 540 # 9 minutes
+	# LONG_POLL_TIME_OUT_REFRESH = 540 # 9 minutes
+	# set to 50 sec to avoid time-out on breeze.fimm.fi
+	LONG_POLL_TIME_OUT_REFRESH = 50
 	SGE_MASTER_FILE = '/var/lib/gridengine/default/common/act_qmaster'
 	SGE_MASTER_IP = '192.168.67.2'
 	DOTM_SERVER_IP = '128.214.64.5'

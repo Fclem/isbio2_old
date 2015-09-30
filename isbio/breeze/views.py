@@ -2930,7 +2930,7 @@ def qstat_lp(request, md5_t=None):
 	Returns a smart HTML view of qstat and associated md5,
 	Only upon changes from last client's known output.
 	"""
-	# FIXME
+	# FIXME : CPU consumption really too high
 	return aux.fail_with404(HttpRequest(), 'DISABLED')
 	if md5_t is None:
 		return qstat_json(request)
@@ -2966,9 +2966,3 @@ def file_system_info(request):
 		'folders': folders_state,
 		'files': files_state,
 	}))
-
-
-def online_lp(request):
-	from time import sleep
-	sleep(settings.LONG_POLL_TIME_OUT_REFRESH)
-	return HttpResponse('ok', mimetype='text/plaintext')

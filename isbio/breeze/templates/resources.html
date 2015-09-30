@@ -112,11 +112,11 @@
 							document.write(LOADING_CONTENT);
 						</script>
 					</span>
-					<!--
+
 					<small class="">
 						Refreshed every <script type="text/javascript">document.write(QSTAT_REFRESH);</script> seconds
 					</small>
-					-->
+
 				</div>
 				{% for graph in usage_graph %}
 					<div class="well">
@@ -355,7 +355,8 @@
 		}
 
 		system_stat();
-		qstat_lp();
+		// qstat_lp();
+		qstat();
 		//qstat();
 	</script> <!-- STATUS AJAX CODE HERE -->
 {% endblock %}
