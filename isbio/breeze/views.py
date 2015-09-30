@@ -2893,6 +2893,7 @@ def status_button_json(stat, text=['Online', 'Offline'], href=['#', '#'], c_type
 # all the checker view in one proxy
 @login_required(login_url='/')
 def checker(request, what):
+	# return aux.fail_with404(HttpRequest(), 'NOT FOUND')
 	return status_button_json(check.ui_checker_proxy(what))
 
 
@@ -2929,6 +2930,8 @@ def qstat_lp(request, md5_t=None):
 	Returns a smart HTML view of qstat and associated md5,
 	Only upon changes from last client's known output.
 	"""
+	# FIXME
+	return aux.fail_with404(HttpRequest(), 'DISABLED')
 	if md5_t is None:
 		return qstat_json(request)
 

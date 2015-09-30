@@ -140,6 +140,11 @@ class RunType:
 	def both():
 		pass
 
+	@staticmethod
+	@property
+	def disabled():
+		pass
+
 
 # clem 08/09/2015
 class SysCheckUnit(Process):
@@ -701,11 +706,12 @@ def ui_checker_proxy(what):
 	obj = CHECK_DICT[what]
 	assert isinstance(obj, SysCheckUnit)
 
-	# if what == 'watcher':
-	if obj.checker_function is check_watcher or obj.lp:
-		return obj.checker_function()
-	else:
-		return obj.split_run(from_ui=True)
+	if obj.type in [RunType.both, RunType.runtime]:
+		if obj.checker_function is check_watcher or obj.lp:
+			return obj.checker_function()
+		else:
+			return obj.split_run(from_ui=True)
+	return False
 
 
 # clem 25/09/2015
@@ -721,21 +727,21 @@ fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'F
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
-	# SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
+	# # SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
 	SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t', RunType.boot_time, 25000,
 				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount,
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
-		mandatory=True),
+				mandatory=True),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
 	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
-		mandatory=True),
+				mandatory=True),
 	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),
 	SysCheckUnit(check_shiny, 'shiny', 'Local Shiny HTTP server', 'LOC. SHINY HTTP\t\t', RunType.runtime,
-		arg=HttpRequest(), ex=ShinyUnreachable),
+				arg=HttpRequest(), ex=ShinyUnreachable),
 	SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTPS server', 'CSC SHINY HTTPS\t\t', RunType.runtime,
-		arg=HttpRequest(), ex=ShinyUnreachable),
+				arg=HttpRequest(), ex=ShinyUnreachable),
 	SysCheckUnit(check_csc_mount, 'csc_mount', 'CSC Shiny File System', 'CSC SHINY FS\t\t', RunType.runtime,
-		ex=FileSystemNotMounted),
+				ex=FileSystemNotMounted),
 	SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t', RunType.runtime, ex=WatcherIsNotRunning),
 ]
 
@@ -748,9 +754,10 @@ for each_e in CHECK_LIST:
 def get_template_check_list():
 	res = list()
 	for each in CHECK_LIST:
-		if each.type != RunType.boot_time:
+		if each.type in [RunType.both, RunType.runtime]:
 			# url_prefix = 'status' if not each.lp else 'status_lp'
 			res.append(
 				{ 'url': '/%s/%s/' % ('status', each.url), 'legend': each.legend, 'id': each.url, 't_out': each.t_out,
-				'lp': each.lp })
+				'lp': each.lp }
+			)
 	return res
