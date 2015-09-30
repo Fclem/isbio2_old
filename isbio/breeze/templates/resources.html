@@ -332,7 +332,6 @@
 			// setTimeout(function () { system_stat(); }, ONE_SEC * STAT_REFRESH);
 		}
 
-		// TODO remove obsolete
 		function qstat() {
 			loader = function () {
 				default_loading('qstat_title', '&nbsp;&nbsp;' + LOADING_CONTENT, true);
@@ -343,7 +342,8 @@
 			};
 			check_stuff('qstat_checked', '/status/qstat/', 0, 0, loader, unloader);
 			//refresh
-			setTimeout(function () { qstat(); }, ONE_SEC * QSTAT_REFRESH);
+			// setTimeout(function () { qstat(); }, ONE_SEC * QSTAT_REFRESH);
+			// refresh now integrated into check_stuff
 		}
 
 		function qstat_lp() {
