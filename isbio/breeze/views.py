@@ -1147,17 +1147,24 @@ def resources(request):
 
 
 @login_required(login_url='/')
-def manage_scripts(request):
-	# all_scripts = Rscripts.objects.all()
+def manage_scripts_all(request, page=1):
+	return manage_scripts(request, page, True)
+
+
+@login_required(login_url='/')
+def manage_scripts(request, page=None, view_all=False):
+	# script_selection = Rscripts.objects.all()
 	assert isinstance(request.user, User)
 	if not (request.user.is_superuser or request.user.is_staff):
 		raise PermissionDenied
 
-	if 'all' in request.GET.keys() and request.user.is_superuser and settings.SU_ACCESS_OVERRIDE:
-		all_scripts = Rscripts.objects.all()
+	if view_all: # and request.user.is_superuser and settings.SU_ACCESS_OVERRIDE:
+		script_selection = Rscripts.objects.all()
 	else:
-		all_scripts = Rscripts.objects.all().filter(author=request.user)
-	paginator = Paginator(all_scripts, 25)
+		script_selection = Rscripts.objects.all().filter(author=request.user)
+	paginator = Paginator(script_selection, 15)
+
+	page = page or 1
 
 	def page_sub(request, page_id, paginator):
 		page = page_id
@@ -1165,13 +1172,13 @@ def manage_scripts(request):
 			# TODO change this, since it's not the way to do it
 			# this session var is for the paginator to stay on the same page number after
 			# sending forms (add or delete forms) for consistency and clarity
-			request.session['manage-scripts-page'] = page
+			# request.session['manage-scripts-page'] = page
 			scripts = paginator.page(page)
 		except PageNotAnInteger:  # if page isn't an integer
-			request.session['manage-scripts-page'] = 1
+			# request.session['manage-scripts-page'] = 1
 			scripts = paginator.page(1)
 		except EmptyPage:  # if page out of bounds
-			request.session['manage-scripts-page'] = paginator.num_pages
+			# request.session['manage-scripts-page'] = paginator.num_pages
 			scripts = paginator.page(paginator.num_pages)
 		return scripts
 
@@ -1181,20 +1188,24 @@ def manage_scripts(request):
 	# If AJAX - check page from the request
 	# Otherwise return the first page
 	if request.is_ajax() and request.method == 'GET':
-		scripts = page_sub(request, request.GET.get('page'), paginator)
+		# scripts = page_sub(request, request.GET.get('page'), paginator)
+		scripts = page_sub(request, page, paginator)
 		return render_to_response('manage-scripts-paginator.html', RequestContext(request, {'script_list': scripts}))
 
 	else:
-		page = 1
-		if 'manage-scripts-page' in request.session:
-			page = request.session['manage-scripts-page']
+		#if 'manage-scripts-page' in request.session:
+		#	new_page = request.session['manage-scripts-page']
+		#	if page == 1:
+		#		page = new_page
 
 		scripts = page_sub(request, page, paginator)
 
 		return render_to_response('manage-scripts.html', RequestContext(request, {
+			'all': view_all,
 			'resources_status': 'active',
 			'script_list': scripts,
 			'pagination_number': paginator.num_pages,
+			'url': '/resources/scripts/' + 'all/' if view_all else '',
 			'page': page  # to keep the paginator synced
 		}))
 
@@ -2948,6 +2959,7 @@ def file_system_info(request):
 	_, _, files_state, folders_state, _ = check.deep_fs_check()
 
 	return render_to_response('fs_info.html', RequestContext(request, {
+		'resources_status': 'active',
 		'folders': folders_state,
 		'files': files_state,
 	}))

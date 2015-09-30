@@ -30,10 +30,17 @@
         <i class="icon-plus"></i> &nbsp; &nbsp; <strong>Create New Script / Tag</strong> &nbsp; &nbsp; <i class="icon-plus"></i>
       </a>
     {% endif %}
+	    <a class="btn btn-small btn-primary" {% if all %}disabled="disabled"{% else %}
+	       href="/resources/scripts/all/" {% endif %}>
+		    View all</a>
+	    <a class="btn btn-small btn-primary" {% if not all %}disabled="disabled" {% else %}
+	       href="/resources/scripts/" {% endif %}>
+		    View only my own</a>
     </div>
   </div>
   <div class="row-fluid">
     <div class="span10 offset1">
+
       <table class="table table-striped">
         <head>
           <tr>
@@ -76,7 +83,8 @@
         alignment:'center',
         onPageChanged: function(e,oldPage,newPage){
           //console.log( $('#pagination-test').load('/reports/ #pagination_context', "Page:" + newPage ) );
-          $.get("/resources/scripts/", { page: newPage }, function(data){
+          // $.get("/resources/scripts/", { page: newPage }, function(data){
+          $.get("{{ url }}" + newPage, { }, function(data){
             $('#pagination-content').html(data);
           });
         }

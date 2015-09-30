@@ -1,6 +1,6 @@
 require( Nozzle.R1 )
-path <- "$loc"
-setwd(path)
+the_path <- "$loc" # WARNING : USE AT YOUR OWN RISK, may be overwriten by tag code.
+setwd("$loc")
 
 report_name <- "$report_name"
 # define a function for exception handler
