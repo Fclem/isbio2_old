@@ -11,5 +11,5 @@ if(exists("section_body")){
 # <------- end of header -------->
 ##### END OF TAG #####
 
-setwd(the_path)
+# setwd(the_path)
 setwd("$loc")
