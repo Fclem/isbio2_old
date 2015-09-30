@@ -2385,10 +2385,13 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 	mime_type = mime_type or 'application/octet-stream'
 
 	try:
-		f = open(path_to_file)
-		myfile = File(f)
-
-		response = HttpResponse(myfile, mimetype=mime_type)
+		# f = open(path_to_file)
+		# myfile = File(f)
+		# f.close()
+		my_html = aux.image_embeding(path_to_file, True)
+		# print my_html
+		# response = HttpResponse(myfile, mimetype=mime_type)
+		response = HttpResponse(my_html, mimetype=mime_type)
 		folder, slash, a_file = local_path.rpartition('/')
 		if type == 'get':
 			response['Content-Disposition'] = 'attachment; filename=' + a_file

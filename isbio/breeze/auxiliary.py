@@ -6,6 +6,7 @@ from breeze.models import Report, Jobs, DataSet
 from datetime import datetime
 # from django.contrib import messages
 from django import http
+from django.template.defaultfilters import slugify
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from breeze.managers import Q
 from django.http import Http404, HttpResponse
@@ -709,3 +710,40 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 
 # 29/05/2015 TOOOOOOOO SLOW
 # DELETED update_all_jobs_sub on 30/06/2015
+
+
+# clem 30/09/2015
+def image_embeding(path_to_file, overwrite_file=False):
+	"""
+	Read a HTML file and convert <img> links to embeded images
+	images files url have to be a path inside path_to_file containing folder
+	:param path_to_file: path to the HTML file
+	:type path_to_file: str
+	:rtype:
+	"""
+	from os.path import splitext, dirname, getsize
+	from bs4 import BeautifulSoup
+	changed = False
+	f = open(path_to_file)
+
+	if getsize(path_to_file) > pow(1024, 2): # 1 Mibi
+		return f.read()
+
+	# soup = BeautifulSoup(f.read(), 'lxml')
+	soup = BeautifulSoup(f.read(), 'html.parser')
+	dir_path = dirname(path_to_file) + '/'
+	all_imgs = soup.findAll('img')
+	for each in all_imgs:
+		if not str(each['src']).startswith('data:'):
+			ext = slugify(splitext(each['src'])[1])
+			if ext in ['jpg', 'jpeg', 'png', 'gif']:
+				changed = True
+				data_uri = open(dir_path + each['src'], 'rb').read().encode('base64').replace('\n', '')
+				img_tag = BeautifulSoup('<img src="data:image/{0};base64,{1}">'.format(ext, data_uri), 'html.parser')
+				each.replace_with(img_tag)
+
+	if overwrite_file and changed:
+		f2 = open(path_to_file, 'w')
+		f2.write(str(soup))
+
+	return str(soup)
