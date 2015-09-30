@@ -419,7 +419,7 @@ class DevSettings(BreezeSettings):
 	SHINY_REPORT_TEMPLATE_PATH = TEMPLATE_FOLDER + 'shiny_templates/'
 	SHINY_ORIG_TARGET_URL = 'http://%s/breeze/'
 	SHINY_ORIG_LIBS_TARGET_URL = 'http://%s/libs/'
-	SHINY_REMOTE_IP = '86.50.169.70:3838'
+	SHINY_REMOTE_IP = '86.50.169.70'
 	SHINY_LOCAL_IP = '127.0.0.1:3838'
 	SHINY_MODE = 'local'
 	if SHINY_MODE == 'remote':
