@@ -2036,10 +2036,10 @@ def send_zipfile_j(request, jid, mod=None):
 	return send_zipfile(request, jid, mod, Jobs)
 
 
-# TODO Move to aux or FolderObj or Runnable
 @login_required(login_url='/')
 def send_zipfile(request, jid, mod=None, serv_obj=None):
 	# 28/08/2015 changes : ACL, object agnostic, added Reports
+	# 02/10/2015 migrated to Runnable and FolderObj
 	assert issubclass(serv_obj, Runnable)
 	try:
 		job = serv_obj.objects.get(id=jid)
@@ -2052,54 +2052,19 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 			job.author == request.user or request.user.is_superuser):
 		raise PermissionDenied
 
-	# TODO move code to Runnable or FolderObj
-
-	loc = job.home_folder_full_path
-	files_list = os.listdir(loc)
-	name = str(job.name)
-
-	temp = tempfile.TemporaryFile()
-	archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
-
 	if mod != "-result" and not request.user.is_superuser and not request.user.is_staff:
 		raise PermissionDenied
 
-	if mod is None:
-		name += '_full'
-		for item in files_list:
-			# if item not in job.hidden_files:
-			try:
-				archive.write(loc + item, str(item))
-			except OSError as e:
-				print 'OSError', e
-				pass
-	elif mod == "-code":
-		name += '_Rcode'
-		for item in files_list:
-			if fnmatch.fnmatch(item, '*.r') or fnmatch.fnmatch(item, '*.Rout') or item in job.system_files:
-				try:
-					archive.write(loc + item, str(item))
-				except OSError as e:
-					print 'OSError', e
-	elif mod == "-result":
-		name += '_result'
-		for item in files_list:
-			if not fnmatch.fnmatch(item, '*.xml') and\
-				not fnmatch.fnmatch(item, '*.r*') and not fnmatch.fnmatch(item, '*.sh*') and\
-				item not in job.hidden_files:
-				try:
-					archive.write(loc + item, str(item))
-				except OSError as e:
-					print 'OSError', e
+	try:
+		wrapper, name, size = job.download_zip(mod)
+	except OSError as e:
+		return aux.fail_with404(request, 'Some OS disk operation failed : %s' % e)
 
 	zip_name = 'attachment; filename=' + name + '.zip'
 
-	archive.close()
-	wrapper = FileWrapper(temp)
 	response = HttpResponse(wrapper, content_type='application/zip', mimetype='application/zip')
 	response['Content-Disposition'] = zip_name  # 'attachment; filename=test.zip'
-	response['Content-Length'] = temp.tell()
-	temp.seek(0)
+	response['Content-Length'] = size
 	return response
 
 
@@ -2385,12 +2350,8 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 	mime_type = mime_type or 'application/octet-stream'
 
 	try:
-		# f = open(path_to_file)
-		# myfile = File(f)
-		# f.close()
 		my_html = aux.html_auto_content_cache(path_to_file)
-		# print my_html
-		# response = HttpResponse(myfile, mimetype=mime_type)
+
 		response = HttpResponse(my_html, mimetype=mime_type)
 		folder, slash, a_file = local_path.rpartition('/')
 		if type == 'get':

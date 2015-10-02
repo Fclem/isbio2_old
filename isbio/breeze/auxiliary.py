@@ -539,7 +539,7 @@ def get_report_path(fitem, fname=None):
 	"""
 	assert isinstance(fitem, (Report, DataSet))
 	errorMsg = ''
-	if fname is None: fname = 'report.html'
+	if fname is None: fname = '%s.html' % Report.REPORT_FILE_NAME
 
 	if isinstance(fitem, DataSet):
 		home = fitem.rdata
@@ -574,8 +574,8 @@ def get_report_path_test(fitem, fname=None, NoFail=False):
 	:rtype: (str, str, str, str)
 	"""
 
-	if fname is None: fname = 'report.html'
-	local_path = fitem._home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '')
+	if fname is None: fname = '%s.html' % Report.REPORT_FILE_NAME
+	local_path = fitem._home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '') # safety
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
 	file_exists = os.path.exists(path_to_file)

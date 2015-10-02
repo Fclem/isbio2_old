@@ -243,11 +243,14 @@ class JobStat(object):
 
 class FolderObj(object):
 	BASE_FOLDER_NAME = None # To define
+	SYSTEM_FILES = [] # list of system files, that are required by the object
+	HIDDEN_FILES = [] # list of file to hide from user upon download
+	ALLOW_DOWNLOAD = False # if users can download content of object
 
 	@property # interface (To define)
 	def folder_name(self):
 		"""
-		Should implement a generator for the name of the folder to store the instance
+		Should implement a property generating the name of the folder to store the instance
 		:return: the generated name of the folder to be used to store content of instance
 		:rtype: str
 		"""
@@ -329,6 +332,89 @@ class FolderObj(object):
 			for chunk in f.chunks():
 				destination.write(chunk)
 		return f.name
+
+	@property # PSEUDO-INTERFACE
+	def system_files(self):
+		return self.SYSTEM_FILES
+
+	@property # PSEUDO-INTERFACE
+	def hidden_files(self):
+		return self.HIDDEN_FILES
+
+	# clem 02/10/2015
+	def _download_ignore(self, cat=None):
+		"""
+		Should return two list of filters, and a name related to cat :
+			_ files to include only,
+			_ files to exclude,
+			_ name to add to the downloadable zip file name
+		:return: exclude_list, filer_list, name
+		:rtype: list, list, str
+		"""
+		raise self.not_imp()
+
+	# clem 02/10/2015
+	def download_zip(self, cat=None):
+		""" Compress the folder object for download
+		<i>cat</i> argument enables to implement different kind of selective downloads into <i>download_ignore(cat)</i>
+
+		Returns
+			_ a zip file using <i>download_ignore(cat)</i> as  a filtering function, in a Django FileWrapper
+			_ the name of the generated file
+			_ the size of the generated file
+
+		Return : Tuple(wrapper, file_name, file_size)
+		:type cat : str
+		:return: wrapper of zip object, file name, file size
+		:rtype: FileWrapper, str, int
+		"""
+		if not self.ALLOW_DOWNLOAD:
+			raise PermissionDenied
+		import tempfile, zipfile
+		from django.core.servers.basehttp import FileWrapper
+		loc = self.home_folder_full_path
+		# files_list = os.listdir(loc)
+		arch_name = str(self.folder_name)
+
+		temp = tempfile.TemporaryFile()
+		archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
+
+		import os
+
+		ignore_list, filter_list, sup = self._download_ignore(cat)
+		arch_name += sup
+
+		def filters(file_n, a_pattern_list):
+			return not a_pattern_list or file_inter_pattern_list(file_n, a_pattern_list)
+
+		def no_exclude(file_n, a_pattern_list):
+			return not a_pattern_list or not file_inter_pattern_list(file_n, a_pattern_list)
+
+		def file_inter_pattern_list(file_n, a_pattern_list):
+			""" Returns if <i>file_n</i> is match at least one pattern in <i>a_pattern_list</i>
+			"""
+			import fnmatch
+			for each in a_pattern_list:
+				if fnmatch.fnmatch(file_n, each):
+					return True
+			return False
+
+		try:
+			for root, dirs, files in os.walk(self.home_folder_full_path):
+				for name in files:
+					if filters(name, filter_list) and no_exclude(name, ignore_list):
+						new_p = os.path.join(root, name)
+						archive.write(new_p, str(name))
+		except OSError as e:
+			print 'OSError', e
+			raise e
+
+		archive.close()
+		wrapper = FileWrapper(temp)
+		size = temp.tell()
+		temp.seek(0)
+
+		return wrapper, arch_name, size
 
 	def not_imp(self):
 		if self.__class__ == Runnable.__class__:
@@ -625,7 +711,7 @@ class ShinyReport(models.Model):
 			# print names
 			out = list()
 			for each in names:
-				if each in ignore_list:
+				if each in ignore_list or each[:-1] == '~':
 					out.append(each)
 			# print out
 			return out
@@ -667,7 +753,7 @@ class ShinyReport(models.Model):
 						return
 			# LOCAL make of soft-link for each files/folder of the shinyReport folder into the Report folder
 			if settings.SHINY_LOCAL_ENABLE and (force or not islink(report_link)):
-				for item in listdir(self.folder_path):
+				for item in listdir(self.folder_path): # TODO should be recursive ?
 					auto_symlink('%s%s' % (self.folder_path, item), '%s%s' % (report_home, item))
 				# Creates a slink in shinyReports to the actual report
 				auto_symlink(report_home, report_link)
@@ -683,7 +769,7 @@ class ShinyReport(models.Model):
 					log_obj.warning("%s copy error %s" % (report.id, e))
 
 				# link ShinyReport files
-				for item in listdir(self.folder_path):
+				for item in listdir(self.folder_path): # TODO should be recursive ?
 					# remove_file_safe('%s%s' % (report.remote_shiny_path, item))
 					auto_symlink('%s%s' % (self.__folder_path_remote, item), '%s%s' % (report.remote_shiny_path, item))
 
@@ -1246,6 +1332,7 @@ class Runnable(FolderObj, models.Model):
 	##
 	# CONSTANTS
 	##
+	ALLOW_DOWNLOAD = True
 	BASE_FOLDER_NAME = '' # folder name
 	BASE_FOLDER_PATH = '' # absolute path to the container folder
 	FAILED_FN = 'failed'
@@ -1253,6 +1340,7 @@ class Runnable(FolderObj, models.Model):
 	SH_NAME = settings.GENERAL_SH_NAME
 	FILE_MAKER_FN = settings.REPORTS_FM_FN
 	INC_RUN_FN = settings.INCOMPLETE_RUN_FN
+	# output file name (without extension) for nozzle report. MIGHT not be enforced everywhere
 	REPORT_FILE_NAME = 'report'
 	RQ_FIELDS = ['_name', '_author', '_type']
 	R_FILE_NAME_BASE = 'script'
@@ -1351,15 +1439,16 @@ class Runnable(FolderObj, models.Model):
 	##
 	# OTHER SHARED PROPERTIES
 	##
-	@property
+	@property # Interface : has to be implemented in Report
 	def get_shiny_report(self):
 		"""
-		:rtype: ShinyReport
+		To be overridden by Report :
+		ShinyReport
+		:rtype: ShinyReport | NoneType
 		"""
-		if self.is_shiny_enabled:
-			return self._type.shiny_report
+		return None
 
-	@property
+	@property # Interface : has to be implemented in Report
 	def is_shiny_enabled(self):
 		"""
 		To be overridden by Report :
@@ -1368,6 +1457,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		return False
 
+	# Interface : has to be implemented in Report
 	def has_access_to_shiny(self, this_user=None):
 		"""
 		To be overridden by Report
@@ -1444,9 +1534,10 @@ class Runnable(FolderObj, models.Model):
 		:rtype: list
 		"""
 		res = list()
-		shiny_rep = self.get_shiny_report
-		if shiny_rep is not None:
-			res = shiny_rep.SYSTEM_FILE_LIST
+		if self.is_report:
+			shiny_rep = self.get_shiny_report
+			if shiny_rep is not None:
+				res = shiny_rep.SYSTEM_FILE_LIST
 		return res
 
 	@property
@@ -1470,6 +1561,9 @@ class Runnable(FolderObj, models.Model):
 	# clem 16/09/2015
 	@property
 	def r_error(self):
+		""" Returns the last line of script.R which may contain an error message
+		:rtype: str
+		"""
 		out = ''
 		if self.is_r_failure:
 			lines = open(self._rout_file).readlines()
@@ -1486,10 +1580,29 @@ class Runnable(FolderObj, models.Model):
 	@property
 	def hidden_files(self):
 		"""
-		Return a list of system requires files
+		Return a list of system required files
 		:rtype: list
 		"""
-		return self.HIDDEN_FILES + [self._sge_log_file, self._rout_file, self._r_exec_path] + self._shiny_files
+		return self.HIDDEN_FILES + [self._sge_log_file, '*~'] + self._shiny_files
+
+	def _download_ignore(self, cat=None):
+		"""
+		:type cat: str
+		:return: exclude_list, filer_list, name
+		:rtype: list, list, str
+		"""
+
+		exclude_list = list()
+		filer_list = list()
+		name = '_full'
+		if cat == "-code":
+			name = '_Rcode'
+			filer_list = ['*.r*', '*.Rout']
+			# exclude_list = self.system_files + ['*~']
+		elif cat == "-result":
+			name = '_result'
+			exclude_list = self.hidden_files # + ['*.xml', '*.r*', '*.sh*']
+		return exclude_list, filer_list, name
 
 	@property
 	def sge_job_name(self):
@@ -1505,7 +1618,7 @@ class Runnable(FolderObj, models.Model):
 		Tells if the job run is not running anymore, using it's breeze_stat or
 		the confirmation file that allow confirmation even in case of management
 		system failure (like breeze db being down, breeze server, or the worker)
-		DOES NOT IMPLY ANYTHING ABOUT SUCCESS OF SGE JOB
+		<b>DOES NOT IMPLY ANYTHING ABOUT SUCCESS OF SGE JOB</b>
 		INCLUDES : FAILED, ABORTED, SUCCEED
 		:rtype: bool
 		"""
@@ -2226,6 +2339,15 @@ class Report(Runnable):
 			return '?%s' % urlencode([('path', self._home_folder_rel), ('roraId', str(self.rora_id))])
 		else:
 			return ''
+
+	# clem 02/10/2015
+	@property
+	def get_shiny_report(self):
+		"""
+		:rtype: ShinyReport
+		"""
+		if self.is_shiny_enabled:
+			return self._type.shiny_report
 
 	# clem 11/09/2015
 	@property
