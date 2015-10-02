@@ -2388,7 +2388,7 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 		# f = open(path_to_file)
 		# myfile = File(f)
 		# f.close()
-		my_html = aux.image_embeding(path_to_file, True)
+		my_html = aux.html_auto_content_cache(path_to_file)
 		# print my_html
 		# response = HttpResponse(myfile, mimetype=mime_type)
 		response = HttpResponse(my_html, mimetype=mime_type)

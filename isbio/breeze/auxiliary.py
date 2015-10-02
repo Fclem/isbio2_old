@@ -712,26 +712,56 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 # DELETED update_all_jobs_sub on 30/06/2015
 
 
-# clem 30/09/2015
-def image_embeding(path_to_file, overwrite_file=False):
+# clem 02/10/2015
+def html_auto_content_cache(path_to_file):
 	"""
-	Read a HTML file and convert <img> links to embeded images
-	images files url have to be a path inside path_to_file containing folder
+	Figure out if an HTML file has been cached or not, and return file content.
+	If file was not cached, checks for image content and return <i>image_embedding()</i> processed markup
+	<i>image_embedding()</i> transform images link in embedded images and save a cache file.
+	<i>Experimental results shows browser <u>loading time decrease by <b>factor 10+</b></u> (2000+ images)</i>
+
 	:param path_to_file: path to the HTML file
 	:type path_to_file: str
-	:rtype:
+	:rtype: str
 	"""
-	from os.path import splitext, dirname, getsize
-	from bs4 import BeautifulSoup
-	changed = False
-	f = open(path_to_file)
+	from os.path import splitext, dirname, basename, isfile
 
-	if getsize(path_to_file) > pow(1024, 2): # 1 Mibi
+	file_name, file_ext = splitext(basename(path_to_file))
+	file_ext = slugify(file_ext)
+
+	if file_ext != 'html' and file_ext != 'htm':
+		f = open(path_to_file)
 		return f.read()
 
-	# soup = BeautifulSoup(f.read(), 'lxml')
-	soup = BeautifulSoup(f.read(), 'html.parser')
 	dir_path = dirname(path_to_file) + '/'
+	cached_path = dir_path + file_name + '_cached.' + file_ext
+
+	if isfile(cached_path): # and getsize(cached_path) > pow(1024, 2): # 1 Mibi
+		f = open(cached_path)
+		return f.read()
+
+	return image_embedding(path_to_file, cached_path)
+
+
+# clem 30/09/2015
+def image_embedding(path_to_file, cached_path=None):
+	"""
+	Replace <img> links in HTML's <i>path_to_file</i> content by corresponding base64_encoded embedded images
+	Save the generated file to [<i>original_file_name</i>]_cached.[extension]
+	<u>images files's urls have to be a path inside path_to_file's containing folder</u>
+
+	:param path_to_file: path to the HTML file
+	:type path_to_file: str
+	:rtype: str
+	"""
+	from os.path import splitext, dirname
+	from bs4 import BeautifulSoup
+	changed = False
+
+	f = open(path_to_file)
+	# soup = BeautifulSoup(f.read(), 'lxml')
+	dir_path = dirname(path_to_file) + '/'
+	soup = BeautifulSoup(f.read(), 'html.parser')
 	all_imgs = soup.findAll('img')
 	for each in all_imgs:
 		if not str(each['src']).startswith('data:'):
@@ -742,8 +772,8 @@ def image_embeding(path_to_file, overwrite_file=False):
 				img_tag = BeautifulSoup('<img src="data:image/{0};base64,{1}">'.format(ext, data_uri), 'html.parser')
 				each.replace_with(img_tag)
 
-	if overwrite_file and changed:
-		f2 = open(path_to_file, 'w')
+	if cached_path and changed:
+		f2 = open(cached_path, 'w')
 		f2.write(str(soup))
 
 	return str(soup)
