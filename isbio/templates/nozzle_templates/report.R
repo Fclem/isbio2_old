@@ -1,5 +1,5 @@
 require( Nozzle.R1 )
-the_path <- "$loc" # WARNING : USE AT YOUR OWN RISK, may be overwriten by tag code.
+path <- "$loc" # WARNING : USE AT YOUR OWN RISK, may be overwriten by tag code.
 setwd("$loc")
 
 report_name <- "$report_name"
