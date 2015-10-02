@@ -404,10 +404,12 @@ class FolderObj(object):
 				for name in files:
 					if filters(name, filter_list) and no_exclude(name, ignore_list):
 						new_p = os.path.join(root, name)
+						name = new_p.replace(self.home_folder_full_path, '')
+						# print new_p, name
 						archive.write(new_p, str(name))
 		except OSError as e:
 			print 'OSError', e
-			raise e
+			raise OSError(e)
 
 		archive.close()
 		wrapper = FileWrapper(temp)
@@ -707,12 +709,19 @@ class ShinyReport(models.Model):
 			:rtype: list
 			Return a list of files to ignores amongst names
 			"""
+			import fnmatch
 			ignore_list = self.SYSTEM_FILE_LIST + report.hidden_files
 			# print names
 			out = list()
 			for each in names:
-				if each in ignore_list or each[:-1] == '~':
+				#if each in ignore_list or each[:-1] == '~' or fnmatch.fnmatch():
+				if each[:-1] == '~':
 					out.append(each)
+				else:
+					for ignore in ignore_list:
+						if fnmatch.fnmatch(each, ignore):
+							out.append(each)
+							break
 			# print out
 			return out
 
@@ -1583,7 +1592,7 @@ class Runnable(FolderObj, models.Model):
 		Return a list of system required files
 		:rtype: list
 		"""
-		return self.HIDDEN_FILES + [self._sge_log_file, '*~'] + self._shiny_files
+		return self.HIDDEN_FILES + [self._sge_log_file, '*~', '*.o%s' % self.sgeid] + self._shiny_files
 
 	def _download_ignore(self, cat=None):
 		"""
