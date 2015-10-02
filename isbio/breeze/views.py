@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
-from _mysql import result
-from Bio.Sequencing.Ace import rt
-from openid.yadis.parsehtml import ent_pat
-from os import lstat
-from social_auth.backends.pipeline import user
 import auxiliary as aux
 import forms as breezeForms
 import urllib
 import os
 import copy
-import tempfile, zipfile, shutil, fnmatch, rpy2, os.path  # mimetypes, urllib2, glob,  sys
+import shutil, rpy2, os.path
 import rora as rora
 import shell as rshell
 import xml.etree.ElementTree as xml
 import json
 import pickle
-from datetime import datetime
 import breeze.system_check as check
 from breeze.models import * # Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
 # Statistics, Institute, Script_categories, CartInfo  # , User_date
@@ -28,7 +22,6 @@ from django.contrib import auth  # , messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import User  # , Group # replaced with breeze.models.User overload
 from django.core.files import File
-from django.core.servers.basehttp import FileWrapper
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
@@ -47,6 +40,14 @@ from mimetypes import MimeTypes
 import hashlib
 import sys
 
+# from datetime import datetime
+# from _mysql import result
+# from Bio.Sequencing.Ace import rt
+# from openid.yadis.parsehtml import ent_pat
+# from os import lstat
+# from social_auth.backends.pipeline import user
+# import tempfile, zipfile, shutil, fnmatch, rpy2, os.path  # mimetypes, urllib2, glob,  sys
+# from django.core.servers.basehttp import FileWrapper
 # from breeze.managers import Q
 # from django.utils.http import urlencode
 # from multiprocessing import Process
