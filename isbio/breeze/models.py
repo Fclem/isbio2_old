@@ -2657,23 +2657,25 @@ class ShinyTag(models.Model):
 
 	# clem 05/10/2015
 	def copy_to_remote(self):
+		import os
 		log_obj = get_logger()
 		log_obj.debug("updating shinyTag %s on remote Shiny" % self.name)
 
 		# del the remote report copy folder
 		path = self.folder_name_gen(True)
-		safe_rm(path, ignore_errors=True)
-		try:
-			# copy the data content of the report
-			safe_copytree(self.folder_name, path)
-		except Exception as e:
-			log_obj.warning("%s ShinyTag copy error %s" % (self.id, e))
-
-		return True
+		if not os.path.isdir(path) or safe_rm(path):
+			try:
+				# copy the data content of the report
+				safe_copytree(self.folder_name, path)
+			except Exception as e:
+				log_obj.warning("ShinyTag %s copy error %s" % (self.name, e))
+			return True
+		log_obj.warning("failed to copy ShinyTag %s to %s" % (self.name, path))
+		return False
 
 	def save(self, *args, **kwargs):
 		super(ShinyTag, self).save(*args, **kwargs) # Call the "real" save() method.
-		if ShinyReport.remote_shiny_ready:
+		if self.enabled and ShinyReport.remote_shiny_ready:
 			self.copy_to_remote()
 		for each in self.attached_report.all():
 			each.regen_report()
@@ -2684,25 +2686,22 @@ class ShinyTag(models.Model):
 		import shutil
 		import os
 
+		log_obj = get_logger()
+
 		def temp_cleanup(): # removes the zip from temp upload folder (thus forcing re-upload)
-			self.remove_file_safe(self.zip_file)
-
-		# TODO manage old zip deletion
-
-		# Added 27/08/2015 : enables non re-upload of zip archive for each form validation
-		# while being secure, preventing file spoofing (and thus code injection)
-		# TODO FIXME this is shitty
-		from django.db.models.fields.files import FieldFile
-		if type(self.zip_file) == file or type(self.zip_file) == FieldFile and os.path.isfile(self.zip_file.path):
-			md5 = get_md5(self.zip_file.read())
-			dest = settings.UPLOAD_FOLDER + 'shiny_tag_%s.zip' % md5
-			self.zip_file.name = dest
+			if os.path.isfile(self.zip_file.path):
+				self.remove_file_safe(self.zip_file.path)
 
 		try: # loads zip file
 			zf = zipfile.ZipFile(self.zip_file)
 		except Exception as e:
 			temp_cleanup()
-			raise ValidationError({ 'zip_file': ["while loading zip_lib says : %s" % e] })
+			if self.id: # not the first time this item is saved, so no problem
+				log_obj.info("ShinyTag %s, No zip submitted, no rebuilding" % self.name)
+				return # self.save()
+			else:
+				raise ValidationError({ 'zip_file': ["while loading zip_lib says : %s" % e] })
+		log_obj.info("ShinyTag %s, Rebuilding..." % self.name)
 		# check both ui.R and server.R are in the zip and non empty
 		for filename in [self.FILE_SERVER_NAME, self.FILE_UI_NAME]:
 			try:
@@ -2728,8 +2727,8 @@ class ShinyTag(models.Model):
 				# print 'chmod %s' % path, self.ACL_RW_RW_R
 				os.chmod(path, ACL.RW_RW_R)
 		# removes the zip from temp upload folder
-		#temp_cleanup()
-		self.save()
+		temp_cleanup()
+		# self.save()
 
 	def delete(self, using=None):
 		import shutil
