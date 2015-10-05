@@ -764,7 +764,7 @@ class ShinyReport(models.Model):
 		"""
 		log_obj = get_logger()
 		log_obj.debug(
-			"updating shinyReport %s slink for report %s %s" % (self.id, report.id, 'FORCING' if force else ''))
+			"updating shinyReport %s-%s slink for report %s %s" % (self.get_name, self.id, report.id, 'FORCING' if force else ''))
 
 		from os.path import isdir, isfile, islink
 		from os import listdir, access, R_OK #, mkdir
@@ -1052,18 +1052,21 @@ class ShinyReport(models.Model):
 		:rtype:
 		"""
 		log_obj = get_logger()
-		log_obj.info("rebuilding shinyReport %s for user %s" % (self.id, a_user))
+		log_obj.info("rebuilding shinyReport %s-%s for user %s" % (self.id, self.get_name, a_user))
 		self.update_folder()
 		# local : TODO should generate disregarding of local shiny status ?
 		if settings.SHINY_LOCAL_ENABLE:
+			log_obj.debug("rebuilding LOCAL on shinyReport %s-%s" % (self.id, self.get_name))
 			self.generate_server(a_user)
 			self.generate_ui(a_user)
 			self.generate_global(a_user)
 		# remote
 		if self._make_remote_too:
+			log_obj.debug("rebuilding REMOTE on shinyReport %s-%s" % (self.id, self.get_name))
 			self.generate_server(a_user, True)
 			self.generate_ui(a_user, True)
 			self.generate_global(a_user, True)
+		log_obj.debug("re-linking and eventual remote copy on shinyReport %s-%s" % (self.id, self.get_name))
 		self._link_all_reports()
 
 	def clean(self):
@@ -1395,7 +1398,6 @@ class Runnable(FolderObj, models.Model):
 		super(Runnable, self).__init__(*args, **kwargs)
 		self.__can_save = False
 
-
 	##
 	# DB FIELDS
 	##
@@ -1403,7 +1405,6 @@ class Runnable(FolderObj, models.Model):
 	_status = models.CharField(max_length=15, blank=True, default=JobStat.INIT, db_column='status')
 	progress = models.PositiveSmallIntegerField(default=0)
 	sgeid = models.CharField(max_length=15, help_text="job id, as returned by SGE", blank=True)
-
 
 	##
 	# WRAPPERS
@@ -2698,11 +2699,11 @@ class ShinyTag(models.Model):
 		except Exception as e:
 			temp_cleanup()
 			if self.id: # not the first time this item is saved, so no problem
-				log_obj.info("ShinyTag %s, No zip submitted, no rebuilding" % self.name)
+				log_obj.info("ShinyTag %s-%s, No zip submitted, no rebuilding" % (self.id, self.name))
 				return # self.save()
 			else:
 				raise ValidationError({ 'zip_file': ["while loading zip_lib says : %s" % e] })
-		log_obj.info("ShinyTag %s, Rebuilding..." % self.name)
+		log_obj.info("ShinyTag %s-%s, Rebuilding..." % (self.id, self.name))
 		# check both ui.R and server.R are in the zip and non empty
 		for filename in [self.FILE_SERVER_NAME, self.FILE_UI_NAME]:
 			try:
