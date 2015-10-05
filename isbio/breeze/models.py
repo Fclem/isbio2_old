@@ -1042,6 +1042,7 @@ class ShinyReport(models.Model):
 		f.close()
 		return
 
+	# TODO implement a lock mechanism for concurrency safety
 	def regen_report(self, a_user=None):
 		"""
 		Handle BOTH local and remote Shiny at Once
