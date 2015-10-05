@@ -278,6 +278,10 @@ class FolderObj(object):
 		"""
 		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
 
+	@property
+	def base_folder(self):
+		return '%s%s' % (settings.MEDIA_ROOT, self.BASE_FOLDER_NAME)
+
 	@staticmethod
 	def file_n_slug(file_name):
 		"""
@@ -354,9 +358,10 @@ class FolderObj(object):
 		raise self.not_imp()
 
 	# clem 02/10/2015
-	def download_zip(self, cat=None):
+	def download_zip(self, cat=None, auto_cache=True):
 		""" Compress the folder object for download
 		<i>cat</i> argument enables to implement different kind of selective downloads into <i>download_ignore(cat)</i>
+		auto_cache determine if generated zip should be saved for caching purposes
 
 		Returns
 			_ a zip file using <i>download_ignore(cat)</i> as  a filtering function, in a Django FileWrapper
@@ -365,24 +370,32 @@ class FolderObj(object):
 
 		Return : Tuple(wrapper, file_name, file_size)
 		:type cat : str
+		:type auto_cache : bool
 		:return: wrapper of zip object, file name, file size
 		:rtype: FileWrapper, str, int
 		"""
 		if not self.ALLOW_DOWNLOAD:
 			raise PermissionDenied
-		import tempfile, zipfile
-		from django.core.servers.basehttp import FileWrapper
-		loc = self.home_folder_full_path
-		# files_list = os.listdir(loc)
-		arch_name = str(self.folder_name)
-
-		temp = tempfile.TemporaryFile()
-		archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
-
+		import tempfile
+		import zipfile
 		import os
+		from django.core.servers.basehttp import FileWrapper
+		loc = self.home_folder_full_path # writing shortcut
+		arch_name = str(self.folder_name)
 
 		ignore_list, filter_list, sup = self._download_ignore(cat)
 		arch_name += sup
+		# check if cache folder exists
+		if not os.path.isdir(os.path.join(self.base_folder, '_cache')):
+			os.mkdir(os.path.join(self.base_folder, '_cache'))
+		# full path to cached zip_file
+		cached_file_full_path = os.path.join(self.base_folder, '_cache', arch_name + '.zip')
+		# if cached zip file exists, send it instead
+		if os.path.isfile(cached_file_full_path):
+			return open(cached_file_full_path, "rb"), arch_name, os.path.getsize(cached_file_full_path)
+		# otherwise, creates a new zip
+		temp = tempfile.TemporaryFile()
+		archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
 
 		def filters(file_n, a_pattern_list):
 			return not a_pattern_list or file_inter_pattern_list(file_n, a_pattern_list)
@@ -398,13 +411,13 @@ class FolderObj(object):
 				if fnmatch.fnmatch(file_n, each):
 					return True
 			return False
-
+		# walks loc to add files and folder to archive, while allying filters and exclusions
 		try:
-			for root, dirs, files in os.walk(self.home_folder_full_path):
+			for root, dirs, files in os.walk(loc):
 				for name in files:
 					if filters(name, filter_list) and no_exclude(name, ignore_list):
 						new_p = os.path.join(root, name)
-						name = new_p.replace(self.home_folder_full_path, '')
+						name = new_p.replace(loc, '')
 						# print new_p, name
 						archive.write(new_p, str(name))
 		except OSError as e:
@@ -414,7 +427,12 @@ class FolderObj(object):
 		archive.close()
 		wrapper = FileWrapper(temp)
 		size = temp.tell()
+		# save this zipfile for caching (disalbe to save space vs CPU)
 		temp.seek(0)
+		if auto_cache:
+			with open(cached_file_full_path, "wb") as f: # use `wb` mode
+				f.write(temp.read())
+			temp.seek(0)
 
 		return wrapper, arch_name, size
 

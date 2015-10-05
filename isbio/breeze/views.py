@@ -2028,7 +2028,7 @@ def view_group(request, gid):
 # Clem 28/08/2015
 @login_required(login_url='/')
 def send_zipfile_r(request, jid, mod=None):
-	return send_zipfile(request, jid, mod, Report)
+	return send_zipfile(request, jid, mod=mod, serv_obj=Report)
 
 
 # Clem 28/08/2015
@@ -2063,9 +2063,10 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 
 	zip_name = 'attachment; filename=' + name + '.zip'
 
-	response = HttpResponse(wrapper, content_type='application/zip', mimetype='application/zip')
+	response = HttpResponse(wrapper, content_type='application/zip')
 	response['Content-Disposition'] = zip_name  # 'attachment; filename=test.zip'
 	response['Content-Length'] = size
+	response['Content-Transfer-Encoding'] = 'binary'
 	return response
 
 
