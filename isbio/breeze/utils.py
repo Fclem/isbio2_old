@@ -251,6 +251,73 @@ def safe_rm(path, ignore_errors=False):
 	return False
 
 
+def custom_copytree(src, dst, symlinks=False, ignore=None, verbose=True, sub=False):
+	import os
+	from shutil import copy2, Error, copystat, WindowsError
+
+	if not sub and verbose:
+		print 'copy %s => %s' % (src, dst)
+	files_count, folders_count = 0, 0
+
+	names = os.listdir(src)
+	if ignore is not None:
+		ignored_names = ignore(src, names)
+	else:
+		ignored_names = set()
+
+	def dot():
+		sys.stdout.write('.')
+		sys.stdout.flush()
+
+	os.makedirs(dst)
+	errors = []
+	for name in names:
+		if name in ignored_names:
+			continue
+		srcname = os.path.join(src, name)
+		dstname = os.path.join(dst, name)
+		try:
+			if symlinks and os.path.islink(srcname):
+				linkto = os.readlink(srcname)
+				os.symlink(linkto, dstname)
+				if verbose:
+					if os.path.isdir(linkto):
+						folders_count += 1
+					elif os.path.isfile(linkto):
+						files_count += 1
+					dot()
+			elif os.path.isdir(srcname):
+				c1, c2 = custom_copytree(srcname, dstname, symlinks, ignore, verbose=verbose, sub=True)
+				files_count += c1
+				folders_count += c2 + 1
+			else:
+				# Will raise a SpecialFileError for unsupported file types
+				copy2(srcname, dstname)
+				if verbose:
+					dot()
+					files_count += 1
+
+		# catch the Error from the recursive copytree so that we can
+		# continue with other files
+		except Error, err:
+			errors.extend(err.args[0])
+		except EnvironmentError, why:
+			errors.append((srcname, dstname, str(why)))
+	try:
+		copystat(src, dst)
+	except OSError, why:
+		if WindowsError is not None and isinstance(why, WindowsError):
+			# Copying file access times may fail on Windows
+			pass
+		else:
+			errors.extend((src, dst, str(why)))
+	if errors:
+		raise Error, errors
+	if not sub and verbose:
+		print 'done (%s files and %s folders)' % (files_count, folders_count)
+	return files_count, folders_count
+
+
 # Clem 24/09/2015
 def safe_copytree(source, destination, symlinks=True, ignore=None):
 	"""
@@ -265,7 +332,7 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 	:rtype: bool
 	"""
 	import os
-	import shutil
+	# import shutil
 	if destination not in settings.FOLDERS_LST:
 		if os.path.isdir(source):
 			if os.path.isdir(destination):
@@ -273,7 +340,8 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 			# else:
 				log_txt = 'copytree, destination folder %s exists, STOP' % destination
 				get_logger().error(log_txt)
-			shutil.copytree(source, destination, symlinks, ignore)
+			# shutil.copytree(source, destination, symlinks, ignore)
+			custom_copytree(source, destination, symlinks, ignore)
 			return True
 		else:
 			log_txt = 'copytree, source folder %s don\'t exists, STOP' % source
@@ -282,7 +350,6 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 		log_txt = 'attempting to copy to a system folder : %s, STOP' % destination
 		get_logger().exception(log_txt)
 	return False
-
 
 def is_non_empty_file(file_path):
 	return Path(file_path).is_non_empty_file()
