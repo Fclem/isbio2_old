@@ -665,15 +665,21 @@ class ShinyReport(models.Model):
 		from system_check import check_csc_mount
 		return check_csc_mount()
 
-	# Clem 23/09/2015
+	# Clem 05/10/2015
+	@staticmethod
 	@property
+	def remote_shiny_ready():
+		return settings.SHINY_REMOTE_ENABLE and ShinyReport.check_csc_mount()
+
+	# Clem 23/09/2015
+	@property # may be dynamic in the future and return if this very report should go to remote Shiny
 	def _make_remote_too(self):
 		"""
 		If remote Shiny report should be generated, if SHINY_REMOTE_ENABLE and CSC FS is mounted
 		:return:
 		:rtype:
 		"""
-		return settings.SHINY_REMOTE_ENABLE and self.check_csc_mount()
+		return self.remote_shiny_ready
 
 	def update_folder(self):
 		"""
@@ -761,7 +767,7 @@ class ShinyReport(models.Model):
 			"updating shinyReport %s slink for report %s %s" % (self.id, report.id, 'FORCING' if force else ''))
 
 		from os.path import isdir, isfile, islink
-		from os import listdir, access, R_OK, mkdir
+		from os import listdir, access, R_OK #, mkdir
 
 		assert isinstance(report, Report)
 		# handles individually each generated report of this type
@@ -793,7 +799,7 @@ class ShinyReport(models.Model):
 					safe_copytree(report.home_folder_full_path, report.remote_shiny_path,
 									ignore=self._remote_ignore_wrapper(report))
 				except Exception as e:
-					log_obj.warning("%s copy error %s" % (report.id, e))
+					log_obj.warning("%s ShinyReport copy error %s" % (report.id, e))
 
 				# link ShinyReport files
 				for item in listdir(self.folder_path): # TODO should be recursive ?
@@ -1929,6 +1935,7 @@ class Runnable(FolderObj, models.Model):
 					self.__manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
 				else: # USER ABORTED
 					self.__manage_run_aborted(ret_val, exit_code)
+			self.save()
 			return exit_code
 		except Exception as e:
 			# FIXME this is SHITTY
@@ -2376,6 +2383,14 @@ class Report(Runnable):
 		if self.is_shiny_enabled:
 			return self._type.shiny_report
 
+	# clem 05/10/2015
+	@property
+	def shiny_url(self):
+		"""
+		:rtype: str
+		"""
+		return self.get_shiny_report.url(self)
+
 	# clem 11/09/2015
 	@property
 	def is_shiny_enabled(self):
@@ -2559,7 +2574,7 @@ class ShinyTag(models.Model):
 	TAG_FOLDER = settings.SHINY_TAGS
 	RES_FOLDER = settings.SHINY_RES_FOLDER
 	FILE_TEMPLATE = settings.SHINY_TAG_CANVAS_PATH
-	FILE_TEMPLATE_URL = settings.MEDIA_URL + settings.SHINY_TAG_CANVAS_FN
+	FILE_TEMPLATE_URL = settings.MOULD_URL + settings.SHINY_TAG_CANVAS_FN
 	DEFAULT_MENU_ITEM = 'menuItem("Quality Control", icon = icon("filter", lib = "glyphicon"), tabName = "REPLACE BY THE NAME OF YOUR TAG IN UPPER CASE HERE",' \
 		'badgeLabel = "QC", badgeColor = "green")'
 
@@ -2636,13 +2651,30 @@ class ShinyTag(models.Model):
 		" following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
 		"Check the <a href='%s'>available libraries</a>. If the one you need is not"
 		" present, please contact an admin." %
-		(FILE_TEMPLATE_URL, settings.SHINY_LIBS_BREEZE_URL))
+		(FILE_TEMPLATE_URL, settings.SHINY_LIBS_TARGET_URL))
 	enabled = models.BooleanField()
 	attached_report = models.ManyToManyField(ShinyReport)
 
-	def save(self, *args, **kwargs):# TODO copy tag folder to CSC_Shiny
+	# clem 05/10/2015
+	def copy_to_remote(self):
+		log_obj = get_logger()
+		log_obj.debug("updating shinyTag %s on remote Shiny" % self.name)
+
+		# del the remote report copy folder
+		path = self.folder_name_gen(True)
+		safe_rm(path, ignore_errors=True)
+		try:
+			# copy the data content of the report
+			safe_copytree(self.folder_name, path)
+		except Exception as e:
+			log_obj.warning("%s ShinyTag copy error %s" % (self.id, e))
+
+		return True
+
+	def save(self, *args, **kwargs):
 		super(ShinyTag, self).save(*args, **kwargs) # Call the "real" save() method.
-		# TODO copy tag folder to CSC_Shiny
+		if ShinyReport.remote_shiny_ready:
+			self.copy_to_remote()
 		for each in self.attached_report.all():
 			each.regen_report()
 
@@ -2659,8 +2691,9 @@ class ShinyTag(models.Model):
 
 		# Added 27/08/2015 : enables non re-upload of zip archive for each form validation
 		# while being secure, preventing file spoofing (and thus code injection)
+		# TODO FIXME this is shitty
 		from django.db.models.fields.files import FieldFile
-		if type(self.zip_file) == file or type(self.zip_file) == FieldFile:
+		if type(self.zip_file) == file or type(self.zip_file) == FieldFile and os.path.isfile(self.zip_file.path):
 			md5 = get_md5(self.zip_file.read())
 			dest = settings.UPLOAD_FOLDER + 'shiny_tag_%s.zip' % md5
 			self.zip_file.name = dest

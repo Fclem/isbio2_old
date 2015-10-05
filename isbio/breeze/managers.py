@@ -213,6 +213,10 @@ class WorkersManager(django.db.models.Manager):
 	The Runnable allows to use unified name for fields, while keeping the old database models #TODO migrate
 	From now on, every request to Report and Jobs should be done trough included request filters
 	"""
+	def __init__(self, inst_type=None):
+		self.inst_type = inst_type
+		super(WorkersManager, self).__init__()
+
 	##
 	# Overrides
 	##
@@ -233,7 +237,10 @@ class WorkersManager(django.db.models.Manager):
 
 	def get(self, *args, **kwargs):
 		args, kwargs = _translate(args, kwargs)
-		return super(WorkersManager, self).get(*args, **kwargs)
+		a = super(WorkersManager, self).get(*args, **kwargs)
+		if self.inst_type:
+			assert isinstance(a, self.inst_type)
+		return a
 
 	def exclude(self, *args, **kwargs):
 		args, kwargs = _translate(args, kwargs)

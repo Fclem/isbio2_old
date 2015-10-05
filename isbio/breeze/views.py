@@ -454,6 +454,7 @@ def reports(request):
 def send_report(request, rid):
 	__self__ = globals()[sys._getframe().f_code.co_name]  # instance to self
 	report_inst = Report.objects.get(id=rid)  # only for auth
+	assert isinstance(report_inst, Report)
 	# offsite_u = OffsiteUser.objects.filter(belongs_to=request.user)
 	form_action = reverse(__self__, kwargs={'rid': rid})  # we need the email since the form is AJAX loaded, and thus cannot just send to url #
 	# form_action = "get_form(" + str(rid) + ", 'Send', 'Send');"
@@ -484,7 +485,8 @@ def send_report(request, rid):
 					'recipient': off_user.full_name,
 					'sender': str(request.user.get_full_name()),
 					'report_name': str(report_inst.name),
-					'url': 'http://' + settings.FULL_HOST_NAME + reverse(report_shiny_view_tab_out, kwargs={'s_key': report_inst.shiny_key, 'u_key': off_user.user_key})
+					# 'url': 'http://' + settings.FULL_HOST_NAME + reverse(report_shiny_view_tab_out, kwargs={'s_key': report_inst.shiny_key, 'u_key': off_user.user_key})
+					'url': report_inst.shiny_url
 				}
 				msg_html = loader.render_to_string('mail.html', RequestContext(request, data))
 				msg = EmailMessage('Check out "' + report_inst.name + '" on Tumor Virtual Board right now !', msg_html, 'Breeze PMS', [off_user.email])

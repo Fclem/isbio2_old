@@ -368,13 +368,15 @@ class DevSettings(BreezeSettings):
 	####
 	# 'db' folder, containing : reports, scripts, jobs, datasets, pipelines, upload_temp
 	####
+	DATA_TEMPLATES_FN = 'mould/'
+
 	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 	DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
-	MOULD_FOLDER = MEDIA_ROOT + 'mould/'
+	MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
 	GENERAL_SH_NAME = 'sgeconfig.sh'
 	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
@@ -495,6 +497,7 @@ class DevSettings(BreezeSettings):
 	SHINY_URL = '/shiny/rep/' # FIXME
 	STATIC_URL = '/static/'
 	MEDIA_URL = '/media/'
+	MOULD_URL = MEDIA_URL + DATA_TEMPLATES_FN
 
 	# number of seconds after witch a job that has not received a sgeid should be marked as aborted or re-run
 	NO_SGEID_EXPIRY = 30
