@@ -351,6 +351,7 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 		get_logger().exception(log_txt)
 	return False
 
+
 def is_non_empty_file(file_path):
 	return Path(file_path).is_non_empty_file()
 
