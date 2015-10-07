@@ -1775,7 +1775,9 @@ class Runnable(FolderObj, models.Model):
 			os.makedirs(self.home_folder_full_path)
 
 		# BUILD instance specific R-File
-		self.generate_r_file(kwargs['sections'], kwargs['request_data'])
+		# self.generate_r_file(kwargs['sections'], kwargs['request_data'], custom_form=kwargs['custom_form'])
+		# self.generate_r_file(sections=kwargs['sections'], request_data=kwargs['request_data'], custom_form=kwargs['custom_form'])
+		self.generate_r_file(*args, **kwargs)
 		# other stuff that might be needed by specific kind of instances (Report and Jobs)
 		self.deferred_instance_specific(*args, **kwargs)
 		# open instance home's folder for other to write
@@ -2256,7 +2258,8 @@ class Jobs(Runnable):
 			raise InvalidArgument
 		# kwargs['sections'].write(str(settings.TEMP_FOLDER) + 'job.xml') # change with ml
 
-	def generate_r_file(self, tree, request_data):
+	# TODO merge inside of runnable
+	def generate_r_file(self, *args, **kwargs):
 		"""
 		generate the Nozzle generator R file
 		:param tree: Rscripts tree from xml
@@ -2265,14 +2268,76 @@ class Jobs(Runnable):
 		:type request_data: HttpRequest
 		"""
 		from django.core.files import base
-		from breeze import shell as rshell
+		# from breeze import shell as rshell
 
-		# TODO : Find a way to solve this dependency issue
-		params = rshell.gen_params_string_job_temp(tree, request_data.POST, self, request_data.FILES) # TODO funct
+		# params = rshell.gen_params_string_job_temp(sections, request_data.POST, self, request_data.FILES) # TODO funct
+		params = self.gen_params_string_job_temp(*args, **kwargs)
 		code = "setwd('%s')\n%s" % (self.home_folder_full_path[:-1], self._type.get_R_code(params))
 
 		# save r-file
 		self._rexec.save(self.R_FILE_NAME, base.ContentFile(code))
+
+	# def gen_params_string_job_temp(tree, data, runnable_inst, files, custom_form):
+	# TODO merge with the report
+	def gen_params_string_job_temp(self, *args, **kwargs):
+		"""
+			Iterates over script's/tag's parameters to bind param names and user input;
+			Produces a (R-specific) string with one parameter definition per lines,
+			so the string can be pushed directly to R file.
+		"""
+		import re
+		# can be replaced by
+		# return gen_params_string(tree, data, runnable_inst, files)
+
+		tree = kwargs.pop('sections', None)
+		request_data = kwargs.pop('request_data', None)
+		data = kwargs.pop('custom_form', None)
+		files = request_data.FILES
+
+		tmp = dict()
+		params = ''
+		# FIXME no access to cleaned data here
+		for item in tree.getroot().iter(
+		  'inputItem'): # for item in tree.getroot().iter('inputItem'): #  item.set('val', str(data.cleaned_data[item.attrib['comment']]))
+			if item.attrib['type'] == 'CHB':
+				params = params + str(item.attrib['rvarname']) + ' <- ' + str(
+					data.cleaned_data[item.attrib['comment']]).upper() + '\n'
+			elif item.attrib['type'] == 'NUM':
+				params = params + str(item.attrib['rvarname']) + ' <- ' + str(
+					data.cleaned_data[item.attrib['comment']]) + '\n'
+			elif item.attrib['type'] == 'TAR':
+				lst = re.split(', |,|\n|\r| ', str(data.cleaned_data[item.attrib['comment']]))
+				seq = 'c('
+				for itm in lst:
+					if itm != "":
+						seq += '\"%s\",' % itm
+
+				seq = seq + ')' if lst == [''] else seq[:-1] + ')'
+				params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+			elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
+				# add_file_to_job(jname, juser, FILES[item.attrib['comment']])
+				# add_file_to_report(runnable_inst.home_folder_full_path, files[item.attrib['comment']])
+				self.add_file(files[item.attrib['comment']])
+				params = params + str(item.attrib['rvarname']) + ' <- "' + str(
+					data.cleaned_data[item.attrib['comment']]) + '"\n'
+			elif item.attrib['type'] == 'DTS':
+				path_to_datasets = str(settings.MEDIA_ROOT) + "datasets/"
+				slug = slugify(data.cleaned_data[item.attrib['comment']]) + '.RData'
+				params = params + str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
+			elif item.attrib['type'] == 'MLT':
+				res = ''
+				seq = 'c('
+				for itm in data.cleaned_data[item.attrib['comment']]:
+					if itm != "":
+						res += str(itm) + ','
+						seq += '\"%s\",' % itm
+				seq = seq[:-1] + ')'
+				item.set('val', res[:-1])
+				params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
+			else:  # for text, text_are, drop_down, radio
+				params = params + str(item.attrib['rvarname']) + ' <- "' + str(
+					data.cleaned_data[item.attrib['comment']]) + '"\n'
+		return params
 
 	class Meta(Runnable.Meta): # TODO check if inheritance is required here
 		abstract = False
@@ -2426,7 +2491,7 @@ class Report(Runnable):
 		import json
 
 		request_data = kwargs['request_data']# self.request_data
-		sections = kwargs['sections']
+		# sections = kwargs['sections']
 
 		# clem : saves parameters into db, in order to be able to duplicate report
 		self.conf_params = pickle.dumps(request_data.POST)
@@ -2449,7 +2514,8 @@ class Report(Runnable):
 	_path_tag_r_template = settings.TAGS_TEMPLATE_PATH
 
 	# TODO : use clean or save ?
-	def generate_r_file(self, sections, request_data):
+	# def generate_r_file(self, sections, request_data):
+	def generate_r_file(self, *args, **kwargs):
 		"""
 		generate the Nozzle generator R file
 		:param sections: Rscripts list
@@ -2461,6 +2527,10 @@ class Report(Runnable):
 		from django.core.files import base
 		from breeze import shell as rshell
 		import xml.etree.ElementTree as XmlET
+
+		sections = kwargs.pop('sections', None)
+		request_data = kwargs.pop('request_data', None)
+		# custom_form = kwargs.pop('custom_form', None)
 
 		report_specific = open(self._path_tag_r_template).read()
 

@@ -190,56 +190,7 @@ def update_script_logo(script, pic):
 
 
 # Jobs
-def gen_params_string_job_temp(tree, data, runnable_inst, files):
-	"""
-		Iterates over script's/tag's parameters to bind param names and user input;
-		Produces a (R-specific) string with one parameter definition per lines,
-		so the string can be pushed directly to R file.
-	"""
-	return gen_params_string(tree, data, runnable_inst, files)
-	assert isinstance(runnable_inst, Report) or isinstance(runnable_inst, Jobs)
-	tmp = dict()
-	params = ''
-	for item in tree.getroot().iter('inputItem'): # 	for item in tree.getroot().iter('inputItem'): #  item.set('val', str(data.cleaned_data[item.attrib['comment']]))
-		if item.attrib['type'] == 'CHB':
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(
-				data.cleaned_data[item.attrib['comment']]).upper() + '\n'
-		elif item.attrib['type'] == 'NUM':
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(
-				data.cleaned_data[item.attrib['comment']]) + '\n'
-		elif item.attrib['type'] == 'TAR':
-			lst = re.split(', |,|\n|\r| ', str(data.cleaned_data[item.attrib['comment']]))
-			seq = 'c('
-			for itm in lst:
-				if itm != "":
-					seq += '\"%s\",' % itm
 
-			seq = seq + ')' if lst == [''] else seq[:-1] + ')'
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
-		elif item.attrib['type'] == 'FIL' or item.attrib['type'] == 'TPL':
-			# add_file_to_job(jname, juser, FILES[item.attrib['comment']])
-			# add_file_to_report(runnable_inst.home_folder_full_path, files[item.attrib['comment']])
-			runnable_inst.add_file(files[item.attrib['comment']])
-			params = params + str(item.attrib['rvarname']) + ' <- "' + str(
-				data.cleaned_data[item.attrib['comment']]) + '"\n'
-		elif item.attrib['type'] == 'DTS':
-			path_to_datasets = str(settings.MEDIA_ROOT) + "datasets/"
-			slug = slugify(data.cleaned_data[item.attrib['comment']]) + '.RData'
-			params = params + str(item.attrib['rvarname']) + ' <- "' + str(path_to_datasets) + str(slug) + '"\n'
-		elif item.attrib['type'] == 'MLT':
-			res = ''
-			seq = 'c('
-			for itm in data.cleaned_data[item.attrib['comment']]:
-				if itm != "":
-					res += str(itm) + ','
-					seq += '\"%s\",' % itm
-			seq = seq[:-1] + ')'
-			item.set('val', res[:-1])
-			params = params + str(item.attrib['rvarname']) + ' <- ' + str(seq) + '\n'
-		else:  # for text, text_are, drop_down, radio
-			params = params + str(item.attrib['rvarname']) + ' <- "' + str(
-				data.cleaned_data[item.attrib['comment']]) + '"\n'
-	return params
 
 # DELETED assemble_job_folder on 16/07/2015 (now part of Runnable.assemble)
 
@@ -286,7 +237,7 @@ def gen_params_string(docxml, data, runnable_inst, files):
 	tmp = dict()
 	params = str()
 	for item in docxml.getroot().iter('inputItem'):
-
+		item.set('val', str(data.cleaned_data[item.attrib['comment']]))
 		if item.attrib['type'] == 'CHB':
 			params += str(item.attrib['rvarname']) + ' <- ' + str(
 				data.get(item.attrib['comment'], "NA")).upper() + '\n'
@@ -507,7 +458,7 @@ def build_script(request_data, script, go_run=False, job_inst=None):
 			mailing=gen_mail_str(request_data),
 			email=head_form.cleaned_data['report_to']
 		)
-		dbitem.assemble(sections=tree, request_data=request_data)
+		dbitem.assemble(sections=tree, request_data=request_data, custom_form=custom_form)
 
 		if go_run:
 			dbitem.submit_to_cluster()

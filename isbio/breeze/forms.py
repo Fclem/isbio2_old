@@ -993,9 +993,11 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					optional_prop = True
 
 				try:
-					help_line = input_item.attrib["help"]
+					help_line = input_item.attrib["help"] or ''
+					if help_line == 'undefined':
+						help_line = ''
 				except:
-					help_line = None
+					help_line = ''
 
 				if input_item.attrib["type"] == "NUM":  # numeric input
 					# protect empty MAX and MIN limits
