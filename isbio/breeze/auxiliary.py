@@ -272,7 +272,7 @@ def extract_users(groups, users):
 			ref = dbitem.team.all()
 			people = list(set(people) | set(ref))
 
-		# Process Individual Users
+	# Process Individual Users
 	if users:
 		users_ids = map(int, users.split(','))
 		ref = breeze.models.OrderedUser.objects.filter(id__in=users_ids)
