@@ -2695,6 +2695,11 @@ class ShinyTag(models.Model):
 			if os.path.isfile(self.zip_file.path):
 				self.remove_file_safe(self.zip_file.path)
 
+		# checks if attached list changed :
+		# shared_users = request_data.POST.getlist('shared')
+		##
+		# Zip file and folder management
+		##
 		try: # loads zip file
 			zf = zipfile.ZipFile(self.zip_file)
 		except Exception as e:
