@@ -468,7 +468,6 @@ def build_report(report_data, request_data, report_property, sections):
 
 
 # clem 15/09/2015
-# TODO finish
 # TODO integrate in BreezeForm or fuse with the report one
 def build_script(request_data, script, go_run=False, job_inst=None):
 	""" Assembles job home folder, configures DRMAA and R related files
