@@ -50,14 +50,12 @@ class ACL:
 	RWX_RWX_R = 774
 
 
-
 class JobState(drmaa.JobState):
 	SUSPENDED = 'suspended'
 	PENDING = 'pending'
 	ON_HOLD = 'pending'
 
 	@staticmethod
-	@property
 	def R_FAILDED():
 		pass
 
@@ -667,7 +665,6 @@ class ShinyReport(models.Model):
 
 	# Clem 05/10/2015
 	@staticmethod
-	@property
 	def remote_shiny_ready():
 		return settings.SHINY_REMOTE_ENABLE and ShinyReport.check_csc_mount()
 
@@ -679,7 +676,7 @@ class ShinyReport(models.Model):
 		:return:
 		:rtype:
 		"""
-		return self.remote_shiny_ready
+		return self.remote_shiny_ready()
 
 	def update_folder(self):
 		"""
@@ -2661,7 +2658,7 @@ class ShinyTag(models.Model):
 	def copy_to_remote(self):
 		import os
 		log_obj = get_logger()
-		log_obj.debug("updating shinyTag %s on remote Shiny" % self.name)
+		log_obj.debug("updating %s on RemoteShiny" % self.__repr__)
 
 		# del the remote report copy folder
 		path = self.folder_name_gen(True)
@@ -2670,15 +2667,17 @@ class ShinyTag(models.Model):
 				# copy the data content of the report
 				safe_copytree(self.folder_name, path)
 			except Exception as e:
-				log_obj.warning("ShinyTag %s copy error %s" % (self.name, e))
+				log_obj.warning("%s copy error %s" % (self.__repr__, e))
 			return True
-		log_obj.warning("failed to copy ShinyTag %s to %s" % (self.name, path))
+		log_obj.warning("failed to copy %s to %s" % (self.__repr__, path))
 		return False
 
 	def save(self, *args, **kwargs):
 		super(ShinyTag, self).save(*args, **kwargs) # Call the "real" save() method.
-		if self.enabled and ShinyReport.remote_shiny_ready:
+		if self.enabled and ShinyReport.remote_shiny_ready():
 			self.copy_to_remote()
+		print 'after', self.attached_report.all()
+		# FIXME : have to update list of attached report otherwise unlinking report or linking new ones don't work
 		for each in self.attached_report.all():
 			each.regen_report()
 
@@ -2687,6 +2686,8 @@ class ShinyTag(models.Model):
 		import zipfile
 		import shutil
 		import os
+
+		print 'before', self.attached_report.all()
 
 		log_obj = get_logger()
 
@@ -2699,11 +2700,11 @@ class ShinyTag(models.Model):
 		except Exception as e:
 			temp_cleanup()
 			if self.id: # not the first time this item is saved, so no problem
-				log_obj.info("ShinyTag %s-%s, No zip submitted, no rebuilding" % (self.id, self.name))
+				log_obj.info("%s, No zip submitted, no rebuilding" % self.__repr__)
 				return # self.save()
 			else:
 				raise ValidationError({ 'zip_file': ["while loading zip_lib says : %s" % e] })
-		log_obj.info("ShinyTag %s-%s, Rebuilding..." % (self.id, self.name))
+		log_obj.info("%s, Rebuilding..." % self.__repr__)
 		# check both ui.R and server.R are in the zip and non empty
 		for filename in [self.FILE_SERVER_NAME, self.FILE_UI_NAME]:
 			try:
@@ -2736,7 +2737,7 @@ class ShinyTag(models.Model):
 		import shutil
 
 		log_obj = get_logger()
-		log_obj.info("deleted shinyTag %s : %s" % (self.id, self))
+		log_obj.info("deleted %s" % self.__repr__)
 
 		# Deleting the folder
 		shutil.rmtree(self.folder_name[:-1], ignore_errors=True)
@@ -2744,6 +2745,9 @@ class ShinyTag(models.Model):
 
 	class Meta:
 		ordering = ('order',)
+
+	def __repr__(self):
+		return '<%s %s:%s>' % (self.__class__.__name__, self.id, self.__unicode__())
 
 	def __unicode__(self):
 		return self.name

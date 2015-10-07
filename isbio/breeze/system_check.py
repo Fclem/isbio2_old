@@ -126,22 +126,18 @@ class CheckerList(list):
 # clem 08/09/2015
 class RunType:
 	@staticmethod
-	@property
 	def runtime():
 		pass
 
 	@staticmethod
-	@property
 	def boot_time():
 		pass
 
 	@staticmethod
-	@property
 	def both():
 		pass
 
 	@staticmethod
-	@property
 	def disabled():
 		pass
 
