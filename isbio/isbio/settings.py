@@ -518,7 +518,15 @@ class DevSettings(BreezeSettings):
 	#
 	# END OF CONFIG
 	# RUN-MODE SPECIFICS FOLLOWING
+	# ** NO CONFIGURATION CONST BEYOND THIS POINT **
 	#
+
+	# if prod mode then auto disable DEBUG, for safety
+	if MODE_PROD:
+		SHINY_MODE = 'remote'
+		SHINY_LOCAL_ENABLE = False
+		DEBUG = False
+		VERBOSE = False
 
 	if DEBUG:
 		import sys
@@ -558,12 +566,6 @@ class DevSettings(BreezeSettings):
 		print 'project home : ' + PROJECT_PATH
 		logging.info('project home : ' + PROJECT_PATH)
 	else:
-		VERBOSE = False
-	# if prod mode then auto disable DEBUG, for safety
-	if MODE_PROD:
-		SHINY_MODE = 'remote'
-		SHINY_LOCAL_ENABLE = False
-		DEBUG = False
 		VERBOSE = False
 
 	if SHINY_MODE == 'remote':
