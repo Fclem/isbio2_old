@@ -237,7 +237,7 @@ def gen_params_string(docxml, data, runnable_inst, files):
 	tmp = dict()
 	params = str()
 	for item in docxml.getroot().iter('inputItem'):
-		item.set('val', str(data.cleaned_data[item.attrib['comment']]))
+		# item.set('val', str(data.cleaned_data[item.attrib['comment']])) # FIXME
 		if item.attrib['type'] == 'CHB':
 			params += str(item.attrib['rvarname']) + ' <- ' + str(
 				data.get(item.attrib['comment'], "NA")).upper() + '\n'

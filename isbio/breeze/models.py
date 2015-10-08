@@ -2297,8 +2297,8 @@ class Jobs(Runnable):
 		tmp = dict()
 		params = ''
 		# FIXME no access to cleaned data here
-		for item in tree.getroot().iter(
-		  'inputItem'): # for item in tree.getroot().iter('inputItem'): #  item.set('val', str(data.cleaned_data[item.attrib['comment']]))
+		for item in tree.getroot().iter('inputItem'): # for item in tree.getroot().iter('inputItem'):
+			#  item.set('val', str(data.cleaned_data[item.attrib['comment']]))
 			if item.attrib['type'] == 'CHB':
 				params = params + str(item.attrib['rvarname']) + ' <- ' + str(
 					data.cleaned_data[item.attrib['comment']]).upper() + '\n'
