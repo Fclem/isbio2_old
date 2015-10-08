@@ -44,8 +44,16 @@
 				<ul>
 				{% for file in folder.list %}
 
-					<li>[{% if file.status != 'OK' %}<strong>{{ file.status }}</strong>{% else %}{{ file.status }}{% endif %}] :
-						<small>{{ file.name }}</small>
+					<li>[{% if file.status != 'OK' %}<strong>{{ file.status }}</strong>{% else %}{{ file.status }}{% endif %}]
+						{% if not file.readable %}
+							<strong style="color:darkred">[ACCESS DENIED]</strong>
+						{% endif %}
+						:
+						{% if file.folder %}
+						<small>{{ file.folder }} / </small>
+						{% endif %}
+						<strong>{{ file.name }}</strong>
+
 					</li>
 					{% empty %}
 				{% endfor %}

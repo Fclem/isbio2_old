@@ -366,7 +366,7 @@ def generate_file_index(root_dir, exclude=list()):
 		if dirName != root_dir:
 			return dirName.replace(root_dir, '') # if rootDir != dirName else './'
 		else:
-			return '/'
+			return ''
 
 	import os
 
@@ -380,7 +380,7 @@ def generate_file_index(root_dir, exclude=list()):
 					mod_time = os.path.getmtime(os.path.join(dirName, fname))
 				except OSError:
 					mod_time = ''
-				md5s[os.path.join(short(dirName), fname)] = [md, mod_time]
+				md5s[os.path.join(s_dirName, fname)] = [md, mod_time]
 
 	return md5s
 
@@ -468,6 +468,7 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 	"""
 	from django.utils import simplejson
 	from hurry.filesize import size, si
+	import os
 	files_state = list()
 
 	folders_state = list()
@@ -478,6 +479,9 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 	flag_changed = False
 	flag_invalid = False
 	errors = 0
+
+	def is_readable(file_path):
+		return os.access(file_path, os.R_OK)
 
 	def getFolderSize(folder):
 		import os
@@ -522,7 +526,10 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 		for file_n in ss:
 			status = dict()
 			# status['name'] = os.path.join(each, file_n)
-			status['name'] = file_n
+			status['name'] = os.path.basename(file_n)
+			status['folder'] = os.path.dirname(file_n)
+			status['readable'] = is_readable(os.path.join(each, file_n))
+			# print os.path.isfile(os.path.join(each, file_n)), os.path.join(each, file_n), status['readable'], file_n
 			if file_n not in cs:
 				status['status'] = 'MISSING'
 				errors += 1
@@ -537,7 +544,7 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 						errors += 1
 					elif ss[file_n][1] < cs[file_n][1]:
 						status['status'] = 'NEWER'
-					else: # same time, different checksum (almost impossible, very unlikely)
+					else: # same time, different checksum, happens when file permission are changed
 						status['status'] = 'EQT_DIFF'
 						errors += 1
 				del cs[file_n]
@@ -545,7 +552,8 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 		# at this point cs should be empty
 		for file_n in cs:
 			flag_changed = True
-			files_tmp.append({ 'name': file_n, 'status': 'ADDED' })
+			files_tmp.append({ 'name': os.path.basename(file_n), 'folder': os.path.dirname(file_n), 'status': 'ADDED', 'readable': is_readable(
+				os.path.join(each, file_n)) })
 		files_state.append({ 'name': each, 'size': folder[each]['size'], 'count': len(files_tmp), 'list': files_tmp })
 
 	if errors > 0:
