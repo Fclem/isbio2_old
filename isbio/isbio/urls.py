@@ -29,6 +29,7 @@ else:
 		url(r'^stat/$', views.ajax_user_stat),
 		# Special system checks
 		url(r'^status/fs_info/$', views.file_system_info),
+		url(r'^status/log/$', views.view_log),
 		url(r'^status/fs_ok/$', views.check_file_system_coherent),
 		url(r'^status/qstat/$', views.qstat_live),
 		url(r'^status_lp/qstat/(?P<md5_t>[a-z0-9_]{32})?$', views.qstat_lp),

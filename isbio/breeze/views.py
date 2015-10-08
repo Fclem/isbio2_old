@@ -2934,3 +2934,15 @@ def file_system_info(request):
 		'folders': folders_state,
 		'files': files_state,
 	}))
+
+
+# clem on 08/10/2015
+@login_required(login_url='/')
+def view_log(request):
+	if not request.user.is_superuser:
+		raise PermissionDenied
+	with open(settings.LOG_PATH) as f:
+		log = f.readlines()
+		return render_to_response('log.html', RequestContext(request, {
+			'log': log
+		}))

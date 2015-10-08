@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% load bootstrap_toolkit %}
+{% load user_translate %}
+
+{% block title %}File System{% endblock %}
+
+{% block extra_head %}
+	<style>
+	h2 {
+		padding-top: 45px;
+	}
+	</style>
+{% endblock %}
+
+{% block content %}
+
+	<!-- LIST OF EXISTING REPORTS -->
+	<div class="row-fluid">
+		<!-- site map bar -->
+		<div class="row-fluid">
+			<div class="span10 offset1">
+				<ul class="breadcrumb pull-left" style="background-color: transparent;">
+					<li><a href="/home/">Breeze</a> <span class="divider">/</span></li>
+					<li> <a href="/resources/"> Manage Resources</a> <span class="divider">/</span></li>
+					<li class="active"> Log</li>
+				</ul>
+			</div>
+		</div>
+		<div class="span10 offset1">
+			<h3>Breeze LOG :</h3>
+			<!--<ul> -->
+			{% for line in log %}
+				{{ forloop.counter }} <code>{{ line }}</code><br />
+				{% empty %}
+			{% endfor %}
+			<!--</ul> -->
+		</div>
+	</div>
+
+
+{% endblock %}
