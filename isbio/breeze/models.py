@@ -8,11 +8,12 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from pandas.tslib import re_compile
 from breeze import managers
+import utils
 from utils import *
 from os.path import isfile # , isdir, islink, exists, getsize
 from django.conf import settings
 from django.db import models
-from breeze.b_exceptions import *
+# from breeze.b_exceptions import *
 
 # from os import symlink
 # import os.path
@@ -29,25 +30,6 @@ CATEGORY_OPT = (
 Trans = managers.Trans
 
 # TODO : move all the logic into objects here
-
-
-class ACL:
-	__R = 4
-	__RX = 5
-	__W = 6
-	__X = 7
-	__OTHER = 1
-	__GROUP = 10
-	__OWNER = 100
-
-	R__ = 0400
-	RW__ = 0600
-	RWX__ = 0700
-	RW_RW_R = 0664
-	RW_RW_ = 0660
-	RW_R_ = 0640
-	R_R_ = 0440
-	RWX_RWX_R = 774
 
 
 class JobState(drmaa.JobState):
@@ -539,8 +521,8 @@ class ShinyReport(models.Model):
 	REPORT_TEMPLATE_PATH = settings.SHINY_REPORT_TEMPLATE_PATH
 	SYSTEM_FILE_LIST = [FILE_UI_NAME, FILE_SERVER_NAME, FILE_GLOBAL, FILE_HEADER_NAME, RES_FOLDER, RES_FOLDER[:-1]]
 	# FS_ACL = 0775
-	FS_ACL = 0750
-	FS_REMOTE_ACL = 0750
+	FS_ACL = ACL.RWX_RX_
+	FS_REMOTE_ACL = ACL.RWX_RX_
 
 	title = models.CharField(max_length=55, unique=True, blank=False, help_text="Choose a title for this Shiny Report")
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
@@ -670,7 +652,7 @@ class ShinyReport(models.Model):
 
 	# Clem 23/09/2015
 	@property # may be dynamic in the future and return if this very report should go to remote Shiny
-	def _make_remote_too(self):
+	def make_remote_too(self):
 		"""
 		If remote Shiny report should be generated, if SHINY_REMOTE_ENABLE and CSC FS is mounted
 		:return:
@@ -694,7 +676,7 @@ class ShinyReport(models.Model):
 			mkdir(self.folder_path, self.FS_ACL)
 			mkdir('%s%s/' % (self.folder_path, self.RES_FOLDER), self.FS_ACL)
 
-		if self._make_remote_too:
+		if self.make_remote_too:
 			safe_rm(self.__folder_path_base_gen(True), ignore_errors=True)
 			mkdir(self.__folder_path_base_gen(True), self.FS_REMOTE_ACL)
 			mkdir(self.report_link('', remote=True), self.FS_REMOTE_ACL)
@@ -708,7 +690,7 @@ class ShinyReport(models.Model):
 		:param force: force linking of each Reports, even if files are missing, or the link already existent
 		:type force: bool
 		"""
-		has_remote = self._make_remote_too
+		has_remote = self.make_remote_too
 		if ReportType.objects.filter(shiny_report=self).count() > 0: # if attached to any Report
 			for rtype in ReportType.objects.filter(shiny_report=self):
 				for report in Report.objects.f.get_done(False, False).filter(type=rtype):
@@ -851,7 +833,7 @@ class ShinyReport(models.Model):
 
 		assert isinstance(tag, ShinyTag)
 		copy_tree(tag.path_res_folder, self.res_folder_path()) # TODO replace with symlimks ?
-		if self._make_remote_too:
+		if self.make_remote_too:
 			copy_tree(tag.path_res_folder, self.res_folder_path(True)) # TODO replace with symlimks ?
 
 	def related_files(self, formatted=False):
@@ -912,7 +894,7 @@ class ShinyReport(models.Model):
 		src = Template(filein.read())
 		# document data
 		generated = 'Generated on %s for user %s (%s)' % (self.created, self.author.get_full_name(), self.author)
-		updated = 'Last updated on %s for user %s (%s)' % (aux.dateT(), a_user.get_full_name(), a_user)
+		updated = 'Last updated on %s for user %s (%s)' % (aux.date_t(), a_user.get_full_name(), a_user)
 		alist = list()
 		if ShinyTag.objects.filter(attached_report=self).count() > 0:
 			for each in self.shinytag_set.all().order_by('order'):
@@ -963,7 +945,7 @@ class ShinyReport(models.Model):
 		filein.close()
 		# document data
 		generated = 'Generated on %s for user %s (%s)' % (self.created, self.author.get_full_name(), self.author)
-		updated = 'Last updated on %s for user %s (%s)' % (aux.dateT(), a_user.get_full_name(), a_user)
+		updated = 'Last updated on %s for user %s (%s)' % (aux.date_t(), a_user.get_full_name(), a_user)
 		alist = list()
 		tag_vars = list()
 		menu_list = list()
@@ -1018,7 +1000,7 @@ class ShinyReport(models.Model):
 		src = Template(filein.read())
 		# document data
 		generated = 'Generated on %s for user %s (%s)' % (self.created, self.author.get_full_name(), self.author)
-		updated = 'Last updated on %s for user %s (%s)' % (aux.dateT(), a_user.get_full_name(), a_user)
+		updated = 'Last updated on %s for user %s (%s)' % (aux.date_t(), a_user.get_full_name(), a_user)
 		alist = list()
 		if ShinyTag.objects.filter(attached_report=self).count() > 0:
 			for each in self.shinytag_set.all().order_by('order'):
@@ -1058,7 +1040,7 @@ class ShinyReport(models.Model):
 			self.generate_ui(a_user)
 			self.generate_global(a_user)
 		# remote
-		if self._make_remote_too:
+		if self.make_remote_too:
 			log_obj.debug("rebuilding REMOTE on shinyReport %s-%s" % (self.id, self.get_name))
 			self.generate_server(a_user, True)
 			self.generate_ui(a_user, True)
@@ -1082,7 +1064,7 @@ class ShinyReport(models.Model):
 		self._unlink_all_reports()
 		# Deleting the folder
 		shutil.rmtree(self._folder_path_base, ignore_errors=True)
-		if self._make_remote_too:
+		if self.make_remote_too:
 			log_obj.info("deleted remote shinyReport %s : %s" % (self.id, self))
 			self._unlink_all_reports(True)
 			shutil.rmtree(self.__folder_path_base_gen(True), ignore_errors=True)
@@ -2446,6 +2428,7 @@ class Report(Runnable):
 		"""
 		if self.is_shiny_enabled:
 			return self._type.shiny_report
+		return ShinyReport()
 
 	# clem 05/10/2015
 	@property
@@ -2622,7 +2605,7 @@ class Report(Runnable):
 		# if self.type.shiny_report_id > 0 and len(self._home_folder_rel) > 1:
 		if self.is_shiny_enabled and self.is_successful:
 			# call symbolic link update
-			self.type.shiny_report.link_report(self, True, self.type.shiny_report._make_remote_too)
+			self.type.shiny_report.link_report(self, True, self.get_shiny_report.make_remote_too)
 
 	def delete(self, using=None):
 		if self.type.shiny_report_id > 0:

@@ -1,4 +1,3 @@
-from django.contrib.auth.models import User
 from breeze import utils
 from utils import Bcolors
 from utils import logger_timer
@@ -6,6 +5,7 @@ from breeze.auxiliary import proxy_to
 from isbio import settings
 from breeze.b_exceptions import *
 from django.http import HttpRequest
+# from django.contrib.auth.models import User
 # from _ctypes_test import func
 # import breeze.auxiliary as aux
 
@@ -350,7 +350,7 @@ def gen_test_report(the_user, gen_number=10, job_duration=30, time_break=1):
 
 
 # clem on 21/08/2015
-def generate_file_index(root_dir, exclude=list()):
+def generate_file_index(root_dir, exclude=list(), start_id=0):
 	"""
 	Generate a dict with md5 checksums of every files within rootDir
 	:param root_dir: path to scan
@@ -359,30 +359,29 @@ def generate_file_index(root_dir, exclude=list()):
 	:type exclude: list
 	:rtype: dict
 	"""
-	# import os.path, time
+	from os import walk
+	from os.path import getmtime, join
 	md5s = dict()
 
-	def short(dirName):
-		if dirName != root_dir:
-			return dirName.replace(root_dir, '') # if rootDir != dirName else './'
+	def short(dir_name):
+		if dir_name != root_dir:
+			return dir_name.replace(root_dir, '') # if rootDir != dirName else './'
 		else:
 			return ''
 
-	import os
-
-	for dirName, subdirList, fileList in os.walk(root_dir):
-		s_dirName = short(dirName)
-		if dirName not in exclude and not '/.' in s_dirName and not s_dirName.startswith('.'):
+	for dirName, subdirList, fileList in walk(root_dir):
+		s_dir_name = short(dirName)
+		if dirName not in exclude and '/.' not in s_dir_name and not s_dir_name.startswith('.'):
 			for fname in fileList:
-				md = utils.get_file_md5(os.path.join(dirName, fname))
+				start_id += 1
+				md = utils.get_file_md5(join(dirName, fname))
 				try:
-					# mod_time = time.ctime(os.path.getmtime(os.path.join(dirName, fname)))
-					mod_time = os.path.getmtime(os.path.join(dirName, fname))
+					mod_time = getmtime(join(dirName, fname))
 				except OSError:
 					mod_time = ''
-				md5s[os.path.join(s_dirName, fname)] = [md, mod_time]
+				md5s[join(s_dir_name, fname)] = [md, mod_time, start_id]
 
-	return md5s
+	return md5s, start_id
 
 
 # clem on 21/08/2015
@@ -397,12 +396,11 @@ def save_file_index():
 
 	fs_sig, save_obj = file_system_check()
 
-	f = open(settings.FS_SIG_FILE, 'w')
-	f.write(fs_sig)
-	f.close()
-	f = open(settings.FS_LIST_FILE, 'w')
-	simplejson.dump(save_obj, f)
-	f.close()
+	with open(settings.FS_SIG_FILE, 'w') as f:
+		f.write(fs_sig)
+	with open(settings.FS_LIST_FILE, 'w') as f:
+		simplejson.dump(save_obj, f)
+
 	return True
 
 
@@ -418,8 +416,9 @@ def file_system_check(verbose=False):
 	from django.utils import simplejson
 	total = ''
 	save_obj = dict()
+	last_id = 0
 	for each in settings.FOLDERS_TO_CHECK:
-		md5s = generate_file_index(each, ['__MACOSX', ])
+		md5s, last_id = generate_file_index(each, ['__MACOSX', ], last_id)
 		json = simplejson.dumps(md5s)
 		# save_obj[each] = (utils.get_md5(json), md5s)
 		save_obj[each] = md5s
@@ -434,15 +433,9 @@ def file_system_check(verbose=False):
 
 # clem on 21/08/2015
 def saved_fs_sig():
-	f = open(settings.FS_SIG_FILE)
-	txt = f.readline()
-	f.close()
+	with open(settings.FS_SIG_FILE) as f:
+		txt = f.readline()
 	return txt
-
-
-##
-# Checkers functions, called on boot and/or runtime
-##
 
 
 # clem on 21/08/2015
@@ -458,43 +451,27 @@ def check_is_file_system_unchanged():
 		return not changed, not broken, errors
 
 
+##
+# Checkers functions, called on boot and/or runtime
+##
+
+
 # clem 25/08/2015
 @logger_timer
-def deep_fs_check(rush=False): # TODO optimize (too slow)
+def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 	"""
 	Return flag_changed, flag_invalid, files_state, folders_state
 	:return: flag_changed, flag_invalid, files_state, folders_state
 	:rtype:
 	"""
-	from django.utils import simplejson
-	from hurry.filesize import size, si
-	import os
+	from os.path import join, basename, dirname
 	files_state = list()
-
 	folders_state = list()
 	current_state = file_system_check()[1]
-	f = open(settings.FS_LIST_FILE)
-	saved_state = simplejson.load(f)
-	f.close()
+	saved_state = utils.saved_fs_state()
 	flag_changed = False
 	flag_invalid = False
 	errors = 0
-
-	def is_readable(file_path):
-		return os.access(file_path, os.R_OK)
-
-	def getFolderSize(folder):
-		import os
-		total_size = os.path.getsize(folder)
-		for item in os.listdir(folder):
-			itempath = os.path.join(folder, item)
-			if not os.path.islink(itempath):
-				if os.path.isfile(itempath):
-					total_size += os.path.getsize(itempath)
-				elif os.path.isdir(itempath):
-					total_size += getFolderSize(itempath)
-		return total_size
-
 	folder = dict()
 
 	for each in saved_state:
@@ -507,7 +484,7 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 			errors += len(saved_state[each])
 		else:
 			folder_count = len(saved_state[each])
-			folder_size = size(getFolderSize(each), system=si)
+			folder_size = utils.human_readable_byte_size(utils.get_folder_size(each))
 			folder[each] = { 'count': folder_count, 'size': folder_size}
 			status['count'] = folder_count
 			status['size'] = folder_size
@@ -525,16 +502,16 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 		cs = current_state[each]
 		for file_n in ss:
 			status = dict()
-			# status['name'] = os.path.join(each, file_n)
-			status['name'] = os.path.basename(file_n)
-			status['folder'] = os.path.dirname(file_n)
-			status['readable'] = is_readable(os.path.join(each, file_n))
-			# print os.path.isfile(os.path.join(each, file_n)), os.path.join(each, file_n), status['readable'], file_n
+			file_path = join(each, file_n)
+			status['name'] = basename(file_n)
+			status['folder'] = dirname(file_n)
 			if file_n not in cs:
+				status['readable'] = True
 				status['status'] = 'MISSING'
 				errors += 1
 				flag_changed = True
 			else:
+				status['readable'] = utils.is_readable(file_path)
 				if ss[file_n] == cs[file_n]:
 					status['status'] = 'OK'
 				else:
@@ -548,12 +525,24 @@ def deep_fs_check(rush=False): # TODO optimize (too slow)
 						status['status'] = 'EQT_DIFF'
 						errors += 1
 				del cs[file_n]
+			if not status['readable']:
+				status['id'] = ss[file_n][2]
 			files_tmp.append(status)
 		# at this point cs should be empty
 		for file_n in cs:
+			status = dict()
+			file_path = join(each, file_n)
 			flag_changed = True
-			files_tmp.append({ 'name': os.path.basename(file_n), 'folder': os.path.dirname(file_n), 'status': 'ADDED', 'readable': is_readable(
-				os.path.join(each, file_n)) })
+			status['name'] = basename(file_n)
+			status['folder'] = dirname(file_n)
+			status['status'] = 'ADDED'
+			status['readable'] = utils.is_readable(file_path)
+			if not status['readable']:
+				if fix_file_perm:
+					status['readable'] = utils.set_file_acl(file_path, silent_fail=True)
+				else:
+					status['id'] = ss[file_n][2]
+			files_tmp.append(status)
 		files_state.append({ 'name': each, 'size': folder[each]['size'], 'count': len(files_tmp), 'list': files_tmp })
 
 	if errors > 0:

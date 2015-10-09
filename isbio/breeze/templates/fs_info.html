@@ -46,7 +46,7 @@
 
 					<li>[{% if file.status != 'OK' %}<strong>{{ file.status }}</strong>{% else %}{{ file.status }}{% endif %}]
 						{% if not file.readable %}
-							<strong style="color:darkred">[ACCESS DENIED]</strong>
+							<a title="clic here to fix it" href="fix_file/{{ file.id }}#{{ folder.name }}"><strong style="color:darkred">[ACCESS DENIED]</strong></a>
 						{% endif %}
 						:
 						{% if file.folder %}

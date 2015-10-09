@@ -370,10 +370,13 @@ class DevSettings(BreezeSettings):
 	####
 	DATA_TEMPLATES_FN = 'mould/'
 
+	RE_RUN_SH = SOURCE_ROOT + 're_run.sh'
+
 	MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 	RORA_LIB = PROJECT_PATH + 'RORALib/'
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 	DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
+	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
 	MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN

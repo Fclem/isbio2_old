@@ -86,12 +86,12 @@ def breeze(request):
 
 def logout(request):
 	auth.logout(request)
-	return HttpResponseRedirect('/')
+	return HttpResponseRedirect('/')  # FIXME hardcoded url
 
 
 def register_user(request):
 	if request.user.is_authenticated():
-		return HttpResponseRedirect('/home/')
+		return HttpResponseRedirect('/home/')  # FIXME hardcoded url
 	if request.method == 'POST':
 		form = breezeForms.RegistrationForm(request.POST)
 		if form.is_valid():
@@ -218,7 +218,7 @@ def home(request, state="feed"):
 			if each.time > user_profile.last_active:
 				each.icon = "icon-fire"
 
-	server, server_info = aux.updateServer_routine()
+	server, server_info = aux.update_server_routine()
 
 	if user_info_complete:
 		user_profile.last_active = timezone.now()
@@ -250,7 +250,7 @@ def home(request, state="feed"):
 
 
 def updateServer(request):
-	server, server_info = aux.updateServer_routine()
+	server, server_info = aux.update_server_routine()
 
 	return HttpResponse(simplejson.dumps({'server_status': server, 'server_info': server_info}),
 						mimetype='application/json')
@@ -431,7 +431,7 @@ def reports(request):
 			'Send': '/reports/send/'
 		}
 		# paginator counter
-		count.update(aux.viewRange(page_index, entries_nb, count['total']))
+		count.update(aux.view_range(page_index, entries_nb, count['total']))
 		# count.update(dict(first=1, last=min(entries_nb, count['total'])))
 
 		return render_to_response('reports.html', RequestContext(request, {
@@ -692,7 +692,7 @@ def ajax_patients(request, which):
 			# print(type(patient_form.cleaned_data.get('birthdate')))
 			patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
 			rora.update_patient(patient)
-			return HttpResponseRedirect('/dbviewer')
+			return ('/dbviewer') # FIXME hardcoded url
 		else:
 			patient_info = breezeForms.PatientInfo(request.POST)
 
@@ -715,7 +715,7 @@ def ajax_patients(request, which):
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': patient_info,
-		'action': '/patient-data/0',
+		'action': '/patient-data/0', # FIXME hardcoded url
 		'header': 'Update Patient Info',
 		'layout': 'horizontal',
 		'submit': 'Save'
@@ -738,7 +738,7 @@ def ajax_patients_new(request):
 			# print(type(patient_form.cleaned_data.get('birthdate')))
 			patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
 			rora.insert_row("patients", patient)
-			return HttpResponseRedirect('/dbviewer')
+			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
 		else:
 			patient_info = breezeForms.PatientInfo(request.POST)
 
@@ -775,7 +775,7 @@ def screen_data(request, which):
 			screen['createdate'] = str(screen_form.cleaned_data.get('createdate'))
 			# print(screen)
 			rora.update_screen(screen)
-			return HttpResponseRedirect('/dbviewer')
+			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
 		else:
 			screen_info = breezeForms.ScreenInfo(request.POST)
 
@@ -810,7 +810,7 @@ def ajax_rora_screens(request, gid):
 			screen = dict()
 			screen['list'] = screengroup_form.cleaned_data.get('dst')
 			rora.updateScreenGroupContent(screen['list'], gid)
-			return HttpResponseRedirect('/dbviewer')
+			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
 	else:
 		# response_data = rora.getScreenGroupContent(groupID=gid)
 		group_content = rora.getScreenGroup(groupID=gid)
@@ -920,7 +920,7 @@ def groupName(request):
 			# print(request.user.username)
 			feedback = rora.insert_row(table=table, data=group)
 			# rora.update_screen(screen)
-			return HttpResponseRedirect('/dbviewer')
+			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
 	else:
 		screen_group = breezeForms.screenGroup()
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
@@ -937,7 +937,7 @@ def dbPolicy(request):
 	userprofile = UserProfile.objects.get(user=request.user)
 	userprofile.db_agreement = True
 	userprofile.save()
-	return HttpResponseRedirect('/dbviewer/')
+	return HttpResponseRedirect('/dbviewer/') # FIXME hardcoded url
 
 
 @csrf_exempt
@@ -1107,8 +1107,7 @@ def search(request, what=None):
 				# if not searchable - redirects directly to overview
 				if (len(query_val) == 0):
 					query_val = "Noname"
-				# TODO use reveser : NO hardcoded url
-				res = '/reports/overview/%s-%s-00000' % (report_type, query_val)
+				res = '/reports/overview/%s-%s-00000' % (report_type, query_val) # FIXME hardcoded url
 				return HttpResponseRedirect(res)
 
 		# search for DATASETS (left bar)
@@ -1386,7 +1385,7 @@ def script_editor_update(request, sid=None):
 			f_basic = breezeForms.ScriptBasics(script.name, request.POST)
 			if f_basic.is_valid():
 				rshell.update_script_dasics(script, f_basic)
-				return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-general_tab')
+				return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-general_tab') # FIXME hardcoded url
 		else:
 			f_basic = breezeForms.ScriptBasics(edit=script.name, initial={'name': script.name, 'inline': script.inln})
 
@@ -1403,7 +1402,7 @@ def script_editor_update(request, sid=None):
 				f_attrs.save()
 				script.creation_date = datetime.now()
 				script.save()
-				return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-attribut_tab')
+				return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-attribut_tab') # FIXME hardcoded url
 		else:
 			f_attrs = breezeForms.ScriptAttributes(instance=script)
 
@@ -1425,7 +1424,7 @@ def script_editor_update(request, sid=None):
 			f_logos = breezeForms.ScriptLogo(request.POST, request.FILES)
 			if f_logos.is_valid():
 				rshell.update_script_logo(script, request.FILES['logo'])
-				return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-logos_tab')
+				return HttpResponseRedirect('/resources/scripts/script-editor/' + str(script.id) + '-logos_tab') # FIXME hardcoded url
 		else:
 			f_logos = breezeForms.ScriptLogo()
 
@@ -1435,7 +1434,7 @@ def script_editor_update(request, sid=None):
 			'basic_form': f_basic  # 'attr_form': f_attrs,  # 'logo_form': f_logos
 		}))
 	# if NOT POST
-	return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id)
+	return HttpResponseRedirect('/resources/scripts/script-editor/' + script.id) # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1510,7 +1509,7 @@ def dash_redir(request, job=None, state=None):
 
 	page = request.GET.get('page')
 	page = page if page else 1
-	return HttpResponseRedirect('/jobs/' + tab + '?page=' + page)
+	return HttpResponseRedirect('/jobs/' + tab + '?page=' + page) # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1539,7 +1538,7 @@ def delete_script(request, sid):
 	if script.author != request.user:
 		raise PermissionDenied
 	script.delete()
-	return HttpResponseRedirect('/resources/scripts/')
+	return HttpResponseRedirect('/resources/scripts/') # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1549,7 +1548,7 @@ def delete_pipe(request, pid):
 	if pipe.author != request.user:
 		raise PermissionDenied
 	pipe.delete()
-	return HttpResponseRedirect('/resources/pipes/')
+	return HttpResponseRedirect('/resources/pipes/') # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1569,7 +1568,7 @@ def delete_report(request, rid, redir):
 
 	if redir == '-dash':
 		return dash_redir(request, report)
-	return HttpResponseRedirect('/reports/')
+	return HttpResponseRedirect('/reports/') # FIXME hardcoded url
 
 
 # clem 11/09/2015
@@ -1596,7 +1595,7 @@ def runnable_del(request, page=1, state=None):
 			console_print('Exception in delete_report : %s' % e)
 			pass
 
-	return HttpResponseRedirect('/jobs/' + page)
+	return HttpResponseRedirect('/jobs/' + page)  # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1636,7 +1635,7 @@ def delete_project(request, pid):
 		raise PermissionDenied
 	aux.delete_project(project)
 
-	return HttpResponseRedirect('/home/projects')
+	return HttpResponseRedirect('/home/projects')  # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1647,7 +1646,7 @@ def delete_group(request, gid):
 		raise PermissionDenied
 	aux.delete_group(group)
 
-	return HttpResponseRedirect('/home/groups')
+	return HttpResponseRedirect('/home/groups')  # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1665,7 +1664,7 @@ def edit_report(request, jid=None, mod=None):
 @login_required(login_url='/')
 def edit_reportMMMMM(request, jid=None, mod=None):
 	if not settings.DEV_MODE:
-		return HttpResponseRedirect('/jobs')
+		return HttpResponseRedirect('/jobs') # FIXME hardcoded url
 
 	report = Report.objects.get(id=jid)
 	rtype = report.type
@@ -1726,7 +1725,7 @@ def edit_job(request, jid=None, mod=None):
 			if edit is None:
 				custom_form, head_form = rshell.build_script(request, job._type, job_inst=job)
 
-				return HttpResponseRedirect('/jobs')
+				return HttpResponseRedirect('/jobs') # FIXME hardcoded url
 			else:
 				# EDIT :
 				head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
@@ -1738,7 +1737,7 @@ def edit_job(request, jid=None, mod=None):
 					job.email = head_form.cleaned_data['report_to']
 					job.assemble(sections=job.xml_tree, request_data=request)
 
-					return HttpResponseRedirect('/jobs')
+					return HttpResponseRedirect('/jobs') # FIXME hardcoded url
 		else:
 			head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.name),
 				initial={'job_name': str(tmp_name), 'job_details': str(job.description),
@@ -1811,7 +1810,7 @@ def run_script(request, jid):
 	job.submit_to_cluster()
 
 	# return jobs(request)
-	return HttpResponseRedirect('/jobs/')
+	return HttpResponseRedirect('/jobs/') # FIXME hardcoded url
 
 
 @login_required(login_url='/')
@@ -1835,7 +1834,7 @@ def abort_sge(request, id, type):
 		pass
 
 	if s:
-		return HttpResponseRedirect('/jobs/')
+		return HttpResponseRedirect('/jobs/') # FIXME hardcoded url
 	else:
 		log.error("aborting job/report  %s failed" % id)
 		return jobs(request, error_msg="%s\nOn DRMAA job/report id  %s\nPlease contact Breeze support" % (s, id))
@@ -1982,10 +1981,10 @@ def save(request): # TODO : WTF is this ??
 		os.remove(str(settings.TEMP_FOLDER) + 'test.xml')
 		os.remove(str(settings.TEMP_FOLDER) + 'header.txt')
 
-		return HttpResponseRedirect('/scripts/')
+		return HttpResponseRedirect('/scripts/') # FIXME hardcoded url
 	else:
 		# need an error handler here!
-		return HttpResponseRedirect('/scripts/')
+		return HttpResponseRedirect('/scripts/') # FIXME hardcoded url
 
 
 def show_rcode(request, jid):
@@ -2464,7 +2463,7 @@ def new_script_dialog(request):
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': form,
-		'action': '/new-script/',
+		'action': '/new-script/', # FIXME hardcoded url
 		'header': 'Create New Script',
 		'layout': 'horizontal',
 		'submit': 'Add'
@@ -2484,7 +2483,7 @@ def new_rtype_dialog(request):
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': form,
-		'action': '/new-rtype/',
+		'action': '/new-rtype/', # FIXME hardcoded url
 		'header': 'Create New Report Type',
 		'layout': 'horizontal',
 		'submit': 'Add'
@@ -2547,7 +2546,7 @@ def new_project_dialog(request):
 
 	if project_form.is_valid():
 		aux.save_new_project(project_form, request.user)
-		return HttpResponseRedirect('/home/projects')
+		return HttpResponseRedirect('/home/projects')  # FIXME hardcoded url
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': project_form,
@@ -2568,7 +2567,7 @@ def new_group_dialog(request):
 
 	if group_form.is_valid():
 		aux.save_new_group(group_form, request.user, request.POST)
-		return HttpResponseRedirect('/home/groups')
+		return HttpResponseRedirect('/home/groups')  # FIXME hardcoded url
 
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': group_form,
@@ -2666,7 +2665,7 @@ def update_user_info_dialog(request):
 				# print(personal_form.cleaned_data.get('institute', None))
 				user_info.save()
 				user_details.save()
-			return HttpResponseRedirect('/home')
+			return HttpResponseRedirect('/home')  # FIXME hardcoded url
 
 	else:
 
@@ -2779,9 +2778,9 @@ def report_search(request):
 		each.user_is_owner = each.author == request.user
 		each.user_has_access = request.user in each.shared.all() or each.user_is_owner
 	# Copy the query for the paginator to work with filtering
-	query_string = aux.makeHTTP_query(request)
+	query_string = aux.make_http_query(request)
 	# paginator counter
-	count.update(aux.viewRange(page_index, entries_nb, count['total']))
+	count.update(aux.view_range(page_index, entries_nb, count['total']))
 
 	return render_to_response('reports-paginator.html', RequestContext(request, {
 		'reports': found_entries,
@@ -2835,11 +2834,13 @@ def proxy_to(request, path, target_url, query_s=''):
 
 
 def custom_404_view(request, message=None):
-	print message
+	# print message
+	if type(message) != list:
+		message = [str(message)]
 	t = loader.get_template('404.html')
 	return http.HttpResponseNotFound(t.render(RequestContext(request, {
 		'request_path': request.path,
-		'messages': ['test'],
+		'messages': message,
 	})))
 
 # DELETED on 08/09/2015 status_button(stat, text=['Online', 'Offline'], href=['#', '#']):
@@ -2946,3 +2947,32 @@ def view_log(request):
 		return render_to_response('log.html', RequestContext(request, {
 			'log': log
 		}))
+
+
+# clem on 08/10/2015
+@login_required(login_url='/')
+def fix_file_acl(request, fid):
+	if not request.user.is_superuser:
+		raise PermissionDenied
+
+	try:
+		utils.fix_file_acl_interface(fid)
+	except OSError as e:
+		return custom_404_view(request, e)
+
+	# return file_system_info(request)
+	return HttpResponseRedirect(reverse(file_system_info))
+
+
+# clem on 08/10/2015
+@login_required(login_url='/')
+def restart_breeze(request):
+	if not request.user.is_superuser:
+		raise PermissionDenied
+
+	import subprocess
+
+	subprocess.Popen( "%s &" % settings.RE_RUN_SH, shell=True, stdout=subprocess.PIPE).stdout.read()
+
+	# return file_system_info(request)
+	return HttpResponseRedirect(reverse(home))

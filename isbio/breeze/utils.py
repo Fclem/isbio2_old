@@ -1,13 +1,35 @@
 import logging
-import sys, hashlib, time
-from isbio import settings
-from os.path import isfile, isdir, islink, exists, getsize
-from os import symlink
+import sys
+import hashlib
+import time
+from django.conf import settings
+from os.path import isfile, isdir, islink, exists, getsize, join
+from os import symlink, access, listdir, R_OK, chmod
 from subprocess import call
 from datetime import datetime
 from breeze.b_exceptions import *
 
 logger = logging.getLogger(__name__)
+
+
+class ACL:
+	__R = 4
+	__RX = 5
+	__W = 6
+	__X = 7
+	__OTHER = 1
+	__GROUP = 10
+	__OWNER = 100
+
+	R__ = 0400
+	RW__ = 0600
+	RWX__ = 0700
+	RW_RW_R = 0664
+	RW_RW_ = 0660
+	RW_R_ = 0640
+	R_R_ = 0440
+	RWX_RWX_R = 0774
+	RWX_RX_ = 0750
 
 
 class Bcolors:
@@ -50,19 +72,19 @@ class Bcolors:
 
 
 # 25/06/2015 Clem
-def console_print(text, datef=None):
-	print console_print_sub(text, datef=datef)
+def console_print(text, date_f=None):
+	print console_print_sub(text, date_f=date_f)
 
 
-def console_print_sub(text, datef=None):
-	return "[%s] %s" % (dateT(datef), text)
+def console_print_sub(text, date_f=None):
+	return "[%s] %s" % (date_t(date_f), text)
 
 
 # 10/03/2015 Clem / ShinyProxy
-def dateT(dateF=None):
-	if dateF is None:
-		dateF = settings.USUAL_DATE_FORMAT
-	return str(datetime.now().strftime(dateF))
+def date_t(date_f=None):
+	if date_f is None:
+		date_f = settings.USUAL_DATE_FORMAT
+	return str(datetime.now().strftime(date_f))
 
 
 # clem on 20/08/2015
@@ -104,8 +126,8 @@ def get_file_md5(file_path):
 	:type file_path: str
 	:rtype: str
 	"""
+	content = list()
 	try:
-		content = list()
 		fd = open(file_path, "rb")
 		content = fd.readlines()
 		fd.close()
@@ -274,25 +296,25 @@ def custom_copytree(src, dst, symlinks=False, ignore=None, verbose=True, sub=Fal
 	for name in names:
 		if name in ignored_names:
 			continue
-		srcname = os.path.join(src, name)
-		dstname = os.path.join(dst, name)
+		src_name = os.path.join(src, name)
+		dst_name = os.path.join(dst, name)
 		try:
-			if symlinks and os.path.islink(srcname):
-				linkto = os.readlink(srcname)
-				os.symlink(linkto, dstname)
+			if symlinks and os.path.islink(src_name):
+				linkto = os.readlink(src_name)
+				os.symlink(linkto, dst_name)
 				if verbose:
 					if os.path.isdir(linkto):
 						folders_count += 1
 					elif os.path.isfile(linkto):
 						files_count += 1
 					dot()
-			elif os.path.isdir(srcname):
-				c1, c2 = custom_copytree(srcname, dstname, symlinks, ignore, verbose=verbose, sub=True)
+			elif os.path.isdir(src_name):
+				c1, c2 = custom_copytree(src_name, dst_name, symlinks, ignore, verbose=verbose, sub=True)
 				files_count += c1
 				folders_count += c2 + 1
 			else:
 				# Will raise a SpecialFileError for unsupported file types
-				copy2(srcname, dstname)
+				copy2(src_name, dst_name)
 				if verbose:
 					dot()
 					files_count += 1
@@ -302,7 +324,7 @@ def custom_copytree(src, dst, symlinks=False, ignore=None, verbose=True, sub=Fal
 		except Error, err:
 			errors.extend(err.args[0])
 		except EnvironmentError, why:
-			errors.append((srcname, dstname, str(why)))
+			errors.append((src_name, dst_name, str(why)))
 	try:
 		copystat(src, dst)
 	except OSError, why:
@@ -312,7 +334,7 @@ def custom_copytree(src, dst, symlinks=False, ignore=None, verbose=True, sub=Fal
 		else:
 			errors.extend((src, dst, str(why)))
 	if errors:
-		raise Error, errors
+		raise Error(errors)
 	if not sub and verbose:
 		print 'done (%s files and %s folders)' % (files_count, folders_count)
 	return files_count, folders_count
@@ -381,6 +403,10 @@ def auto_symlink(target, holder):
 # clem 29/09/2015
 # from [fr] http://saladtomatonion.com/blog/2014/12/16/mesurer-le-temps-dexecution-de-code-en-python/
 class Timer(object):
+	def __init__(self):
+		self.interval = None
+		self.start_time = None
+
 	def __enter__(self):
 		self.start()
 		# __enter__ must return an instance bound with the "as" keyword
@@ -425,7 +451,8 @@ class LoggerTimer(Timer):
 		# Use self as context manager in a decorated function
 		def decorated_func(*args, **kwargs):
 			self.prefix = '{0} : '.format(self.prefix or func.__name__ if func else '')
-			with self: return func(*args, **kwargs)
+			with self:
+				return func(*args, **kwargs)
 
 		return decorated_func
 
@@ -434,3 +461,83 @@ class LoggerTimer(Timer):
 def logger_timer(funct):
 	a = LoggerTimer(func=get_logger('timing').debug)
 	return a(funct)
+
+
+def get_folder_size(folder):
+	""" Return the total size of a folder located at <i>folder</i>, recursively
+	:type folder: str
+	:rtype: int
+	"""
+	total_size = getsize(folder)
+	for item in listdir(folder):
+		item_path = join(folder, item)
+		if not islink(item_path):
+			if isfile(item_path):
+				total_size += getsize(item_path)
+			elif isdir(item_path):
+				total_size += get_folder_size(item_path)
+	return total_size
+
+
+# clem 09/10/2015
+def human_readable_byte_size(size_value, unit=None):
+	from hurry.filesize import size, si
+	return size(size_value, system=si if not unit else unit)
+
+
+# clem 07/10/2015
+def is_readable(file_path):
+	""" Return if a file located at <i>file_path</i> is readable
+	:type file_path: str
+	:rtype: bool
+	"""
+	return access(file_path, R_OK)
+
+
+# clem 09/10/2015
+def saved_fs_state():
+	""" Read the saved file system FS_LIST_FILE descriptor and chksums list and return the contained JSON object
+	"""
+	from django.utils import simplejson
+	with open(settings.FS_LIST_FILE) as f:
+		return simplejson.load(f)
+
+
+# clem 09/10/2015
+def set_file_acl(path, perm=ACL.RW_R_, silent_fail=False):
+	""" Change file permission to <i>perm</i> (default is RW_R_)
+	:type path: str
+	:rtype: bool
+	"""
+	if not is_readable(path):
+		try:
+			chmod(path, perm)
+			get_logger().info('changed {0} to {1:#o}'.format(path, perm))
+			return True
+		except OSError as e:
+			get_logger().exception(str(e))
+			if not silent_fail:
+				raise OSError(e)
+	return False
+
+
+# clem 09/10/2015
+def fix_file_acl_interface(fid):
+	""" Resolves the file designed by <i>fid</i> (for safety) and fix it's access permisions
+	:type fid: int
+	:rtype: bool
+	"""
+	# from os.path import join
+	saved_state = saved_fs_state()
+
+	if type(fid) != int:
+		fid = int(fid)
+
+	for each in saved_state:
+		ss = saved_state[each]
+		for file_n in ss:
+			if ss[file_n][2] == fid:
+				path = join(each, file_n)
+				return set_file_acl(path)
+
+	return False
