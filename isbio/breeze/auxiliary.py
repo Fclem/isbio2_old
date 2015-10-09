@@ -1,29 +1,36 @@
-from logging import Handler
 import breeze.models
-import re, copy, os, sys
-import urllib, urllib2, glob, mimetypes, logging
-from breeze.models import Report, Jobs, DataSet
-from datetime import datetime
-# from django.contrib import messages
+import re
+import copy
+import os
+import urllib
+import urllib2
+import glob
+import mimetypes
+import logging
 from django import http
 from django.template.defaultfilters import slugify
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
-from breeze.managers import Q
 from django.http import Http404, HttpResponse
 from django.template import loader
 from django.template.context import RequestContext
-from isbio import settings
-from subprocess import Popen, PIPE, call
+from django.conf import settings
+from breeze.models import Report, Jobs, DataSet
+from subprocess import Popen, PIPE #, call
 import sys
 import utils
+
 # from django.utils import timezone
+# from django.contrib import messages
+# from datetime import datetime
+# from logging import Handler
+# from breeze.managers import Q
 
 logger = logging.getLogger(__name__)
 
 # system integrity checks moved to system_check.py on 31/08/2015
 
 
-def updateServer_routine():
+def update_server_routine():
 	# hotfix
 	if 'QSTAT_BIN' in os.environ:
 		qstat = os.environ['QSTAT_BIN']
@@ -70,7 +77,7 @@ def updateServer_routine():
 
 
 ###
-### TODO	How about moving those shits to Models ?
+# ## TODO	How about moving those shits to Models ?
 ###
 
 
@@ -219,21 +226,21 @@ def open_folder_permissions(path, permit=0770):
 
 
 ###
-###	TODO	How about moving those shits to Managers ?
+# ##	TODO	How about moving those shits to Managers ?
 ###
 
 
 def normalize_query(query_string,
-					findterms=re.compile(r'"([^"]+)"|(\S+)').findall,
-					normspace=re.compile(r'\s{2,}').sub):
-	''' Splits the query string in invidual keywords, getting rid of unecessary spaces
+					find_terms=re.compile(r'"([^"]+)"|(\S+)').findall,
+					norm_space=re.compile(r'\s{2,}').sub):
+	""" Splits the query string in individual keywords, getting rid of unnecessary spaces
 		and grouping quoted words together.
 		Example:
 
 		>>> normalize_query('  some random  words "with   quotes  " and   spaces')
 		['some', 'random', 'words', 'with quotes', 'and', 'spaces']
-	'''
-	return [normspace(' ', (t[0] or t[1]).strip()) for t in findterms(str(query_string))]
+	"""
+	return [norm_space(' ', (t[0] or t[1]).strip()) for t in find_terms(str(query_string))]
 
 
 def get_query(query_string, search_fields, exact=True):
@@ -367,11 +374,11 @@ def merge_job_lst(item1, item2):
 
 
 ###
-###	*** END ***
+# ##	*** END ***
 ###
 
-#02/06/2015 Clem
-def viewRange(page_index, entries_nb, total):
+# 02/06/2015 Clem
+def view_range(page_index, entries_nb, total):
 	"""
 	Calculate and return a dict with the number of the first and last elements in the current view of the paginator
 	:param page_index: number of the current page in the paginator (1 to x)
@@ -385,8 +392,9 @@ def viewRange(page_index, entries_nb, total):
 	"""
 	return dict(first=(page_index - 1)*entries_nb + 1, last=min(page_index*entries_nb, total), total=total)
 
+
 # 28/04/2015 Clem
-def makeHTTP_query(request):
+def make_http_query(request):
 	"""
 	serialize GET or POST data from a query into a dict string
 	:param request: Django Http request object
@@ -404,22 +412,22 @@ def makeHTTP_query(request):
 	if args.get('csrfmiddlewaretoken'):
 		del args['csrfmiddlewaretoken']
 
-	queryS = ''
+	query_string = ''
 	for each in args:
 		if args[each] != '':
-			queryS = queryS + each + ': "' + args[each] + '", '
+			query_string = query_string + each + ': "' + args[each] + '", '
 
-	if len(queryS) > 0:
-		queryS = queryS[:-2]
+	if len(query_string) > 0:
+		query_string = query_string[:-2]
 
-	return queryS
+	return query_string
 
 
 # 10/03/2015 Clem
-def report_common(request, max=15):
+def report_common(request, v_max=15):
 	"""
 	:type request: django.core.handlers.wsgi.WSGIRequest
-	:type max: int
+	:type v_max: int
 	:return: page_index, entries_nb
 		page_index: int
 			current page number to display
@@ -434,11 +442,11 @@ def report_common(request, max=15):
 	if request.REQUEST.get('entries'):
 		entries_nb = int(request.REQUEST['entries'])
 	else:
-		entries_nb = max
+		entries_nb = v_max
 	return page_index, entries_nb
 
 
-### TODO	move the following to managers ?
+# ## TODO	move the following to managers ?
 
 def get_job_safe(request, job_id):
 	"""
@@ -495,56 +503,54 @@ def get_worker_safe_abstract(request, obj_id, model):
 		raise Http404()
 
 
-### *** END ***
+# ## *** END ***
 
 # 10/03/2015 Clem / ShinyProxy
-def uPrint(request, url, code=None, size=None, datef=None):
-	print uPrint_sub(request, url, code, size, datef)
+def u_print(request, url, code=None, size=None, date_f=None):
+	print u_print_sub(request, url, code, size, date_f)
 
 
-def uPrint_sub(request, url, code=None, size=None, datef=None):
+def u_print_sub(request, url, code=None, size=None, date_f=None):
 	proto = request.META['SERVER_PROTOCOL'] if request.META.has_key('SERVER_PROTOCOL') else ''
-	return console_print_sub("\"PROX %s   %s %s\" %s %s" % (request.method, url, proto, code, size), datef=datef)
+	return console_print_sub("\"PROX %s   %s %s\" %s %s" % (request.method, url, proto, code, size), date_f=date_f)
 
 
 # 25/06/2015 Clem
-def console_print(text, datef=None):
-	# print console_print_sub(text, datef=datef)
-	utils.console_print(text, datef)
+def console_print(text, date_f=None):
+	utils.console_print(text, date_f)
 
 
-def console_print_sub(text, datef=None):
-	# return "[%s] %s" % (dateT(datef), text)
-	return utils.console_print_sub(text, datef)
+def console_print_sub(text, date_f=None):
+	return utils.console_print_sub(text, date_f)
 
 
 # 10/03/2015 Clem / ShinyProxy
-def dateT(dateF = None):
+def date_t(date_f=None):
 	# if dateF is None:
 	# 	dateF = settings.USUAL_DATE_FORMAT
 	# return str(datetime.now().strftime(dateF))
-	return utils.dateT(dateF)
+	return utils.date_t(date_f)
 
 
 # Used to check for missing reports, following lost report event
-def get_report_path(fitem, fname=None):
+def get_report_path(f_item, fname=None):
 	"""
 		Return the path of an object, and checks that the path is existent or fail with 404
-		:param fitem: a Report.objects from db
-		:type fitem: Report or DataSet
+		:param f_item: a Report.objects from db
+		:type f_item: Report or DataSet
 		:param fname: a specified file name (optional, default is report.html)
 		:type fname: str
 		:return: (local_path, path_to_file)
 		:rtype: (str, str)
 	"""
-	assert isinstance(fitem, (Report, DataSet))
+	assert isinstance(f_item, (Report, DataSet))
 	errorMsg = ''
 	if fname is None: fname = '%s.html' % Report.REPORT_FILE_NAME
 
-	if isinstance(fitem, DataSet):
-		home = fitem.rdata
+	if isinstance(f_item, DataSet):
+		home = f_item.rdata
 	else:
-		home = fitem._home_folder_rel
+		home = f_item._home_folder_rel
 	local_path = home + '/' + unicode.replace(unicode(fname), '../', '')
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
@@ -564,18 +570,19 @@ def get_report_path(fitem, fname=None):
 
 
 # Used to check for missing reports, following lost report event
-def get_report_path_test(fitem, fname=None, NoFail=False):
+def get_report_path_test(f_item, fname=None, no_fail=False):
 	"""
-	:param fitem: a Report.objects from db
-	:type fitem: Report or DataSet
+	:param f_item: a Report.objects from db
+	:type f_item: Report or DataSet
 	:param fname: a specified file name (optional, default is report.html)
 	:type fname: str
 	:return: (old_local_path, path_to_file, file_exists, dir_exists)
 	:rtype: (str, str, str, str)
 	"""
 
-	if fname is None: fname = '%s.html' % Report.REPORT_FILE_NAME
-	local_path = fitem._home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '') # safety
+	if fname is None:
+		fname = '%s.html' % Report.REPORT_FILE_NAME
+	local_path = f_item._home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '') # safety
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
 	file_exists = os.path.exists(path_to_file)
@@ -593,54 +600,48 @@ def get_report_path_test(fitem, fname=None, NoFail=False):
 	return old_local_path, path_to_file, file_exists, dir_exists
 
 
-def fail_with404(request, errorMsg=None):
+def fail_with404(request, error_msg=None):
 	"""
 	custom 404 method that enable 404 template even in debug mode (discriminate from real 404),
 	Raise no exception so call it with return
 	:param request: Django request object
 	:type request: http.HttpRequest
-	:param errorMsg: The message to display on the 404 page
-	:type errorMsg: str
+	:param error_msg: The message to display on the 404 page
+	:type error_msg: str
 	:return: custom 404 page
 	:rtype: http.HttpResponseNotFound
 	"""
 
 	t = loader.get_template('404.html')
 
-	if type(errorMsg) is not list:
-		errorMsg = [errorMsg]
+	if type(error_msg) is not list:
+		error_msg = [error_msg]
 
 	return http.HttpResponseNotFound(t.render(RequestContext(request, {
 		'request_path': request.path if request is not None else '',
-		'messages': errorMsg,
+		'messages': error_msg,
 	})))
 
 
-DASHED_LINE = '---------------------------------------------------------------------------------------------------------------'
+DASHED_LINE = \
+	'---------------------------------------------------------------------------------------------------------------'
 
 
 def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	import fileinput
-	CONSOLE_DATE_F = settings.CONSOLE_DATE_F
+	console_date_f = settings.CONSOLE_DATE_F
 	log_obj = logger.getChild(sys._getframe().f_code.co_name)
 	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
-	# TODO deploy on prod and then remove
-	# if not settings.DEV_MODE:
-	# 	raise PermissionDenied
+
 	qs = ''
-	url = '%s%s'%(target_url, path)
+	url = '%s%s' % (target_url, path)
 	if query_s and query_s != '':
 		qs = '?' + query_s
 		url += qs
-	elif request.META.has_key('QUERY_STRING') and request.META['QUERY_STRING'] != "":
+	elif 'QUERY_STRING' in request.META and request.META['QUERY_STRING'] != "":
 		qs = '?' + request.META['QUERY_STRING']
 		url += qs
 	opener = urllib2.build_opener()
-	# copies headers
-	# for each in request.META.keys():
-	#    if each[0:4] == "HTTP":
-	#        opener.addheaders.append((each[5:], request.META[each]))
-	# copies form data
 	data = ""
 	if request.method == 'POST':
 		for each in request.POST.keys():
@@ -652,9 +653,10 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	proxied_request = None
 	more = ''
 	try:
-		if not silent :
-			log_obj.debug(uPrint_sub(request, path + str(qs)))
-		if settings.VERBOSE: uPrint(request, path + str(qs), datef=CONSOLE_DATE_F)
+		if not silent:
+			log_obj.debug(u_print_sub(request, path + str(qs)))
+		if settings.VERBOSE:
+			u_print(request, path + str(qs), datef=console_date_f)
 		if timeout:
 			proxied_request = opener.open(url, data or None, timeout=timeout)
 		else:
@@ -662,16 +664,14 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	except urllib2.HTTPError as e:
 		# add the shiny-server log tail
 		if log_size < os.stat(log).st_size:
-			more = "/var/log/shiny-server.log :\n"
+			more = "%s :\n" % log
 			try:
-				f = open(log)
-				f.seek(log_size)
-				for line in f.readlines():
-					more += line + '\n'
-			except:
+				with open(log) as f:
+					f.seek(log_size)
+					for line in f.readlines():
+						more += line + '\n'
+			except Exception as e:
 				pass
-			finally:
-				f.close()
 			more = more[:-1] + DASHED_LINE + '\n'
 
 		# try to read the shiny app log :
@@ -684,28 +684,27 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 			fileinput.close()
 			try:
 				os.remove(fileName)
-			except:
+			except Exception as e:
 				pass
 			more = more[:-1] + DASHED_LINE + '\n'
 
 		try:
 			content = e.read()
-		except:
+		except Exception as e:
 			content = 'SHINY SERVER : %s\nReason : %s\n%s\n%s' % (e.msg, e.reason, DASHED_LINE, more)
 
 		logger.getChild('shiny_server').warning('%s : %s %s%s\n%s' % (e, request.method, path, str(qs), more))
-		# rep = HttpResponse(content, status=e.code, mimetype='text/plain')
 		rep = HttpResponse(content, status=e.code, mimetype=e.headers.typeheader)
 	else:
 		status_code = proxied_request.code
-		mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
+		mime_type = proxied_request.headers.typeheader or mimetypes.guess_type(url)
 		content = proxied_request.read()
 		if proxied_request.code != 200:
 			print 'PROX::', proxied_request.code
 		if not silent:
-			log_obj.debug(uPrint_sub(request, path + str(qs), proxied_request.code, str(len(content))))
-		if settings.DEBUG and not silent: uPrint(request, path + str(qs), proxied_request.code, str(len(content)), datef=CONSOLE_DATE_F)
-		rep = HttpResponse(content, status=status_code, mimetype=mimetype)
+			log_obj.debug(u_print_sub(request, path + str(qs), proxied_request.code, str(len(content))))
+		if settings.DEBUG and not silent: u_print(request, path + str(qs), proxied_request.code, str(len(content)), datef=console_date_f)
+		rep = HttpResponse(content, status=status_code, mimetype=mime_type)
 	return rep
 
 # 29/05/2015 TOOOOOOOO SLOW
