@@ -322,6 +322,8 @@ def jobs(request, state="", error_msg="", page=1):
 		show_tab = "show_curr"
 		state = 'current'
 
+	from qstat import Qstat
+
 	return render_to_response('jobs.html', RequestContext(request, {
 		str(tab): 'active',
 		str(show_tab): 'active',
@@ -335,6 +337,7 @@ def jobs(request, state="", error_msg="", page=1):
 		'page': page,
 		'db_access': db_access,
 		'error_message': error_msg,
+		'queue_is_full': Qstat().is_queue_full,
 		'current_nb': merged_active.__len__()
 	}))
 
@@ -2972,7 +2975,7 @@ def restart_breeze(request):
 
 	import subprocess
 
-	subprocess.Popen( "%s &" % settings.RE_RUN_SH, shell=True, stdout=subprocess.PIPE).stdout.read()
+	subprocess.Popen("%s &" % settings.RE_RUN_SH, stdout=subprocess.PIPE)
 
 	# return file_system_info(request)
 	return HttpResponseRedirect(reverse(home))

@@ -31,49 +31,21 @@ logger = logging.getLogger(__name__)
 
 
 def update_server_routine():
-	# hotfix
-	if 'QSTAT_BIN' in os.environ:
-		qstat = os.environ['QSTAT_BIN']
+	from qstat import Qstat
+	server_info = Qstat().queue_stat
+
+	if server_info.total == server_info.cdsuE:
+		server = 'bad'
+	elif int(server_info.avail) == 0:
+		server = 'full'
+	elif int(server_info.avail) <= 3:
+		server = 'busy'
+	elif float(server_info.cqload) > 30:
+		server = 'busy'
 	else:
-		qstat = 'qstat'
+		server = 'idle'
 
-	# get the server info by directly parsing qstat
-	# p = subprocess.Popen([qstat, "-g", "c"], stdout=subprocess.PIPE)
-	p = Popen([qstat, "-g", "c"], stdout=PIPE)
-	output, err = p.communicate()
-	server = 'unknown'
-	s_name = ''
-	cqload = 0
-	used = 0
-	avail = 0
-	total = 0
-	cdsuE = 0
-	for each in output.splitlines():
-		if 'hugemem.q' in each.split(): # TODO switch to dynamic server
-			s_name = each.split()[0]
-			cqload = int(float(each.split()[1])*100)
-			used = each.split()[2]
-			avail = each.split()[4]
-			total = each.split()[5]
-			cdsuE = 0 + int(each.split()[7])
-
-			if total == cdsuE:
-				server = 'bad'
-			elif int(avail) <= 3:
-				server = 'busy'
-			elif float(cqload) > 30:
-				server = 'busy'
-			else:
-				server = 'idle'
-	server_info = {
-		's_name': s_name or '',
-		'cqload': str(cqload or '') + "%",
-		'cdsuE': str(cdsuE or ''),
-		'total': total or '',
-		'avail': avail or '',
-		'used': used or '',
-	}
-	return server, server_info
+	return server, server_info.__dict__
 
 
 ###

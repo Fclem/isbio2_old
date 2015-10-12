@@ -58,7 +58,7 @@
 
 {% endblock %}
 {% block content %}
-	<!-- TODO : TOTAL REDISIGN OF THIS PAGE, REMOVE THE BS JS code and go full AJAX -->
+	<!-- TODO : TOTAL REDESIGN OF THIS PAGE, REMOVE THE BS JS code and go full AJAX -->
 	<!-- site map bar -->
 	<div class="row-fluid">
 		<div class="span10 offset1">
@@ -68,6 +68,16 @@
 			</ul>
 		</div>
 	</div>
+
+	{% if queue_is_full and current_nb > 0 %}
+		<!-- Warning container -->
+		<div class="row-fluid">
+			<div class="span6 offset3 alert alert-warning" style="padding-bottom: 12px;padding-top: 12px;">
+				<strong>Notice :</strong>The job cluster is currently full.
+				Your jobs/reports will be processed as soon as a free slot will be available.
+			</div>
+		</div>
+	{% endif %}
 
 	<!-- MAIN container -->
 	<div class="row-fluid">

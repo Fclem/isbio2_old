@@ -383,6 +383,7 @@ class DevSettings(BreezeSettings):
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
 	GENERAL_SH_NAME = 'sgeconfig.sh'
 	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
+	SGE_QUEUE_NAME = 'hugemem.q'
 
 
 	##

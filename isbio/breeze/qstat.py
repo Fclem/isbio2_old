@@ -3,6 +3,7 @@ __author__ = 'clem'
 from breeze.b_exceptions import NoSuchJob, InvalidArgument
 from breeze.models import _JOB_PS as job_ps
 from breeze.utils import get_logger
+from django.conf import settings
 
 
 # clem on 20/08/2015
@@ -98,7 +99,7 @@ class Qstat(object):
 	def __init__(self):
 		import os
 		if 'QSTAT_BIN' in os.environ:
-			self.qstat = os.environ['QSTAT_BIN']
+			self.qstat = os.environ['QSTAT_BIN'] # FIXME unsafe
 		else:
 			self.qstat = 'qstat'
 
@@ -108,6 +109,42 @@ class Qstat(object):
 	def __sub_proc(self, arg):
 		import subprocess
 		return subprocess.Popen('%s|grep %s' % (self.qstat, str(arg)), shell=True, stdout=subprocess.PIPE).stdout
+
+	# clem 12/10/2015
+	@property
+	def queue_stat(self):
+		import subprocess
+		from collections import namedtuple
+
+		p = subprocess.Popen('%s -g c|grep %s' % (self.qstat, str(settings.SGE_QUEUE_NAME)), shell=True, stdout=subprocess.PIPE)
+		output, err = p.communicate()
+		server_info = dict()
+		for each in output.splitlines():
+			if settings.SGE_QUEUE_NAME in each.split():
+				server_info['s_name'] = str(each.split()[0])
+				server_info['cqload'] = str(float(each.split()[1]) * 100)
+				server_info['used'] = str(each.split()[2])
+				server_info['avail'] = str(each.split()[4])
+				server_info['total'] = str(each.split()[5])
+				server_info['cdsuE'] = str(each.split()[7])
+				server_info['cdsuE'] = str(each.split()[7])
+				break
+
+		return namedtuple('Struct', server_info.keys())(*server_info.values())
+
+	# clem 12/10/2015
+	@property
+	def queue_stat_int(self):
+		q = self.queue_stat
+		for each in q.__dict__:
+			if each != 's_name':
+				q.__dict__[each] = 0 + int(float(q.__dict__[each]))
+		return q
+
+	# clem 12/10/2015
+	@property
+	def is_queue_full(self):
+		return not self.queue_stat_int.avail
 
 	@property
 	def job_dict(self):
