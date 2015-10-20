@@ -202,7 +202,7 @@ def runner():
 	Run until killed or crashed
 	TO BE RUN ONLY_ONCE IN A SEPARATE BACKGROUND PROCESS
 	"""
-	get_logger().info('now running')
+	get_logger().debug('started')
 	# watching = Watcher()
 
 	i = 0
