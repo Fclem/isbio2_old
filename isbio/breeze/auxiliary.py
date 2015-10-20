@@ -15,10 +15,11 @@ from django.template import loader
 from django.template.context import RequestContext
 from django.conf import settings
 from breeze.models import Report, Jobs, DataSet
-from subprocess import Popen, PIPE #, call
 import sys
 import utils
 
+#import time
+# from subprocess import Popen, PIPE #, call
 # from django.utils import timezone
 # from django.contrib import messages
 # from datetime import datetime
@@ -28,6 +29,14 @@ import utils
 logger = logging.getLogger(__name__)
 
 # system integrity checks moved to system_check.py on 31/08/2015
+
+
+def restart():
+	python = sys.executable
+	os.execl(python, python, *sys.argv)
+	# time.sleep(2)
+	# os._exit(0)
+	# exit()
 
 
 def update_server_routine():
