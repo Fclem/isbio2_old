@@ -45,7 +45,7 @@ else:
 		url(r'^ajax-rora-plain-screens/(?P<gid>\d+)$', views.ajax_rora_screens),
 		url(r'^ajax-rora-groupname/$', views.groupName),
 		url(r'^update-user-info/$', views.update_user_info_dialog),
-		url(r'^update-server/$', views.updateServer),
+		url(r'^update-server/$', views.update_server),
 		url(r'^help/$', views.dochelp),
 		url(r'^db-policy/$', views.dbPolicy),
 		# url(r'^store/deletefree/$', views.deletefree),
