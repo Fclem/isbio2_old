@@ -1840,7 +1840,7 @@ class Runnable(FolderObj, models.Model):
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				Exception) as e:
 			log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated : %s' % e)
-			self.__manage_run_failed(None, '', None)
+			self.__manage_run_failed(None, '')
 			if s is not None:
 				s.exit()
 			raise e
@@ -1910,11 +1910,13 @@ class Runnable(FolderObj, models.Model):
 				self.breeze_stat = JobStat.DONE
 				log.info('%s%s : ' % self.short_id + 'sge job finished !')
 				if not self.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
+					get_logger().info('%s%s : ' % self.short_id + 'exit code %s, SGE success !' % exit_code)
 					self.__manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
 				else: # FULL SUCCESS
 					self.__manage_run_success(ret_val)
 			else: # abnormal termination
 				if not aborted: # SGE FAILED
+					get_logger().info('%s%s : ' % self.short_id + 'exit code %s, SGE FAILED !' % exit_code)
 					self.__manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
 				else: # USER ABORTED
 					self.__manage_run_aborted(ret_val, exit_code)
@@ -1981,14 +1983,13 @@ class Runnable(FolderObj, models.Model):
 		"""
 		self.__auto_json_dump(ret_val, self._failed_file)
 		log = get_logger()
-		log.info('%s%s : ' % self.short_id + 'exit code %s, SGE failed !' % exit_code)
 
 		if drmaa_waiting is not None:
 			if drmaa_waiting:
-				log.info('%s%s : ' % self.short_id + 'But R process failed !')
+				log.info('%s%s : ' % self.short_id + 'Also R process failed ! (%s)' % type)
 				# TODO is R failure on 1st level wait
 			else:
-				log.info('%s%s : ' % self.short_id + 'But R process failed OR user abort !')
+				log.info('%s%s : ' % self.short_id + 'Also R process failed OR user abort ! (%s)' % type)
 				return self.__manage_run_aborted(ret_val, exit_code)
 				# TODO or 2nd level wait either R failure or user abort (for ex when job was aborted before it started)
 		self.breeze_stat = JobStat.FAILED
