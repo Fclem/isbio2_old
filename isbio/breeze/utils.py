@@ -414,14 +414,14 @@ class Timer(object):
 
 	# There are other arguments to __exit__ but we don't care here
 	def __exit__(self, *args, **kwargs):
-		self.stop()
+		self.function_timer()
 
 	def start(self):
 		if hasattr(self, 'interval'):
 			del self.interval
 		self.start_time = time.time()
 
-	def stop(self):
+	def function_timer(self):
 		if hasattr(self, 'start_time'):
 			self.interval = time.time() - self.start_time
 			del self.start_time # Force timer reinit
@@ -441,9 +441,9 @@ class LoggerTimer(Timer):
 		# Format the prefix if not None or empty, else use empty string
 		self.prefix = prefix or '' # getmembers(func, '__name__')
 
-	def stop(self):
+	def function_timer(self):
 		# Call the parent method
-		super(LoggerTimer, self).stop()
+		super(LoggerTimer, self).function_timer()
 		# Call the logging function with the message
 		self.f('{0}{1}{2}'.format(self.prefix, self.interval, ' sec'))
 
