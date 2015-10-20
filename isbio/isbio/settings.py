@@ -61,9 +61,11 @@ def recur_rec(nb, funct, args):
 
 MAINTENANCE = False
 USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S%z"
+USUAL_LOG_FORMAT = '%(asctime)s %(levelname)-8s %(funcName)-20s %(message)s'
 DB_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FOLDER = '/var/log/breeze/'
-log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
+# log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
+log_fname = 'rotating.log'
 LOG_PATH = '%s%s' % (LOG_FOLDER, log_fname)
 
 
@@ -72,14 +74,14 @@ class BreezeSettings(Settings):
 	DEBUG = False
 	TEMPLATE_DEBUG = DEBUG
 
-	USUAL_DATE_FORMAT = USUAL_DATE_FORMAT
-	LOG_PATH = LOG_PATH
+	# USUAL_DATE_FORMAT = USUAL_DATE_FORMAT
+	# LOG_PATH = LOG_PATH
 
-	logging.basicConfig(level=logging.INFO,
-						format='%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
-						datefmt=USUAL_DATE_FORMAT,
-						# filename='/tmp/BREEZE.log', filemode='w')
-						filename=LOG_PATH, filemode='w+')
+	# logging.basicConfig(level=logging.INFO,
+	#					format=USUAL_LOG_FORMAT,
+	#					datefmt=USUAL_DATE_FORMAT,
+	#					# filename='/tmp/BREEZE.log', filemode='w')
+	#					filename=LOG_PATH, filemode='w+')
 
 	ADMINS = (
 		('Clement FIERE', 'clement.fiere@helsinki.fi'),
@@ -243,7 +245,7 @@ class BreezeSettings(Settings):
 		'disable_existing_loggers': False,
 		'formatters': {
 			'standard': {
-				'format': '%(asctime)s %(funcName)s %(levelname)-8s %(message)s',
+				'format': USUAL_LOG_FORMAT,
 				'datefmt': USUAL_DATE_FORMAT,
 			},
 		},
@@ -265,7 +267,7 @@ class BreezeSettings(Settings):
 				'level': 'ERROR',
 				'filters': ['require_debug_false'],
 				'class': 'django.utils.log.AdminEmailHandler'
-			}
+			},
 		},
 		'loggers': {
 			'': {
@@ -277,8 +279,9 @@ class BreezeSettings(Settings):
 				'handlers': ['mail_admins'],
 				'level': 'ERROR',
 				'propagate': True,
-				},
-			}
+			},
+
+		}
 	}
 
 	TEMPLATE_CONTEXT_PROCESSORS = (
@@ -494,7 +497,7 @@ class DevSettings(BreezeSettings):
 	SPECIAL_CODE_FOLDER = PROJECT_PATH + 'code/'
 	FS_SIG_FILE = PROJECT_PATH + 'fs_sig.md5'
 	FS_LIST_FILE = PROJECT_PATH + 'fs_checksums.json'
-	FOLDERS_TO_CHECK = [TEMPLATE_FOLDER, SHINY_REPORTS, SHINY_TAGS, REPORT_TYPE_PATH,
+	FOLDERS_TO_CHECK = [TEMPLATE_FOLDER, SHINY_TAGS, REPORT_TYPE_PATH, # SHINY_REPORTS,
 						RSCRIPTS_PATH, RORA_LIB, MOULD_FOLDER, STATIC_ROOT, DATASETS_FOLDER]
 
 	# STATIC URL MAPPINGS
@@ -539,10 +542,33 @@ class DevSettings(BreezeSettings):
 			'disable_existing_loggers': False,
 			'formatters': {
 				'verbose': {
-					'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
+					'datefmt': USUAL_DATE_FORMAT,
+					'format': USUAL_LOG_FORMAT,
+				},
+				'standard': {
+					'format': USUAL_LOG_FORMAT,
+					'datefmt': USUAL_DATE_FORMAT,
 				},
 			},
+			'filters': {
+				'require_debug_false': {
+					'()': 'django.utils.log.RequireDebugFalse'
+				}
+			},
 			'handlers': {
+				'default': {
+					'level': 'DEBUG',
+					'class': 'logging.handlers.RotatingFileHandler',
+					'filename': LOG_PATH,
+					'maxBytes': 1024 * 1024 * 5, # 5 MB
+					'backupCount': 10,
+					'formatter': 'standard',
+				},
+				'mail_admins': {
+					'level': 'ERROR',
+					'filters': ['require_debug_false'],
+					'class': 'django.utils.log.AdminEmailHandler'
+				},
 				'console': {
 					'level': 'INFO',
 					'class': 'logging.StreamHandler',
@@ -560,15 +586,25 @@ class DevSettings(BreezeSettings):
 					'handlers': ['console'],
 					'level': 'DEBUG',
 					'propagate': True,
-				}
+				},
+				'': {
+					'handlers': ['default'],
+					'level': logging.INFO,
+					'propagate': True
+				},
+				'django.request': {
+					'handlers': ['mail_admins'],
+					'level': 'ERROR',
+					'propagate': True,
+				},
 			}
 		}
 		import logging.config
 		logging.config.dictConfig(LOGGING)
 		print 'source home : ' + SOURCE_ROOT
-		logging.info('source home : ' + SOURCE_ROOT)
+		logging.debug('source home : ' + SOURCE_ROOT)
 		print 'project home : ' + PROJECT_PATH
-		logging.info('project home : ' + PROJECT_PATH)
+		logging.debug('project home : ' + PROJECT_PATH)
 	else:
 		VERBOSE = False
 
