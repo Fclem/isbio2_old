@@ -56,17 +56,17 @@ import sys
 logger = logging.getLogger(__name__)
 
 
-class RequestStorage():
+class RequestStorage(object):
 	form_details = OrderedDict()
 
 	def get_param_list(self):
-		class creepy():
+		class creepy(object):
 			pass
 
 		tmp = creepy()
 		plist = list()
-		pkeys = self.form_details.keys()
-		for key in pkeys:
+		p_keys = self.form_details.keys()
+		for key in p_keys:
 			tmp.var = self.form_details[key][0].cleaned_data['inline_var']
 			tmp.type = self.form_details[key][0].cleaned_data['type']
 			plist.append(copy.deepcopy(tmp))
@@ -110,8 +110,6 @@ def register_user(request):
 	else:
 		form = breezeForms.RegistrationForm()
 		return render_to_response('forms/register.html', RequestContext(request, {'form': form}))
-
-	return 1
 
 
 def base(request):
@@ -199,7 +197,6 @@ def home(request, state="feed"):
 			count = Jobs.objects.filter(script=each).count()
 		stats.append({'script': each, 'author': each.author, 'istag': each.istag, 'times': count})
 
-
 	# Get Screens
 	screens = dict()  # rora.get_screens_info()
 
@@ -249,7 +246,7 @@ def home(request, state="feed"):
 	}))
 
 
-def updateServer(request):
+def update_server(request):
 	server, server_info = aux.update_server_routine()
 
 	return HttpResponse(simplejson.dumps({'server_status': server, 'server_info': server_info}),
@@ -2973,9 +2970,8 @@ def restart_breeze(request):
 	if not request.user.is_superuser:
 		raise PermissionDenied
 
-	import subprocess
+	python = sys.executable
+	os.execl(python, python, *sys.argv)
 
-	subprocess.Popen("%s &" % settings.RE_RUN_SH, stdout=subprocess.PIPE)
+# return HttpResponseRedirect(reverse(home))
 
-	# return file_system_info(request)
-	return HttpResponseRedirect(reverse(home))
