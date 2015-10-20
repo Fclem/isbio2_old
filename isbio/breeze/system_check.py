@@ -5,6 +5,7 @@ from breeze.auxiliary import proxy_to
 from isbio import settings
 from breeze.b_exceptions import *
 from django.http import HttpRequest
+from collections import OrderedDict
 # from django.contrib.auth.models import User
 # from _ctypes_test import func
 # import breeze.auxiliary as aux
@@ -231,7 +232,10 @@ class SysCheckUnit(Process):
 			return True
 		else:
 			self.block() # wait for process to finish
-			self.terminate()
+			try:
+				self.terminate()
+			except AttributeError:
+				pass
 			return self.exitcode == 0
 
 	# clem 08/09/2015
@@ -361,7 +365,8 @@ def generate_file_index(root_dir, exclude=list(), start_id=0):
 	"""
 	from os import walk
 	from os.path import getmtime, join
-	md5s = dict()
+
+	md5s = OrderedDict()
 
 	def short(dir_name):
 		if dir_name != root_dir:
@@ -369,9 +374,11 @@ def generate_file_index(root_dir, exclude=list(), start_id=0):
 		else:
 			return ''
 
-	for dirName, subdirList, fileList in walk(root_dir):
+	for dirName, subdirList, fileList in sorted(walk(root_dir)):
+		# subdirList.sort()
 		s_dir_name = short(dirName)
 		if dirName not in exclude and '/.' not in s_dir_name and not s_dir_name.startswith('.'):
+			# fileList.sort()
 			for fname in fileList:
 				start_id += 1
 				md = utils.get_file_md5(join(dirName, fname))
@@ -415,7 +422,8 @@ def file_system_check(verbose=False):
 	"""
 	from django.utils import simplejson
 	total = ''
-	save_obj = dict()
+	# save_obj = dict()
+	save_obj = OrderedDict()
 	last_id = 0
 	for each in settings.FOLDERS_TO_CHECK:
 		md5s, last_id = generate_file_index(each, ['__MACOSX', ], last_id)
@@ -465,6 +473,7 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 	:rtype:
 	"""
 	from os.path import join, basename, dirname
+
 	files_state = list()
 	folders_state = list()
 	current_state = file_system_check()[1]
@@ -472,10 +481,13 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 	flag_changed = False
 	flag_invalid = False
 	errors = 0
-	folder = dict()
+	folder = OrderedDict()
+
+	current_state = OrderedDict(sorted(current_state.items(), key=lambda t: t[0]))
+	saved_state = OrderedDict(sorted(saved_state.items(), key=lambda t: t[0]))
 
 	for each in saved_state:
-		status = dict()
+		status = OrderedDict()
 		status['name'] = each
 		status['size'] = 0
 		if each not in current_state:
@@ -498,8 +510,10 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 
 	for each in saved_state:
 		files_tmp = list()
-		ss = saved_state[each]
-		cs = current_state[each]
+		# ss = saved_state[each]
+		ss = OrderedDict(sorted(saved_state[each].items(), key=lambda t: t[0]))
+		# cs = current_state[each]
+		cs = OrderedDict(sorted(current_state[each].items(), key=lambda t: t[0]))
 		for file_n in ss:
 			status = dict()
 			file_path = join(each, file_n)
@@ -527,10 +541,10 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 				del cs[file_n]
 			if not status['readable']:
 				status['id'] = ss[file_n][2]
-			files_tmp.append(status)
+			files_tmp.append(status.copy())
 		# at this point cs should be empty
 		for file_n in cs:
-			status = dict()
+			status = OrderedDict()
 			file_path = join(each, file_n)
 			flag_changed = True
 			status['name'] = basename(file_n)
@@ -543,6 +557,8 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 				else:
 					status['id'] = ss[file_n][2]
 			files_tmp.append(status)
+			# files_tmp.insert(0, status.copy())
+			# files_tmp = [status.copy()] + files_tmp
 		files_state.append({ 'name': each, 'size': folder[each]['size'], 'count': len(files_tmp), 'list': files_tmp })
 
 	if errors > 0:
