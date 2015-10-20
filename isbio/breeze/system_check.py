@@ -661,6 +661,21 @@ def check_csc_mount():
 	return False
 
 
+# clem on 20/10/2015
+def check_csc_taito_mount():
+	"""
+	Check if remote Shiny is mounted as part of the FS
+	:rtype: bool
+	"""
+	from os import path
+	try:
+		if path.exists(settings.TMP_CSC_TAITO_MOUNT) and path.isdir(settings.TMP_CSC_TAITO_MOUNT + settings.TMP_CSC_TAITO_REPORT_PATH):
+			return True
+	except Exception:
+		pass
+	return False
+
+
 # clem on 09/09/2015
 def check_watcher():
 	from breeze.middlewares import JobKeeper
@@ -750,6 +765,8 @@ CHECK_LIST = [
 	SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTPS server', 'CSC SHINY HTTPS\t\t', RunType.runtime,
 				arg=HttpRequest(), ex=ShinyUnreachable),
 	SysCheckUnit(check_csc_mount, 'csc_mount', 'CSC Shiny File System', 'CSC SHINY FS\t\t', RunType.runtime,
+				ex=FileSystemNotMounted),
+	SysCheckUnit(check_csc_taito_mount, 'csc_taito_mount', 'CSC Taito File System', 'CSC TAITO FS\t\t', RunType.runtime,
 				ex=FileSystemNotMounted),
 	SysCheckUnit(check_watcher, 'watcher', 'JobKeeper', 'JOB_KEEPER\t\t', RunType.runtime, ex=WatcherIsNotRunning),
 ]
