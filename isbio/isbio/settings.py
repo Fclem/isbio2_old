@@ -498,7 +498,8 @@ class DevSettings(BreezeSettings):
 	FS_SIG_FILE = PROJECT_PATH + 'fs_sig.md5'
 	FS_LIST_FILE = PROJECT_PATH + 'fs_checksums.json'
 	FOLDERS_TO_CHECK = [TEMPLATE_FOLDER, SHINY_TAGS, REPORT_TYPE_PATH, # SHINY_REPORTS,
-		SPECIAL_CODE_FOLDER, RSCRIPTS_PATH, RORA_LIB, MOULD_FOLDER, STATIC_ROOT, DATASETS_FOLDER]
+		# SPECIAL_CODE_FOLDER,
+						RSCRIPTS_PATH, RORA_LIB, MOULD_FOLDER, STATIC_ROOT, DATASETS_FOLDER]
 
 	# STATIC URL MAPPINGS
 	SHINY_URL = '/shiny/rep/' # FIXME
@@ -516,6 +517,7 @@ class DevSettings(BreezeSettings):
 
 	TMP_CSC_TAITO_MOUNT = '/mnt/csc-taito/'
 	TMP_CSC_TAITO_REPORT_PATH = 'breeze/'
+	TMP_CSC_TAITO_REMOTE_CHROOT = '/homeappl/home/clement/'
 
 	# mail config
 	EMAIL_HOST = 'smtp.gmail.com'
@@ -528,6 +530,7 @@ class DevSettings(BreezeSettings):
 	#
 	# END OF CONFIG
 	# RUN-MODE SPECIFICS FOLLOWING
+
 	# ** NO CONFIGURATION CONST BEYOND THIS POINT **
 	#
 

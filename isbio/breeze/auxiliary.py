@@ -14,7 +14,7 @@ from django.http import Http404, HttpResponse
 from django.template import loader
 from django.template.context import RequestContext
 from django.conf import settings
-from breeze.models import Report, Jobs, DataSet
+from breeze.models import Report, Jobs, DataSet, RunServer
 import sys
 import utils
 
@@ -294,7 +294,7 @@ def merge_job_history(jobs, reports, user=None):
 			el['ddownhref'] = '/jobs/download/%s-code'%str(item.id)  # debug
 			el['fdownhref'] = '/jobs/download/%s'%str(item.id)  # full folder
 			
-			el['home'] = item._home_folder_rel
+			el['home'] = item.home_folder_rel
 			el['reschedhref'] = '/jobs/edit/%s-repl'%str(item.id)
 
 			el['delhref'] = '/jobs/delete/%s'%str(item.id)
@@ -319,7 +319,7 @@ def merge_job_history(jobs, reports, user=None):
 			el['ddownhref'] = '/report/download/%s-code' % str(item.id)  # debug
 			el['fdownhref'] = '/report/download/%s' % str(item.id)  # full folder
 
-			el['home'] = item._home_folder_rel
+			el['home'] = item.home_folder_rel
 			el['reschedhref'] = '/reports/edit/%s'%str(item.id)
 
 			el['delhref'] = '/reports/delete/%s-dash'%str(item.id)
@@ -531,7 +531,7 @@ def get_report_path(f_item, fname=None):
 	if isinstance(f_item, DataSet):
 		home = f_item.rdata
 	else:
-		home = f_item._home_folder_rel
+		home = f_item.home_folder_rel
 	local_path = home + '/' + unicode.replace(unicode(fname), '../', '')
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
@@ -563,7 +563,7 @@ def get_report_path_test(f_item, fname=None, no_fail=False):
 
 	if fname is None:
 		fname = '%s.html' % Report.REPORT_FILE_NAME
-	local_path = f_item._home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '') # safety
+	local_path = f_item.home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '') # safety
 	path_to_file = str(settings.MEDIA_ROOT) + local_path
 
 	file_exists = os.path.exists(path_to_file)
@@ -757,3 +757,28 @@ def image_embedding(path_to_file, cached_path=None):
 		f2.write(str(soup))
 
 	return str(soup)
+
+
+def taito_run_server(instance):
+	"""
+		:rtype: RunServer
+	"""
+	# path = '/home/clem/mnt/csc-taito/homeappl/home/clement/'
+	assert isinstance(instance, Report) or isinstance(instance, Jobs)
+	local_mount = settings.TMP_CSC_TAITO_MOUNT # '/mnt/csc-taito/'
+	target_mounted_prefix = settings.TMP_CSC_TAITO_REMOTE_CHROOT # '/homeappl/home/clement/'
+	report_path = settings.TMP_CSC_TAITO_REPORT_PATH # 'breeze/'
+	return RunServer(local_mount, target_mounted_prefix, report_path, instance, False)
+
+
+def test_tree():
+	a = Report.objects.get(pk=3628)
+	assert isinstance(a, Report)
+
+	a._run_server = taito_run_server(a)
+
+	with a._run_server as b:
+		# b._generate_source_tree(a.r_exec_path.path, verbose=True)
+		b.parse_all()
+	#
+	# a._run_server.copy_dependencies(a._rexec.path)

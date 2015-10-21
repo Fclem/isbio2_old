@@ -237,7 +237,7 @@ class FolderObj(object):
 		raise self.not_imp()
 
 	@property
-	def _home_folder_rel(self):
+	def home_folder_rel(self):
 		"""
 		Returns the relative path to this object folder
 		:return: the relative path to this object folder
@@ -256,7 +256,7 @@ class FolderObj(object):
 		:return: the absolute path to this object folder
 		:rtype: str
 		"""
-		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
+		return '%s%s' % (settings.MEDIA_ROOT, self.home_folder_rel)
 
 	@property
 	def base_folder(self):
@@ -1344,6 +1344,237 @@ class UserProfile(models.Model):
 		return self.user.get_full_name()  # return self.user.username
 
 
+#
+# NEW distributed POC
+#
+
+
+class SrcObj:
+	def __init__(self, base_string):
+		self.str = base_string
+
+	@property
+	def path(self):
+		return self.str.replace('"', '').replace("'", "")
+
+	@property
+	def new(self):
+		proj = settings.PROJECT_FOLDER
+		return SrcObj(self.str.replace('"%s' % proj, '"~%s' % proj).replace("'%s" % proj, "'~%s" % proj))
+
+	def __repr__(self):
+		return self.str
+
+	def __str__(self):
+		return self.str
+
+
+# clem 20/10/2015 distributed POC
+class FileParser(SrcObj):
+	def __init__(self, file_n, dest):
+		self.file_n = file_n
+		self.__dest = ''
+		self.destination = dest
+		self.content = None
+		self._new_content = None
+		self.str = file_n
+		# super(self.__class__, self).__init__(self.file_n)
+		# super(FileParser, self).__init__()
+
+	def load(self):
+		if not self._new_content:
+			with open(self.path) as script:
+				self.content = script.read()
+				self._new_content = self.content
+
+	def add_on_top(self, content):
+		self.new_content = content + '\n' + self.new_content
+
+	def append(self, content):
+		self.new_content = self.new_content + '\n' + content
+
+	def replace(self, old, new):
+		self.new_content = self.new_content.replace(old, new)
+
+	def parse_and_save(self, pattern, callback):
+		self.parse(pattern, callback)
+		self.save_file()
+
+	def parse(self, pattern, callback):
+		import re
+
+		if not callable(callback):
+			return False
+
+		match = re.findall(pattern, self.new_content, re.DOTALL)
+		callback(self, match, pattern)
+
+		return True
+
+	def save_file(self):
+		import os
+		dest = os.path.dirname(self.destination)
+		try:
+			os.makedirs(dest, 0o0770)
+		except OSError as e:
+			pass
+
+		with open(self.destination, 'w') as new_script:
+			while new_script.write(self.new_content):
+				pass
+		return True
+
+	@property
+	def new_content(self):
+		if not self._new_content:
+			self.load()
+		return self._new_content
+
+	@new_content.setter
+	def new_content(self, value):
+		self._new_content = value
+
+	@property
+	def destination(self):
+		return self.__dest
+
+	@destination.setter
+	def destination(self, value):
+		self.__dest = value.replace('//', '/').replace('../', '').replace('..\\', '')
+
+
+# clem 20/10/2015 distributed POC
+class RunServer:
+	_fs_path = str
+	_reports_path = str
+	# lookup only sourced files inside PROJECT_FOLDER
+	project_fold = settings.PROJECT_FOLDER.replace('/', '\/')
+	LOAD_PATTERN = r'(?<!#)source\(\s*("(%s[^"]+)"|\'(%s[^\']+)\')\s*\)' % (project_fold, project_fold)
+	LIBS_PATTERN = r'(?<!#)(library\(\s*(?:"([^"]+)"|\'([^\']+)\'|([^")]+))\s*\))'
+	ABS_PATH_PATTERN = r'("([^~]{0,1}\/projects\/[^"]+)"|\'([^~]{0,1}\/projects\/[^\']+)\')'
+
+	def __init__(self, fs_path, remote_chroot, reports_path, instance, local=True):
+		self._fs_path = fs_path
+		self._local = local
+		self._remote_chroot = remote_chroot
+		self._reports_path = reports_path
+		assert isinstance(instance, Runnable)
+		self._run_inst = instance
+
+	# obsolete
+	def _generate_source_tree(self, file_n, pf='', verbose=False):
+		""" list the dependencies of a R file ("source()" calls)
+		returns <b>tree</b>, <b>flat</b>, _
+
+		<b>tree</b> is a dict of dict of (...)
+		while <b>flat</b> is a dict of list, nesting containing dedoubled list of all required files :
+			keys being a list of all nodes in the original tree
+			values being lists of first childs in the original tree
+			this way you don't need to crawl the tree, and neither end up with doubles.
+
+		:type file_n: str
+		:type pf: str
+		:type verbose: bool
+		:rtype: dict, dict, list
+		"""
+		import re
+
+		the_path = SrcObj(file_n) # or self._rexec.path
+		# the_path =
+
+		with open(the_path.path) as script:
+			tree = dict()
+			flat = list()
+			result = dict()
+
+			pattern = r'source\(\s*("([^"]+)"|\'([^\']+)\')\s*\)'
+			match = re.findall(pattern, script.read(), re.DOTALL)
+			if verbose:
+				print pf + str(the_path), ' X ', len(match)
+			for el in match:
+				# line = el[1] or el[2]
+				line = SrcObj(el[0])
+				sub_tree, total, sub_list = self._generate_source_tree(line.path, pf=pf + '\t', verbose=verbose)
+
+				tree[line] = sub_tree
+
+				flat.append(line)
+				if total:
+					result.update(total)
+			result[the_path] = flat
+
+		return { the_path: tree }, result, flat
+
+	def parse_all(self):
+		import os
+		# source
+		the_path = self._run_inst.r_exec_path.path
+		# destination
+		new_path = '%s%s%s%s' % \
+			(self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
+		# parse the file to change path and link files related to source()
+		the_file_p = FileParser(the_path, new_path)
+		the_file_p.add_on_top('source("/projects/breeze/code/cfiere/csc_taito_dyn_lib_load_and_install.R") # dynamic library loading and installer by clem 19-20/10/2015')
+		the_file_p.parse(self.LOAD_PATTERN, self._parser_main_recur_call_back)
+
+	def _parser_main_recur_call_back(self, file_obj, match, pattern):
+		assert isinstance(file_obj, FileParser)
+		for el in match:
+			# sub file has been parsed and copier, we change it's ref
+			line = SrcObj(el[0])
+			new_path = '%s%s' % (self._fs_path, line.path)
+			# # print 'new_path', new_path
+			sub_file_p = FileParser(line.path, new_path)
+
+			# TODO else ?
+			# recursive
+			sub_file_p.parse(pattern, self._parser_main_recur_call_back)
+
+			# subs parsings
+			self._sub_parsers(sub_file_p)
+
+			# local sourcing
+			file_obj.replace(line.str, line.new.str)
+		# self parsings
+		self._sub_parsers(file_obj)
+		# save
+		file_obj.save_file()
+
+	def _sub_parsers(self, file_obj):
+		assert isinstance(file_obj, FileParser)
+		file_obj.parse(self.LIBS_PATTERN, self._parser_libs_call_back)
+		file_obj.parse(self.ABS_PATH_PATTERN, self._parser_abs_call_back)
+
+	@staticmethod
+	def _parser_libs_call_back(file_obj, match, pattern):
+		assert isinstance(file_obj, FileParser)
+		for el in match:
+			line = el[0]
+			value = el[1] or el[2] or el[3] # 1:" 2:' 3:None
+			# print line, value
+			file_obj.replace(line, "load_lib('%s')" % value)
+
+	@staticmethod
+	def _parser_abs_call_back(file_obj, match, pattern):
+		assert isinstance(file_obj, FileParser)
+		for el in match:
+			line = SrcObj(el[0])
+			# print line, value
+			print 'change', line.path, 'to', line.new.path
+			file_obj.replace(line.path, line.new.path)
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		pass
+
+
+#
+# *END* NEW distributed POC
+#
+
+
 class Runnable(FolderObj, models.Model):
 	##
 	# CONSTANTS
@@ -1376,6 +1607,7 @@ class Runnable(FolderObj, models.Model):
 	def __init__(self, *args, **kwargs):
 		super(Runnable, self).__init__(*args, **kwargs)
 		self.__can_save = False
+		self._run_server = None
 
 	##
 	# DB FIELDS
@@ -1482,7 +1714,7 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def sh_command_line(self):
-		return self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path, self._rout_file)
+		return self.SH_CL % (settings.R_ENGINE_PATH, self.r_exec_path, self._rout_file)
 
 	@property # UNUSED ?
 	def html_path(self):
@@ -1493,7 +1725,7 @@ class Runnable(FolderObj, models.Model):
 		return self._rout_file
 
 	@property # used by write_sh_file() # useless #Future ?
-	def _r_exec_path(self):
+	def r_exec_path(self):
 		return self._rexec
 
 	@property # UNUSED ?
@@ -1757,8 +1989,6 @@ class Runnable(FolderObj, models.Model):
 			os.makedirs(self.home_folder_full_path)
 
 		# BUILD instance specific R-File
-		# self.generate_r_file(kwargs['sections'], kwargs['request_data'], custom_form=kwargs['custom_form'])
-		# self.generate_r_file(sections=kwargs['sections'], request_data=kwargs['request_data'], custom_form=kwargs['custom_form'])
 		self.generate_r_file(*args, **kwargs)
 		# other stuff that might be needed by specific kind of instances (Report and Jobs)
 		self.deferred_instance_specific(*args, **kwargs)
@@ -1857,7 +2087,7 @@ class Runnable(FolderObj, models.Model):
 	def qstat_stat(self):
 		return self.sge_obj.state
 
-	def waiter(self, s, drmaa_waiting=False):
+	def waiter(self, s, drmaa_waiting=False): # TODO re-write a bit
 		"""
 		:param s:
 		:type s: drmaa.Session
@@ -1902,7 +2132,7 @@ class Runnable(FolderObj, models.Model):
 			if isinstance(ret_val, drmaa.JobInfo):
 				if ret_val.hasExited:
 					exit_code = ret_val.exitStatus
-				dic = ret_val.resourceUsage # FUTURE use for mail reporting
+				# dic = ret_val.resourceUsage # TODO FUTURE use for mail reporting
 				aborted = ret_val.wasAborted
 
 			self.progress = 100
@@ -2417,7 +2647,7 @@ class Report(Runnable):
 		from django.utils.http import urlencode
 
 		if self.rora_id > 0:
-			return '?%s' % urlencode([('path', self._home_folder_rel), ('roraId', str(self.rora_id))])
+			return '?%s' % urlencode([('path', self.home_folder_rel), ('roraId', str(self.rora_id))])
 		else:
 			return ''
 
@@ -2487,8 +2717,6 @@ class Report(Runnable):
 		# self.save()
 
 		# generate shiny access for offsite users
-		# if report_data['report_type'] == 'ScreenReport': # TODO dynamic
-		# if self._type ==  'ScreenReport': # TODO dynamic
 		if self.is_shiny_enabled:
 			self.generate_shiny_key()
 
@@ -2512,7 +2740,7 @@ class Report(Runnable):
 		from breeze import shell as rshell
 		import xml.etree.ElementTree as XmlET
 
-		sections = kwargs.pop('sections', None)
+		sections = kwargs.pop('sections', list())
 		request_data = kwargs.pop('request_data', None)
 		# custom_form = kwargs.pop('custom_form', None)
 
