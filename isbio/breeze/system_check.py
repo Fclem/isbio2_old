@@ -2,14 +2,14 @@ from breeze import utils
 from utils import Bcolors
 from utils import logger_timer
 from breeze.auxiliary import proxy_to
-from isbio import settings
+from django.conf import settings
 from breeze.b_exceptions import *
 from django.http import HttpRequest
 from collections import OrderedDict
 # from django.contrib.auth.models import User
 # from _ctypes_test import func
 # import breeze.auxiliary as aux
-
+# from isbio import settings
 
 DEBUG = True
 SKIP_SYSTEM_CHECK = False
@@ -744,7 +744,6 @@ def long_poll_waiter():
 	sleep(settings.LONG_POLL_TIME_OUT_REFRESH)
 	return 'ok'
 
-# TODO FIXME runtime fs_check slow and memory leak ?
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
 	ex=FileSystemNotMounted, mandatory=True)
 

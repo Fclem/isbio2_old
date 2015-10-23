@@ -306,7 +306,8 @@ class DevSettings(BreezeSettings):
 
 	sge_arch = "lx26-amd64";
 	os.environ['SGE_ROOT'] = '/opt/gridengine'
-	os.environ['QSTAT_BIN'] = os.environ['SGE_ROOT']+'/bin/'+sge_arch+'/qstat'
+	# os.environ['QSTAT_BIN'] = os.environ['SGE_ROOT']+'/bin/'+sge_arch+'/qstat'
+	os.environ['QSTAT_BIN'] = '/usr/bin/qstat'
 	os.environ['SGE_ARCH'] = 'UNSUPPORTED-lx3.2.0-40-generic-amd64'
 	os.environ['LD_LIBRARY_PATH'] = os.environ['SGE_ROOT']+'/lib/' + os.environ['SGE_ARCH']
 

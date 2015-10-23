@@ -81,10 +81,14 @@ def console_print_sub(text, date_f=None):
 
 
 # 10/03/2015 Clem / ShinyProxy
-def date_t(date_f=None):
+def date_t(date_f=None, time_stamp=None):
 	if date_f is None:
 		date_f = settings.USUAL_DATE_FORMAT
-	return str(datetime.now().strftime(date_f))
+	if not time_stamp:
+		date = datetime.now()
+	else:
+		date = datetime.fromtimestamp(time_stamp)
+	return str(date.strftime(date_f))
 
 
 # clem on 20/08/2015
@@ -541,3 +545,23 @@ def fix_file_acl_interface(fid):
 				return set_file_acl(path)
 
 	return False
+
+
+from multipledispatch import dispatch
+
+
+@dispatch(basestring)
+def file_mod_time(path):
+	from os.path import getmtime # , join
+
+	return getmtime(path)
+
+
+@dispatch(basestring, basestring)
+def file_mod_time(dirName, fname):
+	from os.path import join
+
+	return file_mod_time(join(dirName, fname))
+
+
+

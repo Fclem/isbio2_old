@@ -1362,6 +1362,23 @@ class SrcObj:
 		proj = settings.PROJECT_FOLDER
 		return SrcObj(self.str.replace('"%s' % proj, '"~%s' % proj).replace("'%s" % proj, "'~%s" % proj))
 
+	# clem 21/10/15
+	@property
+	def base_name(self):
+		import os
+		return os.path.basename(self.path)
+
+	# clem 21/10/15
+	@staticmethod
+	def _dir_name(path):
+		import os
+		return os.path.dirname(path)
+
+	# clem 21/10/15
+	@property
+	def dir_name(self):
+		return self._dir_name(self.path)
+
 	def __repr__(self):
 		return self.str
 
@@ -1394,7 +1411,7 @@ class FileParser(SrcObj):
 		self.new_content = self.new_content + '\n' + content
 
 	def replace(self, old, new):
-		self.new_content = self.new_content.replace(old, new)
+		self.new_content = self.new_content.replace(str(old), str(new))
 
 	def parse_and_save(self, pattern, callback):
 		self.parse(pattern, callback)
@@ -1424,6 +1441,10 @@ class FileParser(SrcObj):
 				pass
 		return True
 
+	@property # TODO code dt mod
+	def mod_dt(self):
+		return utils.date_t(time_stamp=utils.file_mod_time(self.path))
+
 	@property
 	def new_content(self):
 		if not self._new_content:
@@ -1442,6 +1463,11 @@ class FileParser(SrcObj):
 	def destination(self, value):
 		self.__dest = value.replace('//', '/').replace('../', '').replace('..\\', '')
 
+	# clem 21/10/15
+	@property
+	def destination_dir_name(self):
+		return self._dir_name(self.destination)
+
 
 # clem 20/10/2015 distributed POC
 class RunServer:
@@ -1451,15 +1477,19 @@ class RunServer:
 	project_fold = settings.PROJECT_FOLDER.replace('/', '\/')
 	LOAD_PATTERN = r'(?<!#)source\(\s*("(%s[^"]+)"|\'(%s[^\']+)\')\s*\)' % (project_fold, project_fold)
 	LIBS_PATTERN = r'(?<!#)(library\(\s*(?:"([^"]+)"|\'([^\']+)\'|([^")]+))\s*\))'
-	ABS_PATH_PATTERN = r'("([^~]{0,1}\/projects\/[^"]+)"|\'([^~]{0,1}\/projects\/[^\']+)\')'
+	# ABS_PATH_PATTERN = r'("([^~]{0,1}\/projects\/[^"]+)"|\'([^~]{0,1}\/projects\/[^\']+)\')'
+	ABS_PATH_PATTERN = r'("(\/projects\/[^"]+)"|\'([^~]{0,1}\/projects\/[^\']+)\')'
 
-	def __init__(self, fs_path, remote_chroot, reports_path, instance, local=True):
-		self._fs_path = fs_path
-		self._local = local
-		self._remote_chroot = remote_chroot
-		self._reports_path = reports_path
+	def __init__(self, fs_path, remote_chroot, reports_path, instance, target_name, add_source, user, local=True):
+		self._fs_path = fs_path # local mount of remote fs
+		self._local = local # local or remote server
+		self._remote_chroot = remote_chroot # remote abs path of relative storage mounted in fs_path
+		self._reports_path = reports_path # path of report folder storage in remote relative local path
+		self.target_name = target_name # name of this server
+		self._add_source = add_source # list of files to add as source in script.R (special environment specs, etc)
+		self._user = user # User object of user requesting
 		assert isinstance(instance, Runnable)
-		self._run_inst = instance
+		self._run_inst = instance # instance or Runnable using this RunServer instance
 
 	# obsolete
 	def _generate_source_tree(self, file_n, pf='', verbose=False):
@@ -1507,18 +1537,28 @@ class RunServer:
 
 	def parse_all(self):
 		import os
+		d = utils.date_t()
 		# source
 		the_path = self._run_inst.r_exec_path.path
 		# destination
 		new_path = '%s%s%s%s' % \
 			(self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
-		# parse the file to change path and link files related to source()
+		# parser
 		the_file_p = FileParser(the_path, new_path)
-		the_file_p.add_on_top('source("/projects/breeze/code/cfiere/csc_taito_dyn_lib_load_and_install.R") # dynamic library loading and installer by clem 19-20/10/2015')
+		# add some source that may help with specific env / Renv / cluster / etc
+		if type(self._add_source) is list and self._add_source != list():
+			added = ''
+			for each in self._add_source:
+				added += 'source("%s") # %s\n' % each
+			the_file_p.add_on_top('##### following sources ADDED BY BREEZE :\n%s' % added +
+								'##### END OF BREEZE ADDITIONS ###')
+		the_file_p.add_on_top('## Transfered to %s started by BREEZE on %s' % (self.target_name, d))
+		# parse the file to change path, library loading, and link files related to source()
 		the_file_p.parse(self.LOAD_PATTERN, self._parser_main_recur_call_back)
 
 	def _parser_main_recur_call_back(self, file_obj, match, pattern):
 		assert isinstance(file_obj, FileParser)
+		imp_text = ''
 		for el in match:
 			# sub file has been parsed and copier, we change it's ref
 			line = SrcObj(el[0])
@@ -1534,9 +1574,24 @@ class RunServer:
 			self._sub_parsers(sub_file_p)
 
 			# local sourcing
-			file_obj.replace(line.str, line.new.str)
+			file_obj.replace(line, line.new)
+			imp_text += '## Imported and parsed sourced file %s to %s (local path on %s) \n' %\
+					(line.base_name, line.new.dir_name, self.target_name)
+
 		# self parsings
 		self._sub_parsers(file_obj)
+
+		# file summary log
+		d = utils.date_t()
+		dep = ''
+		if len(match) > 0:
+			dep = '## %s dependencies found, parsed and imported :\n%s' % (len(match), imp_text)
+		file_obj.add_on_top(
+			'##### BREEZE SUMMARY of file parsing to run on %s :\n' % self.target_name +
+			'## Parsed on %s (org. modified on %s) for %s (%s) \n' %
+			(d, file_obj.mod_dt, str(self._user.get_full_name()), self._user) + dep +
+			'##### END OF BREEZE SUMMARY #####'
+		)
 		# save
 		file_obj.save_file()
 
@@ -1560,8 +1615,7 @@ class RunServer:
 		for el in match:
 			line = SrcObj(el[0])
 			# print line, value
-			print 'change', line.path, 'to', line.new.path
-			file_obj.replace(line.path, line.new.path)
+			file_obj.replace(line, line.new)
 
 	def __enter__(self):
 		return self
