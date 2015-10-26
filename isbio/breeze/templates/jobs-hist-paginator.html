@@ -40,7 +40,7 @@
 				{% endif %}
 
 				<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"
-				  {% if not is_local_admin and not job.instance == "report" or job.instance == "report" and  job.status == "succeed" and  not job.go_shiny %}
+				  {% if not is_local_admin and not job.instance == "report" or job.instance == "report" and  not job.status == "succeed" or job.instance == "report" and job.status == "succeed" and not job.go_shiny %}
 					  disabled="disabled"
 				  {% endif %}
 				  ><span class="caret"></span>
