@@ -38,17 +38,24 @@
 				<a class="btn btn-inverse disabled" href="#" disabled><i
 				  class="icon-white icon-download-alt"></i> results </a>
 				{% endif %}
-				<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span>
+
+				<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"
+				  {% if not (is_local_admin or job.instance == "report" or job.instance == "report" and job.status == "succeed" and  job.go_shiny) %}
+					  disabled="disabled"
+				  {% endif %}
+				  ><span class="caret"></span>
 				</button>
 				<ul class="dropdown-menu">
-					<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>
-					<li class="divider"></li>
-					<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a>
-					</li>
+					{% if is_local_admin %}
+						<li align="right"><a href="{{ job.ddownhref }}">R-Debug Info <i class="icon-list-alt"></i></a></li>
+						<li class="divider"></li>
+						<li align="right"><a href="{{ job.fdownhref }}">Full Job Set <i class="icon-folder-open"></i></a>
+						</li>
+					{% endif %}
 					<!-- Re-Run -->
 					{% if job.instance == "report" %}
-					<li class="divider"></li>
-					<li align="right">
+						<li class="divider"></li>
+						<li align="right">
 						<a href="{{ job.reschedhref }}">
 							Re-Run / Duplicate
 							<i class="icon-repeat"></i>
