@@ -2,7 +2,8 @@ from breeze import utils
 from utils import Bcolors
 from utils import logger_timer
 from breeze.auxiliary import proxy_to
-from isbio import settings
+# from isbio import settings
+from django.conf import settings
 from breeze.b_exceptions import *
 from django.http import HttpRequest
 from collections import OrderedDict
@@ -13,9 +14,9 @@ from collections import OrderedDict
 
 DEBUG = True
 SKIP_SYSTEM_CHECK = False
-FAIL_ON_CRITICAL_MISSING = True
-RAISE_EXCEPTION = False
-ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-criticals
+# FAIL_ON_CRITICAL_MISSING = True
+# RAISE_EXCEPTION = False
+# ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-criticals
 
 if DEBUG:
 	# quick fix to solve PyCharm Django console environment issue
@@ -31,6 +32,9 @@ WARN = '[' + Bcolors.warning('NO') + ']'
 # clem 25/09/2015
 class CheckerList(list):
 	""" list of SysCheckUnit with filtering properties """
+	FAIL_ON_CRITICAL_MISSING = True
+	ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-criticals
+
 	def __init__(self, check_list):
 		self._list_to_check = check_list
 		self._results = dict()
@@ -100,9 +104,11 @@ class CheckerList(list):
 			if wait_for_all or each.mandatory:
 				each.block()
 				self._results[each.url] = each.exitcode == 0
-				if FAIL_ON_CRITICAL_MISSING and each.exitcode != 0 and each.mandatory:
-					print Bcolors.fail('BREEZE INIT FAILED')
-					raise each.ex()
+				if self.FAIL_ON_CRITICAL_MISSING and each.exitcode != 0 and each.mandatory:
+					print Bcolors.fail('BREEZE INIT FAILED ( %s )' % repr(each.ex()))
+					# raise each.ex()
+					import sys
+					sys.exit(2)
 				each.terminate()
 				self.remove(each)
 
@@ -146,6 +152,8 @@ class RunType:
 # clem 08/09/2015
 class SysCheckUnit(Process):
 	""" Describe a self executable unit of system test, includes all the process management part """
+	RAISE_EXCEPTION = True
+
 	def __init__(self, funct, url, legend, msg, type, t_out=0, arg=None, supl=None, ex=SystemCheckFailed,
 				mandatory=False, long_poll=False):
 		"""
@@ -225,7 +233,7 @@ class SysCheckUnit(Process):
 			_ concurrency and speed (from console)
 			_ process isolation, and main thread segfault avoidance (from UI)
 		"""
-		super(SysCheckUnit, self).__init__(target=self.split_runner, args=(from_ui,))
+		super(SysCheckUnit, self).__init__(target=self.split_runner, args=(from_ui, ))
 		self.start()
 		if not from_ui:
 			# checking_list.append(self) # add process to the rendez-vous list
@@ -246,10 +254,14 @@ class SysCheckUnit(Process):
 		"""
 		res = False
 		if callable(self.checker_function):
-			if self.arg is not None:
-				res = self.checker_function(self.arg)
-			else:
-				res = self.checker_function()
+			try:
+				if self.arg is not None:
+					res = self.checker_function(self.arg)
+				else:
+					res = self.checker_function()
+			except Exception as e:
+				self.ex = e
+				pass
 		else:
 			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
 
@@ -270,7 +282,7 @@ class SysCheckUnit(Process):
 
 		if not res:
 			import sys
-			if RAISE_EXCEPTION:
+			if self.RAISE_EXCEPTION:
 				raise self.ex
 			if from_ui or self.mandatory:
 				sys.exit(1)
@@ -695,8 +707,9 @@ def check_sge():
 			s.initialize()
 			s.exit()
 			return True
-		except Exception:
-			pass
+		except Exception as e:
+			# pass
+			raise e
 	return False
 
 
