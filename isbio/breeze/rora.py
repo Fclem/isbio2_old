@@ -2,8 +2,10 @@ import rpy2.robjects as ro
 import copy
 from django.conf import settings
 from rpy2.rinterface import RRuntimeError
+from utils import get_logger
 
 DISABLE_DOTM = False
+PATIENT_MODULE_FILE_NAME = 'patient-module.R'
 
 
 # clem on 17/06/2015
@@ -18,8 +20,8 @@ def source_file(file_name):
 	:return: True
 	:rtype: bool
 	"""
-	rcode = 'path <- "%s"; source("%s%s")' % (settings.RORA_LIB, settings.RORA_LIB, file_name)
-	ro.r(rcode)
+	r_code = 'path <- "%s"; source("%s%s")' % (settings.RORA_LIB, settings.RORA_LIB, file_name)
+	ro.r(r_code)
 
 	return True
 
@@ -31,13 +33,13 @@ def test_rora_connect():
 	:return: True|False
 	:rtype: bool
 	"""
-	rcode = 'source("%sconnection.R");' % settings.RORA_LIB
-	rcode += 'link <- roraConnect();'
-	rcode += 'dbDisconnect(link);'
+	r_code = 'source("%sconnection.R");' % settings.RORA_LIB
+	r_code += 'link <- roraConnect();'
+	r_code += 'dbDisconnect(link);'
 	try:
-		x = ro.r(rcode)
+		ro.r(r_code)
 	except RRuntimeError as e:
-		print e
+		get_logger().error(e)
 		return False
 
 	return True
@@ -50,13 +52,14 @@ def test_dotm_connect():
 	:return: True|False
 	:rtype: bool
 	"""
-	rcode = 'source("%sconnection.R");' % settings.RORA_LIB
-	rcode += 'link <- dotmConnect();'
-	rcode += 'dbDisconnect(link);'
+	r_code = 'source("%sconnection.R");' % settings.RORA_LIB
+	r_code += 'link <- dotmConnect();'
+	r_code += 'dbDisconnect(link);'
 	try:
-		x = ro.r(rcode)
+		ro.r(r_code)
 	except RRuntimeError as e:
-		print e
+		# print e
+		get_logger().error(e)
 		return False
 
 	return True
@@ -68,21 +71,17 @@ def get_dtm_screens(disabled=DISABLE_DOTM):
 	"""
 	samples = list()
 
-	if disabled or not test_dotm_connect():
+	# if disabled or not test_dotm_connect():
+	if disabled:
 		return samples
-
-	source_file('patient-module.R')
-
-	r_dotmatixSamples = ro.globalenv['getDTMScreens']
-
-	res = r_dotmatixSamples()
+	res = global_r_call('getDTMScreens')
 
 	# If the data frame is of appropriate format
 	if len(res) == 2:
 		for row in range(1, len(res[0]) + 1):
 			rn = res.rx(row, True)
 			gid = 'ScreenID_' + rn[0][0]
-			samples.append( tuple((gid, rn[1][0])) )
+			samples.append( tuple((gid, rn[1][0])))
 
 	return samples
 
@@ -93,14 +92,10 @@ def get_dtm_screen_groups(disabled=DISABLE_DOTM):
 	"""
 	groups = list()
 
-	if disabled or not test_dotm_connect():
+	# if disabled or not test_dotm_connect():
+	if disabled:
 		return groups
-
-	source_file('patient-module.R')
-
-	r_dotmatixSampleGroups = ro.globalenv['getDTMScreenGroups']
-
-	res = r_dotmatixSampleGroups()
+	res = global_r_call('getDTMScreenGroups')
 
 	# If the data frame is of appropriate format
 	if len(res) == 2:
@@ -120,31 +115,26 @@ def get_patients_info(params, subject):
 		params     -- request dictionary
 		subject    -- can be: "patient", "screen", "sample", "group", "content"
 	"""
-
-	# Source & export R code
-	source_file('basic.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['getPSSData']
-
 	# Prepare parameters for R
-	start = int(params.get('start',0))
-	start = start + 1
+	start = int(params.get('start', 0))
+	start += 1
 
-	span = int(params.get('length',10))
+	span = int(params.get('length', 10))
 	# search_text = params.get('search', '').lower()
 
 	# sorting
-	sort_ind = params.get('order[0][column]','')
+	sort_ind = params.get('order[0][column]', '')
 	post_key = ('columns[%s][data]' % sort_ind)
-	sort_col = params.get(post_key,'')
-	sort_dir = str(params.get('order[0][dir]','')).upper()
+	sort_col = params.get(post_key, '')
+	sort_dir = str(params.get('order[0][dir]', '')).upper()
 
 	# General Search
-	search_value = params.get('search[value]','')
+	search_value = params.get('search[value]', '')
 
 	# R Call:
-	r_getter_output = r_getterFunc(subject, start, span, sort_col, sort_dir, search_value)
+	# r_getter_output = r_getter_func(subject, start, span, sort_col, sort_dir, search_value)
+	r_getter_output = global_r_call('getPSSData', r_file='basic.R',
+									args=(subject, start, span, sort_col, sort_dir, search_value))
 
 	# Data table as such
 	exported_data = r_getter_output[2]
@@ -157,9 +147,9 @@ def get_patients_info(params, subject):
 
 	# Convert exported_data to a list ( of dicts )
 	subject_table = list()
-	row_dict = dict()
-	for row in range(1, exported_row_num+1):
-		row_values = exported_data.rx(row,True)
+	# row_dict = dict()
+	for row in range(1, exported_row_num + 1):
+		row_values = exported_data.rx(row, True)
 
 		row_dict = dict()
 		for col in range(0, exported_col_num):
@@ -179,239 +169,113 @@ def get_patients_info(params, subject):
 	return response
 
 
-def patient_data(id):
+def patient_data(pid):
 	"""
 		Return one row from table by ID
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchPatient']
-
-	# R call
-	data = r_getterFunc(id)
-	return data
+	return global_r_call('searchPatient', pid)
 
 
-def screen_data(id):
+def screen_data(pid):
 	"""
 		Return one row from table by ID
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchScreen']
-
-	# R call
-	data = r_getterFunc(id)
-	return data
+	return global_r_call('searchScreen', pid)
 
 
 def get_all_patient():
 	""""
 		Return all patients data (id and identifier)
 	"""
+	return global_r_call('getAllPatient')
 
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['getAllPatient']
-
-	# R call
-	data = r_getterFunc()
-
-	return data
 
 def sex_data():
 	""""
 		Return all possible sex category
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchSex']
-
-	# R call
-	data = r_getterFunc()
-
-	return data
+	return global_r_call('searchSex')
 
 
 def media_type():
 	""""
 		Return all possible media types
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchMediaType']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchMediaType')
 
 
 def sample_type():
 	""""
 		Return all possible media types
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchSampleType']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchSampleType')
 
 
 def disease_sub_type():
 	""""
 		Return all possible media types
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchDiseaseSubType']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchDiseaseSubType')
 
 
 def histology():
 	""""
 		Return all possible histology
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchHistology']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchHistology')
 
 
 def disease_state_data():
 	""""
 		Return all possible disease states
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchDiseaseState']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchDiseaseState')
 
 
 def experiment_type_data():
 	""""
 		Return all possible disease states
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchExperimentType']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchExperimentType')
 
 
 def disease_grade_data():
 	""""
 		Return all possible disease grades
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchDiseaseGrade']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchDiseaseGrade')
 
 
 def disease_stage_data():
 	""""
 		Return all possible disease stages
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchDiseaseStage']
-
-	# R call
-	data = r_getterFunc()
-	return data
+	return global_r_call('searchDiseaseStage')
 
 
 def organism_data():
-	""""
+	"""
 		Return all possible organism options
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchOrganism']
-
-	# R call
-	data = r_getterFunc()
-
-	return data
+	return global_r_call('searchOrganism')
 
 
 def read_out_data():
-	""""
+	"""
 		Return all possible organism options
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['searchReadOut']
-
-	# R call
-	data = r_getterFunc()
-
-	return data
+	return global_r_call('searchReadOut')
 
 
 def update_patient(data):
-	# Source & export R code
-	source_file('patient-module.R')
-	# Export a function to call
-	r_getterFunc = ro.globalenv['updatePatient']
-
-	# R call
-	update = r_getterFunc(ro.DataFrame(data))
+	update = global_r_call('updatePatient', ro.DataFrame(data))
+	print 'update_patient : ', update
 	return True
 
 
 def update_screen(data):
-	# Source & export R code
-	source_file('patient-module.R')
-	# Export a function to call
-	r_getterFunc = ro.globalenv['updateScreen']
-
-	# R call
-	update = r_getterFunc(ro.DataFrame(data))
+	update = global_r_call('updateScreen', ro.DataFrame(data))
+	print 'update_screen : ', update
 	return True
 
 
@@ -419,20 +283,13 @@ def insert_row(table, data):
 	"""
 		Adds a new record to one of the tables in RORA
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
 	# Prepare for R call
 	if table == "groups":
-		# export R function
-		r_getterFunc = ro.globalenv['createScreenGroup']
-
-		r_getter_output = r_getterFunc(data['group_user'], data['group_name'])
+		global_r_call('createScreenGroup', (data['group_user'], data['group_name']))
 	elif table == "patients":
 		print(data)
-		r_getterFunc = ro.globalenv['createPatient']
 		print(ro.DataFrame(data))
-		r_getter_output = r_getterFunc(ro.DataFrame(data))
+		global_r_call('createPatient', ro.DataFrame(data))
 	return True
 
 
@@ -440,129 +297,107 @@ def remove_row(table, ids):
 	"""
 		Removes data from one of the tables in RORA
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Prepare for R call
+	r_out = None
+	# export R function
 	if table == "groups":
-		# export R function
-		r_removerFunc = ro.globalenv['deleteSampleGroup']
+		r_out = global_r_call('deleteSampleGroup', ids)
+	elif table == "patients":
+		r_out = global_r_call('deletePatient', ids)
+	elif table == "content":
+		r_out = global_r_call('deleteGroupContent', ids)
+	elif table == "screen":
+		r_out = global_r_call('deleteScreen', ids)
 
-	if table == "patients":
-		# export R function
-		r_removerFunc = ro.globalenv['deletePatient']
-
-	if table == "content":
-		# export R function
-		r_removerFunc = ro.globalenv['deleteGroupContent']
-
-	if table == "screen":
-		# export R function
-		r_removerFunc = ro.globalenv['deleteScreen']
-
-
-	r_remover_output = r_removerFunc(ids)
-
-	return r_remover_output
+	return r_out
 
 
 def update_row(table, content, iid):
 	"""
 		UPdaTE
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
+	r_output = None
 	# Prepare for R call
 	if table == "groups":
 		content = map(int, content)
-		# export R function
-		r_updateFunc = ro.globalenv['updateSampleGroups']
-
-	if table == "patients":
-		pass
-
-	r_output = r_updateFunc(content, iid)
-
+		r_output = global_r_call('updateSampleGroups', (content, iid))
 
 	return r_output
 
 
 def request_data(table, iid):
-	source_file('patient-module.R')
-
+	result = None
 	if table == "screen":
-		r_updateFunc = ro.globalenv['requestScreen']
+		result = global_r_call('requestScreen', iid)
 
-	r_output = r_updateFunc(iid)
-
-	return r_output
+	return result
 
 
-def updateScreenGroupContent(content, groupid):
-	# Source & export R code
-	source_file('patient-module.R')
-
-	r_updateFunc = ro.globalenv['updateSampleGroups']
-	r_output = r_updateFunc(content, groupid)
-	return r_output
+def update_screen_group_content(content, group_id):
+	return global_r_call('updateSampleGroups', (content, group_id))
 
 
-def getScreenGroupContent(groupID):
+def get_screen_group_content(group_id):
 	"""
 		Returns Screen Group content for a given group in json format;
 		In particular: Screen ID, Screen Name, status -- if in the group or not.
 	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	r_getterFunc = ro.globalenv['listGroupScreens']
-	exported_data = r_getterFunc(groupID)
+	exported_data = global_r_call('listGroupScreens', group_id)
 
 	screens = dict()
 	exported_row_num = len(exported_data[0])
 	# Convert exported_data to a dict() of dict()
-	for row in range(1, exported_row_num+1):
+	for row in range(1, exported_row_num + 1):
 		inner = dict()
-		row_values = exported_data.rx(row,True)
+		row_values = exported_data.rx(row, True)
 
-		#cell_data = row_values[col][0]
+		# cell_data = row_values[col][0]
 		inner[ 'selected' ] = int( row_values[2][0] )
 		inner[ 'name' ] = str( row_values[1][0] )
 
 		screens[ str( int(row_values[0][0]) ) ] = inner
 
-
 	return screens
 
 
-def getScreenGroup(groupID):
-	""""
-		Get the screen group content
+def get_screen_group(group_id):
+	"""		Get the screen group content	"""
+	return global_r_call('getScreenGroupContent', group_id)
+
+
+def get_all_screens():
+	"""		Get all the screens	"""
+	return global_r_call('getAllScreen')
+
+
+# clem 04/11/2015
+def global_r_call(function_name, args=None, r_file=PATIENT_MODULE_FILE_NAME):
+	"""
+	Writing shortcut for all previous function using this same code
+	:param function_name: name of the ro.globalenv function to call
+	:type function_name: str
+	:param args: usually a selector like GroupID
+	:type args:
+	:param r_file: The file to be loaded for the call
+	:type r_file: str
+	:rtype:
 	"""
 	# Source & export R code
-	source_file('patient-module.R')
+	source_file(r_file)
 
 	# Export a function to call
-	r_getterFunc = ro.globalenv['getScreenGroupContent']
+	r_getter_func = ro.globalenv[function_name]
 
 	# R call
-	data = r_getterFunc(groupID)
-
-	return data
-
-
-def getAllScreens():
-	""""
-		Get all the screens
-	"""
-	# Source & export R code
-	source_file('patient-module.R')
-
-	# Export a function to call
-	r_getterFunc = ro.globalenv['getAllScreen']
-
-	# R call
-	data = r_getterFunc()
+	data = list()
+	try:
+		# Arguments magics
+		if args:
+			if type(args) is not tuple:
+				args = (args,)
+			data = r_getter_func(*args)
+		else:
+			data = r_getter_func()
+	except RRuntimeError as e:
+		get_logger().error(e)
 
 	return data
