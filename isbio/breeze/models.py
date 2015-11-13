@@ -262,6 +262,13 @@ class FolderObj(object):
 	def base_folder(self):
 		return '%s%s' % (settings.MEDIA_ROOT, self.BASE_FOLDER_NAME)
 
+	def move(self, target):
+		# if os.path.is_dir(target) or os.makedirs(target):
+		try:
+			return utils.safe_copytree(self.home_folder_full_path, target, force=True)
+		except Exception:
+			return False
+
 	@staticmethod
 	def file_n_slug(file_name):
 		"""
@@ -289,6 +296,7 @@ class FolderObj(object):
 		:rtype: str
 		"""
 		return self.home_folder_full_path + self.file_n_slug(filename)
+		# return self._home_folder_rel + self.file_n_slug(filename)
 
 	def grant_write_access(self):
 		"""
@@ -338,6 +346,7 @@ class FolderObj(object):
 		raise self.not_imp()
 
 	# clem 02/10/2015
+	# TODO : download with no subdirs
 	def download_zip(self, cat=None, auto_cache=True):
 		""" Compress the folder object for download
 		<i>cat</i> argument enables to implement different kind of selective downloads into <i>download_ignore(cat)</i>
@@ -1822,6 +1831,7 @@ class Runnable(FolderObj, models.Model):
 
 			jt.remoteCommand = config
 			jt.joinFiles = True
+			# jt.outputPath = ':./out'
 
 			self.progress = 25
 			self.save()
@@ -1839,14 +1849,14 @@ class Runnable(FolderObj, models.Model):
 
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				Exception) as e:
-			log.error('%s%s : ' % self.short_id + 'drmaa job submit process unexpectedly terminated : %s' % e)
+			log.error('%s%s : ' % self.short_id + 'drmaa submit failed : %s' % e)
 			self.__manage_run_failed(None, '')
 			if s is not None:
 				s.exit()
 			raise e
 			return 1
 
-		log.debug('%s%s : ' % self.short_id + 'drmaa job submit terminated successfully !')
+		log.debug('%s%s : ' % self.short_id + 'drmaa submit ended successfully !')
 		return 0
 
 	@property
@@ -2083,15 +2093,36 @@ class Runnable(FolderObj, models.Model):
 			return t_delta > timedelta(seconds=settings.NO_SGEID_EXPIRY)
 		return False
 
-	def re_submit_to_cluster(self):
+	def re_submit_to_cluster(self, force=False, duplicate=True):
 		""" Reset the job status, so it can be run again
 		Use this, if it hadn't had an SGEid or the run was unexpectedly terminated
 		DO NOT WORK on SUCCEEDED JOB."""
-		if not self.is_successful:
+		if not self.is_successful or force:
+			# TODO finnish
+			import copy
+			import os
+			from django.core.files import base
 			get_logger().info('%s%s : resetting job status' % self.short_id)
-			self.name += '_re'
+			new_name = self.name + '_re'
+			old_path = self.home_folder_full_path
+			with open(self._r_exec_path.path) as f:
+				r_code = f.readlines()
+
+			self.name = new_name
+
+			content = "setwd('%s')\n" % self.home_folder_full_path[:-1] + ''.join(r_code[1:])
+			os.rename(old_path, self.home_folder_full_path)
+			get_logger().debug('%s%s : renamed to %s' % (self.short_id + (self.home_folder_full_path,)))
+			self._rexec.save(self.file_name(self.R_FILE_NAME), base.ContentFile(content))
+			self._doc_ml.name = self.home_folder_full_path + os.path.basename(str(self._doc_ml.name))
+
+			utils.remove_file_safe(self._test_file)
+			utils.remove_file_safe(self._failed_file)
+			utils.remove_file_safe(self._incomplete_file)
+			utils.remove_file_safe(self._sh_file_path)
 			self.save()
-			self.submit_to_cluster()
+			self.write_sh_file()
+			# self.submit_to_cluster()
 
 	###
 	# DJANGO RELATED FUNCTIONS
