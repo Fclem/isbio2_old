@@ -26,8 +26,8 @@ class SgeJob(object):
 		:type output: str
 		:rtype: None
 		"""
-		from breeze.models import Runnable, Report, Jobs
-		init = output.replace('\n', '').replace('     ', ' ')
+		from breeze.models import Runnable
+		init = output.strip().replace('\n', '').replace('     ', ' ')
 		while init != init.replace('  ', ' '):
 			init = init.replace('  ', ' ')
 		a_list = init.split(' ')
@@ -40,12 +40,12 @@ class SgeJob(object):
 		self._state = a_list[4]
 		self.start_d = a_list[5]
 		self.start_t = a_list[6]
-		self.queue = a_list[7]
-		self.slot = a_list[8]
+		self.queue = a_list[7] if len(a_list) > 7 else ''
+		self.slot = a_list[8] if len(a_list) > 8 else ''
 		self.runnable = Runnable.find_sge_instance(self.id)
 		if self.runnable:
-			self.user = str(self.runnable._author)
-			self.full_user = self.runnable._author.get_full_name()
+			self.user = str(self.runnable.author)
+			self.full_user = self.runnable.author.get_full_name()
 			self.full_name = self.runnable.sge_job_name
 
 
@@ -84,7 +84,7 @@ class SgeJob(object):
 		:rtype:
 		"""
 		import subprocess
-		return subprocess.Popen('qdel %s' % self.id, shell=True, stdout=subprocess.PIPE).stdout
+		return subprocess.Popen('%s %s' % (settings.QDEL_BIN, self.id), shell=True, stdout=subprocess.PIPE).stdout
 
 	def __repr__(self):
 		return '<SgeJob %s>' % self.name
@@ -97,11 +97,7 @@ class SgeJob(object):
 # clem on 25/08/2015
 class Qstat(object):
 	def __init__(self):
-		import os
-		if 'QSTAT_BIN' in os.environ:
-			self.qstat = os.environ['QSTAT_BIN'] # FIXME unsafe
-		else:
-			self.qstat = 'qstat'
+		self.qstat = settings.QSTAT_BIN
 
 		self._job_list = dict()
 		self._refresh_qstat()
