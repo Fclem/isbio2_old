@@ -3,6 +3,7 @@ from configurations import Settings
 import logging
 import os
 import socket
+import time
 from datetime import datetime
 
 # TODO : redesign
@@ -54,34 +55,43 @@ def recur(nb, funct, args):
 	return args
 
 
+# TODO make a generator
+def getkey(path=''):
+	try:
+		with open(path + 'secret') as f:
+			return f.read()
+	except Exception as e:
+		pass
+	return None
+
+
 def recur_rec(nb, funct, args):
 	if nb > 0:
 		return recur_rec(nb - 1, funct, funct(args))
 	return args
 
+
+PID = os.getpid()
+
 MAINTENANCE = False
-USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S%z"
-USUAL_LOG_FORMAT = '%(asctime)s %(levelname)-8s %(funcName)-20s %(message)s'
+USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+USUAL_LOG_FORMAT = \
+	'%(asctime)s,%(msecs)03d  P%(process)05d %(levelname)-8s %(lineno)04d:%(module)-14s %(funcName)-25s %(message)s'
+USUAL_LOG_FORMAT_DESCRIPTOR =\
+	'DATE       TIME,milisec  PID   LEVEL     LINE:MODULE         FUNCTION                  MESSAGE'
 DB_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FOLDER = '/var/log/breeze/'
 # log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
 log_fname = 'rotating.log'
+log_hit_fname = 'access.log'
 LOG_PATH = '%s%s' % (LOG_FOLDER, log_fname)
+LOG_HIT_PATH = '%s%s' % (LOG_FOLDER, log_hit_fname)
 
 
 class BreezeSettings(Settings):
-	global USUAL_DATE_FORMAT, LOG_PATH
+	global USUAL_DATE_FORMAT, LOG_PATH, LOG_HIT_PATH
 	DEBUG = False
 	TEMPLATE_DEBUG = DEBUG
-
-	# USUAL_DATE_FORMAT = USUAL_DATE_FORMAT
-	# LOG_PATH = LOG_PATH
-
-	# logging.basicConfig(level=logging.INFO,
-	#					format=USUAL_LOG_FORMAT,
-	#					datefmt=USUAL_DATE_FORMAT,
-	#					# filename='/tmp/BREEZE.log', filemode='w')
-	#					filename=LOG_PATH, filemode='w+')
 
 	ADMINS = (
 		('Clement FIERE', 'clement.fiere@helsinki.fi'),
@@ -170,7 +180,7 @@ class BreezeSettings(Settings):
 	)
 
 	# Make this unique, and don't share it with anybody.
-	SECRET_KEY = 'ta(zaxdj#)wxg(g+7%f)^e6fu+l#0$y4@81t2g9jo%!i(82ue_'
+	SECRET_KEY = getkey()
 
 	# List of callables that know how to import templates from various sources.
 	TEMPLATE_LOADERS = (
@@ -188,6 +198,7 @@ class BreezeSettings(Settings):
 		'django.middleware.doc.XViewMiddleware',
 		'breeze.middlewares.JobKeeper',
 		'breeze.middlewares.CheckUserProfile',
+		'django_requestlogging.middleware.LogSetupMiddleware',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
 		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -229,8 +240,10 @@ class BreezeSettings(Settings):
 		'down',
 		'south',
 		'gunicorn',
+		'mathfilters',
 		# Uncomment the next line to enable the admin:
 		'django.contrib.admin',
+		'django_requestlogging',
 		# Uncomment the next line to enable admin documentation:
 		# 'django.contrib.admindocs',
 	)
@@ -307,7 +320,9 @@ class DevSettings(BreezeSettings):
 	sge_arch = "lx26-amd64"
 	os.environ['SGE_ROOT'] = '/opt/gridengine'
 	# os.environ['QSTAT_BIN'] = os.environ['SGE_ROOT']+'/bin/'+sge_arch+'/qstat'
-	QSTAT_BIN = '/usr/bin/qstat'
+	Q_BIN = '/usr/bin/'
+	QSTAT_BIN = '%sqstat' % Q_BIN
+	QDEL_BIN = '%sqdel' % Q_BIN
 	os.environ['QSTAT_BIN'] = QSTAT_BIN
 	os.environ['SGE_ARCH'] = 'UNSUPPORTED-lx3.2.0-40-generic-amd64'
 	os.environ['LD_LIBRARY_PATH'] = os.environ['SGE_ROOT'] + '/lib/' + os.environ['SGE_ARCH']
@@ -358,9 +373,13 @@ class DevSettings(BreezeSettings):
 		PHARMA_MODE = True
 
 	PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
-	if not os.path.isdir(PROJECT_PATH):
+	R_ENGINE_SUB_PATH = 'R/bin/R '
+	R_ENGINE_PATH = PROJECT_PATH + R_ENGINE_SUB_PATH
+	# if not os.path.isdir(PROJECT_PATH):
+	if not os.path.isdir( R_ENGINE_PATH):
 		PROJECT_FOLDER = '/projects/'
 		PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
+		R_ENGINE_PATH = PROJECT_PATH + R_ENGINE_SUB_PATH
 
 	PROJECT_FHRB_PM_PATH = '/projects/fhrb_pm/'
 	JDBC_BRIDGE_PATH = PROJECT_FHRB_PM_PATH + 'bin/start-jdbc-bridge' # Every other path has a trailing /
@@ -369,7 +388,7 @@ class DevSettings(BreezeSettings):
 	SOURCE_ROOT = recur(3, os.path.dirname, os.path.realpath(__file__)) + '/'
 	DJANGO_ROOT = recur(2, os.path.dirname, os.path.realpath(__file__)) + '/'
 
-	R_ENGINE_PATH = PROJECT_PATH + 'R/bin/R '
+	# R_ENGINE_PATH = PROJECT_PATH + 'R/bin/R '
 	TEMP_FOLDER = SOURCE_ROOT + 'tmp/' # /homes/dbychkov/dev/isbio/tmp/
 	####
 	# 'db' folder, containing : reports, scripts, jobs, datasets, pipelines, upload_temp
@@ -383,13 +402,14 @@ class DevSettings(BreezeSettings):
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 	DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
-	STATIC_ROOT = SOURCE_ROOT + 'static/'
+	# STATIC_ROOT = SOURCE_ROOT + 'static/'
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
 	MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
 	GENERAL_SH_NAME = 'sgeconfig.sh'
 	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
-	SGE_QUEUE_NAME = 'breeze.q'
+	# SGE_QUEUE_NAME = 'breeze.q'
+	SGE_QUEUE_NAME = 'all.q'
 
 
 	##
@@ -555,8 +575,16 @@ class DevSettings(BreezeSettings):
 					'format': USUAL_LOG_FORMAT,
 					'datefmt': USUAL_DATE_FORMAT,
 				},
+				'request_format': {
+					'format': '%(remote_addr)s %(username)s "%(request_method)s '
+							'%(path_info)s %(server_protocol)s" %(http_user_agent)s '
+							'%(message)s %(asctime)s',
+				},
 			},
 			'filters': {
+				'request': {
+					'()': 'django_requestlogging.logging_filters.RequestFilter',
+				},
 				'require_debug_false': {
 					'()': 'django.utils.log.RequireDebugFalse'
 				}
@@ -581,6 +609,14 @@ class DevSettings(BreezeSettings):
 					'stream': sys.stdout,
 					'formatter': 'verbose',
 				},
+				'access_log': {
+					'class': 'logging.handlers.RotatingFileHandler',
+					'filename': LOG_HIT_PATH,
+					'maxBytes': 1024 * 1024 * 10, # 5 MB
+					'backupCount': 900,
+					'filters': ['request'],
+					'formatter': 'request_format',
+				},
 			},
 			'loggers': {
 				'isbio': {
@@ -589,9 +625,13 @@ class DevSettings(BreezeSettings):
 					'propagate': True,
 				},
 				'breeze': {
-					'handlers': ['console'],
+					'handlers': ['console', 'access_log'],
 					'level': 'DEBUG',
 					'propagate': True,
+				},
+				'breeze2': {
+					'handlers': ['access_log'],
+					'filters': ['request'],
 				},
 				'': {
 					'handlers': ['default'],
@@ -607,10 +647,7 @@ class DevSettings(BreezeSettings):
 		}
 		import logging.config
 		logging.config.dictConfig(LOGGING)
-		print 'source home : ' + SOURCE_ROOT
-		logging.debug('source home : ' + SOURCE_ROOT)
-		print 'project home : ' + PROJECT_PATH
-		logging.debug('project home : ' + PROJECT_PATH)
+
 	else:
 		VERBOSE = False
 
@@ -623,9 +660,34 @@ class DevSettings(BreezeSettings):
 		SHINY_LIBS_TARGET_URL = SHINY_LOCAL_LIBS_TARGET_URL
 		SHINY_LIBS_BREEZE_URL = SHINY_LOCAL_LIBS_BREEZE_URL
 
-	print 'Logging on %s\nSettings loaded. Running %s on %s' %\
-	(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(Bcolors.bold(RUN_MODE)), Bcolors.ok_blue(FULL_HOST_NAME))
-	if PHARMA_MODE:
-		print Bcolors.bold('RUNNING WITH PHARMA')
-	logging.info('Settings loaded. Running %s on %s' % (RUN_MODE, FULL_HOST_NAME))
+if not BreezeSettings.SECRET_KEY:
+	SECRET_KEY = getkey(DevSettings.SOURCE_ROOT)
+	BreezeSettings.SECRET_KEY = SECRET_KEY
 
+
+def make_run_file():
+	f = open('running', 'w+')
+	f.write(str(datetime.now().strftime(USUAL_DATE_FORMAT)))
+	f.close()
+
+if os.path.isfile('running'):
+	# First time
+	print '__breeze__started__'
+	logging.info('__breeze__started__')
+
+	os.remove('running')
+else:
+	make_run_file()
+	# Second time
+	time.sleep(1)
+	print '__breeze__load/reload__'
+	logging.info('__breeze__load/reload__')
+	print 'source home : ' + DevSettings.SOURCE_ROOT
+	logging.debug('source home : ' + DevSettings.SOURCE_ROOT)
+	print 'project home : ' + DevSettings.PROJECT_PATH
+	logging.debug('project home : ' + DevSettings.PROJECT_PATH)
+	print 'Logging on %s\nSettings loaded. Running %s on %s' % \
+		(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(Bcolors.bold(DevSettings.RUN_MODE)), Bcolors.ok_blue(DevSettings.FULL_HOST_NAME))
+	if DevSettings.PHARMA_MODE:
+		print Bcolors.bold('RUNNING WITH PHARMA')
+	logging.info('Settings loaded. Running %s on %s' % (DevSettings.RUN_MODE, DevSettings.FULL_HOST_NAME))
