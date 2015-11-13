@@ -238,6 +238,7 @@ class AddOffsiteUser(forms.ModelForm):
 	}
 	#queryset = breeze.models.User.objects.all(),
 
+
 class ReportPropsForm(forms.Form):
 	def __init__(self, *args, **kwargs):
 		self.request = kwargs.pop("request")
@@ -450,7 +451,7 @@ class ScreenGroupInfo(forms.Form):
 		super(ScreenGroupInfo, self).__init__(*args, **kwargs)
 		# screen group info
 		screen_list = list()
-		screen = json.loads(rora.getAllScreens()[0])
+		screen = json.loads(rora.get_all_screens()[0])
 		for ID, name in zip(screen[0]['PK_SCREEN_ID'], screen[1]['BREEZE_ALIAS']):
 			screen_list.append(tuple((ID, name)))
 
@@ -971,8 +972,8 @@ def xml_from_form(form_g, form_d, form_s):
 	return newxml
 
 
-def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, path=None):
-	input_array = xml.getroot().find('inputArray')
+def form_from_xml(xml_parser, req=None, init=False, usr=None, post=None, files=None, path=None):
+	input_array = xml_parser.getroot().find('inputArray')
 
 	if req:
 		custom_form = CustomForm(req.POST, req.FILES)
@@ -999,6 +1000,8 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 				except:
 					help_line = ''
 
+				field = None
+
 				if input_item.attrib["type"] == "NUM":  # numeric input
 					# protect empty MAX and MIN limits
 					if input_item.attrib["max"]:
@@ -1011,7 +1014,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					else:
 						min_decimal = None
 
-					custom_form.fields[input_item.attrib["comment"]] = forms.DecimalField(
+					field = forms.DecimalField(
 						initial=input_item.attrib["val"],
 						max_value=max_decimal,
 						min_value=min_decimal,
@@ -1020,7 +1023,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					)
 
 				elif input_item.attrib["type"] == "TEX":  # text box
-					custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
+					field = forms.CharField(
 						initial=input_item.attrib["val"],
 						max_length=100,
 						required=optional_prop,
@@ -1028,7 +1031,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 						widget=forms.TextInput(attrs={'type': 'text', })
 					)
 				elif input_item.attrib["type"] == "TAR":  # text area
-					custom_form.fields[input_item.attrib["comment"]] = forms.CharField(
+					field = forms.CharField(
 						initial=input_item.attrib["val"],
 						required=optional_prop,
 						help_text=help_line,
@@ -1044,7 +1047,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					checked = False
 					if input_item.attrib["val"] == "true":
 						checked = True
-					custom_form.fields[input_item.attrib["comment"]] = forms.BooleanField(
+					field = forms.BooleanField(
 						required=False,
 						initial=checked,
 						help_text=help_line
@@ -1056,7 +1059,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					for alt in input_item.find('altArray').findall('altItem'):
 						drop_options = drop_options + ((alt.text, alt.text),)
 
-					custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(
+					field = forms.ChoiceField(
 						choices=drop_options,
 						initial=input_item.attrib["val"],
 						help_text=help_line
@@ -1068,7 +1071,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					for alt in input_item.find('altArray').findall('altItem'):
 						drop_options = drop_options + ((alt.text, alt.text),)
 
-					custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(
+					field = forms.ChoiceField(
 						choices=drop_options,
 						initial=input_item.attrib["val"],
 						help_text=help_line
@@ -1080,7 +1083,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					for alt in input_item.find('altArray').findall('altItem'):
 						radio_options = radio_options + ((alt.text, alt.text),)
 
-					custom_form.fields[input_item.attrib["comment"]] = forms.ChoiceField(
+					field = forms.ChoiceField(
 						initial=input_item.attrib["val"],
 						widget=forms.RadioSelect(attrs={'value': input_item.attrib["default"]}),
 						choices=radio_options,
@@ -1088,8 +1091,9 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					)
 
 				elif input_item.attrib["type"] == "FIL" or input_item.attrib["type"] == "TPL":  # file upload field
-					custom_form.fields[input_item.attrib["comment"]] = forms.FileField(
-						#initial=loc,
+					print path, files
+					field = forms.FileField(
+						# initial=loc
 						required=optional_prop,
 						help_text=help_line,
 						widget=forms.ClearableFileInput(
@@ -1105,7 +1109,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					for alt in input_item.find('altArray').findall('altItem'):
 						mult_options = mult_options + ((alt.text, alt.text),)
 
-					custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
+					field = forms.MultipleChoiceField(
 						initial=re.split(',', input_item.attrib["val"]),
 						help_text=help_line,
 						choices=mult_options
@@ -1125,7 +1129,7 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					dtm_options.append(tuple(( 'Groups', tuple(group_list_of_tuples) )))
 					dtm_options.append(tuple(( 'Individual Screens', tuple(sample_list_of_tuples) )))
 
-					custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
+					field = forms.MultipleChoiceField(
 						choices=dtm_options,
 						initial=input_item.attrib["val"],
 						required=optional_prop,
@@ -1134,14 +1138,14 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					)
 
 				elif input_item.attrib["type"] == "SCREEN_GROUPS":
-					group_list_of_tuples = list()
+					# group_list_of_tuples = list()
 
 					group_list_of_tuples = rora.get_dtm_screen_groups()
 
 					dtm_options = list()
 					dtm_options.append(tuple(( 'Groups', tuple(group_list_of_tuples) )))
 
-					custom_form.fields[input_item.attrib["comment"]] = forms.MultipleChoiceField(
+					field = forms.MultipleChoiceField(
 						choices=dtm_options,
 						initial=input_item.attrib["val"],
 						required=optional_prop,
@@ -1153,6 +1157,9 @@ def form_from_xml(xml, req=None, init=False, usr=None, post=None, files=None, pa
 					pass
 				else:
 					pass
+
+				if field:
+					custom_form.fields[input_item.attrib["comment"]] = field
 			elif input_item.tag == "subSection":
 				print "section"
 			else:
@@ -1183,7 +1190,7 @@ def create_report_sections(sections, req=None, posted=None, files=None, path=Non
 		sdata['value'] = posted[key] if posted and key in posted else 0
 		sdata['inline'] = str(item.inln)
 		sdata['name'] = str(item.name)
-		sdata['form'] = form_from_xml(xml=tree, post=posted, files=files, usr=req.user, init=True if posted else False, path=path)
+		sdata['form'] = form_from_xml(xml_parser=tree, post=posted, files=files, usr=req.user, init=True if posted else False, path=path)
 		sdata['size'] = len(sdata['form'].__str__())
 		section_lst.append(dict(sdata))
 
@@ -1212,10 +1219,10 @@ def validate_report_sections(sections, req):
 			# that have been enabled by user
 			secID = 'Section_dbID_' + str(item.id)
 			if secID in req.POST and req.POST[secID] == '1':
-				sdata['form'] = form_from_xml(xml=tree, req=req, usr=req.user)
+				sdata['form'] = form_from_xml(xml_parser=tree, req=req, usr=req.user)
 				sdata['isvalid'] = sdata['form'].is_valid()
 			else:
-				sdata['form'] = form_from_xml(xml=tree, usr=req.user)
+				sdata['form'] = form_from_xml(xml_parser=tree, usr=req.user)
 				sdata['isvalid'] = True
 			section_lst.append(dict(sdata))
 
