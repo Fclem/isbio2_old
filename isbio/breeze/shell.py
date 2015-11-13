@@ -443,7 +443,7 @@ def build_script(request_data, script, go_run=False, job_inst=None):
 
 	# after fill the forms for creating the new job
 	head_form = BasicJobForm(the_user, None, request_data.POST)
-	custom_form = form_from_xml(xml=tree, req=request_data, usr=the_user)
+	custom_form = form_from_xml(xml_parser=tree, req=request_data, usr=the_user)
 
 	if head_form.is_valid() and custom_form.is_valid():
 		# create initial instance so that we can use its db id
