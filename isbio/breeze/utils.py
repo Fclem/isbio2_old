@@ -341,7 +341,7 @@ def custom_copytree(src, dst, symlinks=False, ignore=None, verbose=True, sub=Fal
 
 
 # Clem 24/09/2015
-def safe_copytree(source, destination, symlinks=True, ignore=None):
+def safe_copytree(source, destination, symlinks=True, ignore=None, force=False):
 	"""
 	Copy a folder recursively
 	Provide a smart shutil.copytree wrapper with system folder protection
@@ -360,10 +360,10 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 			if os.path.isdir(destination):
 			# 	os.mkdir(destination)
 			# else:
-				log_txt = 'copytree, destination folder %s exists, STOP' % destination
-				get_logger().error(log_txt)
+				log_txt = 'copytree, destination folder %s exists, proceed' % destination
+				get_logger().warning(log_txt)
 			# shutil.copytree(source, destination, symlinks, ignore)
-			custom_copytree(source, destination, symlinks, ignore)
+			custom_copytree(source, destination, symlinks, ignore, verbose=True)
 			return True
 		else:
 			log_txt = 'copytree, source folder %s don\'t exists, STOP' % source
