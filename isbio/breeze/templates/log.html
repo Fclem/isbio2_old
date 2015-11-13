@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+{% load mathfilters %}
 {% load bootstrap_toolkit %}
 {% load user_translate %}
 
@@ -9,6 +10,16 @@
 	<style>
 	h2 {
 		padding-top: 45px;
+	}
+	code {
+		padding: 1px 4px;
+		color: #d14;
+		white-space: nowrap;
+		background-color: #f7f7f9;
+		border: 1px solid #e1e1e8;
+		display: block;
+		margin-bottom: 2px;
+		overflow: auto;
 	}
 	</style>
 {% endblock %}
@@ -27,12 +38,17 @@
 				</ul>
 			</div>
 		</div>
-		<div class="span10 offset1">
-			<h3>Breeze LOG :</h3>
+		<div class="span11">
+			<h3>Breeze LOG : <small>(In reverse order)</small></h3>
 			<!--<ul> -->
 			{% for line in log %}
-				{{ forloop.counter }} <code>{{ line }}</code><br />
-				{% empty %}
+				{% if line == '<hr>' %}
+					<hr>
+				{% else %}
+					{{ log.count|sub:200 }} <code>{{ line|safe }}</code>
+				{% endif %}
+			{% empty %}
+				Nothing here...
 			{% endfor %}
 			<!--</ul> -->
 		</div>
