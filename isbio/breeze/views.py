@@ -809,11 +809,11 @@ def ajax_rora_screens(request, gid):
 		if screengroup_form.is_valid():
 			screen = dict()
 			screen['list'] = screengroup_form.cleaned_data.get('dst')
-			rora.updateScreenGroupContent(screen['list'], gid)
+			rora.update_screen_group_content(screen['list'], gid)
 			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
 	else:
 		# response_data = rora.getScreenGroupContent(groupID=gid)
-		group_content = rora.getScreenGroup(groupID=gid)
+		group_content = rora.get_screen_group(group_id=gid)
 		content_list = list()
 		for each in group_content:
 			content_list.append(int(each))
@@ -954,14 +954,15 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 		try:
 			report = Report.objects.get(id=iid)
 		except ObjectDoesNotExist:
-			return aux.fail_with404(request, 'There is no report with id '+ iid + ' in database')
+			return aux.fail_with404(request, 'There is no report with id ' + iid + ' in database')
 		rtype = str(report.type)
 		iname = report.name + '_bis'
 		iid = report.rora_id
 		try:
 			# filter tags according to report type (here we pick non-draft tags):
+			# TODO : use a manager
 			tags = Rscripts.objects.filter(draft="0").filter(istag="1").filter(
-			report_type=ReportType.objects.get(id=report.type.id)).order_by('order')
+				report_type=ReportType.objects.get(id=report.type.id)).order_by('order')
 		except ObjectDoesNotExist:
 			return aux.fail_with404(request, 'There is ReportType with id ' + str(report.type_id) + ' in database')
 		data = pickle.loads(report.conf_params) if report.conf_params is not None and len(report.conf_params) > 0 else None
@@ -1729,7 +1730,7 @@ def edit_job(request, jid=None, mod=None):
 			else:
 				# EDIT :
 				head_form = breezeForms.BasicJobForm(request.user, edit, request.POST)
-				custom_form = breezeForms.form_from_xml(xml=job.xml_tree, req=request, usr=request.user)
+				custom_form = breezeForms.form_from_xml(xml_parser=job.xml_tree, req=request, usr=request.user)
 				if head_form.is_valid() and custom_form.is_valid():
 					job._name = head_form.cleaned_data['job_name']
 					job._description = head_form.cleaned_data['job_details']
@@ -1742,7 +1743,7 @@ def edit_job(request, jid=None, mod=None):
 			head_form = breezeForms.BasicJobForm(user=request.user, edit=str(job.name),
 				initial={'job_name': str(tmp_name), 'job_details': str(job.description),
 				'report_to': str(job.email if job.email else user_info.email)})
-			custom_form = breezeForms.form_from_xml(xml=job.xml_tree, usr=request.user)
+			custom_form = breezeForms.form_from_xml(xml_parser=job.xml_tree, usr=request.user)
 	except RRuntimeError:
 		return HttpResponseServerError()
 
@@ -1779,7 +1780,7 @@ def create_job(request, sid=None, page=1):
 			# Empty form
 			mails = {'Started': u'checked', 'Ready': u'checked', 'Aborted': u'checked'}
 			head_form = breezeForms.BasicJobForm(user=request.user, edit=None, initial={'report_to': mail_addr})
-			custom_form = breezeForms.form_from_xml(xml=script.xml_tree, usr=request.user)
+			custom_form = breezeForms.form_from_xml(xml_parser=script.xml_tree, usr=request.user)
 	except RRuntimeError:
 		return HttpResponseServerError()
 
@@ -1827,6 +1828,7 @@ def abort_sge(request, id, type):
 		log.exception("job/report %s does not exists" % id)
 		return jobs(request, error_msg="job/report  %s  does not exists\nPlease contact Breeze support" % id)
 
+	s = None
 	try:
 		s = item.abort()
 	except Exception as e:
@@ -2940,13 +2942,34 @@ def file_system_info(request):
 # clem on 08/10/2015
 @login_required(login_url='/')
 def view_log(request):
+
+	def no_withe_space(txt):
+		return txt.replace('\t', '    ').replace(' ', '&nbsp;')
+
 	if not request.user.is_superuser:
 		raise PermissionDenied
+	grab_next = False
+	last_pid = 0
 	with open(settings.LOG_PATH) as f:
 		log = f.readlines()
-		return render_to_response('log.html', RequestContext(request, {
-			'log': log
-		}))
+		out = list()
+		for l in log:
+			l = l.replace(">", "&gt;").replace("<", "&lt;")
+			l.encode('ascii', 'xmlcharrefreplace')
+			if l.replace('__breeze__started__', '') != l:
+				out.append('<hr>')
+			if l.startswith(' ') or grab_next:
+				grab_next = True
+				out[-1] += '<br />' + no_withe_space(l)
+				if not l.startswith(' '):
+					grab_next = False
+			else:
+				out.append(no_withe_space(l))
+	out.append(no_withe_space(settings.USUAL_LOG_FORMAT_DESCRIPTOR))
+	out.reverse()
+	return render_to_response('log.html', RequestContext(request, {
+		'log': out
+	}))
 
 
 # clem on 08/10/2015
