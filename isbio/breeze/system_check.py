@@ -282,7 +282,7 @@ class SysCheckUnit(Process):
 
 		if not res:
 			import sys
-			if self.RAISE_EXCEPTION:
+			if self.RAISE_EXCEPTION and not from_ui:
 				raise self.ex
 			if from_ui or self.mandatory:
 				sys.exit(1)
