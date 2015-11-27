@@ -30,6 +30,7 @@ class ACL:
 	R_R_ = 0440
 	RWX_RWX_R = 0774
 	RWX_RX_ = 0750
+	RX_RX_ = 0550
 
 
 class Bcolors:
