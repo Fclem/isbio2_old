@@ -11,6 +11,9 @@ db
 *.pyc
 *.py~
 *.log
+/.secret
+/isbio/.secret
+/isbio/running
 *.r~
 *.html~
 *.js~
