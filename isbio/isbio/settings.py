@@ -6,6 +6,15 @@ import socket
 import time
 from datetime import datetime
 
+ENABLE_DATADOG = True
+try:
+	from datadog import statsd
+	if ENABLE_DATADOG:
+		ENABLE_DATADOG = True
+except Exception:
+	ENABLE_DATADOG = False
+	pass
+
 # TODO : redesign
 
 
@@ -180,7 +189,7 @@ class BreezeSettings(Settings):
 	)
 
 	# Make this unique, and don't share it with anybody.
-	SECRET_KEY = getkey()
+	SECRET_KEY = str(getkey())
 
 	# List of callables that know how to import templates from various sources.
 	TEMPLATE_LOADERS = (
@@ -190,6 +199,7 @@ class BreezeSettings(Settings):
 	)
 
 	MIDDLEWARE_CLASSES = (
+		'breeze.middlewares.BreezeAwake',
 		'django.middleware.common.CommonMiddleware',
 		'django.contrib.sessions.middleware.SessionMiddleware',
 		'django.middleware.csrf.CsrfViewMiddleware',
@@ -199,6 +209,7 @@ class BreezeSettings(Settings):
 		'breeze.middlewares.JobKeeper',
 		'breeze.middlewares.CheckUserProfile',
 		'django_requestlogging.middleware.LogSetupMiddleware',
+		'breeze.middlewares.DataDog' if ENABLE_DATADOG else '',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
 		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -373,6 +384,7 @@ class DevSettings(BreezeSettings):
 		PHARMA_MODE = True
 
 	PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
+	R_HOME = "/projects/breeze/R/lib64/R"
 	R_ENGINE_SUB_PATH = 'R/bin/R '
 	R_ENGINE_PATH = PROJECT_PATH + R_ENGINE_SUB_PATH
 	# if not os.path.isdir(PROJECT_PATH):
@@ -409,7 +421,7 @@ class DevSettings(BreezeSettings):
 	GENERAL_SH_NAME = 'sgeconfig.sh'
 	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
 	# SGE_QUEUE_NAME = 'breeze.q'
-	SGE_QUEUE_NAME = 'all.q'
+	SGE_QUEUE_NAME = 'breeze.q' # monitoring only
 
 
 	##

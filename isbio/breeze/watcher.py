@@ -8,6 +8,8 @@ import drmaa
 from utils import *
 from b_exceptions import *
 from django.conf import settings
+if settings.ENABLE_DATADOG:
+	from datadog import statsd
 
 # from exceptions import Exception
 # import logging
@@ -63,7 +65,7 @@ def refresh_db():
 	"""
 	Scan the db for new reports to be run or updated
 	"""
-	# django.db.close_connection()
+	django.db.close_connection()
 	lst_r = Report.objects.f.get_run_wait()
 	lst_j = Jobs.objects.f.get_run_wait()
 	for item in lst_r:
@@ -75,6 +77,7 @@ def refresh_db():
 	lst_j = Jobs.objects.f.get_active()
 	for item in lst_r:
 		if item.id not in proc_lst.keys():
+			get_logger().debug('%s%s' % item.short_id + ' : found report active but not monitored : %s, %s' % (item.name, item.status))
 			_reattach_the_job(item)
 	for item in lst_j:
 		if item.id not in proc_lst.keys():
@@ -92,6 +95,8 @@ def end_tracking(proc_item): # proc_item):
 	a = proc_item.db_item.is_r_successful
 	# proc_item.process.terminate()
 	del proc_lst[proc_item.db_item.id]
+	if statsd:
+		statsd.decrement('python.breeze.running_jobs')
 
 
 def refresh_proc():
@@ -161,13 +166,15 @@ def _reattach_the_job(dbitem):
 	"""
 	log = get_logger()
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
-	#if not dbitem.aborting:
+	# if not dbitem.aborting:
 	try:
 		p = Process(target=dbitem.waiter, args=(s, ))
 		p.start()
 		proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
 		log.debug('%s%s : reattaching job.waiter in PID%s' % (dbitem.short_id + (p.pid,)))
+		if statsd:
+			statsd.increment('python.breeze.running_jobs')
 	except Exception as e:
 		log.exception('%s%s : unhandled exception : %s' % (dbitem.short_id + (e,)))
 		return False
@@ -188,6 +195,8 @@ def _spawn_the_job(dbitem):
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
 			log.debug('%s%s : spawning job.run in PID%s' % (dbitem.short_id + (p.pid,)))
+			if statsd:
+				statsd.increment('python.breeze.running_jobs')
 		except Exception as e:
 			log.exception('%s%s : unhandled exception : %s' % (dbitem.short_id + (e,)))
 			return False

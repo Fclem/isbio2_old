@@ -69,7 +69,6 @@ class JobKeeper:
 	def __init__(self):
 		JobKeeper.p = Process(target=runner)
 		JobKeeper.p.start()
-		update_state()
 
 	def process_request(self, request):
 		if not JobKeeper.p.is_alive():
@@ -78,7 +77,40 @@ class JobKeeper:
 			log.warning('watcher was down, restarting...')
 			self.__init__()
 
+
+class BreezeAwake:
+	def __init__(self):
+		update_state()
+
+	@staticmethod
+	def process_request(request):
 		check_state()
+
+if settings.ENABLE_DATADOG:
+	from datadog import statsd
+
+
+	class DataDog:
+		def __init__(self):
+			# Increment a counter.
+			statsd.increment('python.breeze.reload')
+			statsd.event('Breeze reload', '', 'info', hostname=settings.HOST_NAME)
+
+		@staticmethod
+		def process_request(request):
+			statsd.increment('python.breeze.request')
+
+		@staticmethod
+		def process_view(request, view_func, view_args, view_kwargs):
+			statsd.increment('python.breeze.page.views')
+			statsd.increment('python.breeze.page.view.' + str(view_func.__name__))
+			if request.user:
+				statsd.increment('python.breeze.page.auth_views')
+
+		@staticmethod
+		def process_exception(exception, e):
+			statsd.event('Python Exception', str(e), 'warning', hostname=settings.HOST_NAME)
+			statsd.increment('python.breeze.exception')
 
 
 class CheckUserProfile(object):
