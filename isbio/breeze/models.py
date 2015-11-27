@@ -1364,6 +1364,7 @@ class Runnable(FolderObj, models.Model):
 	SUCCESS_FN = 'done'
 	SH_NAME = settings.GENERAL_SH_NAME
 	FILE_MAKER_FN = settings.REPORTS_FM_FN
+	R_HOME = settings.R_HOME
 	INC_RUN_FN = settings.INCOMPLETE_RUN_FN
 	# output file name (without extension) for nozzle report. MIGHT not be enforced everywhere
 	REPORT_FILE_NAME = 'report'
@@ -1374,9 +1375,10 @@ class Runnable(FolderObj, models.Model):
 	R_OUT_FILE_NAME = R_FILE_NAME + R_OUT_EXT
 	RQ_SPECIFICS = ['request_data', 'sections']
 	FAILED_R = 'Execution halted'
-	SH_CL = '#!/bin/bash \ntouch ./%s' % INC_RUN_FN + ' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
+	SH_CL = '#!/bin/bash \nexport R_HOME=%s\ntouch ./%s' % (R_HOME, INC_RUN_FN) +\
+			' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
 		% (SUCCESS_FN, INC_RUN_FN) + 'txt="%s"\n' % FAILED_R + 'CMD=`tail -n1<%s`\n' \
-		+ 'if [ "$CMD" = "$txt" ]; \nthen\n	touch ./%s\nfi' % FAILED_FN
+		+ 'if [ "$CMD" = "$txt" ]; \nthen\n	touch ./%s\nfi' % FAILED_FN # TODO make a template
 	SYSTEM_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, INC_RUN_FN, FAILED_FN, SUCCESS_FN, FILE_MAKER_FN]
 	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN] # TODO add FM file ?
 
@@ -1716,18 +1718,20 @@ class Runnable(FolderObj, models.Model):
 		Generate the SH file that will be executed on the cluster by SGE
 		"""
 		import os
-		import stat
+		# import stat
 		# configure shell-file
 		config = open(self._sh_file_path, 'w')
 
-		# config should be executable
-		st = os.stat(self._sh_file_path)
-		os.chmod(self._sh_file_path, st.st_mode | stat.S_IEXEC)
+		# st = os.stat(self._sh_file_path)
 
 		# Thanks to ' && touch ./done' breeze can always asses if the run was completed (successful or not)
 		command = self.sh_command_line # self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path)
 		config.write(command)
 		config.close()
+
+		# config should be readable and executable but not writable, same for script.R
+		os.chmod(self._sh_file_path, ACL.RX_RX_)
+		os.chmod(self._r_exec_path.path, ACL.RX_RX_)
 
 	# INTERFACE for extending assembling process
 	def generate_r_file(self, *args, **kwargs):
@@ -1935,9 +1939,9 @@ class Runnable(FolderObj, models.Model):
 		except Exception as e:
 			# FIXME this is SHITTY
 			log.error('%s%s : ' % self.short_id + ' while waiting : %s' % e)
-			if e.message == 'code 24: no usage information was returned for the completed job' or self.aborting:
-				self.__manage_run_failed(None, exit_code)
-				log.info('%s%s : ' % self.short_id + ' FAIL CODE 24 (FIXME) : %s' % e)
+			# if e.message == 'code 24: no usage information was returned for the completed job' or self.aborting:
+			#	self.__manage_run_failed(None, exit_code)
+			#	log.info('%s%s : ' % self.short_id + ' FAIL CODE 24 (FIXME) : %s' % e)
 		return 1
 
 	@staticmethod
@@ -1947,9 +1951,14 @@ class Runnable(FolderObj, models.Model):
 		:type file_n: str
 		"""
 		import json
+		import os
 
 		if isinstance(ret_val, drmaa.JobInfo):
-			json.dump(ret_val, open(file_n, 'w'))
+			try:
+				os.chmod(file_n, ACL.RW_RW_)
+				json.dump(ret_val, open(file_n, 'w+'))
+			except Exception as e:
+				pass
 
 	# Clem 11/09/2015
 	def __manage_run_success(self, ret_val):
@@ -1985,8 +1994,7 @@ class Runnable(FolderObj, models.Model):
 	# Clem 11/09/2015
 	def __manage_run_failed(self, ret_val, exit_code, drmaa_waiting=None, type=''):
 		""" !!! DO NOT OVERRIDE !!!
-		instead do override ''
-
+		instead do override 'trigger_run_failed'
 		Actions on Job Failure
 
 		:type ret_val: drmaa.JobInfo
