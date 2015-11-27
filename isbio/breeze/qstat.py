@@ -108,15 +108,15 @@ class Qstat(object):
 
 	# clem 12/10/2015
 	@property
-	def queue_stat(self):
+	def queue_stat(self, queue_name=settings.SGE_QUEUE_NAME):
 		import subprocess
 		from collections import namedtuple
 
-		p = subprocess.Popen('%s -g c|grep %s' % (self.qstat, str(settings.SGE_QUEUE_NAME)), shell=True, stdout=subprocess.PIPE)
+		p = subprocess.Popen('%s -g c|grep %s' % (self.qstat, str(queue_name)), shell=True, stdout=subprocess.PIPE)
 		output, err = p.communicate()
 		server_info = dict()
 		for each in output.splitlines():
-			if settings.SGE_QUEUE_NAME in each.split():
+			if queue_name in each.split():
 				server_info['s_name'] = str(each.split()[0])
 				server_info['cqload'] = str(float(each.split()[1]) * 100)
 				server_info['used'] = str(each.split()[2])
