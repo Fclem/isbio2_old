@@ -1745,7 +1745,9 @@ def edit_job(request, jid=None, mod=None):
 				'report_to': str(job.email if job.email else user_info.email)})
 			custom_form = breezeForms.form_from_xml(xml_parser=job.xml_tree, usr=request.user)
 	except RRuntimeError:
-		return HttpResponseServerError()
+		return HttpResponseServerError('R runtime Error.')
+	except IOError:
+		return HttpResponseServerError('A required file could not be found.')
 
 	return render_to_response('forms/user_modal.html', RequestContext(request, {
 		'url': "/jobs/edit/%s%s" % (str(jid), mod if mod is not None else ''),
@@ -2957,8 +2959,9 @@ def view_log(request):
 			l = l.replace(">", "&gt;").replace("<", "&lt;")
 			l.encode('ascii', 'xmlcharrefreplace')
 			if l.replace('__breeze__started__', '') != l:
-				out.append('<hr>')
+				out.append('<hr>') # add a separator to highlight reloads
 			if l.startswith(' ') or grab_next:
+				# reverse the order of Stack trace for them to be in-order
 				grab_next = True
 				out[-1] += '<br />' + no_withe_space(l)
 				if not l.startswith(' '):
