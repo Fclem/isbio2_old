@@ -18,6 +18,7 @@ else:
 	urlpatterns = patterns('',
 		# url(r'^.*$', views.down),
 		url(r'^user_list$', views.user_list),
+		url(r'^mail_list$', views.user_list_advanced),
 		# url(r'^$', 'django_cas.views.login'),  # views.breeze),
 		url(r'^$', django_cas_login),  # views.breeze),
 		url(r'^breeze/$', views.breeze),

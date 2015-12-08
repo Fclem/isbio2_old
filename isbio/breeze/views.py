@@ -2998,3 +2998,24 @@ def restart_breeze(request):
 
 # return HttpResponseRedirect(reverse(home))
 
+
+
+@login_required(login_url='/')
+def user_list_advanced(request):
+	# user_lst = User.objects.all().order_by('username')
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+	user_lst = OrderedUser.objects.all()
+
+	lst = list()
+	lst2 = list()
+	for each in user_lst:
+		if each.email != '' and each.email is not None:
+			lst.append(str(each.email))
+		else:
+			#lst2.append('%s (%s)' % (each.username, each.get_full_name()))
+			lst2.append(str(each.username))
+
+	data = ', '.join(lst) # simplejson.dumps(lst)
+	data += '\n\n\nUsers with no registered email address :\n%s' % ', '.join(lst2)
+	return HttpResponse(data, mimetype='text/plain')
