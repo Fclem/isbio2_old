@@ -113,22 +113,25 @@ class Qstat(object):
 	def queue_stat(self, queue_name=settings.SGE_QUEUE_NAME):
 		import subprocess
 		from collections import namedtuple
+		try:
+			p = subprocess.Popen('%s -g c|grep %s' % (self.qstat, str(queue_name)), shell=True, stdout=subprocess.PIPE)
+			output, err = p.communicate()
+			server_info = dict()
+			for each in output.splitlines():
+				if queue_name in each.split():
+					server_info['s_name'] = str(each.split()[0])
+					server_info['cqload'] = str(float(each.split()[1]) * 100)
+					server_info['used'] = str(each.split()[2])
+					server_info['avail'] = str(each.split()[4])
+					server_info['total'] = str(each.split()[5])
+					server_info['cdsuE'] = str(each.split()[7])
+					server_info['cdsuE'] = str(each.split()[7])
+					break
 
-		p = subprocess.Popen('%s -g c|grep %s' % (self.qstat, str(queue_name)), shell=True, stdout=subprocess.PIPE)
-		output, err = p.communicate()
-		server_info = dict()
-		for each in output.splitlines():
-			if queue_name in each.split():
-				server_info['s_name'] = str(each.split()[0])
-				server_info['cqload'] = str(float(each.split()[1]) * 100)
-				server_info['used'] = str(each.split()[2])
-				server_info['avail'] = str(each.split()[4])
-				server_info['total'] = str(each.split()[5])
-				server_info['cdsuE'] = str(each.split()[7])
-				server_info['cdsuE'] = str(each.split()[7])
-				break
-
-		return namedtuple('Struct', server_info.keys())(*server_info.values())
+			return namedtuple('Struct', server_info.keys())(*server_info.values())
+		except Exception:
+			from b_exceptions import SGEError
+			raise SGEError('SGE seems to be not properly configured')
 
 	# clem 12/10/2015
 	@property
