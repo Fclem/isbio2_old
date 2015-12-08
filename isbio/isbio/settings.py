@@ -210,6 +210,7 @@ class BreezeSettings(Settings):
 		'breeze.middlewares.CheckUserProfile',
 		'django_requestlogging.middleware.LogSetupMiddleware',
 		'breeze.middlewares.DataDog' if ENABLE_DATADOG else '',
+		'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
 		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -662,6 +663,20 @@ class DevSettings(BreezeSettings):
 
 	else:
 		VERBOSE = False
+
+
+	try:
+		BASE_DIR = SOURCE_ROOT
+		ROLLBAR = {
+			'access_token': '00f2bf2c84ce40aa96842622c6ffe97d',
+			'environment': 'development' if DEBUG else 'production',
+			'root': BASE_DIR,
+		}
+		import rollbar
+
+		rollbar.init(**ROLLBAR)
+	except Exception:
+		pass
 
 	if SHINY_MODE == 'remote':
 		SHINY_TARGET_URL = SHINY_REMOTE_TARGET_URL

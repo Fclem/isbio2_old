@@ -21,6 +21,9 @@
 		margin-bottom: 2px;
 		overflow: auto;
 	}
+	.err {
+		margin-left: 30px;
+	}
 	</style>
 {% endblock %}
 
@@ -44,6 +47,8 @@
 			{% for line in log %}
 				{% if line == '<hr>' %}
 					<hr>
+				{% elif 'Traceback' in line %}
+					{{ log.count|sub:200 }} <code class="err">{{ line|safe }}</code>
 				{% else %}
 					{{ log.count|sub:200 }} <code>{{ line|safe }}</code>
 				{% endif %}
