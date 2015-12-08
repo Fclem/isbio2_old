@@ -97,10 +97,12 @@ class SgeJob(object):
 # clem on 25/08/2015
 class Qstat(object):
 	def __init__(self):
-		self.qstat = settings.QSTAT_BIN
-
-		self._job_list = dict()
-		self._refresh_qstat()
+		try:
+			self._job_list = dict()
+			self.qstat = settings.QSTAT_BIN
+			self._refresh_qstat()
+		except Exception as e:
+			pass
 
 	def __sub_proc(self, arg):
 		import subprocess
