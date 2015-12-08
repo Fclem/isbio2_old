@@ -95,7 +95,7 @@ class SgeJob(object):
 
 
 # clem on 25/08/2015
-class Qstat(object):
+class Qstat(object): # would need some proper error management if SGE is not set up properly
 	def __init__(self):
 		try:
 			self._job_list = dict()
@@ -145,7 +145,10 @@ class Qstat(object):
 	# clem 12/10/2015
 	@property
 	def is_queue_full(self):
-		return not self.queue_stat_int.avail
+		try:
+			return not self.queue_stat_int.avail
+		except AttributeError:
+			return True
 
 	@property
 	def job_dict(self):
