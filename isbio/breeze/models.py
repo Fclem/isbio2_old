@@ -2267,7 +2267,7 @@ class Jobs(Runnable):
 	def xml_tree(self):
 		if not hasattr(self, '_xml_tree'): # caching
 			import xml.etree.ElementTree as xml
-			self._xml_tree = xml.parse(self._doc_ml)
+			self._xml_tree = xml.parse(self._doc_ml.path)
 		return self._xml_tree
 
 	def deferred_instance_specific(self, *args, **kwargs):
