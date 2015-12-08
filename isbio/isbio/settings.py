@@ -328,7 +328,7 @@ class DevSettings(BreezeSettings):
 
 	MANAGERS = ADMINS
 
-	os.system('source ~/.sge_profile')
+	os.system('. ~/.sge_profile')
 
 	# sge_arch = "lx26-amd64"
 	# os.environ['SGE_ROOT'] = '/opt/gridengine'
