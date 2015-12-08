@@ -328,7 +328,14 @@ class DevSettings(BreezeSettings):
 
 	MANAGERS = ADMINS
 
-	os.system('. ~/.sge_profile')
+	# os.system('. ~/.sge_profile')
+	# dynamically change the environement
+	import os, subprocess as sp, json
+	source = 'source ~/.sge_profile'
+	dump = 'python -c "import os, json;print json.dumps(dict(os.environ))"'
+	pipe = sp.Popen(['/bin/bash', '-c', '%s && %s' % (source, dump)], stdout=sp.PIPE)
+	env = json.loads(pipe.stdout.read())
+	os.environ = env
 
 	# sge_arch = "lx26-amd64"
 	# os.environ['SGE_ROOT'] = '/opt/gridengine'
