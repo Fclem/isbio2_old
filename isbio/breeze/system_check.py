@@ -2,11 +2,11 @@ from breeze import utils
 from utils import Bcolors
 from utils import logger_timer
 from breeze.auxiliary import proxy_to
-# from isbio import settings
 from django.conf import settings
 from breeze.b_exceptions import *
 from django.http import HttpRequest
 from collections import OrderedDict
+
 # from django.contrib.auth.models import User
 # from _ctypes_test import func
 # import breeze.auxiliary as aux
@@ -126,6 +126,7 @@ class CheckerList(list):
 				(self.running_count, 's' if self.running_count > 1 else '', self.article,
 				self.runnings)
 
+
 # Manage checks process for rendez-vous
 # checking_list = CheckerList()
 
@@ -233,7 +234,7 @@ class SysCheckUnit(Process):
 			_ concurrency and speed (from console)
 			_ process isolation, and main thread segfault avoidance (from UI)
 		"""
-		super(SysCheckUnit, self).__init__(target=self.split_runner, args=(from_ui, ))
+		super(SysCheckUnit, self).__init__(target=self.split_runner, args=(from_ui,))
 		self.start()
 		if not from_ui:
 			# checking_list.append(self) # add process to the rendez-vous list
@@ -509,7 +510,7 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 		else:
 			folder_count = len(saved_state[each])
 			folder_size = utils.human_readable_byte_size(utils.get_folder_size(each))
-			folder[each] = { 'count': folder_count, 'size': folder_size}
+			folder[each] = { 'count': folder_count, 'size': folder_size }
 			status['count'] = folder_count
 			status['size'] = folder_size
 			if saved_state[each] == current_state[each]:
@@ -569,8 +570,8 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 				else:
 					status['id'] = ss[file_n][2]
 			files_tmp.append(status)
-			# files_tmp.insert(0, status.copy())
-			# files_tmp = [status.copy()] + files_tmp
+		# files_tmp.insert(0, status.copy())
+		# files_tmp = [status.copy()] + files_tmp
 		files_state.append({ 'name': each, 'size': folder[each]['size'], 'count': len(files_tmp), 'list': files_tmp })
 
 	if errors > 0:
@@ -681,7 +682,8 @@ def check_csc_taito_mount():
 	"""
 	from os import path
 	try:
-		if path.exists(settings.TMP_CSC_TAITO_MOUNT) and path.isdir(settings.TMP_CSC_TAITO_MOUNT + settings.TMP_CSC_TAITO_REPORT_PATH):
+		if path.exists(settings.TMP_CSC_TAITO_MOUNT) and path.isdir(
+			settings.TMP_CSC_TAITO_MOUNT + settings.TMP_CSC_TAITO_REPORT_PATH):
 			return True
 	except Exception:
 		pass
@@ -701,8 +703,8 @@ def check_sge():
 	:rtype: bool
 	"""
 	if utils.is_host_online(settings.SGE_MASTER_IP, 2):
-		import drmaa
 		try:
+			import drmaa
 			s = drmaa.Session()
 			s.initialize()
 			s.exit()
@@ -710,6 +712,18 @@ def check_sge():
 		except Exception as e:
 			# pass
 			raise e
+	return False
+
+
+# clem on 09/12/2015
+def check_sge_c():
+	"""
+	Check if SGE has a non empty env configuration.
+	:rtype: bool
+	"""
+	if settings.Q_BIN != '' and settings.SGE_QUEUE_NAME != '':
+		return True
+
 	return False
 
 
@@ -757,9 +771,10 @@ def long_poll_waiter():
 	sleep(settings.LONG_POLL_TIME_OUT_REFRESH)
 	return 'ok'
 
+
 # TODO FIXME runtime fs_check slow and memory leak ?
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
-	ex=FileSystemNotMounted, mandatory=True)
+						ex=FileSystemNotMounted, mandatory=True)
 
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
@@ -770,6 +785,8 @@ CHECK_LIST = [
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
+	SysCheckUnit(check_sge_c, 'sge_c', 'SGE conf', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured,
+				mandatory=True),
 	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),

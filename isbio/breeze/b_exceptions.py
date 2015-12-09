@@ -9,6 +9,7 @@ __date__ = '25/05/2015'
 class SystemCheckFailed(RuntimeWarning):
 	pass
 
+
 class FileSystemNotMounted(SystemCheckFailed):
 	pass
 
@@ -26,6 +27,10 @@ class InternetUnreachable(SystemCheckFailed):
 
 
 class RORAUnreachable(SystemCheckFailed):
+	pass
+
+
+class SGEImproperlyConfigured(SystemCheckFailed):
 	pass
 
 
