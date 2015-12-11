@@ -33,5 +33,7 @@ isbio/breeze/mould/
 *.sublime-workspace
 *.gz
 run.sh
+/.version
+/diagram.png
 re_run.sh
 running
