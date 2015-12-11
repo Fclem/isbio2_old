@@ -676,16 +676,17 @@ class DevSettings(BreezeSettings):
 
 
 	try:
+		import rollbar
 		BASE_DIR = SOURCE_ROOT
 		ROLLBAR = {
 			'access_token': '00f2bf2c84ce40aa96842622c6ffe97d',
 			'environment': 'development' if DEBUG else 'production',
 			'root': BASE_DIR,
 		}
-		import rollbar
 
 		rollbar.init(**ROLLBAR)
 	except Exception:
+		logging.getLogger().error('Unable to init rollbar')
 		pass
 
 	if SHINY_MODE == 'remote':
