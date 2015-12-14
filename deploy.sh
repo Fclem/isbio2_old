@@ -24,7 +24,7 @@ else
 fi
 
 NEW_SELF=`md5sum deploy.sh`
-if [ $NEW_SELF != $SELF ]; then
+if [ "$NEW_SELF" != "$SELF" ]; then
 	echo "Deploy script has been changed, re-starting..."
 	./deploy.sh &
 	exit $?
