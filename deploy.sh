@@ -28,6 +28,7 @@ if [ $NEW_SELF != $SELF ]; then
 	echo "Deploy script has been changed, re-starting..."
 	./deploy.sh &
 	exit $?
+fi
 
 ACCESS_TOKEN=00f2bf2c84ce40aa96842622c6ffe97d
 LOCAL_USERNAME=`whoami`
