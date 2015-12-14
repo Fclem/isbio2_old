@@ -3002,7 +3002,6 @@ def restart_breeze(request):
 # return HttpResponseRedirect(reverse(home))
 
 
-
 @login_required(login_url='/')
 def user_list_advanced(request):
 	# user_lst = User.objects.all().order_by('username')
@@ -3022,3 +3021,23 @@ def user_list_advanced(request):
 	data = ', '.join(lst) # simplejson.dumps(lst)
 	data += '\n\n\nUsers with no registered email address :\n%s' % ', '.join(lst2)
 	return HttpResponse(data, mimetype='text/plain')
+
+
+@login_required(login_url='/')
+def job_list(request):
+	all_rt = ReportType.objects.all()
+	resources = dict()
+	for rt in all_rt:
+		assert isinstance(rt, ReportType)
+		last_y = Report.objects.filter(created__gt=datetime(2014, 12, 15)).filter(type_id=rt.id)
+		new_l = list()
+		for each in last_y:
+			assert isinstance(each, Report)
+			if each.sgeid != 0 and each.sgeid != '':
+				new_l.append(each.sgeid)
+		if len(new_l)>0:
+			resources.update({
+				rt.type:  new_l
+			})
+	return HttpResponse(simplejson.dumps(resources), mimetype='application/json')
+	# print last100
