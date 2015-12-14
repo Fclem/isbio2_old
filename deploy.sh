@@ -1,6 +1,8 @@
 #!/bin/bash
 
+SELF=`md5sum deploy.sh`
 HOSTNAME=`hostname`
+
 version=$(<.version)
 ((version++))
 echo $version>.version
@@ -21,6 +23,12 @@ else
 	fi
 fi
 
+NEW_SELF=`md5sum deploy.sh`
+if [ $NEW_SELF != $SELF ]; then
+	echo "Deploy script has been changed, re-starting..."
+	./deploy.sh &
+	exit $?
+
 ACCESS_TOKEN=00f2bf2c84ce40aa96842622c6ffe97d
 LOCAL_USERNAME=`whoami`
 REVISION=`git log -n 1 --pretty=format:"%H"`
@@ -33,5 +41,6 @@ curl https://api.rollbar.com/api/1/deploy/ \
   -F local_username=$LOCAL_USERNAME
 
 echo ""
+killall autorun.sh > /dev/null 2>&1
 echo "Reloading BREEZE..."
-./re_run.sh &
+./autorun.sh &
