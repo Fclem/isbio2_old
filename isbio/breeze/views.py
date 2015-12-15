@@ -3035,9 +3035,24 @@ def job_list(request):
 			assert isinstance(each, Report)
 			if each.sgeid != 0 and each.sgeid != '':
 				new_l.append(each.sgeid)
-		if len(new_l)>0:
+		if len(new_l) > 0:
 			resources.update({
-				rt.type:  new_l
+				rt.type: new_l
 			})
-	return HttpResponse(simplejson.dumps(resources), mimetype='application/json')
+
+	all_jt = Rscripts.objects.all()
+	resources2 = dict()
+	for jt in all_jt:
+		assert isinstance(jt, Rscripts)
+		last_y = Jobs.objects.filter(staged__gt=datetime(2014, 12, 15)).filter(script_id=jt.id)
+		new_l = list()
+		for each in last_y:
+			assert isinstance(each, Jobs)
+			if each.sgeid != 0 and each.sgeid != '':
+				new_l.append(each.sgeid)
+		if len(new_l) > 0:
+			resources2.update({
+				jt.name: new_l
+			})
+	return HttpResponse(simplejson.dumps(resources) + '\n\n' + simplejson.dumps(resources2), mimetype='application/json')
 	# print last100
