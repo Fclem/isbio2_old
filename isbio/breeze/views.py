@@ -3015,7 +3015,7 @@ def user_list_advanced(request):
 		if each.email != '' and each.email is not None:
 			lst.append(str(each.email))
 		else:
-			#lst2.append('%s (%s)' % (each.username, each.get_full_name()))
+			# lst2.append('%s (%s)' % (each.username, each.get_full_name()))
 			lst2.append(str(each.username))
 
 	data = ', '.join(lst) # simplejson.dumps(lst)
