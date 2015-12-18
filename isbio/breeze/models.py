@@ -624,7 +624,9 @@ class ShinyReport(models.Model):
 		if force_remote or self.shiny_remote_ok and not force_local:
 			return '%s%s/' % (settings.SHINY_TARGET_URL, report.shiny_key)
 		elif self.shiny_local_ok:
-			return '%s%s/' % (settings.SHINY_TARGET_URL, self.report_link_rel_path(report.id))
+			from django.core.urlresolvers import reverse
+			from views import report_shiny_in_wrapper
+			return reverse(report_shiny_in_wrapper, kwargs={ 'rid': report.id })
 
 	@property # relative path to link holder directory
 	def _link_holder_rel_path(self):
