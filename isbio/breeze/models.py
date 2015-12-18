@@ -1095,6 +1095,8 @@ class ShinyReport(models.Model):
 class ReportType(FolderObj, models.Model):
 	BASE_FOLDER_NAME = settings.REPORT_TYPE_FN
 
+	# objects = managers.ReportTypeManager()
+
 	type = models.CharField(max_length=17, unique=True)
 	description = models.CharField(max_length=5500, blank=True)
 	search = models.BooleanField(default=True)
@@ -1118,6 +1120,10 @@ class ReportType(FolderObj, models.Model):
 
 	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to",
 		default=0, blank=True, null=True)
+
+	def __init__(self, *args, **kwargs):
+		super(ReportType, self).__init__(*args, **kwargs)
+		self.__prev_shiny_report = self.shiny_report_id
 
 	@property
 	def folder_name(self):
@@ -1154,14 +1160,15 @@ class ReportType(FolderObj, models.Model):
 			pass
 		return conf
 
+	def __shiny_changed(self):
+		return self.__prev_shiny_report != self.shiny_report_id
+
 	def save(self, *args, **kwargs):
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
 
-		for each in ShinyReport.objects.all():
-			each.regen_report()
-		# if self.shiny_report_id > 0:
-		# 	# call symbolic link update
-		# 	self.shiny_report._link_all_reports(True)
+		if self.__shiny_changed:
+			ShinyReport.objects.get(pk=self.__prev_shiny_report).regen_report()
+			self.shiny_report.regen_report()
 
 		try:
 			if not isfile(self.config_path):
@@ -1176,13 +1183,25 @@ class ReportType(FolderObj, models.Model):
 		return self.type
 
 	def delete(self, using=None):
+		shiny_r = self.shiny_report
 		super(ReportType, self).delete(using=using)
+		if shiny_r is not None:
+			shiny_r.regen_report()
 		return True
 
 	class Meta:
 		ordering = ('type',)
 		abstract = False
 		db_table = 'breeze_reporttype'
+
+
+# from django.db.models.signals import pre_save
+# from django.dispatch import receiver
+
+
+# @receiver(pre_save, sender=ReportType)
+# def my_handler(sender, **kwargs):
+#	print 'pre-save', sender, kwargs
 
 
 class ScriptCategories(models.Model):
