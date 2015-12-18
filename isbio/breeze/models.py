@@ -1167,8 +1167,10 @@ class ReportType(FolderObj, models.Model):
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
 
 		if self.__shiny_changed:
-			ShinyReport.objects.get(pk=self.__prev_shiny_report).regen_report()
-			self.shiny_report.regen_report()
+			if self.__prev_shiny_report is not None:
+				ShinyReport.objects.get(pk=self.__prev_shiny_report).regen_report()
+			if self.shiny_report is not None:
+				self.shiny_report.regen_report()
 
 		try:
 			if not isfile(self.config_path):
