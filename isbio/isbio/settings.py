@@ -501,7 +501,7 @@ class DevSettings(BreezeSettings):
 	SHINY_REMOTE_LIBS_BREEZE_URL = '/libs/'
 
 	# LEGACY ONLY (single Shiny old system)
-	SHINY_MODE = 'remote'
+	SHINY_MODE = 'local'
 
 	SHINY_HEADER_FILE_NAME = 'header.R'
 	SHINY_LOADER_FILE_NAME = 'loader.R'
