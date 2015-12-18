@@ -853,23 +853,26 @@ class ShinyReport(models.Model):
 		:rtype: dict or list
 		"""
 		# fixed on 11/09/2015
+		# fixed on 18/12/2015
 		# TODO check expected behavior regarding templates
-		import json
-		log_obj = get_logger()
 		j = list()
-		try:
-			# jfile = open(ShinyReport.path_file_lst_template)
-			# j = json.load(jfile)
-			j = json.loads(self.custom_files)
-			# jfile.close()
-		except ValueError as e:
-			log_obj.exception(e.message)
-			# raise ValueError(e)
-		if formatted:
-			d = dict()
-			for each in j:
-				d.update({ each['tname']: each['path'] })
-			return d
+		if self.custom_files is not None and self.custom_files != '':
+			import json
+			log_obj = get_logger()
+
+			try:
+				# jfile = open(ShinyReport.path_file_lst_template)
+				# j = json.load(jfile)
+				j = json.loads(self.custom_files)
+				# jfile.close()
+			except ValueError as e:
+				log_obj.exception(e.message)
+				# raise ValueError(e)
+			if formatted:
+				d = dict()
+				for each in j:
+					d.update({ each['tname']: each['path'] })
+				return d
 		return j
 
 	# TODO expired design
@@ -878,10 +881,11 @@ class ShinyReport(models.Model):
 
 		# file_loaders = open(ShinyReport.path_loader_r_template)
 		# src = Template(file_loaders.read())
-		src = Template(self.custom_loader)
-		# file_loaders.close()
-		# return src.safe_substitute(ShinyReport.related_files(formatted=True))
-		return src.safe_substitute(self.related_files(formatted=True))
+		if self.custom_loader is not None and self.custom_loader!='':
+			src = Template(self.custom_loader)
+			# file_loaders.close()
+			# return src.safe_substitute(ShinyReport.related_files(formatted=True))
+			return src.safe_substitute(self.related_files(formatted=True))
 
 	def generate_server(self, a_user=None, remote=False): # generate the report server.R file to include all the tags
 		"""
