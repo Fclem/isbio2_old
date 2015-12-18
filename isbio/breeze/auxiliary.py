@@ -688,7 +688,8 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 			print 'PROX::', proxied_request.code
 		if not silent:
 			log_obj.debug(u_print_sub(request, path + str(qs), proxied_request.code, str(len(content))))
-		if settings.DEBUG and not silent: u_print(request, path + str(qs), proxied_request.code, str(len(content)), datef=console_date_f)
+		if settings.DEBUG and not silent:
+			u_print(request, path + str(qs), proxied_request.code, str(len(content)), date_f=console_date_f)
 		rep = HttpResponse(content, status=status_code, mimetype=mime_type)
 	return rep
 
