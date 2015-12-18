@@ -2996,10 +2996,10 @@ def restart_breeze(request):
 	if not request.user.is_superuser:
 		raise PermissionDenied
 
-	python = sys.executable
-	os.execl(python, python, *sys.argv)
-
-# return HttpResponseRedirect(reverse(home))
+	import subprocess
+	# TODO run that in a subprocess with timer, and return a reloading page
+	subprocess.Popen('killall python', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
+	# return HttpResponseRedirect(reverse(resources))
 
 
 @login_required(login_url='/')
