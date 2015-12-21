@@ -384,7 +384,7 @@ class DevSettings(BreezeSettings):
 
 	# contains everything else (including breeze generated content) than the breeze web source code and static files
 	PROJECT_FOLDER = '/fs/projects/'
-	# BREEZE_FOLDER = 'breeze-dev/' if DEV_MODE else 'breeze/'
+	# PROJECT_FOLDER = '/projects/'
 	BREEZE_FOLDER = 'breeze' + ('-dev' if DEV_MODE else '') + '/'
 	if HOST_NAME.endswith('ph'):
 		BREEZE_FOLDER = 'breeze_new/'
@@ -393,12 +393,12 @@ class DevSettings(BreezeSettings):
 		SQL_DUMP = False
 		PHARMA_MODE = True
 
-	PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
-	R_HOME = "/projects/breeze/R/lib64/R"
-	R_ENGINE_SUB_PATH = 'R/bin/R '
+	PROJECT_PATH = PROJECT_FOLDER + 'breeze/'
+	# R_HOME = "/projects/breeze/R/lib64/R"
+	R_HOME = "%sR/lib64/R" % PROJECT_PATH
+	R_ENGINE_SUB_PATH = 'R/bin/R ' # NOTE THERE IS A SPACE AT THIS END OF THIS VAR
 	R_ENGINE_PATH = PROJECT_PATH + R_ENGINE_SUB_PATH
-	# if not os.path.isdir(PROJECT_PATH):
-	if not os.path.isdir( R_ENGINE_PATH):
+	if not os.path.isfile( R_ENGINE_PATH.strip()):
 		PROJECT_FOLDER = '/projects/'
 		PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
 		R_ENGINE_PATH = PROJECT_PATH + R_ENGINE_SUB_PATH
