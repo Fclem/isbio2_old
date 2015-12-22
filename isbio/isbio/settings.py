@@ -393,15 +393,16 @@ class DevSettings(BreezeSettings):
 		SQL_DUMP = False
 		PHARMA_MODE = True
 
-	PROJECT_PATH = PROJECT_FOLDER + 'breeze/'
+	PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
+	PROD_PATH = PROJECT_FOLDER + 'breeze/'
 	# R_HOME = "/projects/breeze/R/lib64/R"
-	R_HOME = "%sR/lib64/R" % PROJECT_PATH
+	R_HOME = "%sR/lib64/R" % PROD_PATH
 	R_ENGINE_SUB_PATH = 'R/bin/R ' # NOTE THERE IS A SPACE AT THIS END OF THIS VAR
-	R_ENGINE_PATH = PROJECT_PATH + R_ENGINE_SUB_PATH
+	R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
 	if not os.path.isfile( R_ENGINE_PATH.strip()):
 		PROJECT_FOLDER = '/projects/'
 		PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
-		R_ENGINE_PATH = PROJECT_PATH + R_ENGINE_SUB_PATH
+		R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
 
 	PROJECT_FHRB_PM_PATH = '/projects/fhrb_pm/'
 	JDBC_BRIDGE_PATH = PROJECT_FHRB_PM_PATH + 'bin/start-jdbc-bridge' # Every other path has a trailing /
