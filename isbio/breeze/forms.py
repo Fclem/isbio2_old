@@ -1091,7 +1091,7 @@ def form_from_xml(xml_parser, req=None, init=False, usr=None, post=None, files=N
 					)
 
 				elif input_item.attrib["type"] == "FIL" or input_item.attrib["type"] == "TPL":  # file upload field
-					print path, files
+					# print path, files
 					field = forms.FileField(
 						# initial=loc
 						required=optional_prop,
@@ -1186,7 +1186,6 @@ def create_report_sections(sections, req=None, posted=None, files=None, path=Non
 			sdata['isvalid'] = False
 		sdata['id'] = item.id
 		key = 'Section_dbID_' + str(item.id)
-		# TODO remove # print 'Section ' + key + ' active : ' + posted[key] if key in posted else 0
 		sdata['value'] = posted[key] if posted and key in posted else 0
 		sdata['inline'] = str(item.inln)
 		sdata['name'] = str(item.name)
