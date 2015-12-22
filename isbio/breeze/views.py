@@ -948,6 +948,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 	tags_data_list = list()
 	files = None
 	title = None
+	report = None
 
 	# print rtype, iname, iid
 
@@ -1041,7 +1042,7 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 				tags_data_list = breezeForms.create_report_sections(tags, request, data, files)
 			except RRuntimeError:
 				return HttpResponseServerError()
-		#print('Not posted')
+
 		for x in tags_data_list:
 			if not 'value' in x: x['value'] = '0'
 			x['opened'] = x['value'] == '1'
