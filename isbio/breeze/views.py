@@ -647,7 +647,7 @@ def dbviewer(request):
 	}))
 
 
-# FIXME no login ?
+@login_required(login_url='/')
 def ajax_patients_data(request, which):
 	"""
 		Generic function to extract data from RORA tables;
@@ -675,7 +675,7 @@ def ajax_patients_data(request, which):
 	return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
 
 
-# FIXME no login ?
+@login_required(login_url='/')
 def ajax_patients(request, which):
 	# patient_id = which
 	if request.method == 'POST':
@@ -722,7 +722,7 @@ def ajax_patients(request, which):
 	}))
 
 
-# FIXME no login ?
+@login_required(login_url='/')
 def ajax_patients_new(request):
 	# patient_id = which
 	if request.method == 'POST':
@@ -753,6 +753,7 @@ def ajax_patients_new(request):
 	}))
 
 
+@login_required(login_url='/')
 def screen_data(request, which):
 	if request.method == 'POST':
 		screen_form = breezeForms.ScreenInfo(request.POST)
@@ -801,7 +802,7 @@ def screen_data(request, which):
 	}))
 
 
-# FIXME no login ?
+@login_required(login_url='/')
 def ajax_rora_screens(request, gid):
 	if request.method == 'POST':
 		screengroup_form = breezeForms.ScreenGroupInfo(request.POST)
