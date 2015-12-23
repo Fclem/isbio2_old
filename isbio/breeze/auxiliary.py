@@ -592,7 +592,7 @@ def fail_with404(request, error_msg=None):
 	:param request: Django request object
 	:type request: http.HttpRequest
 	:param error_msg: The message to display on the 404 page
-	:type error_msg: str
+	:type error_msg: str|list
 	:return: custom 404 page
 	:rtype: http.HttpResponseNotFound
 	"""

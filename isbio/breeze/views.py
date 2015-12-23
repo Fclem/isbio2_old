@@ -2358,11 +2358,17 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 		:return: (local_path, path_to_file)
 		:rtype: (str, str)
 	"""
+	from django.http import Http404
 	# SAFETY FIRST
 	if not fitem:
 		aux.fail_with404(request, 'Bad function call : missing or invalid argument')
-
-	local_path, path_to_file = aux.get_report_path(fitem, fname)
+	try:
+		local_path, path_to_file = aux.get_report_path(fitem, fname)
+	except Http404:
+		return aux.fail_with404(request, ['The report file was not found.', 'This usually means that the pipeline'
+			' did run, but failed to produce the report for some reason.', 'Tis could be caused by the a script failing'
+			' in an unexpected way that Breeze cannot detect, or failed to detect.',
+			'You can consider that this report has failed'])
 
 	mime = MimeTypes()
 	url = urllib.pathname2url(path_to_file)
