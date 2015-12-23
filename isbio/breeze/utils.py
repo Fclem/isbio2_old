@@ -29,6 +29,7 @@ class ACL:
 	RW_R_ = 0640
 	R_R_ = 0440
 	RWX_RWX_R = 0774
+	RWX_RWX_ = 0770
 	RWX_RX_ = 0750
 	RX_RX_ = 0550
 
