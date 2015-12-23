@@ -18,5 +18,5 @@ $tags
 
 # Render the report to a file
 writeReport( REPORT, filename=toString("$dochtml"))
-system("chmod -R 770 .")
+# system("chmod -R 770 .")
 
