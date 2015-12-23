@@ -93,6 +93,7 @@ else:
 		# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out, name='shiny.tab.out'),
 		# sub-level access control wrapper (in)
 		url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
+		url(r'^shiny/apps/?(?P<path>.*)$', views.standalone_shiny_in_wrapper),
 		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)$', views.report_shiny_in_wrapper),
 		url(r'^shiny/rep/(?P<rid>\d+)/$', views.report_shiny_in_wrapper),
 		url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),

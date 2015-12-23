@@ -2227,6 +2227,17 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 	}))
 
 
+@csrf_exempt
+@login_required(login_url='/')
+def standalone_shiny_in_wrapper(request, path=None):
+	# Enforce user access restrictions
+	if not request.user.is_superuser and not request.user.is_staff:
+		raise PermissionDenied
+
+	# p1 = fitem.type.shiny_report.report_link_rel_path(fitem.id)
+	return aux.proxy_to(request, path, settings.SHINY_LOCAL_STANDALONE_BREEZE_URL)
+
+
 # Wrapper for ShinyApp accessed from inside (login + user access to said report)
 # Proxy access manager
 @csrf_exempt
