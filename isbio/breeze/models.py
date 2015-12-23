@@ -305,8 +305,8 @@ class FolderObj(object):
 		import os
 		import stat
 		# open home's folder for others
-		st = os.stat(self.home_folder_full_path)
-		os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
+		# st = os.stat(self.home_folder_full_path)
+		# os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
 
 	def add_file(self, f):
 		"""
@@ -1121,6 +1121,7 @@ class ReportType(FolderObj, models.Model):
 	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to",
 		default=0, blank=True, null=True)
 
+	# clem 21/12/2015
 	def __init__(self, *args, **kwargs):
 		super(ReportType, self).__init__(*args, **kwargs)
 		self.__prev_shiny_report = self.shiny_report_id
@@ -1167,9 +1168,9 @@ class ReportType(FolderObj, models.Model):
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
 
 		if self.__shiny_changed:
-			if self.__prev_shiny_report is not None:
+			if self.__prev_shiny_report:
 				ShinyReport.objects.get(pk=self.__prev_shiny_report).regen_report()
-			if self.shiny_report is not None:
+			if self.shiny_report:
 				self.shiny_report.regen_report()
 
 		try:
@@ -1333,7 +1334,7 @@ class Rscripts(FolderObj, models.Model):
 		# do the substitution
 		return src.substitute(d)
 
-	#def delete(self, using=None):
+	# def delete(self, using=None):
 	#	super(Rscripts, self).delete(using=using)
 	#	return True
 
@@ -1790,7 +1791,7 @@ class Runnable(FolderObj, models.Model):
 
 		# config should be readable and executable but not writable, same for script.R
 		os.chmod(self._sh_file_path, ACL.RX_RX_)
-		os.chmod(self._r_exec_path.path, ACL.RX_RX_)
+		os.chmod(self._r_exec_path.path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
 	def generate_r_file(self, *args, **kwargs):
@@ -1826,7 +1827,7 @@ class Runnable(FolderObj, models.Model):
 		self.save()
 
 		if not os.path.exists(self.home_folder_full_path):
-			os.makedirs(self.home_folder_full_path)
+			os.makedirs(self.home_folder_full_path, ACL.RWX_RWX_)
 
 		# BUILD instance specific R-File
 		# self.generate_r_file(kwargs['sections'], kwargs['request_data'], custom_form=kwargs['custom_form'])
@@ -2016,6 +2017,7 @@ class Runnable(FolderObj, models.Model):
 			try:
 				os.chmod(file_n, ACL.RW_RW_)
 				json.dump(ret_val, open(file_n, 'w+'))
+				os.chmod(file_n, ACL.R_R_)
 			except Exception as e:
 				pass
 
@@ -2717,6 +2719,20 @@ class Report(Runnable):
 		db_table = 'breeze_report'
 
 
+class list(list):
+	def unique(self):
+		""" return the list with duplicate elements removed """
+		return list(set(self))
+
+	def intersect(self, b):
+		""" return the intersection of two lists """
+		return list(set(self) & set(b))
+
+	def union(self, b):
+		""" return the union of two lists """
+		return list(set(self) | set(b))
+
+
 class ShinyTag(models.Model):
 	# ACL_RW_RW_R = 0664
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
@@ -2732,7 +2748,7 @@ class ShinyTag(models.Model):
 	name = models.CharField(max_length=55, unique=True, blank=False,
 		help_text="Must be unique, no special characters, no withe spaces."
 					"<br />NB : Use the same (in upper case) in the tabName field of the menu entry")
-	label = models.CharField(max_length=32, blank=False, help_text="The text to be display on the dashboard")
+	# label = models.CharField(max_length=32, blank=False, help_text="The text to be display on the dashboard")
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
 	author = ForeignKey(OrderedUser)
 	created = models.DateTimeField(auto_now_add=True)
@@ -2741,6 +2757,8 @@ class ShinyTag(models.Model):
 	menu_entry = models.TextField(default=DEFAULT_MENU_ITEM,
 		help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
 				"of your tag.<br /><u>NB : tabName MUST be identical to the uppercase name of your tag.</u>")
+
+
 
 	@property
 	def get_name(self):
@@ -2806,6 +2824,14 @@ class ShinyTag(models.Model):
 	enabled = models.BooleanField()
 	attached_report = models.ManyToManyField(ShinyReport)
 
+	# clem 22/12/2015
+	def __init__(self, *args, **kwargs):
+		super(ShinyTag, self).__init__(*args, **kwargs)
+		self.__prev_reports = list()
+		if self.id:
+			self.__prev_reports = list(self.attached_report.all() or None)
+		self.__prev_name = self.name or None
+
 	# clem 05/10/2015
 	def copy_to_remote(self):
 		import os
@@ -2825,27 +2851,68 @@ class ShinyTag(models.Model):
 		return False
 
 	def save(self, *args, **kwargs):
+		import shutil
+		import os
+		import zipfile
+
+		# zf = kwargs.pop('zf', None)
+		zf = None
+		try:
+			zf = zipfile.ZipFile(self.zip_file)
+		except Exception as e:
+			pass
+		# rebuild = kwargs.pop('rebuild', False)
+
+		new_name = self.name
+		if self.name != self.__prev_name and self.__prev_name:
+			# name has changed we should rename the folder as well
+			self.name = self.__prev_name
+			print 'old path :', self.folder_name[:-1], 'to:', new_name
+			old_dir = self.folder_name[:-1]
+			self.name = new_name
+			shutil.move(old_dir, self.folder_name[:-1])
+
+		if zf:
+			# clear the folder
+			shutil.rmtree(self.folder_name[:-1], ignore_errors=True)
+			print 'new path:', self.folder_name[:-1]
+
+			# extract the zip
+			zf.extractall(path=self.folder_name)
+			# changing files permission
+			for item in os.listdir(self.folder_name[:-1]):
+				path = '%s%s' % (self.folder_name, item)
+				if os.path.isfile(path):
+					# print 'chmod %s' % path, self.ACL_RW_RW_R
+					os.chmod(path, ACL.RW_RW_)
+			# removes the zip from temp upload folder
+			self._zip_clean()
+
 		super(ShinyTag, self).save(*args, **kwargs) # Call the "real" save() method.
+
+		# refresh ??
+		# self = ShinyTag.objects.get(pk=self.id)
+		# print self.attached_report.
+
 		if self.enabled and ShinyReport.remote_shiny_ready():
 			self.copy_to_remote()
-		print 'after', self.attached_report.all()
-		# FIXME : have to update list of attached report otherwise unlinking report or linking new ones don't work
-		for each in self.attached_report.all():
+		print 'before list', self.__prev_reports
+		print 'after list', self.attached_report.all()
+		for each in (list(self.attached_report.all()).union(self.__prev_reports)).unique():
 			each.regen_report()
+
+	# clem 22/12/2015
+	def _zip_clean(self): # removes the zip from temp upload folder (thus forcing re-upload)
+		import os
+		if os.path.isfile(self.zip_file.path):
+			self.remove_file_safe(self.zip_file.path)
 
 	# Manages folder creation, zip verification and extraction
 	def clean(self):
 		import zipfile
-		import shutil
-		import os
-
-		print 'before', self.attached_report.all()
-
+		if self.__prev_reports and len(self.__prev_reports):
+			print 'list before', self.__prev_reports  # self.attached_report.all()
 		log_obj = get_logger()
-
-		def temp_cleanup(): # removes the zip from temp upload folder (thus forcing re-upload)
-			if os.path.isfile(self.zip_file.path):
-				self.remove_file_safe(self.zip_file.path)
 
 		# checks if attached list changed :
 		# shared_users = request_data.POST.getlist('shared')
@@ -2855,40 +2922,29 @@ class ShinyTag(models.Model):
 		try: # loads zip file
 			zf = zipfile.ZipFile(self.zip_file)
 		except Exception as e:
-			temp_cleanup()
+			zf = None
+			self._zip_clean()
 			if self.id: # not the first time this item is saved, so no problem
 				log_obj.info("%s, No zip submitted, no rebuilding" % self.__repr__)
+				# rebuild = False
 				return # self.save()
 			else:
 				raise ValidationError({ 'zip_file': ["while loading zip_lib says : %s" % e] })
-		log_obj.info("%s, Rebuilding..." % self.__repr__)
 		# check both ui.R and server.R are in the zip and non empty
 		for filename in [self.FILE_SERVER_NAME, self.FILE_UI_NAME]:
 			try:
 				info = zf.getinfo(filename)
 			except KeyError:
-				temp_cleanup()
+				self._zip_clean()
 				raise ValidationError({ 'zip_file': ["%s not found in zip's root" % filename] })
 			except Exception as e:
-				temp_cleanup()
+				self._zip_clean()
 				raise ValidationError({ 'zip_file': ["while listing zip_lib says : %s" % e] })
 			# check that the file is not empty
 			if info.file_size < settings.SHINY_MIN_FILE_SIZE:
-				temp_cleanup()
+				self._zip_clean()
 				raise ValidationError({ 'zip_file': ["%s file is empty" % filename] })
-		# clear the folder
-		shutil.rmtree(self.folder_name[:-1], ignore_errors=True)
-		# extract the zip
-		zf.extractall(path=self.folder_name)
-		# changing files permission
-		for item in os.listdir(self.folder_name[:-1]):
-			path = '%s%s' % (self.folder_name, item)
-			if os.path.isfile(path):
-				# print 'chmod %s' % path, self.ACL_RW_RW_R
-				os.chmod(path, ACL.RW_RW_R)
-		# removes the zip from temp upload folder
-		temp_cleanup()
-		# self.save()
+		log_obj.info("%s, Rebuilding..." % self.__repr__)
 
 	def delete(self, using=None):
 		import shutil
