@@ -676,10 +676,19 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 		try:
 			content = e.read()
 		except Exception as e:
-			content = 'SHINY SERVER : %s\nReason : %s\n%s\n%s' % (e.msg, e.reason, DASHED_LINE, more)
+			if hasattr(e, 'msg'):
+				msg = e.msg
+			if hasattr(e, 'reason'):
+				reason = e.reason
+			content = 'SHINY SERVER : %s\nReason : %s\n%s\n%s' % (msg, reason, DASHED_LINE, more)
 
+		msg, reason, code, mime = '', '', '', ''
+		if hasattr(e, 'code'):
+			code = e.code
+		if hasattr(e, 'headers'):
+			mime = e.headers.typeheader
 		logger.getChild('shiny_server').warning('%s : %s %s%s\n%s' % (e, request.method, path, str(qs), more))
-		rep = HttpResponse(content, status=e.code, mimetype=e.headers.typeheader)
+		rep = HttpResponse(content, status=code, mimetype=mime)
 	else:
 		status_code = proxied_request.code
 		mime_type = proxied_request.headers.typeheader or mimetypes.guess_type(url)
