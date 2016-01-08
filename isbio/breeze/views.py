@@ -2231,8 +2231,6 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 @login_required(login_url='/')
 def standalone_shiny_in_wrapper(request, path=None):
 	# Enforce user access restrictions
-	if not request.user.is_superuser and not request.user.is_staff:
-		raise PermissionDenied
 
 	# p1 = fitem.type.shiny_report.report_link_rel_path(fitem.id)
 	return aux.proxy_to(request, path, settings.SHINY_LOCAL_STANDALONE_BREEZE_URL)
@@ -2367,7 +2365,7 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 	except Http404:
 		return aux.fail_with404(request, ['The report file was not found.', 'This usually means that the pipeline'
 			' did run, but failed to produce the report for some reason.', 'Tis could be caused by the a script failing'
-			' in an unexpected way that Breeze cannot detect, or failed to detect.',
+			' in an unexpected way that Breeze could not detect, or failed to detect.',
 			'You can consider that this report has failed'])
 
 	mime = MimeTypes()
