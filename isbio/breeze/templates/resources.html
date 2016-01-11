@@ -11,6 +11,25 @@
 			border-radius: 7px;
 		}
 
+		#loading {
+			width: 100%;
+			height: 100%;
+			top: 0px;
+			left: 0px;
+			position: fixed;
+			display: none;
+			opacity: 0.7;
+			background-color: #fff;
+			z-index: 99;
+			text-align: center;
+		}
+
+		#loading-image {
+			position: absolute;
+			top: 45%;
+			left: 45%;
+			z-index: 100;
+		}
 	</style>
 {% endblock %}
 
@@ -49,6 +68,10 @@
 		var PY_CLASS = 'class';
 		var PY_HREF = 'href';
 	</script> <!-- STATUS CONFIG HERE -->
+	<div id="loading">
+		<h1 id="loading-image">Reloading...</h1>
+		<img id="loading-image" src="/static/ajax-loader.gif" alt="Loading..."/>
+	</div>
 	<div class="container-fluid">
 		<!-- site map bar -->
 		<div class="row-fluid">
@@ -88,11 +111,11 @@
 					<a href="/status/log/" class="btn btn-primary btn-large btn-block">
 						<strong><i class="icon-question-sign icon-white"></i> &nbsp;Breeze Log</strong>
 					</a>
-					<a href="/status/restart/" class="btn btn-primary btn-large btn-block">
-						<strong><i class="icon-question-sign icon-white"></i> &nbsp;Restart Breeze</strong>
+					<a href="#" onclick="restart('service', '/resources/restart/')" class="btn btn-primary btn-large btn-block">
+						<strong><i class="icon-refresh icon-white"></i> &nbsp;Restart Breeze service (~40s)</strong>
 					</a>
-					<a href="#" class="btn btn-primary btn-large btn-block" disabled="disabled">
-						<strong><i class="icon-question-sign icon-white"></i> &nbsp;Restart Breeze SERVER</strong>
+					<a href="#" onclick="restart('vm', '/resources/restart-vm/')" class="btn btn-primary btn-large btn-block">
+						<strong><i class="icon-retweet icon-white"></i> &nbsp;Restart Breeze VM (~70s)</strong>
 					</a>
 				</div>
 			</div>
@@ -293,7 +316,9 @@
 		} // check the status of a system through AJAX. Manage time-out, reload, sequential mode and display
 
 		function countDown(loc, t, action){
-			$("#" + loc)[0].innerHTML = (t/ONE_SEC).toString();
+			if(loc!='') {
+				$("#" + loc)[0].innerHTML = (t / ONE_SEC).toString();
+			}
 			if(t <= 0) {
 				action();
 			}else {
@@ -364,8 +389,41 @@
 		}
 
 		system_stat();
-		// qstat_lp();
 		qstat();
-		//qstat();
+
+		function has_started() {
+			if(!online) {
+				countDown('', 2000, has_started);
+			}else {
+				system_stat();
+				qstat();
+				$("#loading").hide();
+			}
+		} // check if the service is back online and autoreload all status
+
+		function restart(type, url) {
+			$.ajax({
+				url       : url,
+				cache     : false,
+				beforeSend: function (xhr) {
+					$("#loading").show() ;
+				},
+				error     : function (response, textStatus, jqXHR) {
+					if (typeof(response) ==  'object' ) {
+						if (response.status == 502 || response.status == 500) {
+							countDown('', 2000, has_started);
+						}
+					}else {
+						console.log(response)
+					}
+				},
+				success: function (response, textStatus, jqXHR) {
+					countDown('', 4000, has_started);
+				},
+				timeout   : 0
+			});
+		} // triggers the restart of Breeze service or VM, displaying a loading message
+
+
 	</script> <!-- STATUS AJAX CODE HERE -->
 {% endblock %}
