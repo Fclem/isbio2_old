@@ -2974,17 +2974,21 @@ def view_log(request):
 		out = list()
 		for l in log:
 			l = l.replace(">", "&gt;").replace("<", "&lt;")
-			l.encode('ascii', 'xmlcharrefreplace')
+			# l.encode('ascii', 'xmlcharrefreplace')
+			# l.encode('ascii', 'ignore')
+			# l = l.decode('utf-8') # .encode('utf-8', 'ignore')
 			if l.replace('__breeze__started__', '') != l:
 				out.append('<hr>') # add a separator to highlight reloads
-			if l.startswith(' ') or grab_next:
-				# reverse the order of Stack trace for them to be in-order
-				grab_next = True
-				out[-1] += '<br />' + no_withe_space(l)
-				if not l.startswith(' '):
-					grab_next = False
-			else:
-				out.append(no_withe_space(l))
+			if l.strip() != '':
+				if not l.startswith('20'):
+					# reverse the order of Stack trace for them to be in-order
+					# grab_next = True
+					out[-1] += '<br />' + no_withe_space(l)
+
+				# if l.startswith('20'):
+				#	grab_next = False
+				else:
+					out.append(no_withe_space(l))
 	out.append(no_withe_space(settings.USUAL_LOG_FORMAT_DESCRIPTOR))
 	out.reverse()
 	return render_to_response('log.html', RequestContext(request, {
@@ -2996,6 +3000,8 @@ def view_log(request):
 @login_required(login_url='/')
 def fix_file_acl(request, fid):
 	if not request.user.is_superuser:
+		get_logger().warning('Non priviledged user %s tried to trigger %s' % (request.user.get_full_name,
+			sys._getframe(0).f_code.co_name))
 		raise PermissionDenied
 
 	try:
@@ -3011,10 +3017,14 @@ def fix_file_acl(request, fid):
 @login_required(login_url='/')
 def restart_breeze(request):
 	if not request.user.is_superuser:
+		get_logger().warning('Non privileged user %s tried to trigger %s' % (request.user.get_full_name,
+																		sys._getframe(0).f_code.co_name))
 		raise PermissionDenied
 
 	import subprocess
 	subprocess.Popen('sleep 1 && killall python', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
+	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name,
+																		sys._getframe(0).f_code.co_name))
 	return HttpResponse('ok', mimetype='text/plain')
 
 
@@ -3022,10 +3032,14 @@ def restart_breeze(request):
 @login_required(login_url='/')
 def restart_vm(request):
 	if not request.user.is_superuser:
+		get_logger().warning('Non privileged user %s tried to trigger %s' % (request.user.get_full_name,
+																			sys._getframe(0).f_code.co_name))
 		raise PermissionDenied
 
 	import subprocess
 	subprocess.Popen('sleep 1 && sudo reboot -n', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
+	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name,
+															sys._getframe(0).f_code.co_name))
 	return HttpResponse('ok', mimetype='text/plain')
 
 
