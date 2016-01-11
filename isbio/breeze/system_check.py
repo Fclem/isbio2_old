@@ -776,6 +776,8 @@ def long_poll_waiter():
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
 						ex=FileSystemNotMounted, mandatory=True)
 
+proto = settings.SHINY_REMOTE_PROTOCOL.upper()
+
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
@@ -792,7 +794,7 @@ CHECK_LIST = [
 	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),
 	SysCheckUnit(check_shiny, 'shiny', 'Local Shiny HTTP server', 'LOC. SHINY HTTP\t\t', RunType.runtime,
 				arg=HttpRequest(), ex=ShinyUnreachable),
-	SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny HTTPS server', 'CSC SHINY HTTPS\t\t', RunType.runtime,
+	SysCheckUnit(check_csc_shiny, 'csc_shiny', 'CSC Shiny %s server' % proto, 'CSC SHINY %s\t\t' % proto, RunType.runtime,
 				arg=HttpRequest(), ex=ShinyUnreachable),
 	SysCheckUnit(check_csc_mount, 'csc_mount', 'CSC Shiny File System', 'CSC SHINY FS\t\t', RunType.runtime,
 				ex=FileSystemNotMounted),
