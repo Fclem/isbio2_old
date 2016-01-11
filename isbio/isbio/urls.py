@@ -30,7 +30,8 @@ else:
 		url(r'^logout/$', django_cas_logout),  # views.logout),
 		url(r'^stat/$', views.ajax_user_stat),
 		# Special system checks
-		url(r'^status/restart/$', views.restart_breeze),
+		url(r'^resources/restart/$', views.restart_breeze),
+		url(r'^resources/restart-vm/$', views.restart_vm),
 		url(r'^status/fs_info/$', views.file_system_info),
 		url(r'^status/fs_info/fix_file/(?P<fid>\d+)$', views.fix_file_acl),
 		url(r'^status/log/$', views.view_log),

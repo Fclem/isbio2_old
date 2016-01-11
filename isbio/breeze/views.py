@@ -3014,9 +3014,19 @@ def restart_breeze(request):
 		raise PermissionDenied
 
 	import subprocess
-	# TODO run that in a subprocess with timer, and return a reloading page
-	subprocess.Popen('killall python', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
-	# return HttpResponseRedirect(reverse(resources))
+	subprocess.Popen('sleep 1 && killall python', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
+	return HttpResponse('ok', mimetype='text/plain')
+
+
+# clem on 08/01/2016
+@login_required(login_url='/')
+def restart_vm(request):
+	if not request.user.is_superuser:
+		raise PermissionDenied
+
+	import subprocess
+	subprocess.Popen('sleep 1 && sudo reboot -n', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
+	return HttpResponse('ok', mimetype='text/plain')
 
 
 @login_required(login_url='/')
