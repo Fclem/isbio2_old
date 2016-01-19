@@ -3023,7 +3023,7 @@ def restart_breeze(request):
 
 	import subprocess
 	subprocess.Popen('sleep 1 && killall python', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
-	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name,
+	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name(),
 																		sys._getframe(0).f_code.co_name))
 	return HttpResponse('ok', mimetype='text/plain')
 
@@ -3038,7 +3038,7 @@ def restart_vm(request):
 
 	import subprocess
 	subprocess.Popen('sleep 1 && sudo reboot -n', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
-	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name,
+	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name(),
 															sys._getframe(0).f_code.co_name))
 	return HttpResponse('ok', mimetype='text/plain')
 
