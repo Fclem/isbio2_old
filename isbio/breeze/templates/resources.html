@@ -391,13 +391,15 @@
 		system_stat();
 		qstat();
 
+		//TODO add a timer for time-out reload
 		function has_started() {
 			if(!online) {
 				countDown('', 2000, has_started);
 			}else {
-				system_stat();
-				qstat();
-				$("#loading").hide();
+				//system_stat();
+				//qstat();
+				//$("#loading").hide();
+				location.reload();
 			}
 		} // check if the service is back online and autoreload all status
 
