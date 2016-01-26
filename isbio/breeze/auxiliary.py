@@ -776,7 +776,7 @@ def taito_run_server(instance, user):
 
 
 def test_tree():
-	from models import User
+	from breeze.models import User
 	a = Report.objects.get(pk=3628)
 	assert isinstance(a, Report)
 
@@ -785,5 +785,7 @@ def test_tree():
 	with a._run_server as b:
 		# b._generate_source_tree(a.r_exec_path.path, verbose=True)
 		b.parse_all()
+
+	return b
 	#
 	# a._run_server.copy_dependencies(a._rexec.path)

@@ -1539,7 +1539,7 @@ class RunServer:
 		import os
 		d = utils.date_t()
 		# source
-		the_path = self._run_inst.r_exec_path.path
+		the_path = str(self._run_inst.r_exec_path)
 		# destination
 		new_path = '%s%s%s%s' % \
 			(self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
