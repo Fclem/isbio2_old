@@ -1,6 +1,6 @@
 BREEZE
 =========================
-**A Customizable, Web-based Portal for 
+**A Customizable, Web-based Portal for
 Computational Statistics and Biomedical Data Analysis**
 
 The aim of the BREEZE project is to build an easy approachable, continuous and 
@@ -32,6 +32,7 @@ ahead to push them to BREEZE.
 
 Getting Started (for devs)
 ---------------
+######## CAUTION : OUTDATED INFORMATION ########
 - git clone
 - virtualenv --no-site-packages venv
 - source venv/bin/activate
