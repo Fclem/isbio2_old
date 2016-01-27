@@ -98,6 +98,7 @@ LOG_HIT_PATH = '%s%s' % (LOG_FOLDER, log_hit_fname)
 
 
 class BreezeSettings(Settings):
+	# RUN only on prod it seems
 	global USUAL_DATE_FORMAT, LOG_PATH, LOG_HIT_PATH
 	DEBUG = False
 	TEMPLATE_DEBUG = DEBUG
@@ -283,7 +284,7 @@ class BreezeSettings(Settings):
 			'default': {
 				'level': 'DEBUG',
 				'class': 'logging.handlers.RotatingFileHandler',
-				'filename': '%srotary.log' % LOG_FOLDER,
+				'filename': LOG_PATH,
 				'maxBytes': 1024 * 1024 * 5, # 5 MB
 				'backupCount': 10,
 				'formatter': 'standard',
@@ -318,6 +319,7 @@ class BreezeSettings(Settings):
 
 
 class DevSettings(BreezeSettings):
+	# general setting / common
 	global USUAL_DATE_FORMAT, LOG_PATH
 	DEBUG = True
 	VERBOSE = False
