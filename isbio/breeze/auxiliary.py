@@ -775,17 +775,34 @@ def taito_run_server(instance, user):
 	return RunServer(local_mount, target_mounted_prefix, report_path, instance, 'csc_taito', added, user, False)
 
 
-def test_tree():
+def test_tree(report):
 	from breeze.models import User
-	a = Report.objects.get(pk=3628)
-	assert isinstance(a, Report)
+	# a = Report.objects.get(pk=3628)
+	try:
+		a = report
+		assert isinstance(a, Report)
 
-	a._run_server = taito_run_server(a, User.objects.get(pk=65))
+		a._run_server = taito_run_server(a, User.objects.get(pk=65))
 
-	with a._run_server as b:
-		# b._generate_source_tree(a.r_exec_path.path, verbose=True)
-		b.parse_all()
+		with a._run_server as b:
+			# b._generate_source_tree(a.r_exec_path.path, verbose=True)
+			b.parse_all()
 
-	return b
+		return b
+	except (ObjectDoesNotExist, AssertionError):
+		return None
 	#
 	# a._run_server.copy_dependencies(a._rexec.path)
+
+
+def get_tree(rid):
+	try:
+		a = Report.objects.get(pk=rid)
+		assert isinstance(a, Report)
+		b = test_tree(a)
+		assert isinstance(b, RunServer)
+
+		return b._generate_source_tree(str(a.r_exec_path)), b
+
+	except (ObjectDoesNotExist, AssertionError):
+		return None

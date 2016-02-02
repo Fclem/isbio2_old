@@ -1360,7 +1360,9 @@ class SrcObj:
 	@property
 	def new(self):
 		proj = settings.PROJECT_FOLDER
-		return SrcObj(self.str.replace('"%s' % proj, '"~%s' % proj).replace("'%s" % proj, "'~%s" % proj))
+		proj_bis = settings.PROJECT_FOLDER.replace('/fs', '')
+		return SrcObj(self.str.replace('"%s' % proj, '"~%s' % proj).replace("'%s" % proj, "'~%s" % proj).replace(
+			'"%s' % proj_bis, '"~%s' % proj_bis).replace("'%s" % proj_bis, "'~%s" % proj_bis))
 
 	# clem 21/10/15
 	@property
@@ -1386,7 +1388,7 @@ class SrcObj:
 		return self.str
 
 
-# clem 20/10/2015 distributed POC
+# clem 20/10/2015 distributed POC +01/02/2016
 class FileParser(SrcObj):
 	def __init__(self, file_n, dest):
 		self.file_n = file_n
@@ -1399,10 +1401,12 @@ class FileParser(SrcObj):
 		# super(FileParser, self).__init__()
 
 	def load(self):
-		if not self._new_content:
+		if not self._new_content and isfile(self.path):
 			with open(self.path) as script:
 				self.content = script.read()
 				self._new_content = self.content
+			return True
+		return False
 
 	def add_on_top(self, content):
 		self.new_content = content + '\n' + self.new_content
@@ -1418,10 +1422,10 @@ class FileParser(SrcObj):
 		self.save_file()
 
 	def parse(self, pattern, callback):
-		import re
-
-		if not callable(callback):
+		if not callable(callback) or not self.new_content:
 			return False
+
+		import re
 
 		match = re.findall(pattern, self.new_content, re.DOTALL)
 		callback(self, match, pattern)
@@ -1429,6 +1433,8 @@ class FileParser(SrcObj):
 		return True
 
 	def save_file(self):
+		if not self.new_content:
+			return False
 		import os
 		dest = os.path.dirname(self.destination)
 		try:
@@ -1448,12 +1454,14 @@ class FileParser(SrcObj):
 	@property
 	def new_content(self):
 		if not self._new_content:
-			self.load()
+			if not self.load():
+				return False
 		return self._new_content
 
 	@new_content.setter
 	def new_content(self, value):
-		self._new_content = value
+		if self._new_content:
+			self._new_content = value
 
 	@property
 	def destination(self):
@@ -1469,16 +1477,21 @@ class FileParser(SrcObj):
 		return self._dir_name(self.destination)
 
 
-# clem 20/10/2015 distributed POC
+# clem 20/10/2015 distributed POC +01/02/2016
 class RunServer:
 	_fs_path = str
 	_reports_path = str
 	# lookup only sourced files inside PROJECT_FOLDER
-	project_fold = settings.PROJECT_FOLDER.replace('/', '\/')
-	LOAD_PATTERN = r'(?<!#)source\(\s*("(%s[^"]+)"|\'(%s[^\']+)\')\s*\)' % (project_fold, project_fold)
-	LIBS_PATTERN = r'(?<!#)(library\(\s*(?:"([^"]+)"|\'([^\']+)\'|([^")]+))\s*\))'
+	project_fold = settings.PROJECT_FOLDER.replace('/fs', '(?:/fs)?').replace('/', '\/')
+	# LOAD_PATTERN = r'(?<!#)source\(\s*("(~?%s[^"]+)"|\'(~?%s[^\']+)\')\s*\)' % (project_fold, project_fold)
+	LOAD_PATTERN = r'(?<!#)source\( *\t*(("|\')(~?%s(?:(?!\2).)*)\2) *\t*\)' % project_fold # 01/02/2016
+	# LIBS_PATTERN = r'(?<!#)(library\(\s*(?:"([^"]+)"|\'([^\']+)\'|([^")]+))\s*\))'
+	# LIBS_PATTERN = r'(?<!#)(((?:library)|(?:require))\( *\t*(?:("|\')?([ ^)]+)\3) *\t*\))'
+	# LIBS_PATTERN = r'(?<!#)(?:(?:library)|(?:require))\( *\t*(?:("\')?((?!\1\)).*)\1) *\t*\)' # 01/02/2016
+	LIBS_PATTERN = r'(?<!#)(?:(?:library)|(?:require))\( *\t*(("|\')?\w+\2) *\t*\)' # 02/02/2016
 	# ABS_PATH_PATTERN = r'("([^~]{0,1}\/projects\/[^"]+)"|\'([^~]{0,1}\/projects\/[^\']+)\')'
-	ABS_PATH_PATTERN = r'("(\/projects\/[^"]+)"|\'([^~]{0,1}\/projects\/[^\']+)\')'
+	# ABS_PATH_PATTERN = r'("(\/projects\/[^"]+)"|\'([^~]{0,1}\/projects\/[^\']+)\')'
+	ABS_PATH_PATTERN = r'(("|\')(\/projects\/(?:(?!\2).)*)\2)' # 01/02/2016
 
 	def __init__(self, fs_path, remote_chroot, reports_path, instance, target_name, add_source, user, local=True):
 		self._fs_path = fs_path # local mount of remote fs
@@ -1490,6 +1503,10 @@ class RunServer:
 		self._user = user # User object of user requesting
 		assert isinstance(instance, Runnable)
 		self._run_inst = instance # instance or Runnable using this RunServer instance
+		self.count = dict()
+		self.count['lib'] = 0
+		self.count['load'] = 0
+		self.count['abs'] = 0
 
 	# obsolete
 	def _generate_source_tree(self, file_n, pf='', verbose=False):
@@ -1497,9 +1514,9 @@ class RunServer:
 		returns <b>tree</b>, <b>flat</b>, _
 
 		<b>tree</b> is a dict of dict of (...)
-		while <b>flat</b> is a dict of list, nesting containing dedoubled list of all required files :
-			keys being a list of all nodes in the original tree
-			values being lists of first childs in the original tree
+		while <b>result</b> is a dict of list, nesting containing dedoubled list of all required files :
+			keys being a list of all nodes in the original tree ( use result.keys() )
+			values being lists of first child in the original tree
 			this way you don't need to crawl the tree, and neither end up with doubles.
 
 		:type file_n: str
@@ -1526,14 +1543,19 @@ class RunServer:
 				line = SrcObj(el[0])
 				sub_tree, total, sub_list = self._generate_source_tree(line.path, pf=pf + '\t', verbose=verbose)
 
-				tree[line] = sub_tree
+				tree[line.path] = sub_tree
 
-				flat.append(line)
+				flat.append(line.path)
+				# flat += sub_list
 				if total:
 					result.update(total)
-			result[the_path] = flat
+			result[the_path.path] = flat
 
-		return { the_path: tree }, result, flat
+		return { the_path.path: tree }, result, flat
+
+	# clem 01/02/2016
+	def stats(self):
+		print "done ! lib/load/abs : ", self.count['lib'], self.count['load'], self.count['abs']
 
 	def parse_all(self):
 		import os
@@ -1552,23 +1574,27 @@ class RunServer:
 				added += 'source("%s") # %s\n' % each
 			the_file_p.add_on_top('##### following sources ADDED BY BREEZE :\n%s' % added +
 								'##### END OF BREEZE ADDITIONS ###')
-		the_file_p.add_on_top('## Transfered to %s started by BREEZE on %s' % (self.target_name, d))
+		the_file_p.add_on_top('## Transferred to %s started by BREEZE on %s' % (self.target_name, d))
 		# parse the file to change path, library loading, and link files related to source()
-		the_file_p.parse(self.LOAD_PATTERN, self._parser_main_recur_call_back)
+		the_file_p.parse_and_save(self.LOAD_PATTERN, self._parser_main_recur_call_back)
+
+		self.stats()
 
 	def _parser_main_recur_call_back(self, file_obj, match, pattern):
 		assert isinstance(file_obj, FileParser)
 		imp_text = ''
 		for el in match:
-			# sub file has been parsed and copier, we change it's ref
+			# sub file has been parsed and copied, we change it's ref
 			line = SrcObj(el[0])
 			new_path = '%s%s' % (self._fs_path, line.path)
-			# # print 'new_path', new_path
 			sub_file_p = FileParser(line.path, new_path)
+
+			self.count['load'] += 1
 
 			# TODO else ?
 			# recursive
 			sub_file_p.parse(pattern, self._parser_main_recur_call_back)
+			# print "sub_file_p.parse(%s, self._parser_main_recur_call_back)" % pattern
 
 			# subs parsings
 			self._sub_parsers(sub_file_p)
@@ -1576,7 +1602,7 @@ class RunServer:
 			# local sourcing
 			file_obj.replace(line, line.new)
 			imp_text += '## Imported and parsed sourced file %s to %s (local path on %s) \n' %\
-					(line.base_name, line.new.dir_name, self.target_name)
+				(line.base_name, line.new.dir_name, self.target_name)
 
 		# self parsings
 		self._sub_parsers(file_obj)
@@ -1585,7 +1611,9 @@ class RunServer:
 		d = utils.date_t()
 		dep = ''
 		if len(match) > 0:
-			dep = '## %s dependencies found, parsed and imported :\n%s' % (len(match), imp_text)
+			# dep = '## %s related files found, parsed and imported,\n' % (self.count['load'] + self.count['lib'])
+			dep = '## %s direct dependencies found, parsed and imported (total %s libs, %s dep) :\n%s' %\
+				(len(match), self.count['lib'], self.count['load'], imp_text)
 		file_obj.add_on_top(
 			'##### BREEZE SUMMARY of file parsing to run on %s :\n' % self.target_name +
 			'## Parsed on %s (org. modified on %s) for %s (%s) \n' %
@@ -1600,20 +1628,43 @@ class RunServer:
 		file_obj.parse(self.LIBS_PATTERN, self._parser_libs_call_back)
 		file_obj.parse(self.ABS_PATH_PATTERN, self._parser_abs_call_back)
 
-	@staticmethod
-	def _parser_libs_call_back(file_obj, match, pattern):
-		assert isinstance(file_obj, FileParser)
-		for el in match:
-			line = el[0]
-			value = el[1] or el[2] or el[3] # 1:" 2:' 3:None
-			# print line, value
-			file_obj.replace(line, "load_lib('%s')" % value)
+	# clem 01/02/2016
+	def __auto_recur(self, el, file_obj, pattern, caller):
+		""" Code shortcut for shared recursions calls
+		:type el:
+		:type file_obj: FileParser
+		:type pattern: str
+		:type caller: function
+		:rtype: SrcObj
+		"""
+		assert isinstance(file_obj, FileParser) and callable(caller)
+		line = SrcObj(el[0])
 
-	@staticmethod
-	def _parser_abs_call_back(file_obj, match, pattern):
+		new_path = '%s%s' % (self._fs_path, line.path)
+		sub_file_p = FileParser(line.path, new_path)
+
+		sub_file_p.parse(pattern, caller)
+		# print "sub_file_p.parse(%s, %s)" % (pattern, caller)
+
+		return line
+
+	def _parser_libs_call_back(self, file_obj, match, pattern):
 		assert isinstance(file_obj, FileParser)
 		for el in match:
-			line = SrcObj(el[0])
+			self.count['lib'] += 1
+			line = self.__auto_recur(el, file_obj, pattern, self._parser_libs_call_back)
+			# value = el[1] or el[2] or el[3] # 1:" 2:' 3:None
+			print "el", el
+			# print line, value
+			# file_obj.replace(line.path, "load_lib('%s')" % value)
+			file_obj.replace(line.path, "load_lib('%s')" % line.new)
+
+	def _parser_abs_call_back(self, file_obj, match, pattern):
+		assert isinstance(file_obj, FileParser)
+		for el in match:
+			self.count['abs'] += 1
+			line = self.__auto_recur(el, file_obj, pattern, self._parser_abs_call_back)
+
 			# print line, value
 			file_obj.replace(line, line.new)
 
