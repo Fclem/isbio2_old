@@ -1464,6 +1464,15 @@ class FileParser(SrcObj):
 	def mod_dt(self):
 		return utils.date_t(time_stamp=utils.file_mod_time(self.path))
 
+	# clem 02/02/2016
+	@property
+	def ext(self):
+		"""
+		:rtype: str
+		"""
+		_, _, extension = self.base_name.rpartition('.')
+		return extension
+
 	@property
 	def new_content(self):
 		if not self._new_content:
@@ -1633,19 +1642,14 @@ class RunServer:
 			sub_file_p = FileParser(line.path, new_path)
 
 			self.count['load'] += 1
+			# local sourcing
+			print "load %s file_obj.replace(%s, %s)" % (file_obj.base_name, line, line.new)
+			file_obj.replace(line, line.new)
 
-			# TODO else ?
 			# Lower level recursion (will parse this sourced file for loads, library, and paths)
 			if not self.already_parsed(sub_file_p):
 				sub_file_p.parse(pattern, self._parser_main_recur_call_back)
-				# self.parsed[str(sub_file_p)] = True # will be effective in the lower part
-				# of the lower-leve call to this function
 
-				# subs parsings # FIXED : useless since lower lever call to this function will involve self parsings
-				# self._sub_parsers(sub_file_p)
-
-			# local sourcing
-			file_obj.replace(line, line.new)
 			imp_text += '## Imported and parsed sourced file %s to %s (local path on %s) \n' %\
 				(line.base_name, line.new.dir_name, self.target_name)
 
@@ -1677,46 +1681,27 @@ class RunServer:
 			file_obj.parse(self.LIBS_PATTERN, self._parser_libs_call_back) # library()/require()
 			file_obj.parse(self.ABS_PATH_PATTERN, self._parser_abs_call_back) # plain absolute paths
 
-	# clem 01/02/2016 FIXME : useless
-	def __auto_recur(self, el, file_obj, pattern, caller):
-		""" Code shortcut for shared recursions calls
-		:type el:
-		:type file_obj: FileParser
-		:type pattern: Pattern
-		:type caller: function
-		:rtype: SrcObj
-		"""
-		assert isinstance(file_obj, FileParser) and callable(caller)
-		# line = SrcObj(el[0] if len(el[0]) > 1 else el[1] if len(el[1]) > 1 else None)
-		line = SrcObj(el[0])
-
-		new_path = '%s%s' % (self._fs_path, line.path)
-		# sub_file_p = FileParser(line.path, new_path)
-
-		# sub_file_p.parse(pattern, caller)
-
-		return line
-
 	def _parser_libs_call_back(self, file_obj, match, pattern):
 		assert isinstance(file_obj, FileParser)
-		# print file_obj.base_name, match
 		for el in match:
 			self.count['lib'] += 1
-			line = el[0]
-			lib_name = el[2]
-			replacement = "load_lib('%s') # Originaly : %s" % (lib_name, line)
-			# print line, replacement
-			# line = self.__auto_recur(el, file_obj, pattern, self._parser_libs_call_back)
+			line = el[0]; lib_name = el[2]
+			replacement = "load_lib('%s') # Originally : %s" % (lib_name, line)
 			file_obj.replace(line, replacement)
 
 	def _parser_abs_call_back(self, file_obj, match, pattern):
 		assert isinstance(file_obj, FileParser)
 		for el in match:
 			self.count['abs'] += 1
-			line = self.__auto_recur(el, file_obj, pattern, self._parser_abs_call_back)
-			# print 'path', line, 'to', line.new
+			line = SrcObj(el[0])
+			# change the path to a relative one for the target server
 			file_obj.replace(line, line.new)
-			# TODO copy the file
+			# remote location on a local mount
+			new_path = '%s%s' % (self._fs_path, line.path)
+			new_file = FileParser(line.path, new_path)
+			ext = new_file.ext.lower()
+			if new_file.load() and ext and ext != 'r': # existing file
+				new_file.save_file() # copy to remote location
 
 	def __enter__(self):
 		return self
