@@ -572,12 +572,14 @@ def norm_proj_p(path, repl=''):
 	"""
 	return path.replace(settings.PROJECT_FOLDER_PREFIX, repl)
 
+
 def get_r_package(name=''):
+	# TEST function for R lib retrieval
 	from cran_old import CranArchiveDownloader
 	if name:
 		cran = CranArchiveDownloader(name)
 		if cran.find():
-			cran.download()
+			return cran.download()
 	return False
 
 
