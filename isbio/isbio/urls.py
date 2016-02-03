@@ -81,7 +81,7 @@ else:
 		url(r'^reports/send/(?P<rid>\d+)$', views.send_report),
 		url(r'^off_user/add/$', views.add_offsite_user_dialog),
 		url(r'^off_user/add/(?P<rid>\d*)$', views.add_offsite_user_dialog),
-		url(r'^off_user/add/form/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*)$', views.add_offsite_user),
+		url(r'^off_user/add/form/(?P<email>[\b[\w\.-]+@[\w\.-]+\.\w{2,4}\b]*)$', views.add_offsite_user),
 		url(r'^off_user/add/form/$', views.add_offsite_user),
 		url(r'^off_user/edit/(?P<uid>\d*)$', views.edit_offsite_user),
 		url(r'^off_user/del/(?P<uid>\d*)$', views.delete_off_site_user),
