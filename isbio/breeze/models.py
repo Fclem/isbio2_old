@@ -1520,13 +1520,17 @@ class Pattern:
 class RunServer:
 	_fs_path = str
 	_reports_path = str
+
+	project_prefix = settings.PROJECT_FOLDER_PREFIX
 	# lookup only sourced files inside PROJECT_FOLDER
-	project_fold = settings.PROJECT_FOLDER.replace('/fs', '(?:/fs)?').replace('/', '\/')
+	project_fold_name = settings.PROJECT_FOLDER_NAME
+	project_fold = utils.norm_proj_p(settings.PROJECT_FOLDER, '(?:%s)?' % project_prefix).replace('/', '\/')  # DEPLOY specific
 	# regexp for matching. NB : MATCH GROUP 0 MUST ALWAYS BE THE FULL REPLACEMENT-TARGETED STRING
-	LOAD_PATTERN = Pattern('load ', r'(?<!#)source\( *\t*(("|\')(~?%s(?:(?!\2).)*)\2) *\t*\)' % project_fold) # 01/02/2016
+	LOAD_PATTERN = Pattern('load ', r'(?<!#)source\((?: |\t)*(("|\')(~?%s(?:(?!\2).)*)\2)(?: |\t)*\)' % project_fold) # 01/02/2016
 	LIBS_PATTERN = Pattern('libs ',
 		r'(?<!#)((?:(?:library)|(?:require))(?:\((?: |\t)*(?:("|\')?((?:\w|\.)+)\2?)(?: |\t)*\)))') # 02/02/2016
-	ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(\/projects\/(?:(?!\2).)*)\2)') # 01/02/2016
+	ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(\/%s\/(?:(?!\2).)*)\2)' % project_fold_name) # 01/02/2016
+	FILE_NAME_PATTERN = Pattern('file', r'(?:<-)(?:(?: |\t)*("|\')([\w\-\. ]+)\1)') # 03/02/2016
 
 	def __init__(self, fs_path, remote_chroot, reports_path, instance, target_name, add_source, user, local=True):
 		self._fs_path = fs_path # local mount of remote fs
@@ -1600,6 +1604,7 @@ class RunServer:
 		# source
 		the_path = str(self._run_inst.r_exec_path)
 		# destination
+		# print (self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
 		new_path = '%s%s%s%s' % \
 			(self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
 		# parser

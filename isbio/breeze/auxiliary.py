@@ -767,9 +767,10 @@ def taito_run_server(instance, user):
 	assert isinstance(instance, Report) or isinstance(instance, Jobs)
 	local_mount = settings.TMP_CSC_TAITO_MOUNT # '/mnt/csc-taito/'
 	target_mounted_prefix = settings.TMP_CSC_TAITO_REMOTE_CHROOT # '/homeappl/home/clement/'
-	report_path = settings.TMP_CSC_TAITO_REPORT_PATH # 'breeze/'
+	# report_path = settings.TMP_CSC_TAITO_REPORT_PATH # 'breeze/'
+	report_path = utils.norm_proj_p(settings.MEDIA_ROOT) # '/projects/breeze-dev/db/reports/'
 	added = [
-		('%scfiere/csc_taito_dyn_lib_load_and_install.R' % settings.SPECIAL_CODE_FOLDER,
+		('%scfiere/csc_taito_dyn_lib_load_and_install.R' % utils.norm_proj_p(settings.SPECIAL_CODE_FOLDER),
 		'dynamic library loading and installer by clem 19-20/10/2015'),
 	]
 	return RunServer(local_mount, target_mounted_prefix, report_path, instance, 'csc_taito', added, user, False)

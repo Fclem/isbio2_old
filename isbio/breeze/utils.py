@@ -564,4 +564,23 @@ def file_mod_time(dirName, fname):
 	return file_mod_time(join(dirName, fname))
 
 
+def norm_proj_p(path, repl=''):
+	"""
+	:type path: str
+	:type repl: str
+	:rtype: str
+	"""
+	return path.replace(settings.PROJECT_FOLDER_PREFIX, repl)
+
+def get_r_package(name=''):
+	from cran_old import CranArchiveDownloader
+	if name:
+		cran = CranArchiveDownloader(name)
+		if cran.find():
+			cran.download()
+	return False
+
+
+
+
 
