@@ -3,32 +3,60 @@ class InvalidArgument(BaseException):
 	pass
 
 
+def human_readable_byte_size(num, suffix='B'):
+	for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+		if abs(num) < 1024.0:
+			return "%3.1f%s%s" % (num, unit, suffix)
+		num /= 1024.0
+	return "%.1f%s%s" % (num, 'Yi', suffix)
+
+
 class CranArchiveDownloader: # special purpose light FTP downloader
 	name = str
 	# http_url = 'http://cran.r-project.org/src/contrib/Archive/'
 	ftp_server = 'cran.r-project.org'
 	ftp_path = '/pub/R/src/contrib/Archive/'
 	ftp_home_url = 'ftp://%s' % ftp_server
-	verbose = True
+	verbose = True # display or not information on console
+	alt_logger = None
 	login = 'anonymous'
 	password = ''
 
 	# ftp_url = '%s%s' % (ftp_home_url, ftp_path)
 
-	def __init__(self, name=str):
+	def __init__(self, name=str, logger=None):
+		""" name is the name of the requested library, logger is a callable loging function with txt argument
+		:type name: str
+		:type logger: callable
+		"""
 		if type(name) == str and name:
 			self.name = name
 		else:
 			raise InvalidArgument
-		self._found = False
+		self._searched = False		# 01 search has been done
+		self._found = False			# 02 searched item has been found
+		self._downloaded = False	# 03 found item has been downloaded
+		self._extracted = False		# 04 downloaded item has been extracted
 		from ftplib import FTP
 		self.ftp = FTP(self.ftp_server)
 		from os.path import dirname, realpath
 		self._self_path = dirname(realpath(__file__))
-		self._searched = False
+		self._extract_path = '%s/%s' % (self._self_path, self.name)
 		self.v = False
 		self._nlst = dict()
 		self.save_path = ''
+		self.alt_logger = logger
+
+	def _out(self, msg):
+		"""
+		Print msg if verbose is True, and alternatively log msg if alternative logger is present
+		:type msg: str
+		:rtype: None
+		"""
+		if self.alt_logger:
+			self.alt_logger(msg)
+		if self.verbose:
+			print msg
 
 	def find(self, suggest=True):
 		"""
@@ -42,19 +70,18 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 			if self.name:
 				try:
 					self.ftp.cwd("%s%s" % (self.ftp_path, self.name))
-					if self.verbose:
-						print 'found, last version :', self._last_version_file_name
 					# No error, means folder exists == FOUND !
 					self._found = True
+					self._out('found, last version : %s, %s' %
+						(self._last_version_file_name, human_readable_byte_size(self._size)))
 				# url = '%s%s%s' % (self.ftp_home_url, pwd(), the_file)
 				except Exception as e:
 					if str(e).startswith('550'):
 						if suggest:
-							if self.verbose:
-								print self.name, 'not found!'
+							self._out('%s not found!' % self.name)
 							self._find_similar()
 					elif self.verbose:
-						print 'Error : ', str(e)
+						self._out('Error : %s' % e)
 			self._searched = True
 		return self._found
 
@@ -64,15 +91,35 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 		"""
 		if self._found or self.find(False):
 			path = self._download_and_save()
-			if self.verbose and not path:
-				print 'Download failed'
+			if not path:
+				self._out('Download failed !')
 			return path
 		return False
 
-	def extract_to(self, path):
-		if path and (self._downloaded or self.download()):
-			# TODO
-			print 'NOT IMP'
+	def extract_to(self, path=None, rm_archive=True):
+		if not path:
+			path = self._extract_path
+		if not self._extracted and (self._downloaded or self.download()):
+			try:
+				import tarfile
+				import time
+				tar = tarfile.open(self.save_path)
+				self._out('extracting %s to %s ...' % (self._last_version_file_name, path))
+				start_time = time.time()
+				tar.extractall(path)
+				interval = time.time() - start_time
+				self._extracted = True
+				tar.close()
+				# if self.verbose:
+				speed = human_readable_byte_size(self._size / interval)
+				self._out('done in %s sec (%s/s) !' % (round(interval, 2), speed))
+				if rm_archive:
+					from os import remove
+					remove(self.save_path)
+					self._downloaded = False
+				return path
+			except Exception as e:
+				self._out('Extraction failed : %s ' % e)
 		return False
 
 	@property
@@ -96,6 +143,13 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 	def _last_version_file_name(self):
 		return self._file_list[-1]
 
+	@property
+	def _size(self):
+		""" Return the size of self._last_version_file_name
+		:rtype: float
+		"""
+		return self.ftp.size(self._last_version_file_name)
+
 	def _downloader(self, filename, save_to):
 		""" Download the file name filename from the CWD and save it to save_to
 		:type filename: str
@@ -103,22 +157,23 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 		:rtype: bool
 		"""
 		with open(save_to, 'wb') as save_file:
-			def _write(data):
+			def _write_f(data):
 				save_file.write(data)
 				if self.verbose:
 					import sys
 					sys.stdout.write('.')
-
 			try:
-				if self.verbose:
-					print 'Downloading', self.ftp.size(filename), 'bytes',
-				self.ftp.retrbinary("RETR " + filename, _write)
-				if self.verbose:
-					print ' Done !\nsaved to', save_to
+				import time
+				size = self.ftp.size(filename)
+				self._out('Downloading %s bytes...' % size)
+				start_time = time.time()
+				self.ftp.retrbinary("RETR " + filename, _write_f)
+				interval = time.time() - start_time
+				speed = human_readable_byte_size(size / interval)
+				self._out(' done in %s sec (%s/s) !\nsaved to % s' % (speed, round(interval, 2), save_to))
 				return True
 			except Exception as e:
-				if self.verbose:
-					print "Error", e
+				self._out('Error %s' % e)
 		return False
 
 	def _download_and_save(self):
@@ -155,4 +210,4 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 		real_name = self._guess()
 		if self.verbose and real_name:
 			for e in real_name:
-				print 'Did you meant "%s" ?' % e
+				self._out('Did you meant "%s" ?' % e)
