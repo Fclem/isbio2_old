@@ -7,6 +7,7 @@ from os.path import isfile, isdir, islink, exists, getsize, join
 from os import symlink, access, listdir, R_OK, chmod
 from subprocess import call
 from datetime import datetime
+from multipledispatch import dispatch # enables method overloading
 from breeze.b_exceptions import *
 
 logger = logging.getLogger(__name__)
@@ -462,8 +463,8 @@ class LoggerTimer(Timer):
 
 
 # clem 29/09/2015 writing shortcut
-def logger_timer(funct):
-	a = LoggerTimer(func=get_logger('timing').debug)
+def logger_timer(funct, log_funct=get_logger('timing').debug):
+	a = LoggerTimer(func=log_funct)
 	return a(funct)
 
 
@@ -547,9 +548,6 @@ def fix_file_acl_interface(fid):
 	return False
 
 
-from multipledispatch import dispatch
-
-
 @dispatch(basestring)
 def file_mod_time(path):
 	from os.path import getmtime # , join
@@ -578,8 +576,8 @@ def get_r_package(name=''):
 	from cran_old import CranArchiveDownloader
 	if name:
 		cran = CranArchiveDownloader(name)
-		if cran.find():
-			return cran.download()
+		if cran.find() and cran.download():
+			return cran.extract_to()
 	return False
 
 
