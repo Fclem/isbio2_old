@@ -469,6 +469,7 @@ def check_is_file_system_unchanged():
 def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 	"""
 	Return flag_changed, flag_invalid, files_state, folders_state
+	:param fix_file_perm: bool
 	:return: flag_changed, flag_invalid, files_state, folders_state
 	:rtype:
 	"""
