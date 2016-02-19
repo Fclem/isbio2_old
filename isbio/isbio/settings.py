@@ -14,6 +14,7 @@ try:
 except Exception:
 	ENABLE_DATADOG = False
 	pass
+ENABLE_REMOTE_FW = False
 
 # TODO : redesign
 
@@ -210,7 +211,8 @@ class BreezeSettings(Settings):
 		'breeze.middlewares.JobKeeper',
 		'breeze.middlewares.CheckUserProfile',
 		'django_requestlogging.middleware.LogSetupMiddleware',
-		'breeze.middlewares.DataDog' if ENABLE_DATADOG else '',
+		'breeze.middlewares.DataDog' if ENABLE_DATADOG else 'breeze.middlewares.Empty',
+		'breeze.middlewares.RemoteFW' if ENABLE_REMOTE_FW else 'breeze.middlewares.Empty',
 		'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 		# 'breeze.middleware.Log',
 		# Uncomment the next line for simple clickjacking protection:
@@ -222,7 +224,8 @@ class BreezeSettings(Settings):
 		'django_cas.backends.CASBackend',
 	)
 
-	CAS_SERVER_IP = '192.168.0.218'
+	# CAS_SERVER_IP = '192.168.0.218'
+	CAS_SERVER_IP = 'cas-prot.fimm.fi'
 	CAS_SERVER_URL = 'https://%s:8443/cas/' % CAS_SERVER_IP
 	CAS_REDIRECT_URL = '/home/'
 
