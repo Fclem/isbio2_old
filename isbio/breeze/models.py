@@ -1,24 +1,26 @@
 import drmaa
-import sys
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User # as DjangoUser
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
-from pandas.tslib import re_compile
-from breeze import managers
-import utils
+from breeze import managers, utils
+from breeze.comp import Trans
 from utils import *
 from os.path import isfile # , isdir, islink, exists, getsize
 from django.conf import settings
 from django.db import models
+# import sys
 # from breeze.b_exceptions import *
-
+# from pandas.tslib import re_compile
 # from os import symlink
 # import os.path
 # from operator import isCallable
 
+import system_check
+
+system_check.db_conn.inline_check()
 
 CATEGORY_OPT = (
 	(u'general', u'General'),
@@ -27,8 +29,6 @@ CATEGORY_OPT = (
 	(u'sequencing', u'Sequencing'),
 )
 
-Trans = managers.Trans
-
 # TODO : move all the logic into objects here
 
 
@@ -36,17 +36,19 @@ class JobState(drmaa.JobState):
 	SUSPENDED = 'suspended'
 	PENDING = 'pending'
 	ON_HOLD = 'pending'
+	ERROR_Q_WAIT = 'qw_error'
 
 	@staticmethod
 	def R_FAILDED():
 		pass
 
 
-_JOB_PS = {
+JOB_PS = {
 	'': JobState.UNDETERMINED,
 	'r': JobState.RUNNING,
 	'p': JobState.PENDING,
 	'qw': JobState.QUEUED_ACTIVE,
+	'Eqw': JobState.ERROR_Q_WAIT,
 
 	'h': JobState.ON_HOLD,
 	'ho': JobState.SYSTEM_ON_HOLD,
@@ -237,7 +239,7 @@ class FolderObj(object):
 		raise self.not_imp()
 
 	@property
-	def _home_folder_rel(self):
+	def home_folder_rel(self):
 		"""
 		Returns the relative path to this object folder
 		:return: the relative path to this object folder
@@ -256,7 +258,7 @@ class FolderObj(object):
 		:return: the absolute path to this object folder
 		:rtype: str
 		"""
-		return '%s%s' % (settings.MEDIA_ROOT, self._home_folder_rel)
+		return '%s%s' % (settings.MEDIA_ROOT, self.home_folder_rel)
 
 	@property
 	def base_folder(self):
@@ -2517,7 +2519,7 @@ class Report(Runnable):
 		from django.utils.http import urlencode
 
 		if self.rora_id > 0:
-			return '?%s' % urlencode([('path', self._home_folder_rel), ('roraId', str(self.rora_id))])
+			return '?%s' % urlencode([('path', self.home_folder_rel), ('roraId', str(self.rora_id))])
 		else:
 			return ''
 
@@ -2719,18 +2721,18 @@ class Report(Runnable):
 		db_table = 'breeze_report'
 
 
-class list(list):
+class CustomList(list):
 	def unique(self):
 		""" return the list with duplicate elements removed """
-		return list(set(self))
+		return CustomList(set(self))
 
 	def intersect(self, b):
 		""" return the intersection of two lists """
-		return list(set(self) & set(b))
+		return CustomList(set(self) & set(b))
 
 	def union(self, b):
 		""" return the union of two lists """
-		return list(set(self) | set(b))
+		return CustomList(set(self) | set(b))
 
 
 class ShinyTag(models.Model):
@@ -2898,7 +2900,7 @@ class ShinyTag(models.Model):
 			self.copy_to_remote()
 		print 'before list', self.__prev_reports
 		print 'after list', self.attached_report.all()
-		for each in (list(self.attached_report.all()).union(self.__prev_reports)).unique():
+		for each in (CustomList(self.attached_report.all()).union(self.__prev_reports)).unique():
 			each.regen_report()
 
 	# clem 22/12/2015
