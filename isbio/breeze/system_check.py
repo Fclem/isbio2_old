@@ -1,7 +1,6 @@
 from breeze import utils
 from utils import Bcolors
 from utils import logger_timer
-from breeze.auxiliary import proxy_to
 from django.conf import settings
 from breeze.b_exceptions import *
 from django.http import HttpRequest
@@ -212,6 +211,18 @@ class SysCheckUnit(Process):
 			return self.split_run()
 		return False
 
+	# clem 19/02/2016
+	def inline_check(self):
+		try:
+			if self.checker_function():
+				print self.msg + OK
+				return True
+			else:
+				print self.msg + BAD
+				raise self.ex
+		except:
+			return False
+
 	# clem 25/09/2015
 	@property
 	def has_proc(self):
@@ -315,11 +326,12 @@ def run_system_test():
 	if not SKIP_SYSTEM_CHECK and is_on():
 		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
 		for pre_check in PRE_BOOT_CHECK_LIST:
-			if pre_check.checker_function():
-				print pre_check.msg + OK
-			else:
-				print pre_check.msg + BAD
-				raise pre_check.ex
+			pre_check.inline_check()
+			#if pre_check.checker_function():
+			#	print pre_check.msg + OK
+			#else:
+			#	print pre_check.msg + BAD
+			#	raise pre_check.ex
 		checking_list = CheckerList(CHECK_LIST)
 		checking_list.check_list()
 		checking_list.rendez_vous()
@@ -647,6 +659,7 @@ def check_shiny(request):
 	Check if Shiny server is responding
 	:rtype: bool
 	"""
+	from breeze.auxiliary import proxy_to
 	try:
 		r = proxy_to(request, '', settings.SHINY_LOCAL_LIBS_TARGET_URL, silent=True, timeout=2)
 		if r.status_code == 200:
@@ -662,6 +675,7 @@ def check_csc_shiny(request):
 	Check if CSC Shiny server is responding
 	:rtype: bool
 	"""
+	from breeze.auxiliary import proxy_to
 	try:
 		r = proxy_to(request, '', settings.SHINY_REMOTE_LIBS_TARGET_URL, silent=True, timeout=4)
 		if r.status_code == 200:
@@ -747,6 +761,7 @@ def check_cas(request):
 	Check if CAS server is responding
 	:rtype: bool
 	"""
+	from breeze.auxiliary import proxy_to
 	if utils.is_host_online(settings.CAS_SERVER_IP, 2):
 		try:
 			r = proxy_to(request, '', settings.CAS_SERVER_URL, silent=True, timeout=3)

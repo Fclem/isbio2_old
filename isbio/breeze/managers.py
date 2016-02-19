@@ -4,7 +4,7 @@ import django.db.models.query_utils
 from django.conf import settings
 from django.http import Http404
 from breeze.b_exceptions import InvalidArguments
-from breeze.comp import translate
+from comp import translate
 
 
 class Q(django.db.models.query_utils.Q):

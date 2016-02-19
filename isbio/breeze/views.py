@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from datadog import util
-
 import auxiliary as aux
 import forms as breezeForms
 import urllib
@@ -13,7 +12,7 @@ import xml.etree.ElementTree as xml
 import json
 import pickle
 import breeze.system_check as check
-from breeze.models import * # Rscripts, Jobs, DataSet, UserProfile, InputTemplate, Report, ReportType, Project, Post, Group, \
+from breeze.models import *
 # Statistics, Institute, Script_categories, CartInfo  # , User_date
 from collections import OrderedDict
 from rpy2.rinterface import RRuntimeError
@@ -38,6 +37,7 @@ from django.utils import simplejson
 from django.views.decorators.csrf import csrf_exempt
 import logging
 from mimetypes import MimeTypes
+from breeze.legacy import get_report_path, get_report_path_test
 
 import hashlib
 import sys
@@ -1684,28 +1684,27 @@ def edit_reportMMMMM(request, jid=None, mod=None):
 
 @login_required(login_url='/')
 def check_reports(request):
-	#reports = Report.objects.all().order_by('-created')
 	reports = Report.objects.filter(status='succeed').order_by('-created')
 	i = 0
 	malst = list()
 	for each in reports:
-		local_path, path_to_file, fileE, folderE = aux.get_report_path_test(each, None, True)
+		local_path, path_to_file, fileE, folderE = get_report_path_test(each)
 		if not folderE or not fileE:
 			malst.append({
-			'id': str(each.id),
-			'type': str(each.type),
-			'created': str(each._created),
-			'author': unicode(each.author.get_full_name() or each.author.username),
-			'name': str(each.name),
-			'project': str(each.project),
-			'path': (local_path, path_to_file, fileE, folderE),
+				'id': str(each.id),
+				'type': str(each.type),
+				'created': str(each._created),
+				'author': unicode(each.author.get_full_name() or each.author.username),
+				'name': str(each.name),
+				'project': str(each.project),
+				'path': (local_path, path_to_file, fileE, folderE),
 			})
 			i += 1
 
 	return render_to_response('list.html', RequestContext(request, {
-	'reports': malst,
-	'missing': i,
-	'total': reports.count,
+		'reports': malst,
+		'missing': i,
+		'total': reports.count,
 	}))
 
 
@@ -1713,7 +1712,8 @@ def check_reports(request):
 def edit_job(request, jid=None, mod=None):
 	# TODO FIXME
 	from django.http import HttpResponseServerError
-	job = aux.get_job_safe(request, jid)
+	# job = aux.get_job_safe(request, jid)
+	job = Jobs.objects.owner_get(request, jid) # TODO check replacement
 	user_info = request.user
 	assert isinstance(job, Jobs)
 
@@ -2107,7 +2107,7 @@ def send_file(request, ftype, fname):
 		except ObjectDoesNotExist:
 			return aux.fail_with404(request, 'There is no report with id ' + str(fname) + ' in database')
 		# TODO Enforce user access restrictions ?
-		local_path, path_to_file = aux.get_report_path(fitem)
+		local_path, path_to_file = get_report_path(fitem)
 
 	if ftype == 'report':
 		try:
@@ -2118,7 +2118,7 @@ def send_file(request, ftype, fname):
 		if request.user not in fitem.shared.all() and fitem.author != request.user:
 			raise PermissionDenied
 
-		local_path, path_to_file = aux.get_report_path(fitem)
+		local_path, path_to_file = get_report_path(fitem)
 
 	f = open(path_to_file)
 	myfile = File(f)
@@ -2364,7 +2364,7 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 	if not fitem:
 		aux.fail_with404(request, 'Bad function call : missing or invalid argument')
 	try:
-		local_path, path_to_file = aux.get_report_path(fitem, fname)
+		local_path, path_to_file = get_report_path(fitem, fname)
 	except Http404:
 		return aux.fail_with404(request, ['The report file was not found.', 'This usually means that the pipeline'
 			' did run, but failed to produce the report for some reason.', 'Tis could be caused by the a script failing'
@@ -2389,6 +2389,7 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 	except IOError:
 		print 'IOError', path_to_file
 		return aux.fail_with404(request, 'File not found in expected location')
+
 
 # Clem on 22/09/2015
 @login_required(login_url='/')
