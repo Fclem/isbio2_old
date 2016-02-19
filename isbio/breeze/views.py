@@ -3033,7 +3033,7 @@ def restart_vm(request):
 @login_required(login_url='/')
 def restart_reboot_wrap(request, self_name, func):
 	retr = 'err'
-	full_name = request.user.get_full_name
+	full_name = request.user.get_full_name()
 	if not request.user.is_superuser:
 		get_logger().warning('Non privileged user %s tried to trigger %s' % (full_name, self_name))
 		raise PermissionDenied
