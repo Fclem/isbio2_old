@@ -137,7 +137,7 @@ def get_patients_info(params, subject):
 									args=(subject, start, span, sort_col, sort_dir, search_value))
 
 	# Data table as such
-	exported_data = r_getter_output[2]
+	exported_data = r_getter_output[2] # FIXME out of range
 
 	# count number of cols & rows in exported table
 	headers = list(exported_data.colnames)
