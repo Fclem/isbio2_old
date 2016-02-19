@@ -14,6 +14,10 @@ class FileSystemNotMounted(SystemCheckFailed):
 	pass
 
 
+class MysqlDbUnreachable(SystemCheckFailed):
+	pass
+
+
 class FileServerUnreachable(SystemCheckFailed):
 	pass
 

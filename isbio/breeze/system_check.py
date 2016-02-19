@@ -314,14 +314,15 @@ def run_system_test():
 	global SKIP_SYSTEM_CHECK
 	if not SKIP_SYSTEM_CHECK and is_on():
 		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
-		if fs_mount.checker_function():
-			print fs_mount.msg + OK
-			checking_list = CheckerList(CHECK_LIST)
-			checking_list.check_list()
-			checking_list.rendez_vous()
-		else:
-			print fs_mount.msg + BAD
-			raise FileSystemNotMounted
+		for pre_check in PRE_BOOT_CHECK_LIST:
+			if pre_check.checker_function():
+				print pre_check.msg + OK
+			else:
+				print pre_check.msg + BAD
+				raise pre_check.ex
+		checking_list = CheckerList(CHECK_LIST)
+		checking_list.check_list()
+		checking_list.rendez_vous()
 	else:
 		print Bcolors.ok_blue('Skipping Breeze system integrity checks ......')
 
@@ -617,6 +618,18 @@ def check_file_server():
 	return utils.is_host_online(settings.FILE_SERVER_IP, 2)
 
 
+# clem 19/02/2016
+def check_db_connection():
+	from django.db import connections
+	from _mysql_exceptions import OperationalError
+	db_conn = connections['default']
+	try:
+		_ = db_conn.cursor()
+	except OperationalError:
+		return False
+	else:
+		return True
+
 # clem on 21/08/2015
 def check_file_system_mounted():
 	"""
@@ -775,6 +788,10 @@ def long_poll_waiter():
 # TODO FIXME runtime fs_check slow and memory leak ?
 fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
 						ex=FileSystemNotMounted, mandatory=True)
+db_conn = SysCheckUnit(check_db_connection, 'db_conn', 'Mysql DB', 'MYSQL DB\t\t ', RunType.runtime,
+						ex=MysqlDbUnreachable, mandatory=True)
+
+PRE_BOOT_CHECK_LIST = [fs_mount, db_conn]
 
 proto = settings.SHINY_REMOTE_PROTOCOL.upper()
 
@@ -783,7 +800,7 @@ CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
 	# # SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
 	SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t', RunType.boot_time, 25000,
-				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount,
+				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount, db_conn,
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
