@@ -2,99 +2,40 @@ from django.db.models.query import QuerySet as __original_QS
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 import django.db.models.query_utils
 from django.conf import settings
+from django.http import Http404
 from breeze.b_exceptions import InvalidArguments
-
-
-class Trans:
-	def __init__(self, *args, **kwargs):
-		self._translate(*args, **kwargs)
-
-	translation = {
-		'name': '_name', 'jname': '_name',
-		'description': '_description', 'jdetails': '_description',
-		'author': '_author', 'juser': '_author',
-		'type': '_type', 'script': '_type',
-		'created': '_created', 'staged': '_created',
-		'breeze_stat': '_breeze_stat', 'status': '_status',
-		'rexec': '_rexec', 'rexecut': '_rexec',
-		'dochtml': '_doc_ml', 'docxml': '_doc_ml', 'doc_ml': '_doc_ml',
-		'institute': '_institute',
-	}
-
-	@staticmethod
-	def swap(item):
-		a = Trans.has(item)
-		if a is not None:
-			return a
-		return item
-
-	@staticmethod
-	def has(item):
-		if isinstance(item, str) and item != '':
-			text = item
-			if text.endswith('_id'): # for ForeignKeys
-				text = text[:-3]
-			for key in Trans.translation.keys():
-				if text.startswith(key) or text.startswith('-' + key):
-					# p_item = item
-					item = item.replace(key, Trans.translation[key])
-					# if item != p_item:
-					#	print p_item, 'replaced by', item
-					return item
-		return None
-
-	def _translate(self, args, kwargs):
-		new_arg = list(args)
-		for pos, el in enumerate(new_arg):
-			new_key = self.has(el)
-			if new_key is not None:
-				new_arg[pos] = new_key
-		new_arg = tuple(new_arg)
-
-		for key in kwargs.keys():
-			new_key = self.has(key)
-			if new_key is not None:
-				kwargs[new_key] = kwargs[key]
-				del kwargs[key]
-		self.args, self.kwargs = new_arg, kwargs
-
-	def get(self):
-		return self.args, self.kwargs
-
-
-def _translate(args, kwargs):
-	return Trans(args, kwargs).get()
+from breeze.comp import translate
 
 
 class Q(django.db.models.query_utils.Q):
 	def __init__(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		super(Q, self).__init__(*args, **kwargs)
 
 
 class QuerySet(__original_QS):
 	def _filter_or_exclude(self, negate, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(QuerySet, self)._filter_or_exclude(negate, *args, **kwargs)
 
 	def filter(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(QuerySet, self).filter(*args, **kwargs)
 
 	def annotate(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(QuerySet, self).annotate(*args, **kwargs)
 
 	def get(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(QuerySet, self).get(*args, **kwargs)
 
 	def exclude(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(QuerySet, self).exclude(*args, **kwargs)
 
 	def order_by(self, *field_names):
-		field_names, _ = _translate(field_names, dict())
+		field_names, _ = translate(field_names, dict())
 		return super(QuerySet, self).order_by(*field_names)
 
 	##
@@ -227,27 +168,27 @@ class WorkersManager(django.db.models.Manager):
 		return QuerySet(self.model, using=self._db)
 
 	def filter(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		# return super(WorkersManager, self).filter(*args, **kwargs)
 		return self.get_query_set().filter(*args, **kwargs)
 
 	def annotate(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(WorkersManager, self).annotate(*args, **kwargs)
 
 	def get(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		a = super(WorkersManager, self).get(*args, **kwargs)
 		if self.inst_type:
 			assert isinstance(a, self.inst_type)
 		return a
 
 	def exclude(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(WorkersManager, self).exclude(*args, **kwargs)
 
 	def order_by(self, *args, **kwargs):
-		args, kwargs = _translate(args, kwargs)
+		args, kwargs = translate(args, kwargs)
 		return super(WorkersManager, self).order_by(*args, **kwargs)
 
 	def all(self):
@@ -257,14 +198,88 @@ class WorkersManager(django.db.models.Manager):
 	def f(self):
 		return self.all()
 
+	def owner_get(self, request, obj_id, fail_ex=Http404):
+		"""
+		Ensure that job/report designated by obj_id exists or fail with 404
+		Ensure that current user is OWNER of said object (or admin) or fail with 403
+		implements admin bypass if settings. is True
+		:param request: Django Http request object
+		:type request: django.http.HttpRequest
+		:param obj_id: table pk of the requested object
+		:type obj_id: int
+		:param fail_ex: an exception to raise in case of failure
+		:type fail_ex: Exception
+		:return: requested object instance
+		:rtype: type(self.model)
+		"""
+		try:
+			obj = self.get(id=obj_id)
+			# Enforce access rights
+			# if user != request.user:
+			if not has_full_access(obj, request.user):
+				raise PermissionDenied
+			return obj
+		except ObjectDoesNotExist:
+			raise fail_ex()
+
+	def read_get(self, request, obj_id, fail_ex=Http404):
+		"""
+		Ensure that job/report designated by obj_id exists or fail with 404
+		Ensure that current user has read access to said object or fail with 403
+		:param request: Django Http request object
+		:type request: django.http.HttpRequest
+		:param obj_id: table pk of the requested object
+		:type obj_id: int
+		:param fail_ex: an exception to raise in case of failure
+		:type fail_ex: Exception
+		:return: requested object instance
+		:rtype: type(self.model)
+		"""
+		try:
+			obj = self.get(id=obj_id)
+			# Enforce access rights
+			# if user != request.user:
+			if not has_read_access(obj, request.user):
+				raise PermissionDenied
+			return obj
+		except ObjectDoesNotExist:
+			raise fail_ex()
+
+
+# clem 19/02/2016
+def admin_override(user):
+	return settings.SU_ACCESS_OVERRIDE and user.is_superuser
+
+
+# clem 19/02/2016
+def get_author(obj):
+	auth = None
+	if hasattr(obj, 'author'):
+		auth = obj.author
+	elif hasattr(obj, 'juser'): # Jobs
+		auth = obj.juser
+	elif hasattr(obj, '_author'):
+		auth = obj._author
+	return auth
+
+
+# clem 19/02/2016
+def has_full_access(obj, user):
+	auth = get_author(obj) # author/owner of the object
+	return auth == user or admin_override(user)
+
+
+# clem 19/02/2016
+def has_read_access(obj, user):
+	return has_full_access or ('shared' in obj.__dict__ and user in obj.shared.all())
+
 
 # TODO extend to all objects
 class ObjectsWithAuth(django.db.models.Manager):
 	def secure_get(self, *args, **kwargs):
-
 		if 'id' not in kwargs.keys() or 'user' not in kwargs.keys():
 			raise InvalidArguments
-
+		obj = None
 		try:
 			obj = self.get(id=kwargs.pop('id'))
 			# obj = super(WorkersManager, self).get(*args, **kwargs)
@@ -273,16 +288,7 @@ class ObjectsWithAuth(django.db.models.Manager):
 			raise ObjectDoesNotExist
 
 		# Enforce user access restrictions
-		user = kwargs.pop('user')
-		auth = None
-		if hasattr(obj, 'author'):
-			auth = obj.author
-		elif hasattr(obj, 'juser'): # Jobs
-			auth = obj.juser
-		elif hasattr(obj, '_author'):
-			auth = obj._author
-
-		if not (auth == user or (user.is_superuser and settings.SU_ACCESS_OVERRIDE)):
+		if not has_full_access(obj, kwargs.pop('user')):
 			raise PermissionDenied
 
 		return obj

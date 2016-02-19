@@ -9,15 +9,15 @@ import mimetypes
 import logging
 from django import http
 from django.template.defaultfilters import slugify
-from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
-from django.http import Http404, HttpResponse
+from django.http import HttpResponse # , Http404
 from django.template import loader
 from django.template.context import RequestContext
 from django.conf import settings
-from breeze.models import Report, Jobs, DataSet
+# from breeze.models import Report, Jobs, DataSet
 import sys
 import utils
 
+# from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 # import time
 # from subprocess import Popen, PIPE #, call
 # from django.utils import timezone
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # system integrity checks moved to system_check.py on 31/08/2015
 
 
+# FIXME : deprecated
 def restart():
 	python = sys.executable
 	os.execl(python, python, *sys.argv)
@@ -298,7 +299,7 @@ def merge_job_history(jobs, reports, user=None):
 			el['ddownhref'] = '/jobs/download/%s-code'%str(item.id)  # debug
 			el['fdownhref'] = '/jobs/download/%s'%str(item.id)  # full folder
 			
-			el['home'] = item._home_folder_rel
+			el['home'] = item.home_folder_rel
 			el['reschedhref'] = '/jobs/edit/%s-repl'%str(item.id)
 
 			el['delhref'] = '/jobs/delete/%s'%str(item.id)
@@ -323,7 +324,7 @@ def merge_job_history(jobs, reports, user=None):
 			el['ddownhref'] = '/report/download/%s-code' % str(item.id)  # debug
 			el['fdownhref'] = '/report/download/%s' % str(item.id)  # full folder
 
-			el['home'] = item._home_folder_rel
+			el['home'] = item.home_folder_rel
 			el['reschedhref'] = '/reports/edit/%s'%str(item.id)
 
 			el['delhref'] = '/reports/delete/%s-dash'%str(item.id)
@@ -430,65 +431,10 @@ def report_common(request, v_max=15):
 		entries_nb = v_max
 	return page_index, entries_nb
 
+# DELETED get_job_safe(request, job_id) 19/02/2016 replaced by manager.owner_get
+# DELETED get_report_safe(request, job_id, owner=True) 19/02/2016 replaced by manager.owner_get
+# DELETED  get_worker_safe_abstract(request, obj_id, model) 19/02/2016 replaced by manager.owner_get
 
-# ## TODO	move the following to managers ?
-
-def get_job_safe(request, job_id):
-	"""
-		Return a Jobs instance, or fail with 404 if no such job, or 403 if user has no access to this job
-		Ensure that job/report designated by obj_id exists or fail with 404
-		Ensure that current user is OWNER of said object or fail with 403
-		:param request: Django Http request object
-		:type request: http.HttpRequest
-		:param job_id: id of the requested Job
-		:type job_id: int
-		:return: requested object instance or fail_with404
-		:rtype: Report or Jobs
-	"""
-	return get_worker_safe_abstract(request, job_id, Jobs)
-
-
-def get_report_safe(request, report_id, owner=True):
-	"""
-		Return a Report instance, or fail with 404 if no such report, or 403 if user has no access to this report
-		Ensure that job/report designated by obj_id exists or fail with 404
-		Ensure that current user is OWNER of said object or fail with 403
-		:param request: Django Http request object
-		:type request: http.HttpRequest
-		:param report_id: id of the requested Report
-		:type report_id: int
-		:return: requested object instance or fail_with404
-		:rtype: Report or Jobs
-	"""
-	return get_worker_safe_abstract(request, report_id, Report)
-
-
-def get_worker_safe_abstract(request, obj_id, model):
-	"""
-	Ensure that job/report designated by obj_id exists or fail with 404
-	Ensure that current user is OWNER of said object or fail with 403
-	:param request: Django Http request object
-	:type request: http.HttpRequest
-	:param obj_id: table pk of the requested object
-	:type obj_id: int
-	:param model: class Report or class Jobs instance
-	:type model: Report or Jobs
-	:return: requested object instance
-	:rtype: Report or Jobs
-	"""
-	# assert isinstance(model, Report) or isinstance(model, Jobs), 'argument is neither a Job or Report class'
-	try:
-		obj = model.objects.get(id=obj_id)
-		user = obj.author if model.__name__ == Report.__name__ else obj.juser
-		# Enforce access rights
-		if user != request.user:
-			raise PermissionDenied
-		return obj
-	except ObjectDoesNotExist:
-		raise Http404()
-
-
-# ## *** END ***
 
 # 10/03/2015 Clem / ShinyProxy
 def u_print(request, url, code=None, size=None, date_f=None):
@@ -517,72 +463,8 @@ def date_t(date_f=None):
 	return utils.date_t(date_f)
 
 
-# Used to check for missing reports, following lost report event
-def get_report_path(f_item, fname=None):
-	"""
-		Return the path of an object, and checks that the path is existent or fail with 404
-		:param f_item: a Report.objects from db
-		:type f_item: Report or DataSet
-		:param fname: a specified file name (optional, default is report.html)
-		:type fname: str
-		:return: (local_path, path_to_file)
-		:rtype: (str, str)
-	"""
-	assert isinstance(f_item, (Report, DataSet))
-	errorMsg = ''
-	if fname is None: fname = '%s.html' % Report.REPORT_FILE_NAME
-
-	if isinstance(f_item, DataSet):
-		home = f_item.rdata
-	else:
-		home = f_item._home_folder_rel
-	local_path = home + '/' + unicode.replace(unicode(fname), '../', '')
-	path_to_file = str(settings.MEDIA_ROOT) + local_path
-
-	# hack to access reports that were generated while dev was using prod folder
-	if not os.path.exists(path_to_file) and settings.DEV_MODE:
-		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
-		errorMsg = 'File ' + str(path_to_file) + ' NOT found. The folder ' + (
-			'DO NOT ' if not dir_exists else ' ') + 'exists.'
-		path_to_file = str(settings.MEDIA_ROOT).replace('-dev', '') + local_path
-
-	if not os.path.exists(path_to_file):
-		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
-		raise Http404(errorMsg + '<br />\n' + 'File ' + str(path_to_file) + ' NOT found. The folder ' + (
-		'DO NOT ' if not dir_exists else ' ') + 'exists.')
-
-	return local_path, path_to_file
-
-
-# Used to check for missing reports, following lost report event
-def get_report_path_test(f_item, fname=None, no_fail=False):
-	"""
-	:param f_item: a Report.objects from db
-	:type f_item: Report or DataSet
-	:param fname: a specified file name (optional, default is report.html)
-	:type fname: str
-	:return: (old_local_path, path_to_file, file_exists, dir_exists)
-	:rtype: (str, str, str, str)
-	"""
-
-	if fname is None:
-		fname = '%s.html' % Report.REPORT_FILE_NAME
-	local_path = f_item._home_folder_rel + '/' + unicode.replace(unicode(fname), '../', '') # safety
-	path_to_file = str(settings.MEDIA_ROOT) + local_path
-
-	file_exists = os.path.exists(path_to_file)
-	dir_exists = os.path.isdir(os.path.dirname(path_to_file))
-
-	old_local_path = os.path.dirname(str(settings.MEDIA_ROOT) + local_path)
-
-	# hack to access reports that were generated while dev was using prod folder
-	if not (dir_exists and file_exists) and settings.DEV_MODE:
-		path_to_file = str(settings.MEDIA_ROOT).replace('-dev', '') + local_path
-		old_local_path = (old_local_path, os.path.dirname(path_to_file))
-		file_exists = os.path.exists(path_to_file)
-		dir_exists = os.path.isdir(os.path.dirname(path_to_file))
-
-	return old_local_path, path_to_file, file_exists, dir_exists
+# DELETED get_report_path(f_item, fname=None) 19/02/2016 moved to comp.py
+# DELETED get_report_path_test(f_item, fname=None, no_fail=False): 19/02/2016 moved to comp.py
 
 
 def fail_with404(request, error_msg=None):
