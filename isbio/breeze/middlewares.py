@@ -119,3 +119,12 @@ class CheckUserProfile(object):
 		if isinstance(exception, UserProfile.DoesNotExist):
 			return views.home(request)
 
+
+class RemoteFW:
+	@staticmethod
+	def process_request(request):
+		print type(request), request
+
+
+class Empty:
+	pass
