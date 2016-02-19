@@ -543,3 +543,23 @@ def fix_file_acl_interface(fid):
 				return set_file_acl(path)
 
 	return False
+
+
+# clem 19/02/2016
+def do_restart():
+	try:
+		import subprocess
+		subprocess.Popen('sleep 1 && killall python', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
+	except Exception as e:
+		raise e
+	return True
+
+
+# clem 19/02/2016
+def do_reboot():
+	try:
+		import subprocess
+		subprocess.Popen('sleep 1 && sudo reboot -n', shell=True, stdout=subprocess.PIPE)
+	except Exception as e:
+		raise e
+	return True

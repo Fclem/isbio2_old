@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datadog import util
+
 import auxiliary as aux
 import forms as breezeForms
 import urllib
@@ -2055,6 +2057,7 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 	except ObjectDoesNotExist:
 		return aux.fail_with404(request, 'There is no record with id ' + jid + ' in DB')
 
+	# FIXME : user with whom report is shared are not able to download -result
 	# Enforce user access restrictions
 	if not(('shared' in job.__dict__ and request.user in job.shared.all()) or
 			job.author == request.user or request.user.is_superuser):
@@ -3016,32 +3019,43 @@ def fix_file_acl(request, fid):
 # clem on 08/10/2015
 @login_required(login_url='/')
 def restart_breeze(request):
+	retr = 'err'
+	full_name = request.user.get_full_name
+	self_name = sys._getframe(0).f_code.co_name
 	if not request.user.is_superuser:
-		get_logger().warning('Non privileged user %s tried to trigger %s' % (request.user.get_full_name,
-																		sys._getframe(0).f_code.co_name))
+		get_logger().warning('Non privileged user %s tried to trigger %s' % (full_name, self_name))
 		raise PermissionDenied
-
-	import subprocess
-	subprocess.Popen('sleep 1 && killall python', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
-	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name(),
-																		sys._getframe(0).f_code.co_name))
-	return HttpResponse('ok', mimetype='text/plain')
+	if utils.do_restart():
+		retr = 'ok'
+		get_logger().info('User %s successfully triggered %s' % (full_name, self_name))
+	return HttpResponse(retr, mimetype='text/plain')
 
 
 # clem on 08/01/2016
 @login_required(login_url='/')
 def restart_vm(request):
+	retr = 'err'
+	full_name = request.user.get_full_name
+	self_name = sys._getframe(0).f_code.co_name
 	if not request.user.is_superuser:
-		get_logger().warning('Non privileged user %s tried to trigger %s' % (request.user.get_full_name,
-																			sys._getframe(0).f_code.co_name))
+		get_logger().warning('Non privileged user %s tried to trigger %s' % (full_name, self_name))
 		raise PermissionDenied
+	if utils.do_reboot():
+		retr = 'ok'
+		get_logger().info('User %s successfully triggered %s' % (full_name, self_name))
+	return HttpResponse(retr, mimetype='text/plain')
 
-	import subprocess
-	subprocess.Popen('sleep 1 && sudo reboot -n', shell=True, stdout=subprocess.PIPE) # relies on autorun.sh
-	get_logger().info('User %s successfully triggered %s' % (request.user.get_full_name(),
-															sys._getframe(0).f_code.co_name))
-	return HttpResponse('ok', mimetype='text/plain')
 
+def restart_reboot_wrap(request, self_name, func):
+	retr = 'err'
+	full_name = request.user.get_full_name
+	if not request.user.is_superuser:
+		get_logger().warning('Non privileged user %s tried to trigger %s' % (full_name, self_name))
+		raise PermissionDenied
+	if callable(func) and func():
+		retr = 'ok'
+		get_logger().info('User %s successfully triggered %s' % (full_name, self_name))
+	return HttpResponse(retr, mimetype='text/plain')
 
 @login_required(login_url='/')
 def user_list_advanced(request):
