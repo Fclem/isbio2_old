@@ -1,9 +1,7 @@
-__author__ = 'clem'
-# import drmaa
-from breeze.b_exceptions import NoSuchJob, InvalidArgument
-from breeze.models import _JOB_PS as job_ps
-from breeze.utils import get_logger
+from breeze.b_exceptions import NoSuchJob # , InvalidArgument
+from breeze.models import JOB_PS
 from django.conf import settings
+# from breeze.utils import get_logger
 
 
 # clem on 20/08/2015
@@ -48,7 +46,6 @@ class SgeJob(object):
 			self.full_user = self.runnable.author.get_full_name()
 			self.full_name = self.runnable.sge_job_name
 
-
 	@property
 	def state(self):
 		"""
@@ -56,10 +53,10 @@ class SgeJob(object):
 		:return:
 		:rtype:
 		"""
-		if self._state in job_ps:
-			return job_ps[self._state]
+		if self._state in JOB_PS:
+			return JOB_PS[self._state]
 		else:
-			return job_ps['']
+			return str(self._state)
 
 	@property
 	def raw_out(self):
@@ -73,7 +70,7 @@ class SgeJob(object):
 	def raw_out_tab(self):
 		"""
 		displays text line output similar to qstat output
-		:rtype: str
+		:rtype: [str]
 		"""
 		return [str(self.id), self.prior, self.name, self.user, self.state, self.start_d, self.start_t, self.queue, self.slot]
 
@@ -101,7 +98,7 @@ class Qstat(object): # would need some proper error management if SGE is not set
 			self._job_list = dict()
 			self.qstat = settings.QSTAT_BIN
 			self._refresh_qstat()
-		except Exception as e:
+		except Exception:
 			pass
 
 	def __sub_proc(self, arg):
