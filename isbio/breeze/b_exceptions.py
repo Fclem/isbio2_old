@@ -14,11 +14,20 @@ class FileSystemNotMounted(SystemCheckFailed):
 	pass
 
 
-class MysqlDbUnreachable(SystemCheckFailed):
-	pass
+class MysqlDbUnreachable(BaseException):
+	def __str__(self):
+		try:
+			import logging
+			logging.getLogger(__name__).critical('DB was unreachable')
+		except Exception:
+			pass
+		# try to restart breeze :
+		from utils import do_restart
+		do_restart()
+		# return repr(self.value)
 
 
-class FileServerUnreachable(SystemCheckFailed):
+class FileServerUnreachable(BaseException):
 	pass
 
 

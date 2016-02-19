@@ -630,6 +630,7 @@ def check_db_connection():
 	else:
 		return True
 
+
 # clem on 21/08/2015
 def check_file_system_mounted():
 	"""

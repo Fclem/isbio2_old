@@ -3019,33 +3019,17 @@ def fix_file_acl(request, fid):
 # clem on 08/10/2015
 @login_required(login_url='/')
 def restart_breeze(request):
-	retr = 'err'
-	full_name = request.user.get_full_name
-	self_name = sys._getframe(0).f_code.co_name
-	if not request.user.is_superuser:
-		get_logger().warning('Non privileged user %s tried to trigger %s' % (full_name, self_name))
-		raise PermissionDenied
-	if utils.do_restart():
-		retr = 'ok'
-		get_logger().info('User %s successfully triggered %s' % (full_name, self_name))
-	return HttpResponse(retr, mimetype='text/plain')
+	restart_reboot_wrap(request, sys._getframe(0).f_code.co_name, utils.do_restart)
 
 
 # clem on 08/01/2016
 @login_required(login_url='/')
 def restart_vm(request):
-	retr = 'err'
-	full_name = request.user.get_full_name
-	self_name = sys._getframe(0).f_code.co_name
-	if not request.user.is_superuser:
-		get_logger().warning('Non privileged user %s tried to trigger %s' % (full_name, self_name))
-		raise PermissionDenied
-	if utils.do_reboot():
-		retr = 'ok'
-		get_logger().info('User %s successfully triggered %s' % (full_name, self_name))
-	return HttpResponse(retr, mimetype='text/plain')
+	restart_reboot_wrap(request, sys._getframe(0).f_code.co_name, utils.do_reboot)
 
 
+# clem on 19/02/2016
+@login_required(login_url='/')
 def restart_reboot_wrap(request, self_name, func):
 	retr = 'err'
 	full_name = request.user.get_full_name
@@ -3056,6 +3040,7 @@ def restart_reboot_wrap(request, self_name, func):
 		retr = 'ok'
 		get_logger().info('User %s successfully triggered %s' % (full_name, self_name))
 	return HttpResponse(retr, mimetype='text/plain')
+
 
 @login_required(login_url='/')
 def user_list_advanced(request):
