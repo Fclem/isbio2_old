@@ -97,6 +97,7 @@ class CheckerList(list):
 		wait for all process in the list to complette
 		New version, replaces the 08/09/2015 one, better use of OOP
 		"""
+		offset = len(PRE_BOOT_CHECK_LIST)
 		for each in self[:]:
 			assert isinstance(each, SysCheckUnit) and each.has_proc
 			# Only wait for mandatory checks
@@ -115,7 +116,7 @@ class CheckerList(list):
 		for each in self:
 			self._results[each.url] = each.exitcode == 0
 
-		success_text = 'successful : %s/%s' % (len(self.suceeded) + 1, len(self.boot_tests) + 1)
+		success_text = 'successful : %s/%s' % (len(self.suceeded) + offset, len(self.boot_tests) + offset)
 
 		if not self.any_running:
 			print Bcolors.ok_green('System is up and running, All checks done ! (%s)' % success_text)
@@ -219,7 +220,7 @@ class SysCheckUnit(Process):
 				return True
 			else:
 				print self.msg + BAD
-				raise self.ex
+				raise self.ex(' ')
 		except:
 			return False
 
@@ -327,11 +328,6 @@ def run_system_test():
 		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
 		for pre_check in PRE_BOOT_CHECK_LIST:
 			pre_check.inline_check()
-			#if pre_check.checker_function():
-			#	print pre_check.msg + OK
-			#else:
-			#	print pre_check.msg + BAD
-			#	raise pre_check.ex
 		checking_list = CheckerList(CHECK_LIST)
 		checking_list.check_list()
 		checking_list.rendez_vous()
