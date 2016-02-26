@@ -25,7 +25,7 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 	# ftp_url = '%s%s' % (ftp_home_url, ftp_path)
 
 	def __init__(self, name=str, logger=None):
-		""" name is the name of the requested library, logger is a callable loging function with txt argument
+		""" name is the name of the requested library, logger is a callable logging function with txt argument
 		:type name: str
 		:type logger: callable
 		"""
@@ -170,7 +170,7 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 				self.ftp.retrbinary("RETR " + filename, _write_f)
 				interval = time.time() - start_time
 				speed = human_readable_byte_size(size / interval)
-				self._out(' done in %s sec (%s/s) !\nsaved to % s' % (speed, round(interval, 2), save_to))
+				self._out(' done in %s sec (%s/s) !\nsaved to % s' % (round(interval, 2), speed, save_to))
 				return True
 			except Exception as e:
 				self._out('Error %s' % e)
@@ -189,18 +189,16 @@ class CranArchiveDownloader: # special purpose light FTP downloader
 
 	def _guess(self):
 		""" Go through the list of package and try to find matching package name (case insensitive and including self.name)
-		:rtype: bool|list
+		:rtype: list
 		"""
+		new_l = list()
 		if self.name:
 			self.name = self.name.lower()
-			new_l = list()
 			for e in self._file_list:
 				l = str(e).lower()
 				if l == self.name or self.name in l or l in self.name:
 					new_l.append(str(e))
-			if new_l != list():
-				return new_l
-		return False
+		return new_l
 
 	def _find_similar(self):
 		""" Suggest on console similar package (case insensitive and including self.name) if verbose is enable
