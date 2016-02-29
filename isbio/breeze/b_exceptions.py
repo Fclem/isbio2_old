@@ -15,23 +15,7 @@ class FileSystemNotMounted(SystemCheckFailed):
 
 
 class MysqlDbUnreachable(BaseException):
-	def __init__(self):
-		self.__str__()
-
-	def __str__(self): # FIXME code unreachable
-		try:
-			import logging
-			logging.getLogger(__name__).critical('DB was unreachable')
-		except Exception:
-			pass
-		# try to
-		#  restart breeze :
-		from utils import do_restart
-		do_restart()
-		# return repr(self.value)
-
-	def __call__(self, *args, **kwargs):
-		self.__str__()
+	pass
 
 
 class FileServerUnreachable(BaseException):
