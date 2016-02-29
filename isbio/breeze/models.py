@@ -35,6 +35,7 @@ CATEGORY_OPT = (
 class JobState(drmaa.JobState):
 	SUSPENDED = 'suspended'
 	PENDING = 'pending'
+	TRANSFERRING = 'transferring'
 	ON_HOLD = 'pending'
 	ERROR_Q_WAIT = 'qw_error'
 
@@ -46,6 +47,7 @@ class JobState(drmaa.JobState):
 JOB_PS = {
 	'': JobState.UNDETERMINED,
 	'r': JobState.RUNNING,
+	't': JobState.TRANSFERRING,
 	'p': JobState.PENDING,
 	'qw': JobState.QUEUED_ACTIVE,
 	'Eqw': JobState.ERROR_Q_WAIT,
