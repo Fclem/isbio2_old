@@ -136,33 +136,40 @@ def get_patients_info(params, subject):
 	r_getter_output = global_r_call('getPSSData', r_file='basic.R',
 									args=(subject, start, span, sort_col, sort_dir, search_value))
 
-	# Data table as such
-	exported_data = r_getter_output[2] # FIXME out of range
-
-	# count number of cols & rows in exported table
-	headers = list(exported_data.colnames)
-
-	exported_col_num = len(headers)
-	exported_row_num = len(exported_data[0])
-
-	# Convert exported_data to a list ( of dicts )
 	subject_table = list()
-	# row_dict = dict()
-	for row in range(1, exported_row_num + 1):
-		row_values = exported_data.rx(row, True)
+	result_nb = 0
+	displayed_nb = 0
+	if r_getter_output:
+		# Nb of total records found
+		result_nb = int(r_getter_output[1][0])
+		# Number of record on display (?)
+		displayed_nb = int(r_getter_output[0][0])
+		if result_nb: # ensure that at least one record was found
+			# Data table as such
+			exported_data = r_getter_output[2] # FIXME out of range
 
-		row_dict = dict()
-		for col in range(0, exported_col_num):
-			cell_data = row_values[col][0]
-			# append to cols
-			row_dict[ str(headers[col]) ] = cell_data
+			# count number of cols & rows in exported table
+			headers = list(exported_data.colnames)
 
-		# append to rows
-		subject_table.append( copy.copy(row_dict) )
+			exported_col_num = len(headers)
+			exported_row_num = len(exported_data[0])
+
+			# Convert exported_data to a list ( of dicts )
+			for row in range(1, exported_row_num + 1):
+				row_values = exported_data.rx(row, True)
+
+				row_dict = dict()
+				for col in range(0, exported_col_num):
+					cell_data = row_values[col][0]
+					# append to cols
+					row_dict[ str(headers[col]) ] = cell_data
+
+				# append to rows
+				subject_table.append( copy.copy(row_dict) )
 
 	response = {
-		'iTotalDisplayRecords': int(r_getter_output[0][0]),
-		'iTotalRecords': int(r_getter_output[1][0]),
+		'iTotalDisplayRecords': displayed_nb,
+		'iTotalRecords': result_nb,
 		'aaData': subject_table
 	}
 
