@@ -518,12 +518,14 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	log = '/var/log/shiny-server.log'
 	log_size = os.stat(log).st_size
 	proxied_request = None
+	msg = ''
+	reason = ''
 	more = ''
 	try:
 		if not silent:
 			log_obj.debug(u_print_sub(request, path + str(qs)))
 		if settings.VERBOSE:
-			u_print(request, path + str(qs), datef=console_date_f)
+			u_print(request, path + str(qs), date_f=console_date_f)
 		if timeout:
 			proxied_request = opener.open(url, data or None, timeout=timeout)
 		else:
