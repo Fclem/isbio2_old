@@ -160,7 +160,7 @@ class SysCheckUnit(Process):
 	RAISE_EXCEPTION = True
 
 	def __init__(self, funct, url, legend, msg, type, t_out=0, arg=None, supl=None, ex=SystemCheckFailed,
-				mandatory=False, long_poll=False):
+				mandatory=False, long_poll=False, ui_text=('Online', 'Offline')):
 		"""
 		init Arguments :
 		funct: the function to run to asses test result
@@ -194,6 +194,8 @@ class SysCheckUnit(Process):
 		:type ex: Exception
 		:param mandatory: is this test success is required to system consistent boot
 		:type mandatory: bool
+		:param ui_text: optional text to be shown in UI, default is ('Online', 'Offline')
+		:type ui_text: (str, str)
 		"""
 		if type is RunType.runtime or callable(funct):
 			self.checker_function = funct
@@ -207,6 +209,7 @@ class SysCheckUnit(Process):
 			self.mandatory = mandatory
 			self.ex = ex
 			self.lp = long_poll
+			self.ui_text = ui_text
 			# self._process = Process
 		else:
 			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
@@ -790,18 +793,18 @@ def check_cas(request):
 
 
 # clem 09/09/2015
-def ui_checker_proxy(what):
+def ui_checker_proxy(obj):
 	"""	Run a self-test based on requested URL
-	:param what: url of the system test
-	:type what: str
-	:return: If test is successful
+	:param obj: SysCheckUnit object
+	:type obj: SysCheckUnit | str
+	:return: is test successful
 	:rtype: bool
 	"""
-	if what not in CHECK_DICT:
+	if type(obj) == str:
+		obj = ui_get_object(obj)
+	if not isinstance(obj, SysCheckUnit) or not obj:
 		from breeze import auxiliary as aux
 		return aux.fail_with404(HttpRequest(), 'NOT FOUND')
-	obj = CHECK_DICT[what]
-	assert isinstance(obj, SysCheckUnit)
 
 	if obj.type in [RunType.both, RunType.runtime]:
 		if obj.checker_function is check_watcher or obj.lp:
@@ -809,6 +812,23 @@ def ui_checker_proxy(what):
 		else:
 			return obj.split_run(from_ui=True)
 	return False
+
+
+# clem 29/02/2016
+def ui_get_object(what):
+	"""
+	Get the SysCheckUnit object from its id, or return error 404 if not found
+	:param what: url of the system test (the id)
+	:type what: str
+	:return: SysCheckUnit or False
+	:rtype: SysCheckUnit|bool
+	"""
+	if what not in CHECK_DICT:
+		from breeze import auxiliary as aux
+		return False
+	obj = CHECK_DICT[what]
+	assert isinstance(obj, SysCheckUnit)
+	return obj
 
 
 # clem 25/09/2015
@@ -828,6 +848,8 @@ PRE_BOOT_CHECK_LIST = [fs_mount, db_conn]
 
 proto = settings.SHINY_REMOTE_PROTOCOL.upper()
 
+good_bad = ('Good', 'BAD')
+
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
@@ -837,7 +859,8 @@ CHECK_LIST = [
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
-	SysCheckUnit(check_rora_response, 'rora_ok', 'RORA data', 'RORA DATA\t\t', RunType.both, ex=RORAFailure),
+	SysCheckUnit(check_rora_response, 'rora_ok', 'RORA data', 'RORA DATA\t\t', RunType.both, ex=RORAFailure,
+				ui_text=good_bad),
 	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured,
 				mandatory=True),
 	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,

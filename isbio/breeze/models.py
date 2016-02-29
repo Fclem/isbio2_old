@@ -249,7 +249,7 @@ class FolderObj(object):
 			raise NotDefined("BASE_FOLDER_NAME was not implemented in concrete class %s." % self.__class__.__name__)
 		if self.folder_name is None or self.folder_name == '':
 			raise NotDefined("folder_name is empty for %s." % self)
-		return '%s%s/' % (self.BASE_FOLDER_NAME, self.folder_name)
+		return '%s%s/' % (self.BASE_FOLDER_NAME, slugify(self.folder_name))
 
 	@property
 	def home_folder_full_path(self):
@@ -2263,7 +2263,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		from hashlib import md5
 		m = md5()
-		m.update('%s%s%s' % (self.text_id, self.get_status(), self.sgeid))
+		m.update('%r%s%s' % (self.text_id, self.get_status(), self.sgeid))
 		return m.hexdigest()
 
 	@property
@@ -2272,7 +2272,7 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def text_id(self):
-		return '%s%s %s' % (self.short_id + (self.name,))
+		return '%s%s %r' % (self.short_id + (self.name,))
 
 	def __unicode__(self): # Python 3: def __str__(self):
 		return '%s' % self.text_id
@@ -2490,7 +2490,7 @@ class Report(Runnable):
 
 	@property
 	def title(self):
-		return '%s Report :: %s  <br>  %s' % (self.type, self.name, self.type.description)
+		return u'%s Report :: %r  <br>  %s' % (self.type, self.name, self.type.description)
 
 	@property
 	def fm_file_path(self):
@@ -2605,16 +2605,14 @@ class Report(Runnable):
 		"""
 		generate the Nozzle generator R file
 		:param sections: Rscripts list
-		:type sections: list
-		:param request_data:
-		:type request_data: HttpRequest
+		:param request_data: HttpRequest
 		"""
 		from string import Template
 		from django.core.files import base
 		from breeze import shell as rshell
 		import xml.etree.ElementTree as XmlET
 
-		sections = kwargs.pop('sections', None)
+		sections = kwargs.pop('sections', list())
 		request_data = kwargs.pop('request_data', None)
 		# custom_form = kwargs.pop('custom_form', None)
 

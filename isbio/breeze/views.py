@@ -1101,16 +1101,16 @@ def search(request, what=None):
 										RequestContext(request, { 'search_status': 'active', 'search_bars': True,
 																	'ds_count': ds_count, 'rtypes': report_type_lst }))
 			report_type = request.POST['type']
-			query_val = str(request.POST['query'])
+			query_val = request.POST['query']
 			rtype = ReportType.objects.get(type=report_type)
 
-			if rtype.search:
+			if False and rtype.search: # disabled because deprecated TODO check with dima
 				# if searchable
 				overview['report_type'] = report_type
 				output = rshell.report_search(ds, overview['report_type'], query_val)
 			else:
 				# if not searchable - redirects directly to overview
-				if (len(query_val) == 0):
+				if len(query_val) == 0:
 					query_val = "Noname"
 				res = '/reports/overview/%s-%s-00000' % (report_type, query_val) # FIXME hardcoded url
 				return HttpResponseRedirect(res)
@@ -2397,11 +2397,11 @@ def update_jobs_json(request, jid, item):
 	if item == 'script':
 		obj = Jobs.objects.get(id=jid)
 		date = obj.created
-		name = str(obj._name)
+		name = obj._name
 	else:
 		obj = Report.objects.get(id=jid)
 		date = obj._created
-		name = str(obj.name)
+		name = obj.name
 
 	# sge_status = rshell.track_sge_job(obj)
 	# request job instance again to be sure that the data is updated
@@ -2872,7 +2872,7 @@ def custom_404_view(request, message=None):
 
 
 # clem on 24/08/2015
-def status_button_json(stat, text=['Online', 'Offline'], href=['#', '#'], c_type=['success', 'danger']):
+def status_button_json(stat, text, href=('#', '#'), c_type=('success', 'danger')):
 	if type(stat) != bool:
 		if type(stat) == HttpResponse:
 			return stat
@@ -2888,7 +2888,8 @@ def status_button_json(stat, text=['Online', 'Offline'], href=['#', '#'], c_type
 @login_required(login_url='/')
 def checker(request, what):
 	# return aux.fail_with404(HttpRequest(), 'NOT FOUND')
-	return status_button_json(check.ui_checker_proxy(what))
+	test_obj = check.ui_get_object(what)
+	return status_button_json(check.ui_checker_proxy(test_obj), test_obj.ui_text)
 
 
 # FIXME del DEPRECATED

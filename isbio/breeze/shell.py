@@ -405,7 +405,7 @@ def build_report(report_data, request_data, report_property, sections):
 	# create initial instance so that we can use its db id
 	dbitem = Report(
 		_type=rt,
-		_name=str(report_data['instance_name']),
+		_name=report_data['instance_name'],
 		_author=the_user,
 		project=Project.objects.get(id=request_data.POST.get('project')),
 		_institute=the_user.prof.institute_info,
