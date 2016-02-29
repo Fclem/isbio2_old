@@ -134,6 +134,10 @@ class CheckerList(list):
 # clem 08/09/2015
 class RunType:
 	@staticmethod
+	def pre_boot_time():
+		pass
+
+	@staticmethod
 	def runtime():
 		pass
 
@@ -798,9 +802,9 @@ def long_poll_waiter():
 
 
 # TODO FIXME runtime fs_check slow and memory leak ?
-fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
+fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'Project server', 'FILE SYSTEM\t\t ', RunType.runtime,
 						ex=FileSystemNotMounted, mandatory=True)
-db_conn = SysCheckUnit(check_db_connection, 'db_conn', 'Mysql DB', 'MYSQL DB\t\t ', RunType.runtime,
+db_conn = SysCheckUnit(check_db_connection, 'db_conn', 'Mysql DB', 'MYSQL DB\t\t ', RunType.pre_boot_time,
 						ex=MysqlDbUnreachable, mandatory=True)
 
 PRE_BOOT_CHECK_LIST = [fs_mount, db_conn]
@@ -811,12 +815,12 @@ proto = settings.SHINY_REMOTE_PROTOCOL.upper()
 CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
 	# # SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
-	SysCheckUnit(save_file_index, 'fs_ok', 'File System', 'saving file index...\t', RunType.boot_time, 25000,
+	SysCheckUnit(save_file_index, 'fs_ok', '', 'saving file index...\t', RunType.boot_time, 25000,
 				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount, db_conn,
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
-	SysCheckUnit(check_sge_c, 'sge_c', 'SGE conf', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured,
+	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured,
 				mandatory=True),
 	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
 				mandatory=True),
