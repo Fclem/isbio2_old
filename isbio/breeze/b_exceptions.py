@@ -34,6 +34,10 @@ class RORAUnreachable(SystemCheckFailed):
 	pass
 
 
+class RORAFailure(SystemCheckFailed):
+	pass
+
+
 class SGEImproperlyConfigured(SystemCheckFailed):
 	pass
 

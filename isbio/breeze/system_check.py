@@ -608,6 +608,23 @@ def check_rora():
 	return False
 
 
+# clem on 29/02/2016
+def check_rora_response():
+	from breeze import rora
+	from rpy2.robjects.vectors import ListVector
+	function = 'getPSSData'
+	args = ('patient', 1, 10, u'PK_ENTITY_ID', 'ASC', u'')
+	try:
+		result = rora.global_r_call(function, args, r_file='basic.R')
+		if type(result) is ListVector:
+			return True
+		else:
+			print type(result)
+	except Exception:
+		pass
+	return False
+
+
 # clem on 20/08/2015
 def check_dotm():
 	"""
@@ -820,6 +837,7 @@ CHECK_LIST = [
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
+	SysCheckUnit(check_rora_response, 'rora_ok', 'RORA data', 'RORA DATA\t\t', RunType.both, ex=RORAFailure),
 	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured,
 				mandatory=True),
 	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
