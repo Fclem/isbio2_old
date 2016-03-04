@@ -300,6 +300,9 @@
 	//var expectedElementClass = 'dropdown-toggle'; // class of the target element you are looking for to be loaded
 	//var expectedElementId = 'id_dst'; // id of the target element you are looking for to be loaded
 	var targetSelector = 'div#patientEdit'; // selector of the target element you are expecting for
+	var forceAdd = false; // Will force insertion of this tool. If not set hideUnselectedOption to true,
+						  // in each multiConfigSetup you want to enable it.
+	var resetState = true; // whether or not to reset the state of the hiding for each view
 	var max_depth = 150; // safety to avoid infinite loop on while
 
 	// creates a new style element and corresponding blank style sheet in it.
@@ -340,10 +343,9 @@
 	}
 	// save the display state of the unselected elements
 	var state = false;
-	var hasSelectAll = false;
-	var hasFiltering = false;
 	// add/removes the CSS rule from the style element, effectively hiding/showing unselected elements
-	function cycle(obj, multi){
+	function cycle(obj, multi, forceOff){
+		if(forceOff) state = true;
 		if (!state) {
 			// add the CSS rule to our blank style sheet
 			// the 'li~li' effectively skip the first li of the ul
@@ -373,10 +375,22 @@
 	}
 	// returns weather the multiselect has the SelectAll option
 	function getHasSelectAll(multi){
+		if(multi === null) return false;
 		return getMultiOptions(multi).includeSelectAllOption;
+	}
+	// returns weather the multiselect has the SelectAll option
+	function getHasHideUnSelected(multi){
+		if (multi === null) return false;
+		var val = false;
+		var obj = getMultiOptions(multi);
+		if('hideUnselectedOption' in obj){
+			val = obj.hideUnselectedOption;
+		}
+		return val;
 	}
 	// returns weather the multiselect has the Filtering option
 	function getHasFiltering(multi){
+		if (multi === null) return false;
 		return getMultiOptions(multi).enableFiltering;
 	}
 	// find and returns the related <select> from a given lower level element
@@ -412,16 +426,21 @@
 		var i = 0;
 		$(".multiselect-search").each(function () {
 			link.id = id_base + i;
-			$(this).parent()[0].appendChild(link);
 			var multi = getUpperMultiSelect($(this));
-
-			// attach the function to the target object
-			$(function () {
-				$("#" + link.id).click(function (e) {
-					e.preventDefault();
-					cycle(e, multi);
+			if(forceAdd || getHasHideUnSelected(multi)){ // if enabled of forced
+				$(this).parent()[0].appendChild(link);
+				// reset the status of CSS prop each time
+				if(resetState){
+					cycle(null, null, true);
+				}
+				// attach the function to the target object
+				$(function () {
+					$("#" + link.id).click(function (e) {
+						e.preventDefault();
+						cycle(e, multi);
+					});
 				});
-			});
+			}
 			i++;
 		});
 	}
@@ -611,6 +630,7 @@ $(document).ready(function() {
 
   // initialize Multiselect plugin
   var multiConfigurationSet = {
+	hideUnselectedOption: true,
     includeSelectAllOption: true,
     enableFiltering: true,
     maxHeight: 205
