@@ -284,9 +284,220 @@
       <a href="#" class="btn btn-inverse" data-dismiss="modal" aria-hidden="true">Close</a>
     </div>
 </div>
-<script>
+<script type="text/javascript"> //TODO make a .js file and load it system wide
+	// Clem 04/03/2016 (feature request from Disha)
+	// add a clickable entry to bootstrap multiselect lists
+	// so that you can hide/show unselected items easily through CSS
+	// i.e. it does not alter individual elements, or their position in the <ul>
+	// Limitations : _ only works if you have filter enabled. (has the link is added in the same span,
+	//                 so that the list don't get closed upon click.
+	//               _ will apply to all multiselect as once, since this use CSS. However, you
+	//                 could easily improve that by assigning an id to the <ul> list and adding it
+	//                 in the cycle function / selector var
+	// CONFIG :
+	var supportDynamicLoading = true; // enable DOM watching for changes (i.e. AJAX load, modal forms etc.)
+	var topLevelElementId = 'wrapper'; // id of the element to watch, should be high enough in your tree
+	//var expectedElementClass = 'dropdown-toggle'; // class of the target element you are looking for to be loaded
+	//var expectedElementId = 'id_dst'; // id of the target element you are looking for to be loaded
+	var targetSelector = 'div#patientEdit'; // selector of the target element you are expecting for
+	var forceAdd = false; // Will force insertion of this tool. If not set hideUnselectedOption to true,
+						  // in each multiConfigSetup you want to enable it.
+	var resetState = true; // whether or not to reset the state of the hiding for each view
+	var max_depth = 150; // safety to avoid infinite loop on while
+
+	// creates a new style element and corresponding blank style sheet in it.
+	// see https://davidwalsh.name/add-rules-stylesheets
+	function newStyle() {
+		// Create the <style> tag
+		var style = document.createElement("style");
+
+		// Add a media (and/or media query) here if you'd like!
+		// style.setAttribute("media", "screen")
+		// style.setAttribute("media", "only screen and (max-width : 1024px)")
+
+		// WebKit hack :(
+		style.appendChild(document.createTextNode(""));
+
+		// Add the <style> element to the page
+		document.head.appendChild(style);
+
+		return style;
+	}
+	// new style element
+	var style = newStyle();
+	// corresponding style sheet
+	var sheet = style.sheet;
+
+	// function to add CSS rules on different platforms
+	// from https://davidwalsh.name/add-rules-stylesheets
+	function addCSSRule(sheet, selector, rules, index) {
+		if (!isNaN(index)) {
+			index = 1;
+		}
+		if ("insertRule" in sheet) {
+			sheet.insertRule(selector + "{" + rules + "}", index);
+		}
+		else if ("addRule" in sheet) {
+			sheet.addRule(selector, rules, index);
+		}
+	}
+	// save the display state of the unselected elements
+	var state = false;
+	// add/removes the CSS rule from the style element, effectively hiding/showing unselected elements
+	function cycle(obj, multi, forceOff){
+		if(forceOff) state = true;
+		if (!state) {
+			// add the CSS rule to our blank style sheet
+			// the 'li~li' effectively skip the first li of the ul
+			// as this li contains the "Select All" option if enabled
+			var selector = ".multiselect-container li:not(.active)";
+			if(getHasSelectAll(multi)){ // check if Select All is enabled
+				// JQuery >= 1.9 only :
+					// selector = ".multiselect-container li:not(.active, li:first-of-type)"
+				selector = ".multiselect-container li~li:not(.active)"
+			}
+
+			addCSSRule(sheet, selector, "display: none !important;");
+
+			state = true;
+		} else {
+			// removes the style object
+			style.removeChild(style.childNodes[0]);
+			// add a new blank style object
+			style = newStyle();
+			sheet = style.sheet;
+			state = false;
+		}
+	}
+	// returns the multiselect object options
+	function getMultiOptions(multi){
+		return $(multi).multiselect().data().multiselect.options;
+	}
+	// returns weather the multiselect has the SelectAll option
+	function getHasSelectAll(multi){
+		if(multi === null) return false;
+		return getMultiOptions(multi).includeSelectAllOption;
+	}
+	// returns weather the multiselect has the SelectAll option
+	function getHasHideUnSelected(multi){
+		if (multi === null) return false;
+		var val = false;
+		var obj = getMultiOptions(multi);
+		if('hideUnselectedOption' in obj){
+			val = obj.hideUnselectedOption;
+		}
+		return val;
+	}
+	// returns weather the multiselect has the Filtering option
+	function getHasFiltering(multi){
+		if (multi === null) return false;
+		return getMultiOptions(multi).enableFiltering;
+	}
+	// find and returns the related <select> from a given lower level element
+	function getUpperMultiSelect(obj){
+		var found = false;
+		var goUp = obj;
+		var last = null;
+		var x = 0;
+		while (!found && goUp.tagName!='BODY' && x<max_depth) {
+			goUp = goUp.parent();
+			if (goUp.length > 0) {
+				var child = goUp[0].children;
+				var size = child.length;
+				for (var i = 0; i < size && !found; i++) {
+					last = child[i];
+					found = found || last.tagName == "SELECT";
+				}
+			}
+			x++;
+		}
+		return last;
+	}
+
+	// insert the clickable element to hide/show the unselected elements
+	function insert(){
+		var link = document.createElement("a");
+		link.href = "javascript:void(0);";
+		var id_base = "click_";
+		link.style.float = "right";
+		link.style.fontSize = "x-small";
+		link.innerText = "hide/show non selected";
+		// the element is added after the search field in multi-select views
+		var i = 0;
+		$(".multiselect-search").each(function () {
+			link.id = id_base + i;
+			var multi = getUpperMultiSelect($(this));
+			if(forceAdd || getHasHideUnSelected(multi)){ // if enabled of forced
+				$(this).parent()[0].appendChild(link);
+				// reset the status of CSS prop each time
+				if(resetState){
+					cycle(null, null, true);
+				}
+				// attach the function to the target object
+				$(function () {
+					$("#" + link.id).click(function (e) {
+						e.preventDefault();
+						cycle(e, multi);
+					});
+				});
+			}
+			i++;
+		});
+	}
+
+	var obs;
+	// DOM observer, from http://stackoverflow.com/a/14570614
+	var observeDOM = (function () {
+		var MutationObserver = window.MutationObserver || window.WebKitMutationObserver,
+		  eventListenerSupported = window.addEventListener;
+
+		return function (obj, callback) {
+			if (MutationObserver) {
+				// define a new observer
+				obs = new MutationObserver(function (mutations, observer) {
+					if (mutations[0].addedNodes.length || mutations[0].removedNodes.length)
+						callback(mutations, observer);
+				});
+				// have the observer observe foo for changes in children
+				obs.observe(obj, {childList: true, subtree: true});
+			}
+			else if (eventListenerSupported) {
+				obj.addEventListener('DOMNodeInserted', callback, false);
+				obj.addEventListener('DOMNodeRemoved', callback, false);
+			}
+		}
+	})();
+	// DOM change event listener. Enable the insert function to run after some dynamic loading
+	// happens on the page. Like loading a modal form for example.
+	function listen() {
+		if(!supportDynamicLoading){
+			insert();
+		}else{
+			// Observe a specific DOM element:
+			observeDOM(document.getElementById(topLevelElementId), function (mutations, observer) {
+				// change for getElementById if the element you are looking for has one
+				//els = document.getElementsByClassName(expectedElementClass);
+				var isOk = false;
+				for(var i= 0; i<mutations.length && !isOk; i++){
+					isOk = isOk || mutations[i].target == $(targetSelector)[0];
+				}
+				if (isOk) {
+					obs.disconnect(); // disable listening, since we gonna change the DOM
+					insert();
+					listen(); // resumes DOM watching
+				}
+			});
+		}
+
+	}
+	$(document).ready(listen());
+</script>
+<script type="text/javascript">
+
+
 
 $(document).ready(function() {
+
   // using jQuery
   function getCookie(name) {
       var cookieValue = null;
@@ -304,7 +515,7 @@ $(document).ready(function() {
       return cookieValue;
   }
   var csrftoken = getCookie('csrftoken');
-  var username = "{{ user.username|default:"undefined" }}"
+  var username = "{{ user.username|default:"undefined" }}";
 
   // --- OUR CUSTOM FILED TYPE ---
   // ----------------------------
@@ -419,6 +630,7 @@ $(document).ready(function() {
 
   // initialize Multiselect plugin
   var multiConfigurationSet = {
+	hideUnselectedOption: true,
     includeSelectAllOption: true,
     enableFiltering: true,
     maxHeight: 205
