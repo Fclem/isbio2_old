@@ -81,9 +81,9 @@ else:
 		# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out, name='shiny.tab.out'),
 		# sub-level access control wrapper (in)
 		url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-		url(r'^shiny/apps/?(?P<path>[^/]*)(/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
-		url(r'^shiny/rep/(?P<rid>\d+)(/(?P<path>.*))?$', views.report_shiny_in_wrapper),
-		url(r'^shiny/libs(/(?P<path>.*))?$', views.shiny_libs),
+		url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
+		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
+		url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		url(r'^runnable/delete/?', views.runnable_del),
 		url(r'^jobs/(?P<page>\d+)?(/)?(?P<state>[a-z]+)?(/)?$', views.jobs),
 		url(r'^jobs/delete/(?P<jid>\d+)(?P<state>[a-z]+)?$', views.delete_job), # FIXME DEPRECATED
@@ -166,7 +166,7 @@ else:
 
 	if settings.DEBUG and settings.DEV_MODE:
 		urlpatterns += patterns('django.contrib.staticfiles.views',
-			url(r'^closed$', 'serve', { 'document_root': settings.DJANGO_ROOT + '/index.html' ,}),
+			url(r'^closed$', 'serve', { 'document_root': settings.DJANGO_ROOT + '/index.html', }),
 			url(r'^static/(?P<path>.*)$', 'serve'),
 			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to, {'target_url': 'http://127.0.0.1:3838/sample-apps/', })  # testing
 		)

@@ -230,6 +230,7 @@ class BreezeSettings(Settings):
 	CAS_REDIRECT_URL = '/home/'
 
 	ROOT_URLCONF = 'isbio.urls'
+	APPEND_SLASH = True
 
 	# Python dotted path to the WSGI application used by Django's runserver.
 	WSGI_APPLICATION = 'isbio.wsgi.application'
@@ -327,6 +328,7 @@ class DevSettings(BreezeSettings):
 	DEBUG = True
 	VERBOSE = False
 	SQL_DUMP = False
+	APPEND_SLASH = True
 
 	ADMINS = (
 	('Clement FIERE', 'clement.fiere@helsinki.fi'),  # ('Dmitrii Bychkov', 'piter.dmitry@gmail.com'),

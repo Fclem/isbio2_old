@@ -27,7 +27,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.db.models.query_utils import Q
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse, HttpResponsePermanentRedirect
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
 from django.template import loader
@@ -2232,17 +2232,12 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 
 @csrf_exempt
 @login_required(login_url='/')
-def standalone_shiny_in_wrapper(request, path='', sub=''):
+def standalone_shiny_in_wrapper(request, path=None, sub=None):
 	# Enforce user access restrictions
 
 	# p1 = fitem.type.shiny_report.report_link_rel_path(fitem.id)
-	if not sub and not request.path.endswith('/'):
-		return HttpResponseRedirect(request.path + '/')
-	if not path:
-		path = ''
-	if not sub:
-		sub = ''
-	# path = str(path) + str(sub)
+	path = path or ''
+	sub = sub or ''
 	return aux.proxy_to(request, path + '/' + sub, settings.SHINY_LOCAL_STANDALONE_BREEZE_URL)
 
 
@@ -2265,33 +2260,8 @@ def report_shiny_in_wrapper(request, rid, path=None):
 	return aux.proxy_to(request, '%s/%s' % (p1, path), settings.SHINY_TARGET_URL)
 
 
-# Wrapper for ShinyApp access from OUTSIDE (key needed)
-# Proxy access manager
-@csrf_exempt
-def report_shiny_out_wrapper(request, s_key, u_key, path):
-	try:
-		# Enforces access control
-		fitem = Report.objects.get(shiny_key=s_key)
-		# and if found, check the user with this key is in the share list of this report
-		fitem.offsiteuser_set.get(user_key=u_key)
-	except ObjectDoesNotExist:
-		return aux.fail_with404(request)
-
-	return aux.proxy_to(request, path, settings.SHINY_TARGET_URL)
-
-
-# Wrapper for Nozzle access from OUTSIDE (key needed)
-# Proxy access manager
-def report_nozzle_out_wrapper(request, s_key, u_key):
-	try:
-		# Enforces access control
-		fitem = Report.objects.get(shiny_key=s_key)
-		# and if found, check the user with this key is in the share list of this report
-		fitem.offsiteuser_set.get(user_key=u_key)
-	except ObjectDoesNotExist:
-		return aux.fail_with404(request)
-
-	return report_file_server_out(request, fitem.id, 'view', u_key)
+# report_shiny_out_wrapper removed 08/03/2016 because it was not used
+# report_nozzle_out_wrapper removed 08/03/2016 because it was no used
 
 
 @csrf_exempt
