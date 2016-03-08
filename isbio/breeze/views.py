@@ -2232,12 +2232,17 @@ def report_shiny_view_tab_merged(request, rid, outside=False, u_key=None):
 
 @csrf_exempt
 @login_required(login_url='/')
-def standalone_shiny_in_wrapper(request, path=None, sub=''):
+def standalone_shiny_in_wrapper(request, path='', sub=''):
 	# Enforce user access restrictions
 
 	# p1 = fitem.type.shiny_report.report_link_rel_path(fitem.id)
 	if not sub and not request.path.endswith('/'):
 		return HttpResponseRedirect(request.path + '/')
+	if not path:
+		path = ''
+	if not sub:
+		sub = ''
+	# path = str(path) + str(sub)
 	return aux.proxy_to(request, path + '/' + sub, settings.SHINY_LOCAL_STANDALONE_BREEZE_URL)
 
 
