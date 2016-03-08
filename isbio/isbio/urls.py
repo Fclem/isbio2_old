@@ -80,12 +80,10 @@ else:
 		#url(r'^reports/overview/(?P<rtype>[A-Za-z]+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
 		url(r'^reports/overview/(?P<rtype>\w+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
 		url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
-		url(r'^reports/check$', views.check_reports),  # Re Run report
+		url(r'^reports/check/?$', views.check_reports),  # Re Run report
 		url(r'^reports/send/(?P<rid>\d+)$', views.send_report),
-		url(r'^off_user/add/?$', views.add_offsite_user_dialog),
-		url(r'^off_user/add/(?P<rid>\d*)$', views.add_offsite_user_dialog),
-		url(r'^off_user/add/form/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*)$', views.add_offsite_user),
-		url(r'^off_user/add/form/?$', views.add_offsite_user),
+		url(r'^off_user/add(/(?P<rid>\d*))?$', views.add_offsite_user_dialog),
+		url(r'^off_user/add/form(/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*))?$', views.add_offsite_user),
 		url(r'^off_user/edit/(?P<uid>\d*)$', views.edit_offsite_user),
 		url(r'^off_user/del/(?P<uid>\d*)$', views.delete_off_site_user),
 		# Shiny page in
@@ -94,12 +92,9 @@ else:
 		# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out, name='shiny.tab.out'),
 		# sub-level access control wrapper (in)
 		url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-		url(r'^shiny/apps/?(?P<path>[^/]*)/?$', views.standalone_shiny_in_wrapper),
-		url(r'^shiny/apps/?(?P<path>[^/]*)/(?P<sub>.*)$', views.standalone_shiny_in_wrapper),
-		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)$', views.report_shiny_in_wrapper),
-		url(r'^shiny/rep/(?P<rid>\d+)/?$', views.report_shiny_in_wrapper),
-		url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
-		url(r'^shiny/libs/?$', views.shiny_libs),
+		url(r'^shiny/apps/?(?P<path>[^/]*)(/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
+		url(r'^shiny/rep/(?P<rid>\d+)(/(?P<path>.*))?$', views.report_shiny_in_wrapper),
+		url(r'^shiny/libs(/(?P<path>.*))?$', views.shiny_libs),
 		# TODO re write for new shiny design
 		# sub-level access control wrapper (out)
 		# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/rep/(?P<path>.*)$', views.report_shiny_out_wrapper),
