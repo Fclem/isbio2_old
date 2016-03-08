@@ -2176,7 +2176,7 @@ class Runnable(FolderObj, models.Model):
 			import os
 			from django.core.files import base
 			get_logger().info('%s%s : resetting job status' % self.short_id)
-			new_name = self.name + '_re'
+			new_name = unicode(self.name) + u'_re'
 			old_path = self.home_folder_full_path
 			with open(self._r_exec_path.path) as f:
 				r_code = f.readlines()
@@ -2265,7 +2265,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		from hashlib import md5
 		m = md5()
-		m.update('%r%s%s' % (self.text_id, self.get_status(), self.sgeid))
+		m.update(u'%s%s%s' % (self.text_id, self.get_status(), self.sgeid))
 		return m.hexdigest()
 
 	@property
@@ -2274,10 +2274,10 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def text_id(self):
-		return '%s%s %r' % (self.short_id + (self.name,))
+		return u'%s%s %s' % (self.short_id + (unicode(self.name),))
 
 	def __unicode__(self): # Python 3: def __str__(self):
-		return '%s' % self.text_id
+		return u'%s' % self.text_id
 
 	class Meta:
 		abstract = True
@@ -2492,7 +2492,7 @@ class Report(Runnable):
 
 	@property
 	def title(self):
-		return u'%s Report :: %r  <br>  %s' % (self.type, self.name, self.type.description)
+		return u'%s Report :: %s  <br>  %s' % (self.type, unicode(self.name).decode('utf8'), self.type.description)
 
 	@property
 	def fm_file_path(self):
