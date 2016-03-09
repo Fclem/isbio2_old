@@ -1,13 +1,12 @@
 
 def dev():
 	# global client
-	from ssh import docker
-	client = docker()
-	return client
+	from .docker_interface import docker
+	return docker()
 
 
 def init():
 	pass
 	# return dev()
 
-# client = dev()
+client = dev()
