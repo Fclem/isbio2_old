@@ -563,3 +563,18 @@ def do_reboot():
 	except Exception as e:
 		raise e
 	return True
+
+
+# clem 09/03/2016 took from http://stackoverflow.com/a/3229493/5094389
+def pretty_print_dict_tree(d, indent=0):
+	""" Prints a tree from a nested dict
+	:type d: dict
+	:type indent: int
+	:rtype: None
+	"""
+	for key, value in d.iteritems():
+		print '\t' * indent + str(key)
+		if isinstance(value, dict):
+			pretty_print_dict_tree(value, indent + 1)
+		else:
+			print '\t' * (indent + 1) + str(value)
