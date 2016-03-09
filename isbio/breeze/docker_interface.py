@@ -1,20 +1,21 @@
 from docker import Client
-from utils import get_md5, pretty_print_dict_tree
+from .utils import get_md5, pretty_print_dict_tree
+
 
 # clem 09/03/2016
 class DockerImage:
 	Created = 0
-	Labels = dict
+	Labels = dict()
 	VirtualSize = 0
 	ParentId = u''
 	Size = 0
 	RepoDigests = None
 	Id = u''
-	RepoTags = list
+	RepoTags = list()
 	_sig = ''
 
-	def __init__(self, dict):
-		self.__dict__.update(dict)
+	def __init__(self, a_dict):
+		self.__dict__.update(a_dict)
 		_ = self.sig
 
 	def _get_sig(self):
@@ -33,33 +34,69 @@ class DockerImage:
 		return '<DockerImage %s>' % self.RepoTags[0]
 
 
+# clem 09/03/2016 originally from http://stackoverflow.com/a/2704528/5094389
+class SubSubClient(Client):
+	normal_cli = None
+
+	def __init__(self, *args, **kwargs):
+		super(SubSubClient, self).__init__(*args, **kwargs)
+		self.normal_cli = super(SubSubClient, self)
+
+	def __getattribute__(self, name):
+		attr = super(SubSubClient, self).__getattribute__(name)
+		if hasattr(attr, '__call__'):
+			def new_func(*args, **kwargs):
+				result = attr(*args, **kwargs)
+				if type(result) == dict:
+					pretty_print_dict_tree(result)
+				return result
+
+			return new_func
+		else:
+			return attr
+
+
+# clem 09/03/2016 wrapper
+class SubClient(SubSubClient):
+	raw_cli = None
+	pretty_cli = None
+
+	def __init__(self, *args, **kwargs):
+		super(SubClient, self).__init__(*args, **kwargs)
+		self.pretty_cli = super(SubClient, self)
+		self.raw_cli = self.normal_cli
+
+
 # clem 08/03/2016
 class DockerClient:
-	cli = None
+	raw_cli = None
+	pretty_cli = None
 	_images = list()
 	__image_dict_by_id = dict()
 	__image_tree = dict()
 
 	def __init__(self):
-		self.cli = Client(base_url='tcp://127.0.0.1:4243')
+		tran = SubClient(base_url='tcp://127.0.0.1:4243')
+		# self.cli = Client(base_url='tcp://127.0.0.1:4243')
+		self.raw_cli = tran.raw_cli
+		self.pretty_cli = tran.pretty_cli
 
 	# clem 09/03/2016
 	def run(self):
+		# Create the container
+
+		# If the status code is 404, it means the image doesn't exist:
+
+		# Try to pull it.
+		# Then, retry to create the container.
+		# Start the container.
+
+		# If you are not in detached mode:
+
+		# Attach to the container, using logs=1 (to have stdout and stderr from the container's start) and stream=1
+
+		# If in detached mode or only stdin is attached, display the container's id.
 		pass
-
-	# Create the container
-
-	# If the status code is 404, it means the image doesn't exist:
-
-	# Try to pull it.
-	# Then, retry to create the container.
-	# Start the container.
-
-	# If you are not in detached mode:
-
-	# Attach to the container, using logs=1 (to have stdout and stderr from the container's start) and stream=1
-
-	# If in detached mode or only stdin is attached, display the container's id.
 
 	# clem 09/03/2016
 	@property
@@ -117,7 +154,7 @@ class DockerClient:
 		:rtype: dict(DockerImage)
 		"""
 		# updates the image dict
-		for e in self.cli.images():
+		for e in self.raw_cli.images():
 			img = DockerImage(e)
 			if img.Id not in self.__image_dict_by_id or self.__image_dict_by_id[img.Id].sig != img.sig:
 				self.__image_dict_by_id[img.Id] = DockerImage(e)
@@ -132,7 +169,7 @@ class DockerClient:
 		DockerImage object are referenced from the other dict and thus not modified nor copied.
 		:rtype: dict(DockerImage)
 		"""
-		assert isinstance(self.cli, Client)
+		assert isinstance(self.raw_cli, Client)
 		lbl_dict = dict()
 		ids = self.images_by_id
 		for e in ids:
