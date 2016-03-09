@@ -1,4 +1,5 @@
 from docker import Client
+from docker.errors import NotFound
 from .utils import get_md5, pretty_print_dict_tree
 
 
@@ -34,56 +35,64 @@ class DockerImage:
 		return '<DockerImage %s>' % self.RepoTags[0]
 
 
-# clem 09/03/2016 originally from http://stackoverflow.com/a/2704528/5094389
-class SubSubClient(Client):
-	normal_cli = None
-
-	def __init__(self, *args, **kwargs):
-		super(SubSubClient, self).__init__(*args, **kwargs)
-		self.normal_cli = super(SubSubClient, self)
-
-	def __getattribute__(self, name):
-		attr = super(SubSubClient, self).__getattribute__(name)
-		if hasattr(attr, '__call__'):
-			def new_func(*args, **kwargs):
-				result = attr(*args, **kwargs)
-				if type(result) == dict:
-					pretty_print_dict_tree(result)
-				return result
-
-			return new_func
-		else:
-			return attr
-
-
-# clem 09/03/2016 wrapper
-class SubClient(SubSubClient):
-	raw_cli = None
-	pretty_cli = None
-
-	def __init__(self, *args, **kwargs):
-		super(SubClient, self).__init__(*args, **kwargs)
-		self.pretty_cli = super(SubClient, self)
-		self.raw_cli = self.normal_cli
-
-
 # clem 08/03/2016
 class DockerClient:
-	raw_cli = None
-	pretty_cli = None
+	DEV = False
+	_raw_cli = None
 	_images = list()
 	__image_dict_by_id = dict()
 	__image_tree = dict()
 
 	def __init__(self):
-		tran = SubClient(base_url='tcp://127.0.0.1:4243')
-		# self.cli = Client(base_url='tcp://127.0.0.1:4243')
-		self.raw_cli = tran.raw_cli
-		self.pretty_cli = tran.pretty_cli
+		self._raw_cli = Client(base_url='tcp://127.0.0.1:4243')
+
+	# clem 09/03/2016
+	@property
+	def cli(self):
+		if not self.DEV:
+			return self._raw_cli
+		else:
+			return self.__pp_cli
+
+	# clem 09/03/2016
+	@property
+	def pretty_cli(self):
+		return self.__pp_cli
+
+	# clem 09/03/2016
+	@property
+	def __pp_cli(myself):
+		"""
+		A wrapper for self.raw_cli instance, that applies pretty_print on output of any command passed to docker client
+		:rtype: Client
+		"""
+		# originally from http://stackoverflow.com/a/2704528/5094389
+		class Prettyfy(object):
+			def __getattribute__(self, name):
+				attr = myself._raw_cli.__getattribute__(name)
+				if hasattr(attr, '__call__'):
+					def new_func(*args, **kwargs):
+						result = attr(*args, **kwargs)
+						if type(result) == dict:
+							pretty_print_dict_tree(result)
+						return result
+
+					return new_func
+				else:
+					return attr
+
+		return Prettyfy()
 
 	# clem 09/03/2016
 	def run(self):
 		# Create the container
+		try:
+			out = self.cli.create_container('fimm/r-light:op')
+			container_id = out['Id']
+			self.cli.start(container_id)
+
+		except NotFound as e:
+			raise NotFound(e)
 
 		# If the status code is 404, it means the image doesn't exist:
 
@@ -154,7 +163,7 @@ class DockerClient:
 		:rtype: dict(DockerImage)
 		"""
 		# updates the image dict
-		for e in self.raw_cli.images():
+		for e in self.cli.images():
 			img = DockerImage(e)
 			if img.Id not in self.__image_dict_by_id or self.__image_dict_by_id[img.Id].sig != img.sig:
 				self.__image_dict_by_id[img.Id] = DockerImage(e)
@@ -169,7 +178,7 @@ class DockerClient:
 		DockerImage object are referenced from the other dict and thus not modified nor copied.
 		:rtype: dict(DockerImage)
 		"""
-		assert isinstance(self.raw_cli, Client)
+		# assert isinstance(self.cli, Client)
 		lbl_dict = dict()
 		ids = self.images_by_id
 		for e in ids:
