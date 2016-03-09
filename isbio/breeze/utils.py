@@ -509,6 +509,8 @@ def saved_fs_state():
 def set_file_acl(path, perm=ACL.RW_R_, silent_fail=False):
 	""" Change file permission to <i>perm</i> (default is RW_R_)
 	:type path: str
+	:type perm: int
+	:type silent_fail: bool
 	:rtype: bool
 	"""
 	if not is_readable(path):
@@ -572,9 +574,17 @@ def pretty_print_dict_tree(d, indent=0):
 	:type indent: int
 	:rtype: None
 	"""
-	for key, value in d.iteritems():
-		print '\t' * indent + str(key)
-		if isinstance(value, dict):
-			pretty_print_dict_tree(value, indent + 1)
-		else:
-			print '\t' * (indent + 1) + str(value)
+	if type(d) is list and indent == 0: # source element is a list, that may contain dicts
+		i = 0
+		for el in d:
+			if type(el) is dict:
+				print '######### List element %s : #########' % i
+				pretty_print_dict_tree(el, indent)
+			i += 1
+	else:
+		for key, value in d.iteritems():
+			print '\t' * indent + str(key)
+			if isinstance(value, dict):
+				pretty_print_dict_tree(value, indent + 1)
+			else:
+				print '\t' * (indent + 1) + str(value)
