@@ -1,13 +1,17 @@
+# Clem 09/03/2016
+# module used to bootstrap environement for the Django python console from Intellij PyCharm
+
 
 def dev():
 	# global client
-	from ssh import docker
-	client = docker()
-	return client
+	# from .ssh import docker
+	# return docker()
+	pass
 
 
 def init():
-	pass
 	# return dev()
+	pass
+
 
 # client = dev()
