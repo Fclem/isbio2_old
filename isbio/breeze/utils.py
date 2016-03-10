@@ -588,20 +588,20 @@ def pretty_print_dict_tree(d, indent=0, open_obj=False):
 
 	iterable = get_iter(d)
 
-	if type(d) is list and indent == 0: # source element is a list, that may contain dicts
+	if type(d) is list: # source element is a list, that may contain dicts
 		i = 0
 		for el in iterable:
 			# if type(el) in (dict, list):
-			print 'list item #%s :' % i
-			pretty_print_dict_tree(el, 1)
+			print '\t' * indent + '_#%s :' % i
+			pretty_print_dict_tree(el, indent + 1)
 			i += 1
 	elif type(d) is dict:
 		for key, value in iterable.iteritems():
 			print '\t' * indent + str(key)
-			if isinstance(value, dict):
+			if isinstance(value, (dict, list)):
 				pretty_print_dict_tree(value, indent + 1)
 			else:
 				# print '\t' * (indent + 1) + str(value)
 				print '\t' * (indent + 1) + str(repr(value))
 	else:
-		print '\t' * (indent + 1) + iterable
+		print '\t' * (indent + 1) + str(iterable)
