@@ -568,23 +568,40 @@ def do_reboot():
 
 
 # clem 09/03/2016 took from http://stackoverflow.com/a/3229493/5094389
-def pretty_print_dict_tree(d, indent=0):
+def pretty_print_dict_tree(d, indent=0, open_obj=False):
 	""" Prints a tree from a nested dict
 	:type d: dict
 	:type indent: int
+	:type open_obj: bool
 	:rtype: None
 	"""
+	def get_iter(obj):
+
+		if type(obj) in [dict, list] or hasattr(obj, 'iteritems') or hasattr(obj, '__iter__'):
+			return obj
+		if hasattr(obj, '__dict__'):
+			if open_obj: # FIXME not working
+				return obj.__dict__
+			else:
+				return repr(obj)
+		return list()
+
+	iterable = get_iter(d)
+
 	if type(d) is list and indent == 0: # source element is a list, that may contain dicts
 		i = 0
-		for el in d:
-			if type(el) is dict:
-				print '######### List element %s : #########' % i
-				pretty_print_dict_tree(el, indent)
+		for el in iterable:
+			# if type(el) in (dict, list):
+			print 'list item #%s :' % i
+			pretty_print_dict_tree(el, 1)
 			i += 1
-	else:
-		for key, value in d.iteritems():
+	elif type(d) is dict:
+		for key, value in iterable.iteritems():
 			print '\t' * indent + str(key)
 			if isinstance(value, dict):
 				pretty_print_dict_tree(value, indent + 1)
 			else:
-				print '\t' * (indent + 1) + str(value)
+				# print '\t' * (indent + 1) + str(value)
+				print '\t' * (indent + 1) + str(repr(value))
+	else:
+		print '\t' * (indent + 1) + iterable
