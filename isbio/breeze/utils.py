@@ -567,7 +567,7 @@ def do_reboot():
 	return True
 
 
-# clem 09/03/2016 took from http://stackoverflow.com/a/3229493/5094389
+# clem 09/03/2016 contains code from from http://stackoverflow.com/a/3229493/5094389
 def pretty_print_dict_tree(d, indent=0, open_obj=False):
 	""" Prints a tree from a nested dict
 	:type d: dict
@@ -575,8 +575,10 @@ def pretty_print_dict_tree(d, indent=0, open_obj=False):
 	:type open_obj: bool
 	:rtype: None
 	"""
+	# clem 10/03/2016
 	def get_iter(obj):
-
+		if isinstance(obj, basestring):
+			return obj
 		if type(obj) in [dict, list] or hasattr(obj, 'iteritems') or hasattr(obj, '__iter__'):
 			return obj
 		if hasattr(obj, '__dict__'):
@@ -585,6 +587,25 @@ def pretty_print_dict_tree(d, indent=0, open_obj=False):
 			else:
 				return repr(obj)
 		return list()
+
+	# clem 10/03/2016
+	def get_type(obj):
+		res = str(type(obj)).partition("'")[2].partition("'")[0]
+		return res if not res == 'instance' else ''
+
+	# clem 10/03/2016
+	def get_size(obj):
+		try:
+			return len(obj)
+		except (TypeError, AttributeError):
+			if hasattr(obj, 'bit_length'):
+				return obj.bit_length()
+		return '?'
+
+	# clem 10/03/2016
+	def extra_info(obj):
+		a_type = get_type(obj)
+		return ' <%s:%s>' % (a_type, get_size(obj)) if a_type else ''
 
 	iterable = get_iter(d)
 
@@ -597,11 +618,10 @@ def pretty_print_dict_tree(d, indent=0, open_obj=False):
 			i += 1
 	elif type(d) is dict:
 		for key, value in iterable.iteritems():
-			print '\t' * indent + str(key)
+			print '\t' * indent + str(key) + extra_info(value)
 			if isinstance(value, (dict, list)):
 				pretty_print_dict_tree(value, indent + 1)
 			else:
-				# print '\t' * (indent + 1) + str(value)
 				print '\t' * (indent + 1) + str(repr(value))
 	else:
 		print '\t' * (indent + 1) + str(iterable)
