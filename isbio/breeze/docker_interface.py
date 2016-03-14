@@ -1,8 +1,7 @@
 from docker import Client
 from docker.errors import NotFound, APIError
 from .utils import get_md5, pretty_print_dict_tree
-import os
-import mutex
+from multiprocessing import Process, Lock
 
 PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
 AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
@@ -168,35 +167,6 @@ class DockerContainer:
 		return '<DockerContainer %s>' % name
 
 
-# clem 14/03/2016
-def mutexed(func):
-	"""
-	Provide mutex capabilities to a class
-	The class must provide _lock and _unlock methods as interface to its self stored mutex object
-	:type func: callable
-	:rtype: callable
-	"""
-
-	def mutex_proxy(func2):
-		"""
-		Enable a multi parameter function to be called by mutex.mutex.lock by exchanging the function,
-		decorator style, with a single argument one that call the sub function using list unpacking
-		:type func2: callable
-		:rtype: callable
-		"""
-		def decorated_func2(args):
-			func2(*args)
-
-		return decorated_func2
-
-	def decorated_func(*args):
-		self = args[0]
-		self._unlock()
-		self._lock(mutex_proxy(func), *args)
-
-	return decorated_func
-
-
 # clem 08/03/2016
 class DockerClient:
 	DEV = False
@@ -222,7 +192,7 @@ class DockerClient:
 		self.default_run = run
 		self._daemon_url = daemon_url
 		self._raw_cli = Client(base_url=daemon_url)
-		self._console_mutex = mutex.mutex()
+		self._console_mutex = Lock()
 		self.start_event_watcher()
 		self.login()
 
@@ -244,22 +214,15 @@ class DockerClient:
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.__cleanup()
 
-	# clem 14/03/2016
-	def _lock(self, func, *args):
-		self._console_mutex.lock(func, args)
-
-	# clem 14/03/2016
-	def _unlock(self):
-		self._console_mutex.unlock()
-
 	# clem 10/03/2016
-	@mutexed
 	def log(self, obj, force_print=False):
 		if self.DEBUG or force_print:
 			if type(obj) is dict:
-				pretty_print_dict_tree(obj)
+				with self._console_mutex:
+					pretty_print_dict_tree(obj)
 			else:
-				print str(obj)
+				with self._console_mutex:
+					print str(obj)
 		# TODO log
 
 	# clem 10/03/2016
@@ -267,14 +230,15 @@ class DockerClient:
 		self.log(obj, True)
 
 	# clem 14/03/2016
-	@mutexed
 	def event_log(self, obj):
 		if type(obj) is str:
 			import json
 			obj = json.loads(obj)
-		print '#' * 70 + ' EVENT'
+		with self._console_mutex:
+			print '#' * 70 + ' EVENT'
 		self.force_log(obj)
-		print '#' * 70 + ' END EVENT'
+		with self._console_mutex:
+			print '#' * 70 + ' END EVENT'
 
 	# clem 10/03/2016
 	def login(self):
@@ -397,7 +361,6 @@ class DockerClient:
 	# clem 14/03/2016
 	def start_event_watcher(self):
 		if not self.__watcher:
-			from multiprocessing import Process
 			self.__watcher = Process(target=self._event_watcher)
 			self.__watcher.start()
 			self.log('watcher started PID %s' % self.__watcher.pid)
