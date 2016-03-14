@@ -1,20 +1,84 @@
 from docker import Client
 from docker.errors import NotFound, APIError
 from .utils import get_md5, pretty_print_dict_tree
+import os
 
 PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
 AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
 
 
 # clem 10/03/2016
+class DockerVolume:
+	path = ''
+	mount_point = ''
+	mode = ''
+
+	def __init__(self, path, mount_point, mode='ro'):
+		assert isinstance(path, basestring) and isinstance(mount_point, basestring) and\
+			isinstance(mode, basestring)
+		self.path = path
+		self.mount_point = mount_point
+		self.mode = mode
+
+	# clem 14/03/2016
+	def __str__(self):
+		return '%s:%s:%s' % (self.path, self.mount_point, self.mode)
+
+
+# clem 10/03/2016
 class DockerRun:
 	image = ''
 	cmd = ''
+	_volumes = list()
 
-	def __init__(self, image, cmd=''):
-		assert isinstance(image, (DockerImage, basestring)) and isinstance(cmd, basestring)
+	# clem 11/03/2016
+	@property
+	def volumes(self):
+		# self._check_volumes()
+		return self._volumes
+
+	# clem 11/03/2016
+	def _check_volumes(self):
+		if self._volumes:
+			if isinstance(self._volumes, list):
+				for each in self._volumes:
+					self._check_if_volume_exists(each)
+			elif isinstance(self._volumes, basestring):
+				self._check_if_volume_exists(self._volumes)
+
+	# clem 11/03/2016
+	def _check_if_volume_exists(self, volume):
+		if not self._volume_exists(volume):
+			err = 'Volume %s not found' % volume
+			raise Exception(err)
+		return True
+
+	# clem 11/03/2016
+	@staticmethod # TODO obsolete
+	def _volume_exists(volume):
+		# return os.path.exists(volume) # FIXEME files may not be local, wont work
+		return True
+
+	def __init__(self, image, cmd='', volumes=None):
+		assert isinstance(image, (DockerImage, basestring)) and isinstance(cmd, basestring) and\
+			(volumes is None or isinstance(volumes, (list, DockerVolume)))
 		self.image = image
 		self.cmd = cmd
+		self._volumes = volumes
+
+	# clem 14/03/2016
+	def config_dict(self):
+		a_dict = dict()
+		vol_list = self._volumes if isinstance(self._volumes, list) else [self._volumes]
+		for each in vol_list:
+			assert isinstance(each, DockerVolume)
+			a_dict[each.path] = { 'bind': each.mount_point,
+									'mode': each.mode,
+			}
+		return a_dict
+
+	def __repr__(self):
+		return str((self.image, self.cmd, self.volumes))
 
 
 # clem 10/03/2016
@@ -134,6 +198,7 @@ class DockerClient:
 	_images_list = list()
 	__image_dict_by_id = dict()
 	__image_tree = dict()
+	__watcher = None
 	_container_list = list()
 	__container_dict_by_id = dict()
 
@@ -144,7 +209,28 @@ class DockerClient:
 		self.default_run = run
 		self._daemon_url = daemon_url
 		self._raw_cli = Client(base_url=daemon_url)
+		self.start_event_watcher()
 		self.login()
+
+	# clem 14/03/2016
+	def __cleanup(self):
+		if self.__watcher:
+			self.__watcher.terminate()
+			self.force_log('watcher terminated')
+		# self._raw_cli.close()
+		# self._raw_cli.__exit__()
+
+	# clem 14/03/2016
+	def __del__(self):
+		self.__cleanup()
+
+	# clem 14/03/2016
+	def __delete__(self, _):
+		self.__cleanup()
+
+	# clem 14/03/2016
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.__cleanup()
 
 	# clem 10/03/2016
 	def log(self, obj, force_print=False):
@@ -159,6 +245,15 @@ class DockerClient:
 	def force_log(self, obj):
 		self.log(obj, True)
 
+	# clem 14/03/2016
+	def event_log(self, obj):
+		if type(obj) is str:
+			import json
+			obj = json.loads(obj)
+		print '#' * 70 + ' EVENT'
+		self.force_log(obj)
+		print '#' * 70 + ' END EVENT'
+
 	# clem 10/03/2016
 	def login(self):
 		if self.repo:
@@ -169,7 +264,7 @@ class DockerClient:
 			except APIError as e:
 				self.log(e)
 			except Exception as e:
-				raise e
+				self.force_log('Unable to connect : %s' % e)
 		return False
 
 	# clem 09/03/2016
@@ -211,12 +306,12 @@ class DockerClient:
 
 	# clem 10/03/2016
 	def run_default(self):
-		if self.default_run:
+		if self.default_run: # TODO change that too
 			self._run(self.default_run)
 
 	# clem 09/03/2016
-	def img_run(self, img, cmd):
-		return self._run(DockerRun(img, cmd))
+	def img_run(self, img, cmd, volume=list()):
+		return self._run(DockerRun(img, cmd, volume))
 
 	# clem 09/03/2016
 	def _run(self, run):
@@ -230,8 +325,18 @@ class DockerClient:
 
 		# Create the container
 		try:
-			self.log('docker run %s %s' % (image_name, run.cmd))
-			out = self.cli.create_container(image_name, run.cmd)
+			self.log('docker run %s %s -v %s' % (image_name, run.cmd, run.volumes))
+			a_dict = run.config_dict()
+			vol = list()
+			vol_config = dict()
+			if a_dict:
+				vol = run.config_dict().keys()
+				vol_config = self.cli.create_host_config(binds=run.config_dict())
+			if vol:
+				print "volumes=%s, host_config=%s" % (vol, vol_config)
+				out = self.cli.create_container(image_name, run.cmd, volumes=vol, host_config=vol_config)
+			else:
+				out = self.cli.create_container(image_name, run.cmd)
 			container_id = out['Id']
 			self.log('Created %s' % container_id)
 			response = self.cli.start(container_id)
@@ -245,8 +350,8 @@ class DockerClient:
 				except KeyboardInterrupt, StopIteration:
 					pass
 				# print pretty_print_dict_tree(self.cli.inspect_container(container_id))
-			event = self.cli.events(filters={ u'id': container_id } ).next()
-			self.force_log(event)
+			# event = self.cli.events(filters={ u'id': container_id } ).next()
+			# self.event_log(event)
 		except NotFound as e:
 				raise NotFound(e)
 		# If the status code is 404, it means the image doesn't exist:
@@ -261,6 +366,19 @@ class DockerClient:
 
 		# If in detached mode or only stdin is attached, display the container's id.
 		return True
+
+	# clem 14/03/2016
+	def start_event_watcher(self):
+		if not self.__watcher:
+			from multiprocessing import Process
+			self.__watcher = Process(target=self._event_watcher)
+			self.__watcher.start()
+			self.force_log('watcher started PID %s' % self.__watcher.pid)
+
+	# clem 14/03/2016
+	def _event_watcher(self):
+		for event in self.cli.events():
+			self.event_log(event)
 
 	# clem 10/03/2016
 	@property
@@ -406,6 +524,7 @@ class DockerClient:
 
 def docker():
 	fimm_docker_hub = DockerRepo('fimm', PWD, email='clement.fiere@fimm.fi')
-	fimm_test_run = DockerRun('fimm/r-light:op', './run.sh')
+	fimm_test_volume = DockerVolume('/home/breeze/data/', '/breeze', 'rw')
+	fimm_test_run = DockerRun('fimm/r-light:op', './run.sh', fimm_test_volume)
 	cli = DockerClient(fimm_docker_hub, AZURE_REMOTE_URL, fimm_test_run)
 	return cli
