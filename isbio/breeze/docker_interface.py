@@ -1,7 +1,8 @@
 from docker import Client
 from docker.errors import NotFound, APIError
 from .utils import get_md5, pretty_print_dict_tree
-from multiprocessing import Process, Lock
+from threading import Thread, Lock
+# from multiprocessing import Process, Lock
 
 PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
 AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
@@ -162,13 +163,70 @@ class DockerContainer:
 			self._sig = self._get_sig()
 		return self._sig
 
+	@property
+	def name(self):
+		return self.Names[0] if len(self.Names) > 0 else ''
+
+	def __str__(self):
+		return self.name if self.name else self.Id
+
 	def __repr__(self):
-		name = self.Names[0] if len(self.Names) > 0 else 'NoName'
-		return '<DockerContainer %s>' % name
+		return '<DockerContainer %s>' % str(self)
+
+
+# clem 14/03/2016
+class DockerEvent:
+	status = u''
+	Action = u''
+	Type = u''
+	id = u''
+	# from = u''
+	timeNano = int()
+	time = int()
+	Actor = dict()
+	_container = None
+	__client = None
+
+	def __init__(self, a_dict, client=None):
+		assert isinstance(a_dict, (dict, str)) and (not client or isinstance(client, DockerClient))
+		if type(a_dict) is str:
+			import json
+			a_dict = json.loads(a_dict)
+		self.__dict__.update(a_dict)
+		if client: # if we got a client in argument, we chain this container to its DockerImage object
+			self.__client = client
+			self._get_container()
+
+	# clem 14/03/2016
+	def _get_container(self):
+		if not self._container or not self._container.name: # if not a container or container has no name, refresh
+			self._container = self.__client.get_container(self.container_id)
+
+	# clem 14/03/2016
+	@property
+	def container(self):
+		self._get_container()
+		return self._container
+
+	@property
+	def container_id(self):
+		if self.id:
+			return self.id
+		else:
+			return self.Actor['Attributes']['container']
+
+	def __str__(self):
+		txt = 's:%s' % self.status if self.status else 'A:%s' % self.Action
+		return '[%s] %s' % (self.timeNano, txt)
+
+	def __repr__(self):
+		txt = 's:%s' % self.status if self.status else 'A:%s' % self.Action
+		return '<DockerEvent [%s] %s>' % (self.timeNano, txt)
 
 
 # clem 08/03/2016
 class DockerClient:
+	RAISE_ERR = False
 	DEV = False
 	DEBUG = True
 	repo = None
@@ -183,7 +241,8 @@ class DockerClient:
 	__image_tree = dict()
 	__watcher = None
 	_container_list = list()
-	__container_dict_by_id = dict()
+	_container_dict_by_id = dict()
+	_event_list = list()
 
 	def __init__(self, repo, daemon_url, run=None): # TODO change the run passing
 		assert isinstance(repo, DockerRepo) and (not run or isinstance(run, DockerRun)) and \
@@ -234,11 +293,7 @@ class DockerClient:
 		if type(obj) is str:
 			import json
 			obj = json.loads(obj)
-		with self._console_mutex:
-			print '#' * 70 + ' EVENT'
 		self.force_log(obj)
-		with self._console_mutex:
-			print '#' * 70 + ' END EVENT'
 
 	# clem 10/03/2016
 	def login(self):
@@ -306,6 +361,20 @@ class DockerClient:
 		"""
 		return self._run(DockerRun(img, cmd, volume))
 
+	# clem 14/03/2016
+	def get_container(self, container_id):
+		containers_dict = self.ps_by_id
+		if container_id in containers_dict.keys():
+			return containers_dict[container_id]
+		else:
+			return self.inspect_container(container_id)
+
+	# clem 14/03/2016
+	def inspect_container(self, container_id):
+		cont = DockerContainer(self.cli.inspect_container(container_id))
+		self._container_dict_by_id[cont.Id] = cont
+		return self._container_dict_by_id[cont.Id]
+
 	# clem 09/03/2016
 	def _run(self, run):
 		"""
@@ -332,23 +401,24 @@ class DockerClient:
 				vol_config = self.cli.create_host_config(binds=run.config_dict())
 				# if vol:
 				self.log('docker run %s %s -v %s' % (image_name, run.cmd, run.volumes))
-				container = self.cli.create_container(image_name, run.cmd, volumes=vol, host_config=vol_config)
+				container_id = self.cli.create_container(image_name, run.cmd, volumes=vol, host_config=vol_config)['Id']
 			else: # no volume config
 				self.log('docker run %s %s' % (image_name, run.cmd))
-				container = self.cli.create_container(image_name, run.cmd)
+				container_id = self.cli.create_container(image_name, run.cmd)['Id']
 
-			container_id = container['Id']
+			container = self.get_container(container_id)
+			self.log('Created %s' % container.Id)
 
-			self.log('Created %s' % container_id)
-			container = DockerContainer(self.cli.inspect_container(container), self)
 			self.cli.start(container.Id)
+			return container
 		except APIError as e:
 			self.log('Container run failed : %s' % e)
 			out_log = self.cli.logs(container_id)
 			if out_log:
 				# self.log(out_log)
 				self.log('Container run log :\n%s' % pretty_print_dict_tree(out_log, get_output=True))
-			raise e
+			if self.RAISE_ERR:
+				raise e
 		except NotFound as e:
 			raise NotFound(e)
 		# If you are not in detached mode:
@@ -356,19 +426,23 @@ class DockerClient:
 		# Attach to the container, using logs=1 (to have stdout and stderr from the container's start) and stream=1
 
 		# If in detached mode or only stdin is attached, display the container's id.
-		return container
 
 	# clem 14/03/2016
 	def start_event_watcher(self):
 		if not self.__watcher:
-			self.__watcher = Process(target=self._event_watcher)
+			# self.__watcher = Process(target=self._event_watcher)
+			self.__watcher = Thread(target=self._event_watcher)
 			self.__watcher.start()
-			self.log('watcher started PID %s' % self.__watcher.pid)
+			# self.log('watcher started PID %s' % self.__watcher.id)
+			self.log('watcher started as Thread')
 
 	# clem 14/03/2016
 	def _event_watcher(self):
 		for event in self.cli.events():
+			event = DockerEvent(event, self)
+			self._event_list.append(event)
 			self.event_log(event)
+			_ = self.ps_by_id
 
 	# clem 10/03/2016
 	@property
@@ -392,9 +466,9 @@ class DockerClient:
 				cont.Image = images[cont.ImageID]
 			except KeyError:
 				pass
-			if cont.Id not in self.__container_dict_by_id or self.__container_dict_by_id[cont.Id].sig != cont.sig:
-				self.__container_dict_by_id[cont.Id] = cont
-		return self.__container_dict_by_id
+			if cont.Id not in self._container_dict_by_id or self._container_dict_by_id[cont.Id].sig != cont.sig:
+				self._container_dict_by_id[cont.Id] = cont
+		return self._container_dict_by_id
 
 	# clem 10/03/2016
 	@property
