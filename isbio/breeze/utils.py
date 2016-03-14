@@ -627,7 +627,7 @@ def pretty_print_dict_tree(d, indent=0, open_obj=False, get_output=False):
 			buff += out('\t' * indent + '_#%s :' % i)
 			buff += str(pretty_print_dict_tree(el, indent + 1, open_obj, get_output))
 			i += 1
-	elif type(d) is dict:
+	elif type(d) is dict or type(iterable) is dict:
 		for key, value in iterable.iteritems():
 			buff += out('\t' * indent + str(key) + extra_info(value))
 			if isinstance(value, (dict, list)):
