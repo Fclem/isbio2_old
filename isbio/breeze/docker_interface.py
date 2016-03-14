@@ -2,6 +2,7 @@ from docker import Client
 from docker.errors import NotFound, APIError
 from .utils import get_md5, pretty_print_dict_tree
 import os
+import mutex
 
 PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
 AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
@@ -34,30 +35,11 @@ class DockerRun:
 	# clem 11/03/2016
 	@property
 	def volumes(self):
-		# self._check_volumes()
 		return self._volumes
 
-	# clem 11/03/2016
-	def _check_volumes(self):
-		if self._volumes:
-			if isinstance(self._volumes, list):
-				for each in self._volumes:
-					self._check_if_volume_exists(each)
-			elif isinstance(self._volumes, basestring):
-				self._check_if_volume_exists(self._volumes)
-
-	# clem 11/03/2016
-	def _check_if_volume_exists(self, volume):
-		if not self._volume_exists(volume):
-			err = 'Volume %s not found' % volume
-			raise Exception(err)
-		return True
-
-	# clem 11/03/2016
-	@staticmethod # TODO obsolete
-	def _volume_exists(volume):
-		# return os.path.exists(volume) # FIXEME files may not be local, wont work
-		return True
+	# _check_volumes deleted 14/03/2016 (last git commit 32844a2)
+	# _check_if_volume_exists deleted 14/03/2016 (last git commit 32844a2)
+	# _volume_exists deleted 14/03/2016 (last git commit 32844a2)
 
 	def __init__(self, image, cmd='', volumes=None):
 		assert isinstance(image, (DockerImage, basestring)) and isinstance(cmd, basestring) and\
@@ -182,7 +164,37 @@ class DockerContainer:
 		return self._sig
 
 	def __repr__(self):
-		return '<DockerContainer %s>' % self.Names[0]
+		name = self.Names[0] if len(self.Names) > 0 else 'NoName'
+		return '<DockerContainer %s>' % name
+
+
+# clem 14/03/2016
+def mutexed(func):
+	"""
+	Provide mutex capabilities to a class
+	The class must provide _lock and _unlock methods as interface to its self stored mutex object
+	:type func: callable
+	:rtype: callable
+	"""
+
+	def mutex_proxy(func2):
+		"""
+		Enable a multi parameter function to be called by mutex.mutex.lock by exchanging the function,
+		decorator style, with a single argument one that call the sub function using list unpacking
+		:type func2: callable
+		:rtype: callable
+		"""
+		def decorated_func2(args):
+			func2(*args)
+
+		return decorated_func2
+
+	def decorated_func(*args):
+		self = args[0]
+		self._unlock()
+		self._lock(mutex_proxy(func), *args)
+
+	return decorated_func
 
 
 # clem 08/03/2016
@@ -192,6 +204,7 @@ class DockerClient:
 	repo = None
 	default_run = None
 	_raw_cli = None
+	_console_mutex = None # use to ensure exclusive access to console
 
 	_daemon_url = ''
 
@@ -209,6 +222,7 @@ class DockerClient:
 		self.default_run = run
 		self._daemon_url = daemon_url
 		self._raw_cli = Client(base_url=daemon_url)
+		self._console_mutex = mutex.mutex()
 		self.start_event_watcher()
 		self.login()
 
@@ -217,8 +231,6 @@ class DockerClient:
 		if self.__watcher:
 			self.__watcher.terminate()
 			self.force_log('watcher terminated')
-		# self._raw_cli.close()
-		# self._raw_cli.__exit__()
 
 	# clem 14/03/2016
 	def __del__(self):
@@ -232,7 +244,16 @@ class DockerClient:
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		self.__cleanup()
 
+	# clem 14/03/2016
+	def _lock(self, func, *args):
+		self._console_mutex.lock(func, args)
+
+	# clem 14/03/2016
+	def _unlock(self):
+		self._console_mutex.unlock()
+
 	# clem 10/03/2016
+	@mutexed
 	def log(self, obj, force_print=False):
 		if self.DEBUG or force_print:
 			if type(obj) is dict:
@@ -246,6 +267,7 @@ class DockerClient:
 		self.log(obj, True)
 
 	# clem 14/03/2016
+	@mutexed
 	def event_log(self, obj):
 		if type(obj) is str:
 			import json
@@ -307,65 +329,70 @@ class DockerClient:
 	# clem 10/03/2016
 	def run_default(self):
 		if self.default_run: # TODO change that too
-			self._run(self.default_run)
+			return self._run(self.default_run)
 
 	# clem 09/03/2016
 	def img_run(self, img, cmd, volume=list()):
+		"""
+		TBD
+		:type img: str
+		:type cmd: str
+		:type volume: DockerVolume|list
+		:rtype:
+		"""
 		return self._run(DockerRun(img, cmd, volume))
 
 	# clem 09/03/2016
 	def _run(self, run):
+		"""
+		TBD
+		:type run: DockerRun
+		:rtype: DockerContainer
+		"""
 		assert isinstance(run, DockerRun)
 
 		# TODO check if connected to repo
 		image_name = str(run.image)
 		if not (type(run.image) is DockerImage or run.image in self.images_by_repo_tag):
 			# image not found, let's try to pull it
-			pass
+			pass # TODO
 
+		container_id = ''
 		# Create the container
 		try:
-			self.log('docker run %s %s -v %s' % (image_name, run.cmd, run.volumes))
+			# get the volume config
 			a_dict = run.config_dict()
-			vol = list()
-			vol_config = dict()
 			if a_dict:
+				# apply volume config
 				vol = run.config_dict().keys()
 				vol_config = self.cli.create_host_config(binds=run.config_dict())
-			if vol:
-				print "volumes=%s, host_config=%s" % (vol, vol_config)
-				out = self.cli.create_container(image_name, run.cmd, volumes=vol, host_config=vol_config)
-			else:
-				out = self.cli.create_container(image_name, run.cmd)
-			container_id = out['Id']
+				# if vol:
+				self.log('docker run %s %s -v %s' % (image_name, run.cmd, run.volumes))
+				container = self.cli.create_container(image_name, run.cmd, volumes=vol, host_config=vol_config)
+			else: # no volume config
+				self.log('docker run %s %s' % (image_name, run.cmd))
+				container = self.cli.create_container(image_name, run.cmd)
+
+			container_id = container['Id']
+
 			self.log('Created %s' % container_id)
-			response = self.cli.start(container_id)
-			self.log(response)
-			self.log('Started %s' % container_id)
-			if False:
-				try:
-					# TODO make a proper event listener, also check which events can be read
-					for event in self.cli.events(filters={ u'id': container_id } ):
-						self.force_log(event)
-				except KeyboardInterrupt, StopIteration:
-					pass
-				# print pretty_print_dict_tree(self.cli.inspect_container(container_id))
-			# event = self.cli.events(filters={ u'id': container_id } ).next()
-			# self.event_log(event)
+			container = DockerContainer(self.cli.inspect_container(container), self)
+			self.cli.start(container.Id)
+		except APIError as e:
+			self.log('Container run failed : %s' % e)
+			out_log = self.cli.logs(container_id)
+			if out_log:
+				# self.log(out_log)
+				self.log('Container run log :\n%s' % pretty_print_dict_tree(out_log, get_output=True))
+			raise e
 		except NotFound as e:
-				raise NotFound(e)
-		# If the status code is 404, it means the image doesn't exist:
-
-		# Try to pull it.
-		# Then, retry to create the container.
-		# Start the container.
-
+			raise NotFound(e)
 		# If you are not in detached mode:
 
 		# Attach to the container, using logs=1 (to have stdout and stderr from the container's start) and stream=1
 
 		# If in detached mode or only stdin is attached, display the container's id.
-		return True
+		return container
 
 	# clem 14/03/2016
 	def start_event_watcher(self):
@@ -373,7 +400,7 @@ class DockerClient:
 			from multiprocessing import Process
 			self.__watcher = Process(target=self._event_watcher)
 			self.__watcher.start()
-			self.force_log('watcher started PID %s' % self.__watcher.pid)
+			self.log('watcher started PID %s' % self.__watcher.pid)
 
 	# clem 14/03/2016
 	def _event_watcher(self):
