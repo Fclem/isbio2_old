@@ -1,8 +1,8 @@
 
 def dev():
 	# global client
-	from .docker_interface import docker
-	return docker()
+	from .docker_interface import Docker
+	return Docker().client
 
 
 def init():
