@@ -70,7 +70,7 @@ class DockerRepo:
 	pwd = ''
 	email = ''
 
-	def __init__(self, login, pwd, email='', url = 'https://index.docker.io'):
+	def __init__(self, login, pwd, email='', url='https://index.docker.io'):
 		assert isinstance(login, basestring) and isinstance(pwd, basestring) and isinstance(email, basestring) and \
 			isinstance(url, basestring)
 		self.login = login
@@ -126,20 +126,38 @@ class DockerImage:
 
 # clem 09/03/2016
 class DockerContainer:
-	Status = ''
-	Created = 0
+	RestartCount = 0
 	Labels = dict()
 	Image = DockerImage
 	NetworkSettings = dict()
 	HostConfig = dict()
-	ImageID = ''
-	Command = ''
+	State = dict()
+	GraphDriver = dict()
+	Config = dict()
+	Status = u''
+	ImageID = u''
+	ProcessLabel = u''
+	Command = u''
+	Created = u''
+	LogPath = u''
+	AppArmorProfile = u''
+	HostsPath = u''
+	ResolvConfPath = u''
+	Id = u''
+	Path = u''
+	Driver = u''
+	HostnamePath = u''
+	MountLabel = u''
+	Name = u''
 	Names = list()
-	Id = ''
 	Ports = list()
-	_sig = ''
+	Args = list()
+	Mounts = list()
+	_sig = u''
+	_event_list = list()
+	_event_listener = None
 
-	def __init__(self, a_dict, client=None):
+	def __init__(self, a_dict, client=None, event_callback=None):
 		assert isinstance(a_dict, dict) and (not client or isinstance(client, DockerClient))
 		self.__dict__.update(a_dict)
 		if client: # if we got a client in argument, we chain this container to its DockerImage object
@@ -149,23 +167,48 @@ class DockerContainer:
 				self.Image = a_dict['Image']
 		else:
 			self.Image = a_dict['Image']
-		_ = self.sig
+		# _ = self.sig
+		self.register_event_listener(event_callback)
 
+	def update(self, a_dict):
+		assert isinstance(a_dict, dict)
+		self.__dict__.update(a_dict)
+
+	# FIXME deprecated
 	def _get_sig(self):
 		new_dict = self.__dict__
 		if '_sig' in new_dict:
 			new_dict.pop('_sig')
+			new_dict.pop('_event_list')
+			new_dict.pop('_event_listener')
 		return get_md5(str(new_dict))
 
-	@property
+	# clem 15/03/2016
+	def register_event_listener(self, listener):
+		if listener and callable(listener):
+			self._event_listener = listener
+
+	# clem 15/03/2016
+	def new_event(self, event):
+		self._event_list.append(event)
+		if self._event_listener and callable(self._event_listener):
+			self._event_listener(event)
+
+	@property # FIXME deprecated
 	def sig(self):
 		if not self._sig:
 			self._sig = self._get_sig()
 		return self._sig
 
+	# clem 14/03/2016
 	@property
 	def name(self):
-		return self.Names[0] if len(self.Names) > 0 else ''
+		if self.Names:
+			return self.Names[0] if len(self.Names) > 0 else ''
+		elif self.Name:
+			return self.Name
+		else:
+			return ''
 
 	def __str__(self):
 		return self.name if self.name else self.Id
@@ -195,7 +238,7 @@ class DockerEvent:
 		self.__dict__.update(a_dict)
 		if client: # if we got a client in argument, we chain this container to its DockerImage object
 			self.__client = client
-			self._get_container()
+			# self._get_container() # we''ll do it upon access, as this container might not yet be in the ps list
 
 	# clem 14/03/2016
 	def _get_container(self):
@@ -215,9 +258,31 @@ class DockerEvent:
 		else:
 			return self.Actor['Attributes']['container']
 
+	@property
+	def dt(self):
+		from datetime import datetime
+		secs = float(self.timeNano / 1e9)
+		return datetime.fromtimestamp(secs)
+
+	@property
+	def dt_formatted(self):
+		return self.dt.strftime('%Y-%m-%dT%Hh%M:%S.%f')
+
+	@property
+	def date_formatted(self):
+		return self.dt.strftime('%Y-%m-%d')
+
+	@property
+	def time_formatted(self):
+		return self.dt.strftime('%Hh%M:%S.%f')
+
 	def __str__(self):
 		txt = 's:%s' % self.status if self.status else 'A:%s' % self.Action
-		return '[%s] %s' % (self.timeNano, txt)
+		# return '%s [%s] %s' % (str(repr(self.container)), self.timeNano, txt)
+		# return '%s [%s] %s' % (self.container, str(self.timeNano)[:-5], txt)
+		# t = float(self.timeNano) / 1e6
+		# return '%s [%s] %s' % (self.container, '{:.1f}'.format(t), txt)
+		return '%s [%s] %s' % (self.container, self.time_formatted, txt)
 
 	def __repr__(self):
 		txt = 's:%s' % self.status if self.status else 'A:%s' % self.Action
@@ -258,7 +323,8 @@ class DockerClient:
 	# clem 14/03/2016
 	def __cleanup(self):
 		if self.__watcher:
-			self.__watcher.terminate()
+			# self.__watcher.
+			# self.__watcher.terminate()
 			self.force_log('watcher terminated')
 
 	# clem 14/03/2016
@@ -363,16 +429,32 @@ class DockerClient:
 
 	# clem 14/03/2016
 	def get_container(self, container_id):
-		containers_dict = self.ps_by_id
-		if container_id in containers_dict.keys():
-			return containers_dict[container_id]
+		"""
+		Get the cached container, and if not found try to refresh the cache for this entry only
+		:type container_id: str
+		:rtype: DockerContainer
+		"""
+		if container_id in self._container_dict_by_id.keys():
+			return self._container_dict_by_id[container_id]
 		else:
 			return self.inspect_container(container_id)
 
 	# clem 14/03/2016
 	def inspect_container(self, container_id):
-		cont = DockerContainer(self.cli.inspect_container(container_id))
-		self._container_dict_by_id[cont.Id] = cont
+		"""
+		Get all the refreshed information about the container
+		:type container_id: str
+		:rtype: DockerContainer
+		"""
+		if container_id in self._container_dict_by_id.keys():
+			# refresh
+			info = self.cli.inspect_container(container_id)
+			self._container_dict_by_id[container_id].update(info)
+			return self._container_dict_by_id[container_id]
+		else:
+			# create the container from the info we get from inspect_container
+			cont = DockerContainer(self.cli.inspect_container(container_id))
+			self._container_dict_by_id[cont.Id] = cont
 		return self._container_dict_by_id[cont.Id]
 
 	# clem 09/03/2016
@@ -407,7 +489,8 @@ class DockerClient:
 				container_id = self.cli.create_container(image_name, run.cmd)['Id']
 
 			container = self.get_container(container_id)
-			self.log('Created %s' % container.Id)
+			container.register_event_listener(self.event_log)
+			self.log('Created %s : %s' % (container.name, container.Id))
 
 			self.cli.start(container.Id)
 			return container
@@ -441,8 +524,12 @@ class DockerClient:
 		for event in self.cli.events():
 			event = DockerEvent(event, self)
 			self._event_list.append(event)
-			self.event_log(event)
+			# self.event_log(event)
 			_ = self.ps_by_id
+			# dispatch the event to the related container
+			cont = event.container
+			if cont:
+				cont.new_event(event)
 
 	# clem 10/03/2016
 	@property
@@ -461,13 +548,14 @@ class DockerClient:
 		containers = self.cli.containers()
 		images = self.images_by_id # caching, removing that will result in a visible slow down
 		for e in containers:
-			cont = DockerContainer(e)
+			# cont = DockerContainer(e)
+			cont = self.get_container(e['Id'])
 			try:
 				cont.Image = images[cont.ImageID]
 			except KeyError:
 				pass
-			if cont.Id not in self._container_dict_by_id or self._container_dict_by_id[cont.Id].sig != cont.sig:
-				self._container_dict_by_id[cont.Id] = cont
+			# if cont.Id not in self._container_dict_by_id or self._container_dict_by_id[cont.Id].sig != cont.sig:
+			# 	self._container_dict_by_id[cont.Id] = cont
 		return self._container_dict_by_id
 
 	# clem 10/03/2016
