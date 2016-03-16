@@ -1,10 +1,11 @@
+from __builtin__ import property
+
 from docker import Client
 from docker.errors import NotFound, APIError
 from .utils import get_md5, pretty_print_dict_tree
 from threading import Thread, Lock
 # from multiprocessing import Process, Lock
 
-PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
 AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
 
 
@@ -21,14 +22,22 @@ class DockerVolume:
 		self.mount_point = mount_point
 		self.mode = mode
 
+	# clem 15/03/2016
+	def pretty_print(self):
+		pretty_print_dict_tree(self.__dict__)
+
 	# clem 14/03/2016
 	def __str__(self):
 		return '%s:%s:%s' % (self.path, self.mount_point, self.mode)
 
 
+from multipledispatch import dispatch
+
+
 # clem 10/03/2016
 class DockerRun:
-	image = ''
+	image_full_name = ''
+	_image = None
 	cmd = ''
 	_volumes = list()
 
@@ -44,7 +53,7 @@ class DockerRun:
 	def __init__(self, image, cmd='', volumes=None, ev_listener=None):
 		assert isinstance(image, (DockerImage, basestring)) and isinstance(cmd, basestring) and\
 			(volumes is None or isinstance(volumes, (list, DockerVolume)))
-		self.image = image
+		self.image_full_name = image
 		self.cmd = cmd
 		self._volumes = volumes
 		self.event_listener = ev_listener
@@ -59,6 +68,26 @@ class DockerRun:
 									'mode': each.mode,
 			}
 		return a_dict
+
+	# clem 16/03/2016
+	@property # temp wrapper
+	def image(self):
+		if self._image:
+			return self._image
+		return self.image_full_name
+
+	# temp wrapper
+	def link_image(self, client=None):
+		if self._image:
+			return self._image
+		elif isinstance(client, DockerClient):
+			self._image = client.get_image(self.image_full_name)
+			return self.link_image()
+		return DockerImage({ 'RepoTags': self.image_full_name })
+
+	# clem 15/03/2016
+	def pretty_print(self):
+		pretty_print_dict_tree(self.__dict__)
 
 	def __repr__(self):
 		return str((self.image, self.cmd, self.volumes))
@@ -91,6 +120,9 @@ class DockerImage:
 	Id = u''
 	RepoTags = list()
 	_sig = ''
+	_repo = ''
+	_name = ''
+	_tag = ''
 
 	def __init__(self, a_dict):
 		assert isinstance(a_dict, dict)
@@ -109,20 +141,63 @@ class DockerImage:
 			self._sig = self._get_sig()
 		return self._sig
 
-	# clem 10/03/2016
+	# clem 16/03/2016
+	def _process_name(self):
+		full_n = self.full_name
+		if '/' in full_n:
+			self._repo, rest = full_n.split('/', 1)
+		else:
+			self._repo, rest = 'library', full_n
+
+		if ':' in rest:
+			self._name, self._tag = rest.split(':', 1)
+		else:
+			self._name, self._tag = rest, ''
+
+	# clem 16/03/2016
 	@property
 	def tag(self):
+		if not self._tag:
+			self._process_name()
+		return self._tag
+
+	# clem 16/03/2016
+	@property
+	def name(self):
+		if not self._name:
+			self._process_name()
+		return self._name
+
+	# clem 16/03/2016
+	@property
+	def repo_name(self):
+		if not self._repo:
+			self._process_name()
+		return self._repo
+
+	# clem 16/03/2016
+	@property
+	def repo_and_name(self):
+		return '%s/%s' % (self.repo_name, self.name)
+
+	# clem 10/03/2016
+	@property
+	def full_name(self):
 		if type(self.RepoTags) is list and len(self.RepoTags) > 0:
 			return str(self.RepoTags[0])
 		else:
 			return str(self.RepoTags)
 
+	# clem 15/03/2016
+	def pretty_print(self):
+		pretty_print_dict_tree(self.__dict__)
+
 	def __repr__(self):
-		return '<DockerImage %s>' % self.tag
+		return '<DockerImage %s>' % self.full_name
 
 	# clem 10/03/2016
 	def __str__(self):
-		return str(self.tag)
+		return str(self.full_name)
 
 
 # clem 09/03/2016
@@ -155,13 +230,16 @@ class DockerContainer:
 	Args = list()
 	Mounts = list()
 	_sig = u''
+	_log = u''
 	_event_list = list()
 	_event_listener = None
+	__client = None
 
 	def __init__(self, a_dict, client=None, event_callback=None):
 		assert isinstance(a_dict, dict) and (not client or isinstance(client, DockerClient))
 		self.__dict__.update(a_dict)
 		if client: # if we got a client in argument, we chain this container to its DockerImage object
+			self.__client = client
 			try:
 				self.Image = client.images_by_id[self.ImageID]
 			except KeyError:
@@ -194,7 +272,15 @@ class DockerContainer:
 	def new_event(self, event):
 		self._event_list.append(event)
 		if self._event_listener and callable(self._event_listener):
+			if event.status == 'die':
+				if self.__client:
+					self._log = self.__client.cli.logs(self.Id)
 			self._event_listener(event)
+
+	# clem 15/03/2016
+	@property
+	def logs(self):
+		return self._log
 
 	@property # FIXME deprecated
 	def sig(self):
@@ -212,11 +298,41 @@ class DockerContainer:
 		else:
 			return ''
 
+	# clem 15/03/2016
+	def pretty_print(self):
+		pretty_print_dict_tree(self.__dict__)
+
 	def __str__(self):
 		return self.name if self.name else self.Id
 
 	def __repr__(self):
 		return '<DockerContainer %s>' % str(self)
+
+
+# clem 15/03/2016
+class DockerEventCategories:
+	CREATE = 's:create'
+	START = 's:start'
+	DIE = 's:die'
+	KILL = 's:kill'
+	PAUSE = 's:pause'
+	UNPAUSE = 's:unpause'
+	DELETE = 's:delete'
+	UNTAG = 's:untag'
+	TAG = 's:tag'
+	PULL = 's:pull'
+	CONNECT = 'A:connect'
+	DISCONNECT = 'A:disconnect'
+	MOUNT = 'A:mount'
+	UNMOUNT = 'A:unmount'
+	RESTART = 'A:restart'
+	UNKNOWN = ''
+
+	a_dict = { CREATE: CREATE, START: START, DIE: DIE, KILL: KILL, PAUSE: PAUSE, UNPAUSE: UNPAUSE, CONNECT: CONNECT,
+				DISCONNECT: DISCONNECT, MOUNT: MOUNT, UNMOUNT: UNMOUNT, RESTART: RESTART}
+
+	def __init__(self):
+		pass
 
 
 # clem 14/03/2016
@@ -244,19 +360,37 @@ class DockerEvent:
 
 	def _get_container(self):
 		if not self._container or not self._container.name: # if not a container or container has no name, refresh
-			self._container = self.__client.get_container(self.container_id)
-
-	@property
-	def container(self):
-		self._get_container()
+			# cid = self.res_id
+			if self.Type == 'container':
+				try:
+					self._container = self.__client.get_container(self.res_id)
+					return self._container
+				except NotFound:
+					# self.__client.log('Related container cannot be found')
+					return self.res_id
+			# self.__client.log('Event was not related to a container')
+			return None
 		return self._container
 
 	@property
-	def container_id(self):
+	def container(self):
+		return self._get_container()
+
+	@property
+	def res_id(self):
+		ret = None
 		if self.id:
-			return self.id
-		else:
-			return self.Actor['Attributes']['container']
+			ret = self.id
+		elif self.Type == 'container':
+			ret = self.Actor['Attributes']['container']
+		return ret
+
+	# clem 16/03/2016
+	@property
+	def _get_resource(self):
+		if self.Type == 'container':
+			return self.container
+		return self.res_id
 
 	# clem 15/03/2016
 	@property
@@ -280,13 +414,27 @@ class DockerEvent:
 	def time_formatted(self):
 		return self.dt.strftime('%Hh%M:%S.%f')
 
+	# clem 15/03/2016
+	def pretty_print(self):
+		pretty_print_dict_tree(self.__dict__)
+
+	# clem 15/03/2016
+	@property
+	def description(self):
+		return 's:%s' % self.status if self.status else 'A:%s' % self.Action
+
+	# clem 15/03/2016
+	@property
+	def category(self):
+		desc = self.description
+		return DockerEventCategories.a_dict.get(desc, DockerEventCategories.UNKNOWN)
+
 	def __str__(self):
-		txt = 's:%s' % self.status if self.status else 'A:%s' % self.Action
-		return '%s [%s] %s' % (self.container, self.time_formatted, txt)
+		return '%s [%s] %s %s' % (self._get_resource, self.time_formatted, self.Type, self.description)
 
 	def __repr__(self):
 		txt = 's:%s' % self.status if self.status else 'A:%s' % self.Action
-		return '<DockerEvent [%s] %s>' % (self.timeNano, txt)
+		return '<DockerEvent [%s] %s %s>' % (self.timeNano, self.Type, txt)
 
 
 # clem 08/03/2016
@@ -351,15 +499,23 @@ class DockerClient:
 		# TODO log
 
 	# clem 10/03/2016
+	def json_log(self, obj, force_print=False):
+		self.log(self._json_parse(obj), force_print)
+
+	# clem 10/03/2016
 	def force_log(self, obj):
 		self.log(obj, True)
 
-	# clem 14/03/2016
-	def event_log(self, obj):
+	# clem 16/03/2016
+	def _json_parse(self, obj):
 		if type(obj) is str:
 			import json
 			obj = json.loads(obj)
-		self.force_log(obj)
+		return obj
+
+	# clem 14/03/2016
+	def event_log(self, obj):
+		self.force_log(self._json_parse(obj))
 
 	# clem 10/03/2016
 	def login(self):
@@ -434,10 +590,27 @@ class DockerClient:
 		:type container_id: str
 		:rtype: DockerContainer
 		"""
-		if container_id in self._container_dict_by_id.keys():
-			return self._container_dict_by_id[container_id]
-		else:
-			return self.inspect_container(container_id)
+		if container_id:
+			if container_id in self._container_dict_by_id.keys():
+				return self._container_dict_by_id[container_id]
+			else:
+				return self.inspect_container(container_id)
+		return None
+
+	# clem 16/03/2016
+	def get_image(self, image_descriptor):
+		"""
+		Get the cached image, and if not found try to refresh the cache for this entry only
+		image_descriptor can be either the id, or the full name as repo/image:tag
+		:type image_descriptor: str
+		:rtype: DockerImage | None
+		"""
+		if image_descriptor:
+			if image_descriptor in self.images_by_id.keys():
+				return self.images_by_id[image_descriptor]
+			elif image_descriptor in self.images_by_repo_tag.keys():
+				return self.images_by_repo_tag[image_descriptor]
+		return None
 
 	# clem 14/03/2016
 	def inspect_container(self, container_id):
@@ -453,9 +626,38 @@ class DockerClient:
 			return self._container_dict_by_id[container_id]
 		else:
 			# create the container from the info we get from inspect_container
+			cont = None
+			#try:
 			cont = DockerContainer(self.cli.inspect_container(container_id))
 			self._container_dict_by_id[cont.Id] = cont
-		return self._container_dict_by_id[cont.Id]
+			# except NotFound as e:
+			#	self.force_log('inspect: ' + str(e))
+			return cont
+
+	# clem 16/03/2016
+	def rmi(self, image, force=False):
+		try:
+			return self.cli.remove_image(str(image), force)
+		except Exception as e:
+			self.force_log(e)
+			if self.RAISE_ERR:
+				raise e
+		return None
+
+	# clem 16/03/2016
+	def pull(self, image_name, tag):
+		# self.log('Pulling from %s' % image_name)
+		gen = self.cli.pull(image_name, tag, stream=True)
+		for line in gen:
+			obj = self._json_parse(line)
+			if 'status' in obj:
+				if 'id' in obj:
+					self.log('%s: %s' % (obj['id'], obj['status']))
+				else:
+					self.log(str(obj['status']))
+			else:
+				self.log(obj)
+			# self.json_log(line)
 
 	# clem 09/03/2016
 	def _run(self, run):
@@ -468,9 +670,11 @@ class DockerClient:
 
 		# TODO check if connected to repo
 		image_name = str(run.image)
-		if not (type(run.image) is DockerImage or run.image in self.images_by_repo_tag):
+		if not (type(run.image) is DockerImage or image_name in self.images_by_repo_tag):
 			# image not found, let's try to pull it
-			pass # TODO
+			img = run.link_image(self) # DockerImage({'RepoTags': image_name})
+			self.log('Unable to find image \'%s\' locally' % image_name)
+			self.pull(img.repo_and_name, img.tag)
 
 		container_id = ''
 		# Create the container
@@ -497,6 +701,10 @@ class DockerClient:
 
 			self.cli.start(container.Id)
 			return container
+		except NotFound as e:
+			self.force_log('run: ' + str(e))
+			if self.RAISE_ERR:
+				raise e
 		except APIError as e:
 			self.log('Container run failed : %s' % e)
 			out_log = self.cli.logs(container_id)
@@ -505,13 +713,15 @@ class DockerClient:
 				self.log('Container run log :\n%s' % pretty_print_dict_tree(out_log, get_output=True))
 			if self.RAISE_ERR:
 				raise e
-		except NotFound as e:
-			raise NotFound(e)
 		# If you are not in detached mode:
 
 		# Attach to the container, using logs=1 (to have stdout and stderr from the container's start) and stream=1
 
 		# If in detached mode or only stdin is attached, display the container's id.
+
+	#
+	# EVENTS
+	#
 
 	# clem 14/03/2016
 	def start_event_watcher(self):
@@ -522,21 +732,60 @@ class DockerClient:
 			# self.log('watcher started PID %s' % self.__watcher.id)
 			self.log('watcher started as Thread')
 
+	# clem 16/03/2016
+	def _del_res(self, a_dict, res_id):
+		assert isinstance(a_dict, dict)
+		try:
+			del a_dict[res_id]
+		except Exception as e:
+			self.force_log(e)
+			if self.RAISE_ERR:
+				raise e
+
+	# clem 16/03/2016
+	def _process_event(self, event):
+		assert isinstance(event, DockerEvent)
+		self._event_list.append(event)
+		if event.description == DockerEventCategories.DELETE:
+			if event.Type == 'image':
+				self._del_res(self.__image_dict_by_id, event.id)
+			if event.Type == 'container':
+				self._del_res(self._container_dict_by_id, event.id)
+				_ = self.containers_by_id # refresh container cached list
+
+	# clem 16/03/2016
+	def _dispatch_event(self, event):
+		assert isinstance(event, DockerEvent)
+		cont = event.container
+		if cont and isinstance(cont, DockerContainer):
+			cont.new_event(event)
+		else: # if no dispatch target exists, then we log it here
+			self.event_log(event)
+
+	# clem 16/03/2016
+	def _new_event(self, event_literal):
+		event = DockerEvent(event_literal, self)
+		# processor = Thread(target=self._process_event, args=event)
+		# processor.start()
+		self._process_event(event)
+		# dispatch the event to the related container
+		# dispatcher = Thread(target=self._dispatch_event, args=event)
+		# dispatcher.start()
+		self._dispatch_event(event)
+
 	# clem 14/03/2016
 	def _event_watcher(self):
-		for event in self.cli.events():
-			event = DockerEvent(event, self)
-			self._event_list.append(event)
-			# self.event_log(event)
-			_ = self.ps_by_id
-			# dispatch the event to the related container
-			cont = event.container
-			if cont:
-				cont.new_event(event)
+		# Must run in a separate Thread
+		for event in self.cli.events(): # Generator, do no run code in here, but rather in _new_event for non blocking
+			Thread(target=self._new_event, args=(event,)).start()
+
+	#
+	# CONTAINERS
+	#
 
 	# clem 10/03/2016
 	@property
-	def ps_by_id(self):
+	def containers_by_id(self):
 		"""
 		a dictionary of DockerContainer objects indexed by Id
 		internally containers lists is stored in a dict indexed with containers' Ids.
@@ -552,35 +801,34 @@ class DockerClient:
 		images = self.images_by_id # caching, removing that will result in a visible slow down
 		for e in containers:
 			# cont = DockerContainer(e)
-			cont = self.get_container(e['Id'])
 			try:
-				cont.Image = images[cont.ImageID]
+				cont = self.get_container(e['Id'])
+				if cont:
+					cont.Image = images[cont.ImageID]
 			except KeyError:
 				pass
+			except NotFound as e:
+				self.force_log('ps_by_id: %s' % e)
 			# if cont.Id not in self._container_dict_by_id or self._container_dict_by_id[cont.Id].sig != cont.sig:
 			# 	self._container_dict_by_id[cont.Id] = cont
 		return self._container_dict_by_id
 
 	# clem 10/03/2016
 	@property
-	def ps_list(self):
+	def containers_list(self):
 		"""
 		extracts all DockerContainer objects from containers_by_id to return a list of them
 		:rtype: list(DockerContainer.Id: DockerContainer, )
 		"""
 		self._container_list = list()
-		ids = self.ps_by_id
+		ids = self.containers_by_id
 		for e in ids:
 			self._container_list.append(ids[e])
 		return self._container_list
 
 	# clem 10/03/2016
-	def show_ps(self):
-		pass
-
-	# clem 10/03/2016
 	@property
-	def ps_by_name(self):
+	def containers_by_name(self):
 		"""
 		a dictionary of DockerContainer objects indexed by Name[0]
 		similar to ps_by_id, except here the DockerContainer objects are referenced by their first Names
@@ -588,55 +836,20 @@ class DockerClient:
 		:rtype: dict(DockerContainer.Name: DockerContainer)
 		"""
 		lbl_dict = dict()
-		ids = self.ps_by_id
+		ids = self.containers_by_id
 		for e in ids:
 			cont = ids[e]
 			lbl_dict[cont.Names[0]] = cont
 
 		return lbl_dict
 
-	# clem 09/03/2016
-	@property
-	def images_tree(self):
-		imgs = self.images_by_repo_tag
-		self.__image_tree = dict()
-		for e in imgs:
-			if '/' in e:
-				repo_name, rest = e.split('/', 1)
-			else:
-				repo_name, rest = 'library', e
+	# clem 10/03/2016
+	def ps(self):
+		pass
 
-			if ':' in rest:
-				img_name, tag = rest.split(':', 1)
-			else:
-				img_name, tag = rest, ''
-
-			if repo_name not in self.__image_tree:
-				self.__image_tree[repo_name] = dict()
-			repo = self.__image_tree[repo_name]
-			if img_name not in repo:
-				repo[img_name] = dict()
-			repo[img_name][tag] = imgs[e]
-		# self.__image_tree[repo_name][img_name][tag] = imgs[e]
-
-		return self.__image_tree
-
-	# clem 09/03/2016
-	def show_repo_tree(self):
-		pretty_print_dict_tree(self.images_tree)
-
-	# clem 09/03/2016
-	@property
-	def images_list(self):
-		"""
-		extracts all DockerImage objects from images_by_id to return a list of them
-		:rtype: list(DockerImage.Id: DockerImage, )
-		"""
-		self._images_list = list()
-		ids = self.images_by_id
-		for e in ids:
-			self._images_list.append(ids[e])
-		return self._images_list
+	#
+	# IMAGES
+	#
 
 	# clem 09/03/2016
 	@property
@@ -652,11 +865,25 @@ class DockerClient:
 		:rtype: dict(DockerImage.Id: DockerImage)
 		"""
 		# updates the image dict
-		for e in self.cli.images():
+		imgs = self.cli.images()
+		for e in imgs:
 			img = DockerImage(e)
 			if img.Id not in self.__image_dict_by_id or self.__image_dict_by_id[img.Id].sig != img.sig:
 				self.__image_dict_by_id[img.Id] = DockerImage(e)
 		return self.__image_dict_by_id
+
+	# clem 09/03/2016
+	@property
+	def images_list(self):
+		"""
+		extracts all DockerImage objects from images_by_id to return a list of them
+		:rtype: list(DockerImage.Id: DockerImage, )
+		"""
+		self._images_list = list()
+		ids = self.images_by_id
+		for e in ids:
+			self._images_list.append(ids[e])
+		return self._images_list
 
 	# clem 09/03/2016
 	@property
@@ -676,3 +903,22 @@ class DockerClient:
 
 		return lbl_dict
 
+	# clem 09/03/2016
+	@property
+	def images_tree(self):
+		imgs = self.images_by_repo_tag
+		self.__image_tree = dict()
+		for name, img in imgs.iteritems():
+			assert isinstance(img, DockerImage)
+			if img.repo_name not in self.__image_tree:
+				self.__image_tree[img.repo_name] = dict()
+			repo = self.__image_tree[img.repo_name]
+			if img.repo_name not in repo:
+				repo[img.name] = dict()
+			repo[img.name][img.tag] = imgs[name]
+
+		return self.__image_tree
+
+	# clem 09/03/2016
+	def show_repo_tree(self):
+		pretty_print_dict_tree(self.images_tree)

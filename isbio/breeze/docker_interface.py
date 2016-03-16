@@ -1,21 +1,32 @@
 from .docker_client import *
 
+REPO_PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
+REPO_LOGIN = 'fimm'
+REPO_EMAIL = 'clement.fiere@fimm.fi'
 
+
+# clem 15/03/2016
 class Docker:
 	client = None
+	cat = DockerEventCategories
+	MY_DOCKER_HUB = DockerRepo(REPO_LOGIN, REPO_PWD, email=REPO_EMAIL)
 
 	def __init__(self):
-		fimm_docker_hub = DockerRepo('fimm', PWD, email='clement.fiere@fimm.fi')
 		fimm_test_volume = DockerVolume('/home/breeze/data/', '/breeze', 'rw')
 		fimm_test_run = DockerRun('fimm/r-light:op', './run.sh', fimm_test_volume, self.event_manager_wrapper())
-		self.client = DockerClient(fimm_docker_hub, AZURE_REMOTE_URL, fimm_test_run)
+		self.client = DockerClient(self.MY_DOCKER_HUB, AZURE_REMOTE_URL, fimm_test_run)
 
-	# clem 15/03/2016
+	def run(self):
+		return self.client.run_default()
+
 	def event_manager_wrapper(self):
-		# clem 15/03/2016
 		def my_event_manager(event):
 			assert isinstance(event, DockerEvent)
+			# print 'Manager :'
 			self.client.event_log(event)
-			# print 'manager :', event
+			if event.description == DockerEventCategories.DIE:
+				print 'Container died'
+				print event.container
+
 		return my_event_manager
 
