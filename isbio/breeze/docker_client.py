@@ -1,12 +1,7 @@
-from __builtin__ import property
-
 from docker import Client
 from docker.errors import NotFound, APIError
 from .utils import get_md5, pretty_print_dict_tree
 from threading import Thread, Lock
-# from multiprocessing import Process, Lock
-
-AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
 
 
 # clem 10/03/2016
@@ -29,9 +24,6 @@ class DockerVolume:
 	# clem 14/03/2016
 	def __str__(self):
 		return '%s:%s:%s' % (self.path, self.mount_point, self.mode)
-
-
-from multipledispatch import dispatch
 
 
 # clem 10/03/2016
@@ -471,8 +463,6 @@ class DockerClient:
 	# clem 14/03/2016
 	def __cleanup(self):
 		if self.__watcher:
-			# self.__watcher.
-			# self.__watcher.terminate()
 			self.force_log('watcher terminated')
 
 	# clem 14/03/2016
@@ -624,14 +614,9 @@ class DockerClient:
 			info = self.cli.inspect_container(container_id)
 			self._container_dict_by_id[container_id].update(info)
 			return self._container_dict_by_id[container_id]
-		else:
-			# create the container from the info we get from inspect_container
-			cont = None
-			#try:
+		else: # create the container from the info we get from inspect_container
 			cont = DockerContainer(self.cli.inspect_container(container_id))
 			self._container_dict_by_id[cont.Id] = cont
-			# except NotFound as e:
-			#	self.force_log('inspect: ' + str(e))
 			return cont
 
 	# clem 16/03/2016
@@ -646,7 +631,6 @@ class DockerClient:
 
 	# clem 16/03/2016
 	def pull(self, image_name, tag):
-		# self.log('Pulling from %s' % image_name)
 		gen = self.cli.pull(image_name, tag, stream=True)
 		for line in gen:
 			obj = self._json_parse(line)
@@ -657,7 +641,6 @@ class DockerClient:
 					self.log(str(obj['status']))
 			else:
 				self.log(obj)
-			# self.json_log(line)
 
 	# clem 09/03/2016
 	def _run(self, run):
@@ -672,7 +655,7 @@ class DockerClient:
 		image_name = str(run.image)
 		if not (type(run.image) is DockerImage or image_name in self.images_by_repo_tag):
 			# image not found, let's try to pull it
-			img = run.link_image(self) # DockerImage({'RepoTags': image_name})
+			img = run.link_image(self)
 			self.log('Unable to find image \'%s\' locally' % image_name)
 			self.pull(img.repo_and_name, img.tag)
 
@@ -726,14 +709,18 @@ class DockerClient:
 	# clem 14/03/2016
 	def start_event_watcher(self):
 		if not self.__watcher:
-			# self.__watcher = Process(target=self._event_watcher)
 			self.__watcher = Thread(target=self._event_watcher)
 			self.__watcher.start()
-			# self.log('watcher started PID %s' % self.__watcher.id)
 			self.log('watcher started as Thread')
 
 	# clem 16/03/2016
 	def _del_res(self, a_dict, res_id):
+		"""
+		Delete res_id from a_dict with error handling
+		:type a_dict: dict
+		:type res_id: str
+		:rtype: None
+		"""
 		assert isinstance(a_dict, dict)
 		try:
 			del a_dict[res_id]
@@ -757,6 +744,7 @@ class DockerClient:
 	def _dispatch_event(self, event):
 		assert isinstance(event, DockerEvent)
 		cont = event.container
+		# TODO add any resources
 		if cont and isinstance(cont, DockerContainer):
 			cont.new_event(event)
 		else: # if no dispatch target exists, then we log it here
@@ -765,17 +753,18 @@ class DockerClient:
 	# clem 16/03/2016
 	def _new_event(self, event_literal):
 		event = DockerEvent(event_literal, self)
-		# processor = Thread(target=self._process_event, args=event)
-		# processor.start()
+		# process the event (for example removing object from image or container dict)
 		self._process_event(event)
-		# dispatch the event to the related container
-		# dispatcher = Thread(target=self._dispatch_event, args=event)
-		# dispatcher.start()
+		# dispatch the event to the related container TODO dispatch to any available resource
 		self._dispatch_event(event)
 
 	# clem 14/03/2016
 	def _event_watcher(self):
-		# Must run in a separate Thread
+		"""
+		Blocking procedure to receive events
+		MUST RUN IN A SEPARATE THREAD
+		:rtype: None
+		"""
 		for event in self.cli.events(): # Generator, do no run code in here, but rather in _new_event for non blocking
 			Thread(target=self._new_event, args=(event,)).start()
 
@@ -800,7 +789,6 @@ class DockerClient:
 		containers = self.cli.containers()
 		images = self.images_by_id # caching, removing that will result in a visible slow down
 		for e in containers:
-			# cont = DockerContainer(e)
 			try:
 				cont = self.get_container(e['Id'])
 				if cont:
@@ -809,8 +797,6 @@ class DockerClient:
 				pass
 			except NotFound as e:
 				self.force_log('ps_by_id: %s' % e)
-			# if cont.Id not in self._container_dict_by_id or self._container_dict_by_id[cont.Id].sig != cont.sig:
-			# 	self._container_dict_by_id[cont.Id] = cont
 		return self._container_dict_by_id
 
 	# clem 10/03/2016
@@ -894,7 +880,6 @@ class DockerClient:
 		DockerImage object are referenced from the other dict and thus not modified nor copied.
 		:rtype: dict(DockerImage.tag: DockerImage)
 		"""
-		# assert isinstance(self.cli, Client)
 		lbl_dict = dict()
 		ids = self.images_by_id
 		for e in ids:
