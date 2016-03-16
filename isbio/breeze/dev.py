@@ -2,11 +2,12 @@
 def dev():
 	# global client
 	from .docker_interface import Docker
-	return Docker().client
+	return Docker()
 
 
 def init():
 	pass
 	# return dev()
 
-client = dev()
+docker = dev()
+client = docker.client
