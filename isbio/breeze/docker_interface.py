@@ -17,6 +17,13 @@ class Docker:
 		fimm_test_run = DockerRun('fimm/r-light:op', './run.sh', fimm_test_volume, self.event_manager_wrapper())
 		self.client = DockerClient(self.MY_DOCKER_HUB, AZURE_REMOTE_URL, fimm_test_run)
 
+	# clem 16/03/2016
+	def write_log(self, txt):
+		if self.client:
+			self.client.log(txt)
+		else:
+			print txt
+
 	def run(self):
 		return self.client.run_default()
 
@@ -25,8 +32,8 @@ class Docker:
 			assert isinstance(event, DockerEvent)
 			self.client.event_log(event)
 			if event.description == DockerEventCategories.DIE:
-				print 'Container died'
-				print event.container
+				self.write_log('Container died')
+				self.write_log(event.container)
 
 		return my_event_manager
 
