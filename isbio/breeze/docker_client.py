@@ -1,5 +1,5 @@
 from docker import Client
-from docker.errors import NotFound, APIError
+from docker.errors import NotFound, APIError, NullResource
 from .utils import get_md5, pretty_print_dict_tree
 from threading import Thread, Lock
 
@@ -32,7 +32,8 @@ class DockerRun:
 	_image = None
 	cmd = ''
 	_volumes = list()
-	container_id = ''
+	created_container_id = ''
+	created_container = None
 
 	# clem 11/03/2016
 	@property
@@ -50,6 +51,17 @@ class DockerRun:
 		self.cmd = cmd
 		self._volumes = volumes
 		self.event_listener = ev_listener
+
+	# clem 17/03/2016
+	def container_created(self, container):
+		"""
+		Take care of registering the event listener (if any) to the provided container
+		:type container: DockerContainer
+		"""
+		if self.event_listener and isinstance(container, DockerContainer) and callable(self.event_listener):
+			self.created_container = container
+			self.created_container_id = container.Id
+			container.register_event_listener(self.event_listener)
 
 	# clem 14/03/2016
 	def config_dict(self):
@@ -197,7 +209,7 @@ class DockerImage:
 class DockerContainer:
 	RestartCount = 0
 	Labels = dict()
-	Image = DockerImage
+	Image = None
 	NetworkSettings = dict()
 	HostConfig = dict()
 	State = dict()
@@ -236,9 +248,9 @@ class DockerContainer:
 			try:
 				self.Image = client.images_by_id[self.ImageID]
 			except KeyError:
-				self.Image = a_dict.get('Image')
+				self.Image = a_dict.get('Image', None)
 		else:
-			self.Image = a_dict.get('Image')
+			self.Image = a_dict.get('Image', None)
 		# _ = self.sig
 		self.register_event_listener(event_callback)
 
@@ -251,19 +263,10 @@ class DockerContainer:
 		assert isinstance(a_dict, dict)
 		self.__dict__.update(a_dict)
 
-	# FIXME deprecated
-	def _get_sig(self):
-		new_dict = self.__dict__
-		if '_sig' in new_dict:
-			new_dict.pop('_sig')
-			new_dict.pop('_event_list')
-			new_dict.pop('_event_listener')
-		return get_md5(str(new_dict))
-
 	# clem 15/03/2016
-	def register_event_listener(self, listener):
+	def register_event_listener(self, listener, replace=False):
 		# if listener and callable(listener):
-		if not self._event_listener:
+		if not self._event_listener or replace:
 			self._event_listener = listener
 
 	# clem 16/03/2016
@@ -277,7 +280,7 @@ class DockerContainer:
 		if self.has_event_listener:
 			if event.status == 'die':
 				if self.__client:
-					self._log = self.__client.cli.logs(self.Id) # FIXME this might be the issue
+					self._log = self.__client.logs(self.Id)
 			self._event_listener(event)
 			# Thread(target=self._event_listener, args=(event,)).start()
 
@@ -285,12 +288,6 @@ class DockerContainer:
 	@property
 	def logs(self):
 		return self._log
-
-	@property # FIXME deprecated
-	def sig(self):
-		if not self._sig:
-			self._sig = self._get_sig()
-		return self._sig
 
 	# clem 14/03/2016
 	@property
@@ -367,19 +364,15 @@ class DockerEvent:
 		self._container = self.__client.get_container(res_id)
 		return self._container
 
-	def _get_container(self): # TODO rewrite, change logic
+	def _get_container(self):
 		if not self._container or not self._container.name: # if not a container or container has no name, refresh
-			# cid = self.res_id
 			if self.Type == 'container':
 				try:
 					return self._attach_container(self.res_id)
 				except NotFound:
-					# self.__client.log('Related container cannot be found')
-					# return self.res_id
 					pass
 			elif 'Attributes' in self.Actor and 'container' in self.Actor['Attributes']:
 				return self._attach_container(self.Actor['Attributes']['container'])
-			# self.__client.log('Event was not related to a container')
 			return self.res_id
 		return self._container
 
@@ -463,11 +456,18 @@ class DockerClient:
 
 	_images_list = list()
 	__image_dict_by_id = dict()
+	__image_dict_by_tag = dict()
 	__image_tree = dict()
 	__watcher = None
 	_container_list = list()
 	_container_dict_by_id = dict()
+	_container_dict_by_name = dict()
 	_event_list = list()
+	_run_dict = dict()
+
+	#
+	# CLASS MANAGEMENT
+	#
 
 	def __init__(self, repo, daemon_url, run=None): # TODO change the run passing
 		assert isinstance(repo, DockerRepo) and (not run or isinstance(run, DockerRun)) and \
@@ -478,13 +478,13 @@ class DockerClient:
 		self._raw_cli = Client(base_url=daemon_url)
 		self._console_mutex = Lock()
 		self._data_mutex = Lock()
-		self.start_event_watcher()
+		self._start_event_watcher()
 		self.login()
 
 	# clem 14/03/2016
 	def __cleanup(self):
 		if self.__watcher:
-			self.force_log('watcher terminated')
+			self._force_log('watcher terminated')
 
 	# clem 14/03/2016
 	def __del__(self):
@@ -495,11 +495,26 @@ class DockerClient:
 		self.__cleanup()
 
 	# clem 14/03/2016
-	def __exit__(self, exc_type, exc_val, exc_tb):
+	def __exit__(self, *_):
 		self.__cleanup()
 
+	# clem 17/03/2016
+	def _auto_raise(self, e):
+		if self.RAISE_ERR:
+			raise e
+
+	# clem 17/03/2016
+	def _exception_handler(self, e, msg='', force=True):
+		msg = str(e) if not msg else str(msg)
+		self._force_log(msg) if force else self._log(msg)
+		self._auto_raise(e)
+
+	#
+	# LOGGING
+	#
+
 	# clem 10/03/2016
-	def log(self, obj, force_print=False, sup_text=''):
+	def _log(self, obj, force_print=False, sup_text=''):
 		if self.DEBUG or force_print:
 			if type(obj) is dict:
 				with self._console_mutex:
@@ -510,12 +525,12 @@ class DockerClient:
 		# TODO log
 
 	# clem 10/03/2016
-	def json_log(self, obj, force_print=False):
-		self.log(self._json_parse(obj), force_print)
+	def _json_log(self, obj, force_print=False):
+		self._log(self._json_parse(obj), force_print)
 
 	# clem 10/03/2016
-	def force_log(self, obj, sup_text=''):
-		self.log(obj, True, sup_text)
+	def _force_log(self, obj, sup_text=''):
+		self._log(obj, True, sup_text)
 
 	# clem 16/03/2016
 	def _json_parse(self, obj):
@@ -528,34 +543,12 @@ class DockerClient:
 		return obj
 
 	# clem 14/03/2016
-	def event_log(self, obj, sup_text=''):
-		self.force_log(self._json_parse(obj), str(sup_text))
+	def _event_log(self, obj, sup_text=''):
+		self._force_log(self._json_parse(obj), str(sup_text))
 
-	# clem 10/03/2016
-	def login(self):
-		if self.repo:
-			try:
-				result = self.cli.login(self.repo.login, self.repo.pwd, self.repo.email, self.repo.url)
-				self.log(result)
-				return 'username' in result or result[u'Status'] == u'Login Succeeded'
-			except APIError as e:
-				self.log(e)
-			except Exception as e:
-				self.force_log('Unable to connect : %s' % e)
-		return False
-
-	# clem 09/03/2016
-	@property
-	def cli(self):
-		if not self.DEV:
-			return self._raw_cli
-		else:
-			return self.__pp_cli
-
-	# clem 09/03/2016
-	@property
-	def pretty_cli(self):
-		return self.__pp_cli
+	#
+	# INTERNALS
+	#
 
 	# clem 09/03/2016
 	@property
@@ -581,21 +574,122 @@ class DockerClient:
 
 		return Prettyfy()
 
-	# clem 10/03/2016
-	def run_default(self):
-		if self.default_run: # TODO change that too
-			return self._run(self.default_run)
+	# clem 16/03/2016
+	def _term_stream(self, a_dict):
+		import sys
+
+		for each in a_dict:
+			sys.stdout.write('%s\n' % a_dict[each])
+			sys.stdout.flush()  # As suggested by Rom Ruben
+
+	# clem 16/03/2016
+	def _img_exists_or_pulled(self, run):
+		"""
+		check if image exists locally, and pull it if not
+		Return True if image exists, or pulled successfully, False otherwise
+		@params:
+			run  - Required  : current iteration (DockerRun)
+		@return: True if image exists, or pulled successfully, False otherwise
+		@rtype: bool
+		"""
+		# TODO check if connected to repo
+		image_name = str(run.image)
+		if type(run.image) is not DockerImage and image_name not in self.images_by_repo_tag:
+			# image not found, let's try to pull it
+			img = run.link_image(self)
+			self._log('Unable to find image \'%s\' locally' % image_name)
+			return self.pull(img.repo_and_name, img.tag)
+		return True
+
+	# clem 17/03/2016
+	def _error_managed(func):
+		"""
+		Error management wrapper for _run and _start
+		:type func: function
+		:rtype: function
+		"""
+
+		def decorated_func(self, arg):
+			assert isinstance(self, DockerClient) and (isinstance(arg, DockerRun) or isinstance(arg, DockerContainer))
+			msg = 'creation' if isinstance(arg, DockerRun) else 'start'
+			try:
+				if isinstance(arg, DockerRun):
+					return func(self, arg)
+				elif isinstance(arg, DockerContainer):
+					return func(self, arg)
+			except NotFound as e:
+				self._exception_handler(e, '%s: %s' % (msg, str(e)))
+			except APIError as e:
+				self._log('Container %s failed : %s' % (msg, e))
+				if isinstance(arg, DockerContainer):
+					out_log = self.logs(arg.Id)
+					if out_log:
+						self._log('Container run log :\n%s' % pretty_print_dict_tree(out_log, get_output=True))
+				self._auto_raise(e)
+			except NullResource as e:
+				self._exception_handler(e, '%s: %s' % (msg, e))
+			except Exception as e:
+				self._exception_handler(e, 'Unhandled %s exception : %s' % (msg, e))
+
+		return decorated_func
 
 	# clem 09/03/2016
-	def img_run(self, img, cmd, volume=list()):
+	@_error_managed
+	def _run(self, run):
 		"""
 		TBD
-		:type img: str
-		:type cmd: str
-		:type volume: DockerVolume|list
-		:rtype:
+		:type run: DockerRun
+		:rtype: DockerContainer
 		"""
-		return self._run(DockerRun(img, cmd, volume))
+		assert isinstance(run, DockerRun)
+
+		image_name = str(run.image)
+		# check if image exists locally, and pull it if not
+		if not self._img_exists_or_pulled(run): # if pulled failed
+			return None
+
+		# Create the container
+		a_dict = run.config_dict() # get the volume config
+		if a_dict:
+			# apply volume config
+			vol = run.config_dict().keys()
+			vol_config = self.cli.create_host_config(binds=run.config_dict())
+			self._log('docker run %s %s -v %s' % (image_name, run.cmd, run.volumes))
+			container = self.get_container(self.cli.create_container(image_name, run.cmd, volumes=vol,
+																	host_config=vol_config)['Id'])
+		else: # no volume config
+			self._log('docker run %s %s' % (image_name, run.cmd))
+			container = self.get_container(self.cli.create_container(image_name, run.cmd)['Id'])
+
+		if container: # container was successfully created and acquired
+			with self._data_mutex:
+				self._run_dict.update(
+					{ container.Id: run }) # store the run, for event manager to start the container
+			# client.start() now happens upon receiving the create event
+			return container
+		# If you are not in detached mode:
+		# Attach to the container, using logs=1 (to have stdout and stderr from the container's start) and stream=1
+		# If in detached mode or only stdin is attached, display the container's id.
+
+	# clem 17/03/2016
+	@_error_managed
+	def _start(self, container):
+		self.cli.start(container.Id)
+
+	# clem 17/03/2016
+	def _inspect_container(self, container_id):
+		"""
+		Get all the refreshed raw information about the container
+		:type container_id: basestring
+		:rtype: str
+		"""
+		try:
+			return self.cli.inspect_container(container_id)
+		except (NotFound, APIError) as e:
+			self._exception_handler(e)
+		except Exception as e:
+			self._exception_handler(e)
+		return dict()
 
 	# clem 17/03/2016
 	def _make_container(self, container_id):
@@ -621,6 +715,39 @@ class DockerClient:
 				self._container_dict_by_id[cont.Id] = cont
 				return cont # self.inspect_container(container_id)
 
+	#
+	# CLASS INTERFACE
+	#
+
+	# clem 09/03/2016
+	@property
+	def cli(self):
+		if not self.DEV:
+			return self._raw_cli
+		else:
+			return self.__pp_cli
+
+	# clem 09/03/2016
+	@property
+	def pretty_cli(self):
+		return self.__pp_cli
+
+	# clem 10/03/2016
+	def run_default(self):
+		if self.default_run: # TODO change that too
+			return self._run(self.default_run)
+
+	# clem 09/03/2016
+	def img_run(self, img, cmd, volume=list()):
+		"""
+		TBD
+		:type img: str
+		:type cmd: str
+		:type volume: DockerVolume|list
+		:rtype:
+		"""
+		return self._run(DockerRun(img, cmd, volume))
+
 	# clem 14/03/2016
 	def get_container(self, container_id):
 		"""
@@ -642,164 +769,86 @@ class DockerClient:
 		:rtype: DockerImage | None
 		"""
 		if image_descriptor:
-			if image_descriptor in self.images_by_id.keys():
-				return self.images_by_id[image_descriptor]
-			elif image_descriptor in self.images_by_repo_tag.keys():
-				return self.images_by_repo_tag[image_descriptor]
+			images_ids = self.images_by_id
+			images_tags = self._get_images_by_repo_tag(images_ids) # call the sub-method to save time
+			if image_descriptor in images_ids.keys():
+				return images_ids.get(image_descriptor)
+			elif image_descriptor in images_tags.keys():
+				return images_tags.get(image_descriptor)
 		return None
 
-	# clem 17/03/2016
-	def _inspect_container(self, container_id):
-		"""
-		Get all the refreshed raw information about the container
-		:type container_id: basestring
-		:rtype: str
-		"""
-		return self.cli.inspect_container(container_id)
+	#
+	# DOCKER CLIENT MAPPINGS
+	#
+
+	# clem 10/03/2016
+	def login(self):
+		if self.repo:
+			try:
+				result = self.cli.login(self.repo.login, self.repo.pwd, self.repo.email, self.repo.url)
+				self._log(result)
+				return 'username' in result or result[u'Status'] == u'Login Succeeded'
+			except APIError as e:
+				self._exception_handler(e)
+			except Exception as e:
+				self._exception_handler(e, 'Unable to connect : %s' % e)
+		return False
 
 	# clem 16/03/2016
 	def rmi(self, image, force=False):
 		try:
 			return self.cli.remove_image(str(image), force)
 		except Exception as e:
-			self.force_log(e)
-			if self.RAISE_ERR:
-				raise e
+			self._exception_handler(e)
 		return None
 
 	# clem 16/03/2016
-	def _term_stream(self, a_dict):
-		import sys
-
-		for each in a_dict:
-			sys.stdout.write('%s\n' % a_dict[each])
-			sys.stdout.flush()  # As suggested by Rom Ruben
-
-	# clem 16/03/2016
 	def pull(self, image_name, tag):
-		gen = self.cli.pull(image_name, tag, stream=True)
-		a_dict = dict()
-		count = 0
-		for line in gen: # TODO use streaming to terminal
-			obj = self._json_parse(line)
-			to_log = obj
-			if 'status' in obj:
-				if 'id' in obj:
-					# to_log = '%s: %s' % (obj['id'], obj['status'])
-					to_log = ''
-					a_dict.update({ obj['id']: '%s: %s' % (obj['id'], obj['status'])})
-				else:
-					# a_dict.update({ count: str(obj['status']) })
-					to_log = str(obj['status'])
-			elif 'error' in obj:
-				self.log(str(obj['error']))
-				return None
-			self.log(to_log)
-			self._term_stream(a_dict)
-			count += 1
-		return True
-
-	# clem 16/03/2016
-	def _img_exists_or_pulled(self, run):
-		"""
-		check if image exists locally, and pull it if not
-		Return True if image exists, or pulled successfully, False otherwise
-		@params:
-			run  - Required  : current iteration (DockerRun)
-		@return: True if image exists, or pulled successfully, False otherwise
-		@rtype: bool
-		"""
-		# TODO check if connected to repo
-		image_name = str(run.image)
-		if type(run.image) is not DockerImage and image_name not in self.images_by_repo_tag:
-			# image not found, let's try to pull it
-			img = run.link_image(self)
-			self.log('Unable to find image \'%s\' locally' % image_name)
-			return self.pull(img.repo_and_name, img.tag)
-		return True
-
-	# clem 09/03/2016
-	def _run(self, run):
-		"""
-		TBD
-		:type run: DockerRun
-		:rtype: DockerContainer
-		"""
-		assert isinstance(run, DockerRun)
-
-		image_name = str(run.image)
-		# check if image exists locally, and pull it if not
-		if not self._img_exists_or_pulled(run): # if pulled failed
-			return None
-
-		container_id = ''
-		# Create the container
 		try:
-			# get the volume config
-			a_dict = run.config_dict()
-			if a_dict:
-				# apply volume config
-				vol = run.config_dict().keys()
-				vol_config = self.cli.create_host_config(binds=run.config_dict())
-				self.log('docker run %s %s -v %s' % (image_name, run.cmd, run.volumes))
-				# container_id = self.cli.create_container(image_name, run.cmd, volumes=vol, host_config=vol_config)['Id']
-				# container = DockerContainer.generate(run, self.cli.create_container(image_name, run.cmd,
-				# 	volumes=vol, host_config=vol_config)['Id'])
-				container = self.get_container(self.cli.create_container(image_name, run.cmd, volumes=vol,
-																			host_config=vol_config)['Id'])
-			else: # no volume config
-				self.log('docker run %s %s' % (image_name, run.cmd))
-				# container_id = self.cli.create_container(image_name, run.cmd)['Id']
-				# container = DockerContainer.generate(run, self.cli.create_container(image_name, run.cmd)['Id'])
-				container = self.get_container(self.cli.create_container(image_name, run.cmd)['Id'])
+			gen = self.cli.pull(image_name, tag, stream=True)
+			a_dict = dict()
+			count = 0
+			for line in gen: # TODO use streaming to terminal
+				obj = self._json_parse(line)
+				to_log = obj
+				if 'status' in obj:
+					if 'id' in obj:
+						# to_log = '%s: %s' % (obj['id'], obj['status'])
+						to_log = ''
+						a_dict.update({ obj['id']: '%s: %s' % (obj['id'], obj['status'])})
+					else:
+						# a_dict.update({ count: str(obj['status']) })
+						to_log = str(obj['status'])
+				elif 'error' in obj:
+					self._log(str(obj['error']))
+					return None
+				self._log(to_log)
+				self._term_stream(a_dict)
+				count += 1
+			return True
+		except Exception as e:
+			self._exception_handler(e)
 
-			if run.event_listener and callable(run.event_listener):
-				container.register_event_listener(run.event_listener)
-
-			self.log('run-id %s' % hex(id(container)))
-			self.log('run-listener %s' % container.has_event_listener)
-
-			# container =  self.get_container(container_id)
-			# container = self.inspect_container(container.Id)
-			if container:
-				# if run.event_listener and callable(run.event_listener):
-				# self.log('registering event listener')
-				# with self._data_mutex:
-				# 	container.register_event_listener(run.event_listener)
-				# self.log('Event listener registered !')
-				# else:
-					# container.register_event_listener(self.event_log)
-				self.log('Created %s : %s' % (container.name, container.Id))
-
-				self.cli.start(container.Id)
-				return container
-		except NotFound as e:
-			self.force_log('run: ' + str(e))
-			if self.RAISE_ERR:
-				raise e
-		except APIError as e:
-			self.log('Container run failed : %s' % e)
-			out_log = self.cli.logs(container_id)
-			if out_log:
-				# self.log(out_log)
-				self.log('Container run log :\n%s' % pretty_print_dict_tree(out_log, get_output=True))
-			if self.RAISE_ERR:
-				raise e
-		# If you are not in detached mode:
-
-		# Attach to the container, using logs=1 (to have stdout and stderr from the container's start) and stream=1
-
-		# If in detached mode or only stdin is attached, display the container's id.
+	# clem 17/03/2016
+	def logs(self, container):
+		assert isinstance(container, (basestring, DockerContainer))
+		if isinstance(container, DockerContainer):
+			container = container.Id
+		try:
+			return self.cli.logs(container)
+		except Exception as e:
+			self._exception_handler(e, 'cli.logs: %s' % e)
+		return ''
 
 	#
-	# EVENTS
+	# EVENTS LISTENER, PROCESSOR AND DISPATCHER
 	#
 
 	# clem 14/03/2016
-	def start_event_watcher(self):
+	def _start_event_watcher(self):
 		if not self.__watcher:
 			self.__watcher = Thread(target=self._event_watcher)
-			self.log('starting event watcher as Thread')
+			self._log('starting event watcher as Thread')
 			self.__watcher.start()
 
 	# clem 16/03/2016
@@ -815,9 +864,7 @@ class DockerClient:
 			with self._data_mutex:
 				del a_dict[res_id]
 		except Exception as e:
-			self.force_log(e)
-			if self.RAISE_ERR:
-				raise e
+			self._exception_handler(e)
 
 	# clem 16/03/2016
 	def _process_event(self, event):
@@ -829,31 +876,37 @@ class DockerClient:
 			if event.Type == 'container':
 				self._del_res(self._container_dict_by_id, event.id)
 				_ = self.containers_by_id # refresh container cached list
+		elif event.description == DockerEventCategories.CREATE:
+			if event.Type == 'container':
+				cont = event.container
+				if cont and isinstance(cont, DockerContainer):
+					run = None
+					while not run: # wait for the run object to be added to this dict #sync
+						# TODO check for timeout
+						run = self._run_dict.pop(cont.Id, None)
+					if run and isinstance(run, DockerRun):
+						run.container_created(cont)
+				self._start(cont)
 
 	# clem 16/03/2016
 	def _dispatch_event(self, event):
 		assert isinstance(event, DockerEvent)
 		cont = event.container
-		self.log('event-id %s' % hex(id(cont)))
-		self.log('event-listener %s' % cont.has_event_listener)
 		# TODO add any resources
-		if cont and isinstance(cont, DockerContainer): # FIXME
+		if cont and isinstance(cont, DockerContainer):
 			if cont.has_event_listener:
 				cont.new_event(event)
-				return
-			# self.log('ev <%s> cont.newev:%s' % (event, managed))
-		else:
-			self.log('NO CONT for <%s>' % event)
-		# if no dispatch target exists, or target don't capture events, then we log it here
-		self.event_log(event, ' <UE>') # FIXME
-		# self.event_log('NO DISPATCH, not managed')
+			else: # if dispatch target exists but don't capture events, then we log it here
+				self._event_log(event, ' <UE>')
+		else: # if no dispatch target exists, then we log it here
+			self._log('Event <%s> had no related containers' % event)
 
 	# clem 16/03/2016
 	def _new_event(self, event_literal):
 		event = DockerEvent(event_literal, self)
 		# process the event (for example removing object from image or container dict)
 		self._process_event(event)
-		# dispatch the event to the related container TODO dispatch to any available resource
+		# dispatch the event to the related container
 		self._dispatch_event(event)
 
 	# clem 14/03/2016
@@ -863,13 +916,17 @@ class DockerClient:
 		MUST RUN IN A SEPARATE THREAD
 		:rtype: None
 		"""
-		self.log('Event watcher started')
-		for event in self.cli.events(): # Generator, do no run code in here, but rather in _new_event for non blocking
-			# Thread(target=self._new_event, args=(event,)).start()
-			self._new_event(event)
+		try:
+			self._log('Event watcher started')
+			for event in self.cli.events(): # Generator, do no run code in here, but rather in _new_event for non blocking
+				# Thread(target=self._new_event, args=(event,)).start() # disabled: due to variable processing time for
+																		# various events, they might arrive out of order
+				self._new_event(event)
+		except Exception as e:
+			self._exception_handler(e)
 
 	#
-	# CONTAINERS
+	# CONTAINERS DATA OBJECT MANAGEMENT AND INTERFACE
 	#
 
 	# clem 10/03/2016
@@ -885,19 +942,32 @@ class DockerClient:
 		similar to images_by_id()
 		:rtype: dict(DockerContainer.Id: DockerContainer)
 		"""
-		# updates the container dict
-		containers = self.cli.containers()
-		images = self.images_by_id # caching, removing that will result in a visible slow down
-		for e in containers:
-			try:
-				cont = self._get_container(e['Id'])
+		try:
+			containers = self.cli.containers()
+			images = self.images_by_id # caching, removing that will result in a visible slow down
+			for e in containers:
+				# retrieve or updates the container dict
+				cont = self._get_container(e.get('Id'))
 				if cont:
-					cont.Image = images[cont.ImageID]
-			except KeyError:
-				pass
-			except NotFound as e:
-				self.force_log('ps_by_id: %s' % e)
-		return self._container_dict_by_id
+					cont.Image = images.get(cont.ImageID)
+			return self._container_dict_by_id
+		except KeyError as e:
+			self._exception_handler(e)
+		except NotFound as e:
+			self._exception_handler(e, 'ps_by_id: %s' % e)
+
+	# clem 17/03/2016
+	def _get_containers_list(self, container_ids):
+		"""
+		extracts all DockerContainer objects from containers_by_id to return a list of them
+		:type container_ids: dict
+		:rtype: list(DockerContainer.Id: DockerContainer, )
+		"""
+		assert isinstance(container_ids, dict)
+		self._container_list = list()
+		for container in container_ids.itervalues():
+			self._container_list.append(container)
+		return self._container_list
 
 	# clem 10/03/2016
 	@property
@@ -906,11 +976,22 @@ class DockerClient:
 		extracts all DockerContainer objects from containers_by_id to return a list of them
 		:rtype: list(DockerContainer.Id: DockerContainer, )
 		"""
-		self._container_list = list()
-		ids = self.containers_by_id
-		for e in ids:
-			self._container_list.append(ids[e])
-		return self._container_list
+		return self._get_containers_list(self.containers_by_id)
+
+	# clem 17/03/2016
+	def _get_containers_by_name(self, container_ids):
+		"""
+		a dictionary of DockerContainer objects indexed by Name[0]
+		similar to ps_by_id, except here the DockerContainer objects are referenced by their first Names
+		DockerContainer object are referenced from the other dict and thus not modified nor copied.
+		:type container_ids: dict
+		:rtype: dict(DockerContainer.Name: DockerContainer)
+		"""
+		assert isinstance(container_ids, dict)
+		self._container_dict_by_name = dict()
+		for container in container_ids.itervalues():
+			self._container_dict_by_name[container.name] = container
+		return self._container_dict_by_name
 
 	# clem 10/03/2016
 	@property
@@ -921,20 +1002,14 @@ class DockerClient:
 		DockerContainer object are referenced from the other dict and thus not modified nor copied.
 		:rtype: dict(DockerContainer.Name: DockerContainer)
 		"""
-		lbl_dict = dict()
-		ids = self.containers_by_id
-		for e in ids:
-			cont = ids[e]
-			lbl_dict[cont.Names[0]] = cont
-
-		return lbl_dict
+		return self._get_containers_by_name(self.containers_by_id)
 
 	# clem 10/03/2016
 	def ps(self):
 		pass
 
 	#
-	# IMAGES
+	# IMAGES DATA OBJECT MANAGEMENT AND INTERFACE
 	#
 
 	# clem 09/03/2016
@@ -950,14 +1025,29 @@ class DockerClient:
 		similar to ps_by_id()
 		:rtype: dict(DockerImage.Id: DockerImage)
 		"""
-		# updates the image dict
-		imgs = self.cli.images()
-		for e in imgs:
-			img = DockerImage(e)
-			if img.Id not in self.__image_dict_by_id or self.__image_dict_by_id[img.Id].sig != img.sig:
-				with self._data_mutex:
-					self.__image_dict_by_id[img.Id] = DockerImage(e)
-		return self.__image_dict_by_id
+		try:
+			images = self.cli.images()
+			for e in images:
+				img = DockerImage(e)
+				if img.Id not in self.__image_dict_by_id: # or self.__image_dict_by_id[img.Id].sig != img.sig:
+					with self._data_mutex: # updates the image dict
+						self.__image_dict_by_id[img.Id] = DockerImage(e)
+			return self.__image_dict_by_id
+		except Exception as e:
+			self._exception_handler(e)
+
+	# clem 17/03/2016
+	def _get_image_list(self, image_ids):
+		"""
+		extracts all DockerImage objects from images_by_id to return a list of them
+		:type image_ids: dict
+		:rtype: list(DockerImage.Id: DockerImage, )
+		"""
+		assert isinstance(image_ids, dict)
+		self._images_list = list()
+		for image in image_ids.itervalues():
+			self._images_list.append(image)
+		return self._images_list
 
 	# clem 09/03/2016
 	@property
@@ -966,11 +1056,23 @@ class DockerClient:
 		extracts all DockerImage objects from images_by_id to return a list of them
 		:rtype: list(DockerImage.Id: DockerImage, )
 		"""
-		self._images_list = list()
-		ids = self.images_by_id
-		for e in ids:
-			self._images_list.append(ids[e])
-		return self._images_list
+		return self._get_image_list(self.images_by_id)
+
+	# clem 17/03/2016
+	def _get_images_by_repo_tag(self, image_ids):
+		"""
+		a dictionary of DockerImage objects indexed by RepoTag[0]
+		similar to images_by_id, except here the DockerImage objects are referenced by their first RepoTag
+		DockerImage object are referenced from the other dict and thus not modified nor copied.
+		:type image_ids: dict
+		:rtype: dict(DockerImage.tag: DockerImage)
+		"""
+		assert isinstance(image_ids, dict)
+		self.__image_dict_by_tag = dict()
+		for image in image_ids.itervalues():
+			self.__image_dict_by_tag[image.full_name] = image
+
+		return self.__image_dict_by_tag
 
 	# clem 09/03/2016
 	@property
@@ -981,13 +1083,7 @@ class DockerClient:
 		DockerImage object are referenced from the other dict and thus not modified nor copied.
 		:rtype: dict(DockerImage.tag: DockerImage)
 		"""
-		lbl_dict = dict()
-		ids = self.images_by_id
-		for e in ids:
-			img = ids[e]
-			lbl_dict[img.RepoTags[0]] = img
-
-		return lbl_dict
+		return self._get_images_by_repo_tag(self.images_by_id)
 
 	# clem 09/03/2016
 	@property
