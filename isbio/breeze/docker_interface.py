@@ -20,9 +20,23 @@ class Docker:
 	# clem 16/03/2016
 	def write_log(self, txt):
 		if self.client:
-			self.client.log(txt)
+			self.client._log(txt)
 		else:
 			print txt
+
+	def self_test(self):
+		self.test(self.client.get_container, '12')
+		self.test(self.client.get_container, '153565748415')
+		self.test(self.client.img_run, 'fimm/r-light:op', 'echo "test"')
+		self.test(self.client.img_run, 'fimm/r-light:op', '/run.sh')
+		self.test(self.client.img_run, 'fimm/r-light:candidate', 'echo "test"')
+		self.test(self.client.img_run, 'fimm/r-light:candidate', '/run.sh')
+		self.test(self.client.images_list[0].pretty_print)
+		self.test(self.client.run_default)
+
+	def test(self, func, *args):
+		self.write_log('%s%s' % (func.func_name, args))
+		return func(*args)
 
 	def run(self):
 		return self.client.run_default()
@@ -30,10 +44,10 @@ class Docker:
 	def event_manager_wrapper(self):
 		def my_event_manager(event):
 			assert isinstance(event, DockerEvent)
-			self.client.event_log(event)
 			if event.description == DockerEventCategories.DIE:
-				self.write_log('Container died')
-				self.write_log(event.container)
+				self.write_log('%s died event managed' % event.container)
+			else:
+				self.client._event_log(event)
 
 		return my_event_manager
 
