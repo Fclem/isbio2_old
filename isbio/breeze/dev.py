@@ -11,4 +11,6 @@ def init():
 	# return dev()
 
 docker = dev()
+docker.self_test()
 client = docker.client
+
