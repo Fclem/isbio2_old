@@ -9,13 +9,15 @@ AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
 # clem 15/03/2016
 class Docker:
 	client = None
+	fimm_test_run = None
+	container = None
 	cat = DockerEventCategories
 	MY_DOCKER_HUB = DockerRepo(REPO_LOGIN, REPO_PWD, email=REPO_EMAIL)
 
 	def __init__(self):
 		fimm_test_volume = DockerVolume('/home/breeze/data/', '/breeze', 'rw')
-		fimm_test_run = DockerRun('fimm/r-light:op', './run.sh', fimm_test_volume, self.event_manager_wrapper())
-		self.client = DockerClient(self.MY_DOCKER_HUB, AZURE_REMOTE_URL, fimm_test_run)
+		self.fimm_test_run = DockerRun('fimm/r-light:op', './run.sh', fimm_test_volume, self.event_manager_wrapper())
+		self.client = DockerClient(self.MY_DOCKER_HUB, AZURE_REMOTE_URL)
 
 	# clem 16/03/2016
 	def write_log(self, txt):
@@ -39,7 +41,8 @@ class Docker:
 		return func(*args)
 
 	def run(self):
-		return self.client.run_default()
+		self.container = self.client.run(self.fimm_test_run)
+		self.write_log('Got %s' % repr(self.container))
 
 	def event_manager_wrapper(self):
 		def my_event_manager(event):
