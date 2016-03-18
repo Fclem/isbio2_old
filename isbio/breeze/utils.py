@@ -569,13 +569,13 @@ def do_reboot():
 
 # TODO rewrite, as a class maybe ?
 # clem 09/03/2016 contains code from from http://stackoverflow.com/a/3229493/5094389
-def pretty_print_dict_tree(d, indent=0, open_obj=False, get_output=False):
+def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 	""" Prints a tree from a nested dict
-	:type d: dict
+	:type d: dict | list | basestring
 	:type indent: int
 	:type open_obj: bool
 	:type get_output: bool
-	:rtype: None
+	:rtype: None | basestring
 	"""
 
 	buff = ''
@@ -626,13 +626,13 @@ def pretty_print_dict_tree(d, indent=0, open_obj=False, get_output=False):
 		i = 0
 		for el in iterable:
 			buff += out('\t' * indent + '_#%s :' % i)
-			buff += str(pretty_print_dict_tree(el, indent + 1, open_obj, get_output))
+			buff += str(advanced_pretty_print(el, indent + 1, open_obj, get_output))
 			i += 1
 	elif type(d) is dict or type(iterable) is dict:
 		for key, value in iterable.iteritems():
 			buff += out('\t' * indent + str(key) + extra_info(value))
 			if isinstance(value, (dict, list)):
-				buff += str(pretty_print_dict_tree(value, indent + 1, open_obj, get_output))
+				buff += str(advanced_pretty_print(value, indent + 1, open_obj, get_output))
 			else:
 				buff += out('\t' * (indent + 1) + str(repr(value)))
 	else:
