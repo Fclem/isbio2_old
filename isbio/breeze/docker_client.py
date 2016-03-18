@@ -470,7 +470,6 @@ class DockerClient:
 	DEV = False
 	DEBUG = True
 	repo = None
-	default_run = None
 	_raw_cli = None
 	_console_mutex = None # use to ensure exclusive access to console
 	_data_mutex = None # use to ensure exclusive access to console
@@ -493,11 +492,10 @@ class DockerClient:
 	# CLASS MANAGEMENT
 	#
 
-	def __init__(self, repo, daemon_url, run=None): # TODO change the run passing
+	def __init__(self, repo, daemon_url): # TODO change the run passing
 		assert isinstance(repo, DockerRepo) and (not run or isinstance(run, DockerRun)) and \
 			isinstance(daemon_url, basestring)
 		self.repo = repo
-		self.default_run = run
 		self._daemon_url = daemon_url
 		self._raw_cli = Client(base_url=daemon_url)
 		self._console_mutex = Lock()
@@ -785,10 +783,7 @@ class DockerClient:
 	def pretty_cli(self):
 		return self.__pp_cli
 
-	# clem 10/03/2016
-	def run_default(self):
-		if self.default_run: # TODO change that too
-			return self._run(self.default_run)
+	# run_default removed 18/03/2016 from commit bc9d5d3
 
 	# clem 09/03/2016
 	def img_run(self, img_name_tag, command, volume_list=list()):
@@ -851,6 +846,15 @@ class DockerClient:
 	#
 	# DOCKER CLIENT MAPPINGS
 	#
+
+	# clem 18/03/2016
+	def run(self, run_obj):
+		"""
+		Run interface
+		:type run_obj: DockerRun
+		:rtype: DockerContainer
+		"""
+		return self._run(run_obj)
 
 	# clem 10/03/2016
 	def login(self):
