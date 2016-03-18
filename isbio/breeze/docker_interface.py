@@ -35,7 +35,7 @@ class Docker:
 		self.test(self.client.run_default)
 
 	def test(self, func, *args):
-		self.write_log('%s%s' % (func.func_name, args))
+		self.write_log('>>%s%s' % (func.func_name, args))
 		return func(*args)
 
 	def run(self):
@@ -45,7 +45,8 @@ class Docker:
 		def my_event_manager(event):
 			assert isinstance(event, DockerEvent)
 			if event.description == DockerEventCategories.DIE:
-				self.write_log('%s died event managed' % event.container)
+				# self.write_log('%s died event managed' % event.container.name)
+				self.write_log(event.container.logs)
 			else:
 				self.client._event_log(event)
 
