@@ -620,6 +620,9 @@ def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 			print content
 			return ''
 
+	def multi_line_ident(txt):
+		return txt.replace('\n', '\n' + '\t' * (indent + 1))
+
 	iterable = get_iter(d)
 
 	if type(d) is list: # source element is a list, that may contain dicts
@@ -634,9 +637,9 @@ def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 			if isinstance(value, (dict, list)):
 				buff += str(advanced_pretty_print(value, indent + 1, open_obj, get_output))
 			else:
-				buff += out('\t' * (indent + 1) + str(repr(value)))
+				buff += out('\t' * (indent + 1) + multi_line_ident(str(repr(value))))
 	else:
-		buff += out('\t' * (indent + 1) + str(iterable))
+		buff += out('\t' * (indent + 1) + multi_line_ident(str(iterable)))
 
 	# if get_output:
 	return buff
