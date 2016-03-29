@@ -1,9 +1,15 @@
-from .utils import advanced_pretty_print as pp
+# from .utils import advanced_pretty_print as pp
+from utils import advanced_pretty_print as pp
+import cmd
+import os
+
+docker = None
+client = None
 
 
 def dev():
 	# global client
-	from .docker_interface import Docker
+	from docker_interface import Docker
 
 	return Docker()
 
@@ -85,6 +91,91 @@ def check_scripts():
 		print 'Errors :'
 		pp(error_list)
 
-docker = dev()
-# docker.self_test()
-client = docker.client
+
+class HelloWorld(cmd.Cmd):
+	"""Simple command processor example."""
+
+	def completedefault(self, *ignored):
+		if not ignored:
+			completions = globals()
+		else:
+			completions = [ignored]
+		return completions
+
+	def do_exit(self, _):
+		kill_self()
+
+	def _has_valid_object(self, line):
+		a_list = [line.partition('.'), line.partition('('), line.partition('[')]
+		all_keys = globals().keys()
+		for each in a_list:
+			if each[0].lower() in [a.lower() for a in all_keys]:
+				return each
+		return False
+
+	def default(self, line=''):
+		parsed = self._has_valid_object(line)
+		# if parsed:
+		#	return
+		if parsed or line:
+			try:
+				print eval(line, globals())
+			except Exception as e:
+				print e
+		print "def:", line
+
+	def completenames(self, text, *ignored):
+		dotext = 'do_' + text
+		lst = self._advanced_get_names(text)
+		result = list()
+		for a in lst:
+			item = a[3:] if a.startswith(dotext) else a if text.lower() in a.lower() else None
+			result.append(item) if item else None
+		return result
+
+	def _advanced_get_names(self, text=''):
+		a_object = self._has_valid_object(text)
+		# print a_object
+		if a_object[1] == '.':
+			# return dir(eval(a_object[0], globals())) # getattr(eval(a_object[0], globals()), '__dict__')
+			return dir(globals()[a_object[0]]) # getattr(eval(a_object[0], globals()), '__dict__')
+		return self._get_names()
+
+	def _get_names(self):
+		# This method used to pull in base class attributes
+		# at a time dir() didn't do it yet.
+		return dir(self.__class__) + globals().keys()
+
+
+def kill_self():
+	bash_command = "kill -15 %s" % os.getpid()
+	print "$ %s" % bash_command
+	os.system(bash_command)
+
+
+def base():
+	global docker, client
+	docker = dev()
+	# docker.self_test()
+	client = docker.client
+
+
+def cmd_line():
+	try:
+		HelloWorld().cmdloop()
+	except KeyboardInterrupt:
+		kill_self()
+	except Exception as e:
+		print e
+		return cmd_line()
+		# kill_self()
+
+if __name__ == '__main__':
+	# command line
+	base()
+	cmd_line()
+elif __name__ == 'breeze.dev':
+	# PyCharm python console
+	base()
+
+
