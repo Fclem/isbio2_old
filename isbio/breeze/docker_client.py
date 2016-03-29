@@ -605,7 +605,7 @@ class DockerClient:
 	# clem 16/03/2016
 	def _term_stream(self, a_dict):
 		import sys
-
+		sys.stdout.write(('#' * 80) + '\n')
 		for each in a_dict:
 			sys.stdout.write('%s\n' % a_dict[each])
 			sys.stdout.flush()  # As suggested by Rom Ruben
@@ -857,6 +857,7 @@ class DockerClient:
 	def login(self):
 		if self.repo:
 			try:
+				self._log('Login as %s to %s ...' % (self.repo.login, self.repo.url))
 				result = self.cli.login(self.repo.login, self.repo.pwd, self.repo.email, self.repo.url)
 				self._log(result)
 				return 'username' in result or result[u'Status'] == u'Login Succeeded'
@@ -905,19 +906,30 @@ class DockerClient:
 		return None
 
 	# clem 16/03/2016
-	def pull(self, image_name, tag):
+	def pull(self, image_name, tag=''):
+		if not tag:
+			tag = 'latest'
 		try:
 			gen = self.cli.pull(image_name, tag, stream=True)
 			a_dict = dict()
 			count = 0
 			for line in gen: # TODO use streaming to terminal
 				obj = self._json_parse(line)
+				# print obj
 				to_log = obj
 				if 'status' in obj:
+					progress = ''
+					if 'progressDetail' in obj and 'current' in obj['progressDetail'] and 'total' in obj[
+						'progressDetail']:
+						# {u'current': 161492575, u'total': 180992042}
+						# a_dict.update({ 'progressDetail': obj['progressDetail'] })
+						progress = float(obj['progressDetail']['current']) / float(obj['progressDetail']['total']) * 100
+						progress = ' (%s%%)' % progress
 					if 'id' in obj:
 						# to_log = '%s: %s' % (obj['id'], obj['status'])
 						to_log = ''
-						a_dict.update({ obj['id']: '%s: %s' % (obj['id'], obj['status'])})
+						if obj['status'] not in ['Download complete', 'Pull complete']:
+							a_dict.update({ obj['id']: '%s: %s%s' % (obj['id'], obj['status'], progress)})
 					else:
 						# a_dict.update({ count: str(obj['status']) })
 						to_log = str(obj['status'])
