@@ -1,8 +1,9 @@
 from docker import Client
 from docker.errors import NotFound, APIError, NullResource
-from .utils import get_md5, advanced_pretty_print
+from utils import get_md5, advanced_pretty_print
 from threading import Thread, Lock
-
+import curses
+import time
 
 # clem 10/03/2016
 class DockerVolume:
@@ -462,6 +463,45 @@ class DockerEvent:
 		return '<DockerEvent [%s] %s %s>' % (self.timeNano, self.Type, txt)
 
 
+# clem 29/03/2016
+class TermStreamer:
+	stdscr = None
+
+	def __init__(self):
+		self._start()
+
+	def __enter__(self):
+		self._start()
+		return self
+
+	def _start(self):
+		if not self.stdscr:
+			self.stdscr = curses.initscr()
+			curses.noecho()
+			curses.cbreak()
+
+	def __exit__(self, *_):
+		curses.echo()
+		curses.nocbreak()
+		curses.endwin()
+
+	def close(self):
+		self.__exit__()
+
+	def report_progress(self, filename, progress):
+		"""progress: 0-10"""
+		self.stdscr.addstr(0, 0, "Moving file: {0}".format(filename))
+		self.stdscr.addstr(1, 0, "Total progress: [{1:10}] {0}%".format(progress, "#" * (progress / 10)))
+		self.stdscr.refresh()
+
+	def full_write(self, a_dict):
+		i = 0
+		for value in a_dict.itervalues():
+			self.stdscr.addstr(i, 0, value.ljust(80, ' '))
+			i += 1
+		self.stdscr.refresh()
+
+
 # clem 08/03/2016
 class DockerClient:
 	RAISE_ERR = False
@@ -490,15 +530,16 @@ class DockerClient:
 	# CLASS MANAGEMENT
 	#
 
-	def __init__(self, repo, daemon_url): # TODO change the run passing
-		assert isinstance(repo, DockerRepo) and isinstance(daemon_url, basestring)
-		self.repo = repo
+	def __init__(self, daemon_url, repo=None, auto_connect=True):
+		assert isinstance(daemon_url, basestring)
+		if repo:
+			assert isinstance(repo, DockerRepo)
+			self.repo = repo
 		self._daemon_url = daemon_url
 		self._raw_cli = Client(base_url=daemon_url)
-		self._console_mutex = Lock()
-		self._data_mutex = Lock()
 		self._start_event_watcher()
-		self.login()
+		if auto_connect:
+			self.login()
 		# self._init_containers_cache()
 
 	# clem 14/03/2016
@@ -526,7 +567,7 @@ class DockerClient:
 	# clem 17/03/2016
 	def _exception_handler(self, e, msg='', force=True):
 		import sys
-		msg = str(e) if not msg else str(msg)
+		msg = '%s:%s' % (type(e), str(e)) if not msg else str(msg)
 		msg = 'ERR in %s: %s' % (sys._getframe(1).f_code.co_name, msg)
 		self._force_log(msg) if force else self._log(msg)
 		self._auto_raise(e)
@@ -578,6 +619,11 @@ class DockerClient:
 	# INTERNALS
 	#
 
+	# clem 29/03/2016
+	@property
+	def __connected(self):
+		return bool(self._raw_cli)
+
 	# clem 09/03/2016
 	@property
 	def __pp_cli(myself):
@@ -602,13 +648,7 @@ class DockerClient:
 
 		return Prettyfy()
 
-	# clem 16/03/2016
-	def _term_stream(self, a_dict):
-		import sys
-		sys.stdout.write(('#' * 80) + '\n')
-		for each in a_dict:
-			sys.stdout.write('%s\n' % a_dict[each])
-			sys.stdout.flush()  # As suggested by Rom Ruben
+	# _term_stream removed 29/03/2016 from 7398ad0 (replaced with class TermStreamer)
 
 	# clem 16/03/2016
 	def _img_exists_or_pulled(self, run):
@@ -770,10 +810,14 @@ class DockerClient:
 	# clem 09/03/2016
 	@property
 	def cli(self):
-		if not self.DEV:
-			return self._raw_cli
+		if self.__connected:
+			if not self.DEV:
+				return self._raw_cli
+			else:
+				return self.__pp_cli
 		else:
-			return self.__pp_cli
+			self._force_log('ERR: Cannot get cli as Docker there is no connexion to Docker daemon')
+			self._auto_raise(NullResource)
 
 	# clem 09/03/2016
 	@property
@@ -910,36 +954,42 @@ class DockerClient:
 		if not tag:
 			tag = 'latest'
 		try:
+			self.login()
 			gen = self.cli.pull(image_name, tag, stream=True)
 			a_dict = dict()
 			count = 0
-			for line in gen: # TODO use streaming to terminal
-				obj = self._json_parse(line)
-				# print obj
-				to_log = obj
-				if 'status' in obj:
-					progress = ''
-					if 'progressDetail' in obj and 'current' in obj['progressDetail'] and 'total' in obj[
-						'progressDetail']:
-						# {u'current': 161492575, u'total': 180992042}
-						# a_dict.update({ 'progressDetail': obj['progressDetail'] })
-						progress = float(obj['progressDetail']['current']) / float(obj['progressDetail']['total']) * 100
-						progress = ' (%s%%)' % progress
-					if 'id' in obj:
-						# to_log = '%s: %s' % (obj['id'], obj['status'])
-						to_log = ''
-						if obj['status'] not in ['Download complete', 'Pull complete']:
+			with TermStreamer() as stream:
+				for line in gen:
+					obj = self._json_parse(line)
+					# print obj
+					to_log = obj
+					if 'status' in obj:
+						progress = ''
+						prog = obj.get('progressDetail', None)
+						if prog and 'current' in prog and 'total' in prog:
+							# {u'current': 161492575, u'total': 180992042}
+							# a_dict.update({ 'progressDetail': obj['progressDetail'] })
+							progress = float(prog['current']) / float(prog['total']) * 100
+							progress = ' (%.2f%%)' % progress
+						if 'id' in obj:
+							# to_log = '%s: %s' % (obj['id'], obj['status'])
+							to_log = ''
+							# if obj['status'] not in ['Download complete', 'Pull complete']:
 							a_dict.update({ obj['id']: '%s: %s%s' % (obj['id'], obj['status'], progress)})
-					else:
-						# a_dict.update({ count: str(obj['status']) })
-						to_log = str(obj['status'])
-				elif 'error' in obj:
-					self._log(str(obj['error']))
-					return None
-				self._log(to_log)
-				self._term_stream(a_dict)
-				count += 1
-			return True
+						else:
+							# a_dict.update({ count: str(obj['status']) })
+							to_log = str(obj['status'])
+					elif 'error' in obj:
+						self._log(str(obj['error']))
+						return None
+					# self._log(to_log)
+					# self._term_stream(a_dict)
+					stream.full_write(a_dict)
+					count += 1
+				return True
+		except KeyboardInterrupt as e:
+			self._exception_handler(e)
+			return False
 		except Exception as e:
 			self._exception_handler(e)
 
@@ -957,10 +1007,30 @@ class DockerClient:
 
 	# clem 14/03/2016
 	def _start_event_watcher(self):
+		# init mutex for proper data consistency during concurrent access
+		if not self._console_mutex:
+			self._console_mutex = Lock()
+		if not self._data_mutex:
+			self._data_mutex = Lock()
+		# if watcher not yet started, start it in a new Thread
 		if not self.__watcher:
 			self.__watcher = Thread(target=self._event_watcher)
 			self._log('starting event watcher as Thread')
 			self.__watcher.start()
+
+	# clem 29/03/2016
+	def _restart_event_watcher(self):
+		"""
+		The only purpose of this function is to delay in a non blocking way the watcher restart, so that the error
+		message related to watcher can be displayed, before-hand, and an exception eventually raised, while still
+		triggering its restart.
+		"""
+		def delayed_starter():
+			time.sleep(2)
+			self._start_event_watcher()
+
+		self.__watcher = None
+		Thread(target=delayed_starter).start()
 
 	# clem 16/03/2016
 	def _del_res(self, a_dict, res_id):
@@ -1051,6 +1121,8 @@ class DockerClient:
 																		# various events, they might arrive out of order
 				self._new_event(event)
 		except Exception as e:
+			# let'as try to restart it
+			self._restart_event_watcher()
 			self._exception_handler(e, 'Event watcher failed: %s' % e)
 
 	#

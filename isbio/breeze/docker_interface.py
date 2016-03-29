@@ -1,4 +1,4 @@
-from .docker_client import *
+from docker_client import *
 
 REPO_PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
 REPO_LOGIN = 'fimm'
@@ -17,7 +17,8 @@ class Docker:
 	def __init__(self):
 		fimm_test_volume = DockerVolume('/home/breeze/data/', '/breeze', 'rw')
 		self.fimm_test_run = DockerRun('fimm/r-light:op', './run.sh', fimm_test_volume, self.event_manager_wrapper())
-		self.client = DockerClient(self.MY_DOCKER_HUB, AZURE_REMOTE_URL)
+		# self.client = DockerClient(self.MY_DOCKER_HUB, AZURE_REMOTE_URL)
+		self.client = DockerClient(AZURE_REMOTE_URL, self.MY_DOCKER_HUB, False)
 
 	# clem 16/03/2016
 	def write_log(self, txt):
