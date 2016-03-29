@@ -120,13 +120,13 @@ class HelloWorld(cmd.Cmd):
 	def default(self, line=''):
 		parsed = self._has_valid_object(line)
 		# if parsed:
-		#	return
+		# 	return
 		if parsed or line:
 			try:
 				print eval(line, globals())
 			except Exception as e:
 				print e
-		print "def:", line
+		# print "def:", line
 
 	def completenames(self, text, *ignored):
 		dotext = 'do_' + text
