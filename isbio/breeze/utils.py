@@ -2,12 +2,21 @@ import logging
 import sys
 import hashlib
 import time
-from django.conf import settings
 from os.path import isfile, isdir, islink, exists, getsize, join
 from os import symlink, access, listdir, R_OK, chmod
 from subprocess import call
 from datetime import datetime
-from breeze.b_exceptions import *
+try:
+	from django.conf import settings
+	USUAL_DATE_FORMAT = settings.USUAL_DATE_FORMAT
+	FOLDERS_LST = settings.FOLDERS_LST
+	FS_LIST_FILE = settings.FS_LIST_FILE
+except ImportError:
+	USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+	FOLDERS_LST = []
+	FS_LIST_FILE = ''
+	pass
+# from breeze.b_exceptions import *
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +94,7 @@ def console_print_sub(text, date_f=None):
 # 10/03/2015 Clem / ShinyProxy
 def date_t(date_f=None):
 	if date_f is None:
-		date_f = settings.USUAL_DATE_FORMAT
+		date_f = USUAL_DATE_FORMAT
 	return str(datetime.now().strftime(date_f))
 
 
@@ -260,7 +269,7 @@ def safe_rm(path, ignore_errors=False):
 	"""
 	import os
 	import shutil
-	if path not in settings.FOLDERS_LST:
+	if path not in FOLDERS_LST:
 		if os.path.isdir(path):
 			log_txt = 'rmtree %s had %s object(s)' % (path, len(os.listdir(path)))
 			get_logger().debug(log_txt)
@@ -357,7 +366,7 @@ def safe_copytree(source, destination, symlinks=True, ignore=None, force=False):
 	"""
 	import os
 	# import shutil
-	if destination not in settings.FOLDERS_LST:
+	if destination not in FOLDERS_LST:
 		if os.path.isdir(source):
 			if os.path.isdir(destination):
 			# 	os.mkdir(destination)
@@ -501,7 +510,7 @@ def saved_fs_state():
 	""" Read the saved file system FS_LIST_FILE descriptor and chksums list and return the contained JSON object
 	"""
 	from django.utils import simplejson
-	with open(settings.FS_LIST_FILE) as f:
+	with open(FS_LIST_FILE) as f:
 		return simplejson.load(f)
 
 
