@@ -470,6 +470,29 @@ class TermStreamer:
 	"""
 	stdscr = None
 
+	class ProgressObj:
+		_done = None
+		_total = None
+		_progress = None
+		text = ''
+
+		def __init__(self, text, done=None, total=None, progress=None):
+			assert ((done, total) is not (None, None) and done <= total) or\
+				(progress is not None and progress in range(0, 100))
+			self.text = text
+			self._done = done
+			self._total = total
+			self._progress = progress
+
+		@property
+		def progress(self):
+			if not self._progress:
+				self._progress = float(self._done) / float(self._total) * 100
+			return self._progress
+
+		def __str__(self):
+			return "{1} [{2:10}] {0:.2%}".format((self.progress / 100), self.text, "#" * int(self.progress // 10))
+
 	def __init__(self):
 		self._start()
 
@@ -477,19 +500,25 @@ class TermStreamer:
 		self._start()
 		return self
 
+	@property
+	def _term_is_ok(self):
+		import os
+		return str(os.environ.get("TERM", "unknown")) != 'emacs'
+
 	def _start(self):
-		if not self.stdscr:
+		if not self.stdscr and self._term_is_ok:
 			self.stdscr = curses.initscr()
 			curses.noecho()
 			curses.cbreak()
 
 	def __exit__(self, *_):
-		try:
-			curses.echo()
-			curses.nocbreak()
-			curses.endwin()
-		except Exception:
-			pass
+		if self.stdscr and self._term_is_ok:
+			try:
+				curses.echo()
+				curses.nocbreak()
+				curses.endwin()
+			except Exception:
+				pass
 
 	def __delete__(self, _):
 		self.__exit__()
@@ -497,15 +526,21 @@ class TermStreamer:
 	def close(self):
 		self.__exit__()
 
-	def report_progress(self, filename, progress):
-		self.stdscr.addstr(0, 0, "Moving file: {0}".format(filename))
-		self.stdscr.addstr(1, 0, "Total progress: [{1:10}] {0}%".format(progress, "#" * (progress / 10)))
-		self.stdscr.refresh()
+	def _legagy_term_stream(self, a_dict):
+		import sys
+		import os
+		os.system('clear')
+		for value in a_dict.itervalues():
+			sys.stdout.write('%s\n' % value)
+			sys.stdout.flush()  # As suggested by Rom Ruben
 
+	# inspired from http://stackoverflow.com/a/6840469/5094389
 	def full_write(self, a_dict):
+		if not self.stdscr:
+			return self._legagy_term_stream(a_dict)
 		i = 0
 		for value in a_dict.itervalues():
-			self.stdscr.addstr(i, 0, value.ljust(80, ' '))
+			self.stdscr.addstr(i, 0, str(value).ljust(80))
 			i += 1
 		self.stdscr.refresh()
 
@@ -517,6 +552,7 @@ class DockerClient:
 	DEBUG = True
 	repo = None
 	_raw_cli = None
+	_logged_in = False
 	_console_mutex = None # use to ensure exclusive access to console
 	_data_mutex = None # use to ensure exclusive access to console
 
@@ -908,15 +944,17 @@ class DockerClient:
 	# clem 10/03/2016
 	def login(self):
 		if self.repo:
-			try:
-				self._log('Login as %s to %s ...' % (self.repo.login, self.repo.url))
-				result = self.cli.login(self.repo.login, self.repo.pwd, self.repo.email, self.repo.url)
-				self._log(result)
-				return 'username' in result or result[u'Status'] == u'Login Succeeded'
-			except APIError as e:
-				self._exception_handler(e)
-			except Exception as e:
-				self._exception_handler(e, 'Unable to connect : %s' % e)
+			if not self._logged_in:
+				try:
+					self._log('Login as %s to %s ...' % (self.repo.login, self.repo.url))
+					result = self.cli.login(self.repo.login, self.repo.pwd, self.repo.email, self.repo.url)
+					self._log(result)
+					self._logged_in = 'username' in result or result[u'Status'] == u'Login Succeeded'
+				except APIError as e:
+					self._exception_handler(e)
+				except Exception as e:
+					self._exception_handler(e, 'Unable to connect : %s' % e)
+			return self._logged_in
 		return False
 
 	# clem 17/03/2016
@@ -958,38 +996,46 @@ class DockerClient:
 		return None
 
 	# clem 16/03/2016
-	def pull(self, image_name, tag=''):
+	def pull(self, image_name, tag='', force_print=False):
+		def printer(generator):
+			a_dict = dict()
+			count = 0
+			if generator:
+				with TermStreamer() as stream:
+					for line in generator:
+						obj = self._json_parse(line)
+						if 'status' in obj:
+							status = ''
+							prog = obj.get('progressDetail', None)
+							if prog and 'current' in prog and 'total' in prog:
+								txt = '%s: %s' % (obj['id'], obj['status'])
+								status = TermStreamer.ProgressObj(txt, float(prog['current']), float(prog['total']))
+							elif 'id' in obj:
+								status = '%s: %s' % (obj['id'], obj['status'])
+							a_dict.update({ obj.get('id', count): status })
+						elif 'error' in obj:
+							stream.close()
+							self._log(str(obj['error']))
+							return False
+						stream.full_write(a_dict)
+						count += 1
+					return True
+			return False
+
+		# TODO : parse full images_names
 		if not tag:
 			tag = 'latest'
 		try:
 			self.login()
-			gen = self.cli.pull(image_name, tag, stream=True)
-			a_dict = dict()
-			count = 0
-			with TermStreamer() as stream:
-				for line in gen:
-					obj = self._json_parse(line)
-					if 'status' in obj:
-						progress = ''
-						prog = obj.get('progressDetail', None)
-						if prog and 'current' in prog and 'total' in prog:
-							# {u'current': 161492575, u'total': 180992042}
-							# a_dict.update({ 'progressDetail': obj['progressDetail'] })
-							progress = float(prog['current']) / float(prog['total']) * 100
-							progress = ' (%.2f%%)' % progress
-						if 'id' in obj:
-							a_dict.update({ obj['id']: '%s: %s%s' % (obj['id'], obj['status'], progress)})
-					elif 'error' in obj:
-						self._log(str(obj['error']))
-						return None
-					stream.full_write(a_dict)
-					count += 1
-				return True
+			do_stream = self.DEBUG or force_print
+			gen = self.cli.pull(image_name, tag, stream=do_stream)
+			if do_stream:
+				return printer(gen)
 		except KeyboardInterrupt as e:
 			self._exception_handler(e)
-			return False
 		except Exception as e:
 			self._exception_handler(e)
+		return False
 
 	# clem 17/03/2016
 	def logs(self, container):
