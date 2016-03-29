@@ -95,6 +95,10 @@ def check_scripts():
 class HelloWorld(cmd.Cmd):
 	"""Simple command processor example."""
 
+	def __init__(self, *args, **kwargs):
+		cmd.Cmd.__init__(self, *args, **kwargs)
+		self.prompt = 'docker> '
+
 	def completedefault(self, *ignored):
 		if not ignored:
 			completions = globals()
