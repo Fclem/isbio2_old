@@ -465,6 +465,9 @@ class DockerEvent:
 
 # clem 29/03/2016
 class TermStreamer:
+	"""
+	use "with TermStreamer() as stream:" instantiation method rather than direct instantiation
+	"""
 	stdscr = None
 
 	def __init__(self):
@@ -481,15 +484,20 @@ class TermStreamer:
 			curses.cbreak()
 
 	def __exit__(self, *_):
-		curses.echo()
-		curses.nocbreak()
-		curses.endwin()
+		try:
+			curses.echo()
+			curses.nocbreak()
+			curses.endwin()
+		except Exception:
+			pass
+
+	def __delete__(self, _):
+		self.__exit__()
 
 	def close(self):
 		self.__exit__()
 
 	def report_progress(self, filename, progress):
-		"""progress: 0-10"""
 		self.stdscr.addstr(0, 0, "Moving file: {0}".format(filename))
 		self.stdscr.addstr(1, 0, "Total progress: [{1:10}] {0}%".format(progress, "#" * (progress / 10)))
 		self.stdscr.refresh()
@@ -961,8 +969,6 @@ class DockerClient:
 			with TermStreamer() as stream:
 				for line in gen:
 					obj = self._json_parse(line)
-					# print obj
-					to_log = obj
 					if 'status' in obj:
 						progress = ''
 						prog = obj.get('progressDetail', None)
@@ -972,18 +978,10 @@ class DockerClient:
 							progress = float(prog['current']) / float(prog['total']) * 100
 							progress = ' (%.2f%%)' % progress
 						if 'id' in obj:
-							# to_log = '%s: %s' % (obj['id'], obj['status'])
-							to_log = ''
-							# if obj['status'] not in ['Download complete', 'Pull complete']:
 							a_dict.update({ obj['id']: '%s: %s%s' % (obj['id'], obj['status'], progress)})
-						else:
-							# a_dict.update({ count: str(obj['status']) })
-							to_log = str(obj['status'])
 					elif 'error' in obj:
 						self._log(str(obj['error']))
 						return None
-					# self._log(to_log)
-					# self._term_stream(a_dict)
 					stream.full_write(a_dict)
 					count += 1
 				return True
@@ -1013,7 +1011,7 @@ class DockerClient:
 		if not self._data_mutex:
 			self._data_mutex = Lock()
 		# if watcher not yet started, start it in a new Thread
-		if not self.__watcher:
+		if not self.__watcher or (isinstance(self.__watcher, Thread) and not self.__watcher.is_alive):
 			self.__watcher = Thread(target=self._event_watcher)
 			self._log('starting event watcher as Thread')
 			self.__watcher.start()
