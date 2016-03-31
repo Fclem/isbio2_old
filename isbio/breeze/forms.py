@@ -1,24 +1,27 @@
-import copy
-import json
-import datetime
-import logging
-from sys import stdout
-from django import forms
-from django.conf import settings
-import xml.etree.ElementTree as xml
-from django.core import mail
-import breeze.models, re
-from django.db.models import Q
-from django.contrib.auth.models import User
-from django.template.defaultfilters import default
 from decimal import Decimal
-import rora as rora
-from django.forms import extras
+from django import forms
+from django.db.models import Q
+from django.conf import settings
 from django.contrib.admin import widgets
-from validate_email import validate_email
-from django.forms import FileField
-from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
+from django.forms import ValidationError
+import breeze.models
+import datetime
+import json
+import re
+import rora
+import xml.etree.ElementTree as Xml
 # from bootstrap_toolkit.widgets import BootstrapTextInput, BootstrapPasswordInput
+# from django.core import mail
+# from validate_email import validate_email
+# from django.forms import FileField
+# from django.forms import extras
+# from django.template.defaultfilters import default
+# import logging
+# from sys import stdout
+# import copy
+
 
 class NewProjectForm(forms.Form):
 	project_name = forms.CharField(
@@ -32,7 +35,7 @@ class NewProjectForm(forms.Form):
 	)
 
 	principal_investigator = forms.CharField(
-		label=(u'PI'),
+		label=u'PI',
 		max_length=50,
 		widget=forms.TextInput(attrs={'placeholder': ' Principal Investigator ', })
 	)
@@ -43,14 +46,14 @@ class NewProjectForm(forms.Form):
 	)
 
 	eid = forms.CharField(
-		label=(u'External ID'),
+		label=u'External ID',
 		max_length=50,
 		required=False,
 		widget=forms.TextInput(attrs={'placeholder': ' optional ', })
 	)
 
 	wbs = forms.CharField(
-		label=(u'WBS'),
+		label=u'WBS',
 		max_length=50,
 		required=False,
 		widget=forms.TextInput(attrs={'placeholder': ' optional ', })
@@ -60,7 +63,6 @@ class NewProjectForm(forms.Form):
 		widget=forms.Textarea(attrs={'cols': 15, 'rows': 2, 'placeholder': 'optional'}),
 		required=False
 	)
-
 
 	def clean_project_name(self):
 		project_name = self.cleaned_data.get('project_name')
@@ -74,14 +76,14 @@ class NewProjectForm(forms.Form):
 
 class EditProjectForm(forms.Form):
 	eid = forms.CharField(
-		label=(u'External ID'),
+		label=u'External ID',
 		max_length=50,
 		required=False,
 		widget=forms.TextInput(attrs={'placeholder': ' optional ', })
 	)
 
 	wbs = forms.CharField(
-		label=(u'WBS'),
+		label=u'WBS',
 		max_length=50,
 		required=False,
 		widget=forms.TextInput(attrs={'placeholder': ' optional ', })
@@ -129,7 +131,7 @@ class EditGroupForm(forms.Form):
 
 class EditReportAccessForm(forms.Form):
 	access_list = forms.ModelMultipleChoiceField(
-		required=True,
+		# required=True, # implicit
 		queryset=breeze.models.OrderedUser.objects.all(),
 		widget=forms.SelectMultiple(
 			attrs={'class': 'multiselect', }
@@ -145,17 +147,6 @@ class EditReportSharing(forms.ModelForm):
 	widgets = {
 		'shared': forms.SelectMultiple(
 			attrs={'class': 'multiselect', }, )
-	}
-
-
-class EditReportSharing(forms.ModelForm):
-	class Meta:
-		model = breeze.models.Report
-		fields = ('shared', )
-
-	widgets = {
-	'shared': forms.SelectMultiple(
-		attrs={'class': 'multiselect', }, )
 	}
 
 
@@ -178,6 +169,7 @@ class SendReportTo(forms.Form):
 				attrs={'class': 'multiselect', }
 			)
 		)
+
 	class Meta:
 		model = breeze.models.OffsiteUser
 """
@@ -198,6 +190,7 @@ class AddOffsiteUserDialog(forms.ModelForm):
 		'email': forms.EmailField(label=u'Email Address', required=True),
 	}
 """
+
 
 class AddOffsiteUserDialog(forms.Form):
 	def __init__(self, *args, **kwargs):
@@ -220,23 +213,25 @@ class AddOffsiteUserDialog(forms.Form):
 		return data
 	"""
 
+
 class AddOffsiteUser(forms.ModelForm):
 	def __init__(self, user, *args, **kwargs):
 		super(AddOffsiteUser, self).__init__(*args, **kwargs)
-		# self.fields['shiny_access'].queryset = self.fields['shiny_access'].queryset = breeze.models.Report.objects.filter(type__type='ScreenReport', author_id=user.id)
+		# self.fields['shiny_access'].queryset = self.fields['shiny_access'].queryset = \
+		# breeze.models.Report.objects.filter(type__type='ScreenReport', author_id=user.id)
 
 	class Meta:
 		model = breeze.models.OffsiteUser
 		exclude = ['belongs_to', 'user_key', 'added_by', 'shiny_access']
 
-		def clean(self):
-			return self.cleaned_data
+	def clean(self):
+		return self.cleaned_data
 
 	widgets = {
 		'email': forms.EmailField(label=u'Email Address', required=True),
 		# 'shiny_access': forms.SelectMultiple(attrs={'class': 'multiselect' }),
 	}
-	#queryset = breeze.models.User.objects.all(),
+	# queryset = breeze.models.User.objects.all(),
 
 
 class ReportPropsForm(forms.Form):
@@ -310,7 +305,7 @@ class ReportPropsFormRE(forms.ModelForm):
 
 class RegistrationForm(forms.ModelForm):
 	def __init__(self, *args, **kw):
-		super(forms.ModelForm, self).__init__(*args, **kw)
+		super(RegistrationForm, self).__init__(*args, **kw)
 		self.fields.keyOrder = [
 			'username',
 			'email',
@@ -320,10 +315,10 @@ class RegistrationForm(forms.ModelForm):
 			'password',
 			'password1']
 
-	username = forms.CharField(label=(u'User Name'))
-	email = forms.EmailField(label=(u'Email Address'))
-	password = forms.CharField(label=(u'Password'), widget=forms.PasswordInput(render_value=False))
-	password1 = forms.CharField(label=(u'Verify Password'), widget=forms.PasswordInput(render_value=False))
+	username = forms.CharField(label=u'User Name')
+	email = forms.EmailField(label=u'Email Address')
+	password = forms.CharField(label=u'Password', widget=forms.PasswordInput())
+	password1 = forms.CharField(label=u'Verify Password', widget=forms.PasswordInput())
 
 	class Meta:
 		model = breeze.models.UserProfile
@@ -378,6 +373,14 @@ class PersonalInfo(forms.Form):
 			)
 		)
 
+	def clean_institute(self):
+		institute_id = self.cleaned_data['institute']
+		try:
+			_ = breeze.models.Institute.objects.get(pk=institute_id)
+			return institute_id
+		except (breeze.models.Institute.DoesNotExist, ObjectDoesNotExist):
+			raise ValidationError("This is not a valid selection.")
+
 
 class PatientInfo(forms.Form):
 	def __init__(self, *args, **kwargs):
@@ -417,7 +420,7 @@ class PatientInfo(forms.Form):
 		self.fields['organism'] = forms.ChoiceField(
 			required=False,
 			choices=organism_list,
-			#initial=organism_list[0][0],
+			# initial=organism_list[0][0],
 			widget=forms.Select(
 				attrs={'class': 'multiselect', }
 			)
@@ -433,12 +436,12 @@ class PatientInfo(forms.Form):
 		self.fields['sex'] = forms.ChoiceField(
 			required=False,
 			choices=sex_list,
-			#initial=0,
+			# initial=0,
 			widget=forms.Select(
 				attrs={'class': 'multiselect', }
 			)
 		)
-		#print(organism_list[0][0])
+		# print(organism_list[0][0])
 
 		self.fields['birthdate'] = forms.DateField(
 			widget=widgets.AdminDateWidget(),
@@ -682,7 +685,7 @@ class ScreenInfo(forms.Form):
 		)
 
 
-class screenGroup(forms.Form):
+class ScreenGroup(forms.Form):
 	name = forms.CharField(
 		max_length=75,
 		label="Group Name",
@@ -713,7 +716,7 @@ class LoginForm(forms.Form):
 class NewScriptDialog(forms.Form):
 	name = forms.CharField(
 		max_length=35,
-		label=(u'Script Name')
+		label=u'Script Name'
 	)
 
 	inline = forms.CharField(
@@ -775,7 +778,7 @@ class BasicJobForm(forms.Form):
 
 
 class CustomForm(forms.Form):
-	def setFields(self, kwds):
+	def set_fields(self, kwds):
 		keys = kwds.keys()
 		keys.sort()
 		for k in keys:
@@ -876,12 +879,12 @@ class AddBasic(forms.Form):
 		self.fields['comment'].label = ""
 
 	inline_var = forms.CharField(max_length=35,
-	                             widget=forms.TextInput(attrs={'class': 'input-mini'})
-	                             )
+		widget=forms.TextInput(attrs={'class': 'input-mini'})
+	)
 	type = forms.CharField(widget=forms.HiddenInput(), required=False)
 	comment = forms.CharField(max_length=55,
-	                          widget=forms.TextInput(attrs={'class': 'input-xlarge'})
-	                          )
+		widget=forms.TextInput(attrs={'class': 'input-xlarge'})
+	)
 
 
 # default = forms.CharField(max_length=35,
@@ -893,13 +896,12 @@ class AddOptions(forms.Form):
 	def drop_titles(self, *args, **kwargs):
 		self.fields['options'].label = ""
 
-	options = forms.CharField(max_length=55,
-	                          widget=forms.TextInput(attrs={'class': 'input-xlarge'}))
+	options = forms.CharField(max_length=55, widget=forms.TextInput(attrs={'class': 'input-xlarge'}))
 
 
 class AddDatasetSelect(forms.Form):
 	options = forms.ModelMultipleChoiceField(queryset=breeze.models.DataSet.objects.all(),
-	                                         widget=forms.CheckboxSelectMultiple())
+		widget=forms.CheckboxSelectMultiple())
 
 
 class AddTemplateInput(forms.Form):
@@ -916,22 +918,22 @@ class HiddenForm(forms.Form):
 
 
 def xml_from_form(form_g, form_d, form_s):
-	root = xml.Element('rScript')
+	root = Xml.Element('rScript')
 	root.attrib['name'] = form_g.cleaned_data['name']
-	inline = xml.Element('inline')
+	inline = Xml.Element('inline')
 	inline.text = form_g.cleaned_data['inln']
 	root.append(inline)
-	details = xml.Element('details')
+	details = Xml.Element('details')
 	details.text = form_g.cleaned_data['details']
 	root.append(details)
-	status = xml.Element('status')
+	status = Xml.Element('status')
 	status.attrib['val'] = 'none'
 	root.append(status)
-	input_array = xml.Element('inputArray')
+	input_array = Xml.Element('inputArray')
 
 	for key in form_d:
 		common_form = form_d[key][0]
-		ipt = xml.Element('inputItem')
+		ipt = Xml.Element('inputItem')
 		ipt.attrib['type'] = common_form.cleaned_data['type']
 		ipt.attrib['rvarname'] = common_form.cleaned_data['inline_var']
 		ipt.attrib['comment'] = common_form.cleaned_data['comment']
@@ -945,31 +947,31 @@ def xml_from_form(form_g, form_d, form_s):
 
 		if common_form.cleaned_data['type'] == 'DRP' or common_form.cleaned_data['type'] == 'RAD':
 			extra_form = form_d[key][1]  # [0] form is the common one
-			altar = xml.Element('altArray')
+			altar = Xml.Element('altArray')
 			for opt in str(extra_form.cleaned_data['options']).split():
-				altit = xml.Element('altItem')
-				altit.text = opt
-				altar.append(altit)
+				alt_item = Xml.Element('altItem')
+				alt_item.text = opt
+				altar.append(alt_item)
 			ipt.append(altar)
 
 		if common_form.cleaned_data['type'] == 'DTS':
 			extra_form = form_d[key][1]
-			altar = xml.Element('altArray')
+			altar = Xml.Element('altArray')
 			for opt in extra_form.cleaned_data['options']:
-				altit = xml.Element('altItem')
-				altit.text = str(opt)
-				altar.append(altit)
+				alt_item = Xml.Element('altItem')
+				alt_item.text = str(opt)
+				altar.append(alt_item)
 			ipt.append(altar)
 
 		input_array.append(ipt)
 
 	root.append(input_array)
 
-	# newxml = open("/home/comrade/Projects/fimm/tmp/test.xml", 'w')
-	newxml = open(str(settings.TEMP_FOLDER) + 'test.xml', 'w')
-	xml.ElementTree(root).write(newxml)
-	newxml.close()
-	return newxml
+	# new_xml = open("/home/comrade/Projects/fimm/tmp/test.xml", 'w')
+	new_xml = open(str(settings.TEMP_FOLDER) + 'test.xml', 'w')
+	Xml.ElementTree(root).write(new_xml)
+	new_xml.close()
+	return new_xml
 
 
 def form_from_xml(xml_parser, req=None, init=False, usr=None, post=None, files=None, path=None):
@@ -1118,8 +1120,8 @@ def form_from_xml(xml_parser, req=None, init=False, usr=None, post=None, files=N
 				# Dotmatix samples control
 				elif input_item.attrib["type"] == "DTM_SAMPLES":  # custom dataset (multiple select)
 
-					group_list_of_tuples = list()
-					sample_list_of_tuples = list()
+					# group_list_of_tuples = list()
+					# sample_list_of_tuples = list()
 
 					# push r-code here to populate dtm_samples
 					group_list_of_tuples = rora.get_dtm_screen_groups()
@@ -1169,27 +1171,33 @@ def form_from_xml(xml_parser, req=None, init=False, usr=None, post=None, files=N
 
 
 def create_report_sections(sections, req=None, posted=None, files=None, path=None):
-	""" Creates a list of sections content for report overview page.
+	"""
+	Creates a list of sections content for report overview page.
 
-	Arguments:
-	sections      -- list of 'Rscripts' db objects
-
+	:param sections:  list of 'Rscripts' db objects
+	:type sections: list
+	:type req:
+	:type posted: dict
+	:type files:
+	:type path:
+	:rtype: list
 	"""
 	sdata = dict()
 	section_lst = list()
 
 	for item in sections:
 		if item.is_valid():
-			tree = xml.parse(item.xml_path)
+			tree = Xml.parse(item.xml_path)
 		else:
-			tree = xml.parse(settings.NO_TAG_XML)
+			tree = Xml.parse(settings.NO_TAG_XML)
 			sdata['isvalid'] = False
 		sdata['id'] = item.id
 		key = 'Section_dbID_' + str(item.id)
 		sdata['value'] = posted[key] if posted and key in posted else 0
 		sdata['inline'] = str(item.inln)
 		sdata['name'] = str(item.name)
-		sdata['form'] = form_from_xml(xml_parser=tree, post=posted, files=files, usr=req.user, init=True if posted else False, path=path)
+		sdata['form'] = form_from_xml(
+			xml_parser=tree, post=posted, files=files, usr=req.user, init=True if posted else False, path=path)
 		sdata['size'] = len(sdata['form'].__str__())
 		section_lst.append(dict(sdata))
 
@@ -1200,30 +1208,32 @@ def validate_report_sections(sections, req):
 	""" Validate only checked (marked) report sections.
 
 	Arguments:
-	sections    -- list of 'Rscripts' db objects
-	req         -- a copy of request
-
+	:param sections:  list of 'Rscripts' db objects
+	:type sections: list
+	:param req:  a copy of request
+	:type req:
+	:rtype: list
 	"""
-	sdata = dict()
+	s_data = dict()
 	section_lst = list()
 
 	for item in sections:
 		if item.is_valid():
-			tree = xml.parse(item.xml_path)
-			sdata['id'] = item.id
-			sdata['inline'] = str(item.inln)
-			sdata['name'] = str(item.name)
+			tree = Xml.parse(item.xml_path)
+			s_data['id'] = item.id
+			s_data['inline'] = str(item.inln)
+			s_data['name'] = str(item.name)
 
 			# we want to validate only those sections
 			# that have been enabled by user
-			secID = 'Section_dbID_' + str(item.id)
-			if secID in req.POST and req.POST[secID] == '1':
-				sdata['form'] = form_from_xml(xml_parser=tree, req=req, usr=req.user)
-				sdata['isvalid'] = sdata['form'].is_valid()
+			section_id = 'Section_dbID_' + str(item.id)
+			if section_id in req.POST and req.POST[section_id] == '1':
+				s_data['form'] = form_from_xml(xml_parser=tree, req=req, usr=req.user)
+				s_data['isvalid'] = s_data['form'].is_valid()
 			else:
-				sdata['form'] = form_from_xml(xml_parser=tree, usr=req.user)
-				sdata['isvalid'] = True
-			section_lst.append(dict(sdata))
+				s_data['form'] = form_from_xml(xml_parser=tree, usr=req.user)
+				s_data['isvalid'] = True
+			section_lst.append(dict(s_data))
 
 	return section_lst
 
@@ -1232,8 +1242,9 @@ def check_validity(sections):
 	""" Reports whether all sections are valid or not
 
 	Arguments:
-	sections    -- a list of dict()
-
+	:param sections: a list of dict()
+	:type sections: list
+	:rtype: bool
 	"""
 	for item in sections:
 		if not item['isvalid']:
@@ -1242,5 +1253,5 @@ def check_validity(sections):
 	return True
 
 
-def job_summary(xml):
+def job_summary(_):
 	pass

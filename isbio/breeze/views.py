@@ -643,7 +643,7 @@ def delete_off_site_user(request, uid):
 
 
 @login_required(login_url='/')
-def dbviewer(request):
+def db_viewer(request):
 	return render_to_response('dbviewer.html', RequestContext(request, {
 		'dbviewer_status': 'active',
 	}))
@@ -831,7 +831,7 @@ def ajax_rora_screens(request, gid):
 
 
 @login_required(login_url='/')
-def addtocart(request, sid=None):
+def add_to_cart(request, sid=None):
 	# check if this item in the cart already
 	try:
 
@@ -857,14 +857,14 @@ def addtocart(request, sid=None):
 
 
 @login_required(login_url='/')
-def updatecart(request):
+def update_cart(request):
 	count_mycart = CartInfo.objects.filter(script_buyer=request.user).count()
 	html = render_to_string('countcart.html', {'count_mycart': count_mycart})
 	return HttpResponse(html)
 
 
 @login_required(login_url='/')
-def mycart(request):
+def my_cart(request):
 	# all_items = CartInfo.objects.filter(script_buyer=request.user)
 	items_free = CartInfo.objects.filter(script_buyer=request.user, type_app=True)
 	items_nonfree = CartInfo.objects.filter(script_buyer=request.user, type_app=False)
@@ -911,9 +911,9 @@ def ajax_rora_action(request):
 
 
 @login_required(login_url='/')
-def groupName(request):
+def group_name(request):
 	if request.method == 'POST':
-		screen_group = breezeForms.screenGroup(request.POST)
+		screen_group = breezeForms.ScreenGroup(request.POST)
 
 		if screen_group.is_valid():
 			group = dict()
@@ -925,7 +925,7 @@ def groupName(request):
 			# rora.update_screen(screen)
 			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
 	else:
-		screen_group = breezeForms.screenGroup()
+		screen_group = breezeForms.ScreenGroup()
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': screen_group,
 		'action': '/ajax-rora-groupname/',
@@ -936,10 +936,10 @@ def groupName(request):
 
 
 @login_required(login_url='/')
-def dbPolicy(request):
-	userprofile = UserProfile.objects.get(user=request.user)
-	userprofile.db_agreement = True
-	userprofile.save()
+def db_policy(request):
+	user_profile = UserProfile.objects.get(user=request.user)
+	user_profile.db_agreement = True
+	user_profile.save()
 	return HttpResponseRedirect('/dbviewer/') # FIXME hardcoded url
 
 
