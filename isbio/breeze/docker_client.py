@@ -1,6 +1,6 @@
 from docker import Client
 from docker.errors import NotFound, APIError, NullResource
-from utils import get_md5, advanced_pretty_print
+from utils import get_md5, advanced_pretty_print, Bcolors
 from threading import Thread, Lock
 import requests
 import curses
@@ -589,7 +589,8 @@ class DockerClient:
 			if auto_connect:
 				self.login()
 		except requests.exceptions.ConnectionError as e:
-			self._exception_handler(e, force_log=True, force_raise=True)
+			self._force_log(Bcolors.fail('FATAL: Connection to docker daemon failed'))
+			self._exception_handler(e, force_raise=True)
 		# self._init_containers_cache()
 
 	# clem 14/03/2016
@@ -632,7 +633,7 @@ class DockerClient:
 	def _exception_handler(self, e, msg='', force_log=False, force_raise=False):
 		import sys
 		msg = '%s:%s' % (type(e), str(e)) if not msg else str(msg)
-		msg = 'ERR in %s: %s' % (sys._getframe(1).f_code.co_name, msg)
+		msg = Bcolors.warning('ERR in %s: %s' % (sys._getframe(1).f_code.co_name, msg))
 		self._force_log(msg) if force_log else self._log(msg)
 		self._auto_raise(e, force_raise)
 
@@ -663,6 +664,8 @@ class DockerClient:
 
 	# clem 10/03/2016
 	def _force_log(self, obj, sup_text=''):
+		if type(obj) is str:
+			obj = Bcolors.bold(obj)
 		self._log(obj, True, sup_text)
 
 	# clem 16/03/2016
