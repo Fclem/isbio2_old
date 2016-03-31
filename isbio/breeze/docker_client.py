@@ -555,8 +555,8 @@ class DockerClient:
 	repo = None
 	_raw_cli = None
 	_logged_in = False
-	_console_mutex = None # use to ensure exclusive access to console
-	_data_mutex = None # use to ensure exclusive access to console
+	__console_mutex = None # use to ensure exclusive access to console
+	__data_mutex = None # use to ensure exclusive access to console
 
 	_daemon_url = ''
 
@@ -583,9 +583,13 @@ class DockerClient:
 			self.repo = repo
 		self._daemon_url = daemon_url
 		self._raw_cli = Client(base_url=daemon_url)
-		self._start_event_watcher()
-		if auto_connect:
-			self.login()
+		try:
+			self._raw_cli.info()
+			self._start_event_watcher()
+			if auto_connect:
+				self.login()
+		except requests.exceptions.ConnectionError as e:
+			self._exception_handler(e, force_log=True, force_raise=True)
 		# self._init_containers_cache()
 
 	# clem 14/03/2016
@@ -605,13 +609,27 @@ class DockerClient:
 	def __exit__(self, *_):
 		self.__cleanup()
 
+	# clem 31/03/2016
+	@property
+	def _console_mutex(self):
+		if not self.__console_mutex:
+			self.__console_mutex = Lock()
+		return self.__console_mutex
+
+	# clem 31/03/2016
+	@property
+	def _data_mutex(self):
+		if not self.__data_mutex:
+			self.__data_mutex = Lock()
+		return self.__data_mutex
+
 	# clem 17/03/2016
 	def _auto_raise(self, e, force=False):
 		if self.RAISE_ERR or force:
 			raise e
 
 	# clem 17/03/2016
-	def _exception_handler(self, e, msg='', force_log=True, force_raise=False):
+	def _exception_handler(self, e, msg='', force_log=False, force_raise=False):
 		import sys
 		msg = '%s:%s' % (type(e), str(e)) if not msg else str(msg)
 		msg = 'ERR in %s: %s' % (sys._getframe(1).f_code.co_name, msg)
@@ -1053,11 +1071,6 @@ class DockerClient:
 
 	# clem 14/03/2016
 	def _start_event_watcher(self):
-		# init mutex for proper data consistency during concurrent access
-		if not self._console_mutex:
-			self._console_mutex = Lock()
-		if not self._data_mutex:
-			self._data_mutex = Lock()
 		# if watcher not yet started, start it in a new Thread
 		if not self.__watcher or (isinstance(self.__watcher, Thread) and not self.__watcher.is_alive):
 			self.__watcher = Thread(target=self._event_watcher)
