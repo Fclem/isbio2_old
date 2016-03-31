@@ -2,8 +2,10 @@ from docker import Client
 from docker.errors import NotFound, APIError, NullResource
 from utils import get_md5, advanced_pretty_print
 from threading import Thread, Lock
+import requests
 import curses
 import time
+
 
 # clem 10/03/2016
 class DockerVolume:
@@ -604,17 +606,17 @@ class DockerClient:
 		self.__cleanup()
 
 	# clem 17/03/2016
-	def _auto_raise(self, e):
-		if self.RAISE_ERR:
+	def _auto_raise(self, e, force=False):
+		if self.RAISE_ERR or force:
 			raise e
 
 	# clem 17/03/2016
-	def _exception_handler(self, e, msg='', force=True):
+	def _exception_handler(self, e, msg='', force_log=True, force_raise=False):
 		import sys
 		msg = '%s:%s' % (type(e), str(e)) if not msg else str(msg)
 		msg = 'ERR in %s: %s' % (sys._getframe(1).f_code.co_name, msg)
-		self._force_log(msg) if force else self._log(msg)
-		self._auto_raise(e)
+		self._force_log(msg) if force_log else self._log(msg)
+		self._auto_raise(e, force_raise)
 
 	#
 	# LOGGING
@@ -1164,10 +1166,12 @@ class DockerClient:
 				# Thread(target=self._new_event, args=(event,)).start() # disabled: due to variable processing time for
 																		# various events, they might arrive out of order
 				self._new_event(event)
+		except requests.exceptions.ConnectionError as e:
+			self._exception_handler(e, 'Starting Event watcher failed: %s' % e)
 		except Exception as e:
 			# let'as try to restart it
 			self._restart_event_watcher()
-			self._exception_handler(e, 'Event watcher failed: %s' % e)
+			self._exception_handler(e, 'Event watcher failed: %s' % e, force_raise=True)
 
 	#
 	# CONTAINERS DATA OBJECT MANAGEMENT AND INTERFACE
