@@ -3027,7 +3027,7 @@ def restart_breeze(request):
 # clem on 08/01/2016
 @login_required(login_url='/')
 def restart_vm(request):
-	restart_reboot_wrap(request, sys._getframe(0).f_code.co_name, utils.do_reboot)
+	return restart_reboot_wrap(request, sys._getframe(0).f_code.co_name, utils.do_reboot)
 
 
 # clem on 19/02/2016

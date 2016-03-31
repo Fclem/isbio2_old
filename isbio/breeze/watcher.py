@@ -2,7 +2,6 @@ import django.db
 import os
 from multiprocessing import Process
 from utils import console_print as cp
-import time
 from breeze.models import Report, Jobs, JobStat
 import drmaa
 from utils import *
@@ -11,6 +10,7 @@ from django.conf import settings
 if settings.ENABLE_DATADOG:
 	from datadog import statsd
 
+# import time
 # from exceptions import Exception
 # import logging
 # logger = logging.getLogger(__name__)
@@ -211,7 +211,7 @@ def runner():
 	Run until killed or crashed
 	TO BE RUN ONLY_ONCE IN A SEPARATE BACKGROUND PROCESS
 	"""
-	get_logger().debug('started')
+	get_logger().debug('JobKeeper started')
 	# watching = Watcher()
 
 	i = 0
