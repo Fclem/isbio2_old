@@ -16,11 +16,17 @@ else:
 	from django_cas.views import logout as django_cas_logout
 
 	urlpatterns = patterns('',
+		# url(r'^.*$', views.down),
 		url(r'^user_list$', views.user_list),
 		url(r'^test1', views.job_list),
 		url(r'^mail_list$', views.user_list_advanced),
+		# url(r'^$', 'django_cas.views.login'),  # views.breeze),
 		url(r'^$', django_cas_login),  # views.breeze),
 		url(r'^breeze/?$', views.breeze),
+		# url(r'^test/$', views.dochelp),
+		# url(r'^base/$', views.base),
+		# url(r'^register/$', views.register_user),
+		# url(r'^logout/$', 'django_cas.views.logout'),  # views.logout),
 		url(r'^logout/?$', django_cas_logout),  # views.logout),
 		url(r'^stat/?$', views.ajax_user_stat),
 		# Special system checks
@@ -32,8 +38,10 @@ else:
 		url(r'^status/fs_ok/?$', views.check_file_system_coherent),
 		url(r'^status/qstat/?$', views.qstat_live),
 		url(r'^status_lp/qstat/(?P<md5_t>[a-z0-9_]{32})?$', views.qstat_lp),
+		# url(r'^status_lp/sys/$', views.online_lp),
 		# All others system check in a wrapper
 		url(r'^status/(?P<what>[a-z_]+)?/?$', views.checker),
+		#
 		url(r'^home/(?P<state>[a-z]+)?$', views.home),
 		url(r'^ajax-rora-patients/(?P<which>[a-z]+)?$', views.ajax_patients_data),
 		url(r'^ajax-rora/action/?$', views.ajax_rora_action),
@@ -43,6 +51,8 @@ else:
 		url(r'^update-server/?$', views.update_server),
 		url(r'^help/?$', views.dochelp),
 		url(r'^db-policy/?$', views.dbPolicy),
+		# url(r'^store/deletefree/$', views.deletefree),
+		# url(r'^store/installfree/$', views.installfree),
 		url(r'^store/?$', views.store),
 		url(r'^store/deletefree/?$', views.deletefree),
 		url(r'^installscripts/(?P<sid>\d+)$', views.install),
@@ -67,12 +77,15 @@ else:
 		url(r'^media/reports/(?P<rid>\d+)/(?P<fname>.+)?$', views.report_file_wrap2),
 		url(r'^reports/delete/(?P<rid>\d+)(?P<redir>-[a-z]+)?$', views.delete_report),
 		url(r'^reports/edit_access/(?P<rid>\d+)$', views.edit_report_access),
+		#url(r'^reports/overview/(?P<rtype>[A-Za-z]+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
 		url(r'^reports/overview/(?P<rtype>\w+)-(?P<iname>[^/-]+)-(?P<iid>[^/-]+)$', views.report_overview),
 		url(r'^reports/edit/(?P<jid>\d+)?$', views.edit_report),  # Re Run report
-		url(r'^reports/check/?$', views.check_reports),  # Re Run report
+		url(r'^reports/check$', views.check_reports),  # Re Run report
 		url(r'^reports/send/(?P<rid>\d+)$', views.send_report),
-		url(r'^off_user/add(/(?P<rid>\d*))?$', views.add_offsite_user_dialog),
-		url(r'^off_user/add/form(/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*))?$', views.add_offsite_user),
+		url(r'^off_user/add/?$', views.add_offsite_user_dialog),
+		url(r'^off_user/add/(?P<rid>\d*)$', views.add_offsite_user_dialog),
+		url(r'^off_user/add/form/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*)$', views.add_offsite_user),
+		url(r'^off_user/add/form/?$', views.add_offsite_user),
 		url(r'^off_user/edit/(?P<uid>\d*)$', views.edit_offsite_user),
 		url(r'^off_user/del/(?P<uid>\d*)$', views.delete_off_site_user),
 		# Shiny page in
@@ -81,11 +94,23 @@ else:
 		# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/$', views.report_shiny_view_tab_out, name='shiny.tab.out'),
 		# sub-level access control wrapper (in)
 		url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-		url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
-		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
+		url(r'^shiny/apps/?(?P<path>.*)$', views.standalone_shiny_in_wrapper),
+		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)$', views.report_shiny_in_wrapper),
+		url(r'^shiny/rep/(?P<rid>\d+)/?$', views.report_shiny_in_wrapper),
 		url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
+		url(r'^shiny/libs/?$', views.shiny_libs),
+		# TODO re write for new shiny design
+		# sub-level access control wrapper (out)
+		# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/rep/(?P<path>.*)$', views.report_shiny_out_wrapper),
+		# url(r'^shiny-out/(?P<s_key>[a-z0-9]+)/(?P<u_key>[a-z0-9]+)/nozzle$', views.report_nozzle_out_wrapper),
 		url(r'^runnable/delete/?', views.runnable_del),
+		# fusion theses lines
+		# url(r'^jobs/current', views.jobs, {'state': "current"}),
+		# url(r'^jobs/scheduled?$', views.jobs, {'state': "scheduled"}),
+		# url(r'^jobs/history?$', views.jobs),
+		# url(r'^jobs/(?P<state>[a-z]+)?$', views.jobs),
 		url(r'^jobs/(?P<page>\d+)?(/)?(?P<state>[a-z]+)?(/)?$', views.jobs),
+		# url(r'^jobs/live-container', views.jobs), # FIXME DEPRECATED
 		url(r'^jobs/delete/(?P<jid>\d+)(?P<state>[a-z]+)?$', views.delete_job), # FIXME DEPRECATED
 		url(r'^jobs/(?P<page>\d+)?(/)?(?P<state>[a-z]+)?(/)?delete/(?P<jid>\d+)$', views.delete_job),
 		url(r'^jobs/(?P<page>\d+)?(/)?(?P<state>[a-z]+)?(/)?group-delete/?$', views.runnable_del),
@@ -98,6 +123,7 @@ else:
 		url(r'^jobs/show-code/(?P<jid>\d+)$', views.show_rcode),
 		url(r'^jobs/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile_j),
 		url(r'^report/download/(?P<jid>\d+)(?P<mod>-[a-z]+)?$', views.send_zipfile_r),
+		# url(r'^media/jobs/(?P<rid>\d+)_(?P<rest>[^/-]+)/(?P<fname>[^/-]+)?$', views.report_file_wrap),
 		url(r'^update-jobs/(?P<jid>\d+)-(?P<item>[a-z]+)$', views.update_jobs), # FIXME DEPRECATED
 		url(r'^jobs/info/(?P<jid>\d+)-(?P<item>[a-z]+)$', views.update_jobs), # FIXME DEPRECATED
 		url(r'^jobs/info/(?P<item>[a-z]+)/(?P<jid>\d+)$', views.update_jobs),
@@ -166,9 +192,11 @@ else:
 
 	if settings.DEBUG and settings.DEV_MODE:
 		urlpatterns += patterns('django.contrib.staticfiles.views',
-			url(r'^closed$', 'serve', { 'document_root': settings.DJANGO_ROOT + '/index.html', }),
+			url(r'^closed$', 'serve', { 'document_root': settings.DJANGO_ROOT + '/index.html' ,}),
 			url(r'^static/(?P<path>.*)$', 'serve'),
+			# url(r'^reports/TEST/(?P<jid>\d+)?$', views.edit_reportMMMMM),  # Testing
 			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to, {'target_url': 'http://127.0.0.1:3838/sample-apps/', })  # testing
+			# url(r'^shiny/(?P<path>.*)$', views.proxy_to, {'target_url': settings.SHINY_TARGET_URL}),
 		)
 
 	urlpatterns += staticfiles_urlpatterns()

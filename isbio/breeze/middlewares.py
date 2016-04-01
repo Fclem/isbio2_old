@@ -1,5 +1,4 @@
 # -*- coding: latin-1 -*-
-from multiprocessing import Process
 from breeze.watcher import runner
 import logging
 import os
@@ -9,6 +8,12 @@ from breeze.models import UserProfile
 from breeze import views
 from breeze.utils import Bcolors
 from django.conf import settings
+
+if settings.DEBUG:
+	# quick fix to solve PyCharm Django console environment issue
+	from breeze.process import Process
+else:
+	from multiprocessing import Process
 
 logger = logging.getLogger(__name__)
 check_file_dt = ''
@@ -64,17 +69,26 @@ def check_state():
 
 
 class JobKeeper:
-	p = Process()
+	p = Process(target=runner)
+	log = None
 
 	def __init__(self):
-		JobKeeper.p = Process(target=runner)
-		JobKeeper.p.start()
+		self.log = logger.getChild('watcher_guard')
+		try:
+			JobKeeper.p.start()
+		except IOError:
+			self.log.error('IOError while trying to start watcher... trying again in 5 sec.')
+			import time
+			time.sleep(5)
+			self.__init__()
+		except Exception as e:
+			self.log.fatal('UNABLE TO START WATCHER : %s' % e)
 
 	def process_request(self, request):
 		if not JobKeeper.p.is_alive():
 			JobKeeper.p.terminate()
-			log = logger.getChild('watcher_guard')
-			log.warning('watcher was down, restarting...')
+			JobKeeper.p = Process(target=runner)
+			self.log.warning('watcher was down, restarting...')
 			self.__init__()
 
 
