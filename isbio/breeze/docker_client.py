@@ -1,4 +1,4 @@
-from docker import Client
+from docker import Client as DockerApiClient
 from docker.errors import NotFound, APIError, NullResource
 from threading import Thread, Lock
 from utils import get_md5, advanced_pretty_print, Bcolors
@@ -6,6 +6,8 @@ import curses
 import json
 import requests
 import time
+
+DOCKER_HUB_URL = 'https://index.docker.io'
 
 
 # clem 10/03/2016
@@ -110,7 +112,7 @@ class DockerRepo:
 	pwd = ''
 	email = ''
 
-	def __init__(self, login, pwd, email='', url='https://index.docker.io'):
+	def __init__(self, login, pwd, email='', url=DOCKER_HUB_URL):
 		assert isinstance(login, basestring) and isinstance(pwd, basestring) and isinstance(email, basestring) and \
 			isinstance(url, basestring)
 		self.login = login
@@ -523,7 +525,7 @@ class DockerInfo:
 		self.__dict__.update(a_dict)
 
 	def summary(self):
-		from filesize import size, Systems
+		from utilities import human_readable_byte_size, UnitSystem
 		return 'Docker daemon at "%s" running on (%s %s %s) %s\n' %\
 			(self.Name, self.Architecture, self.OSType, self.KernelVersion, self.OperatingSystem) + \
 			'Containers :\n' \
@@ -533,7 +535,7 @@ class DockerInfo:
 			'\trunning: %s\n' % self.ContainersRunning + \
 			'Images: %s\n' % self.Images + \
 			'nCPUs: %s\n' % self.NCPU + \
-			'memTotal: %s\n' % size(self.MemTotal, system=Systems.alternative, digit=2) + \
+			'memTotal: %s\n' % human_readable_byte_size(self.MemTotal, unit=UnitSystem.alternative) + \
 			'version: %s' % self.ServerVersion
 
 
@@ -600,7 +602,8 @@ class TermStreamer:
 	def close(self):
 		self.__exit__()
 
-	def _legagy_term_stream(self, a_dict):
+	@classmethod
+	def _legacy_term_stream(self, a_dict):
 		import sys
 		import os
 		os.system('clear')
@@ -611,7 +614,7 @@ class TermStreamer:
 	# inspired from http://stackoverflow.com/a/6840469/5094389
 	def full_write(self, a_dict):
 		if not self.stdscr:
-			return self._legagy_term_stream(a_dict)
+			return self._legacy_term_stream(a_dict)
 		i = 0
 		for value in a_dict.itervalues():
 			self.stdscr.addstr(i, 0, str(value).ljust(80))
@@ -654,8 +657,8 @@ class DockerClient:
 			assert isinstance(repo, DockerRepo)
 			self.repo = repo
 		self._daemon_url = daemon_url
-		self._raw_cli = Client(base_url=daemon_url)
 		try:
+			self._raw_cli = DockerApiClient(base_url=daemon_url)
 			self._raw_cli.info()
 			self._start_event_watcher()
 			if auto_connect:
@@ -713,6 +716,10 @@ class DockerClient:
 	# LOGGING
 	#
 
+	# clem 01/04/2016
+	def write_log_entry(self, text):
+		self._log(text)
+
 	# clem 10/03/2016
 	def _log(self, obj, force_print=False, sup_text='', direct=False):
 		if self.DEBUG or force_print:
@@ -741,6 +748,7 @@ class DockerClient:
 		self._log(obj, True, sup_text)
 
 	# clem 16/03/2016
+	@classmethod
 	def _json_parse(self, obj):
 		if type(obj) is str:
 			try:
@@ -808,7 +816,7 @@ class DockerClient:
 		return True
 
 	# clem 17/03/2016
-	def _error_managed(func):
+	def __error_managed(func):
 		"""
 		Error management wrapper for _run and _start
 		:type func: function
@@ -839,8 +847,10 @@ class DockerClient:
 
 		return decorated_func
 
+	_error_managed = staticmethod(__error_managed)
+
 	# clem 09/03/2016
-	@_error_managed
+	@_error_managed.__func__
 	def _run(self, run):
 		"""
 		TBD
@@ -878,7 +888,7 @@ class DockerClient:
 		# If in detached mode or only stdin is attached, display the container's id.
 
 	# clem 17/03/2016
-	@_error_managed
+	@_error_managed.__func__
 	def _start(self, container):
 		"""
 		:type container: basestring | DockerContainer
@@ -976,7 +986,7 @@ class DockerClient:
 		return self._run(DockerRun(img_name_tag, command, volume_list))
 
 	# clem 14/03/2016
-	def get_container(self, container_id):
+	def get_container(self, container_id=None):
 		"""
 		Refresh the cached container list, and return the cached container
 		:type container_id: str
@@ -988,11 +998,11 @@ class DockerClient:
 		return None
 
 	# clem 16/03/2016
-	def get_image(self, image_descriptor):
+	def get_image(self, image_descriptor=None):
 		"""
 		Get the cached image, and if not found try to refresh the cache for this entry only
 		image_descriptor can be either the id, or the full name as repo/image:tag
-		:type image_descriptor: str
+		:type image_descriptor: str | DockerImage | None
 		:rtype: DockerImage | None
 		"""
 		if image_descriptor:
@@ -1078,6 +1088,7 @@ class DockerClient:
 		if not isinstance(container_list, list):
 			container_list = [container_list]
 		try:
+			assert isinstance(container_list, list) # bug-fix for PyCharm code assistance
 			for container in container_list:
 				self.cli.remove_container(str(container), v, link, force)
 			return True
@@ -1096,6 +1107,7 @@ class DockerClient:
 		if not isinstance(image_list, list):
 			image_list = [image_list]
 		try:
+			assert isinstance(image_list, list) # bug-fix for PyCharm code assistance
 			for image in image_list:
 				self.cli.remove_image(str(image), force)
 			return True

@@ -23,7 +23,7 @@ class Docker:
 	# clem 16/03/2016
 	def write_log(self, txt):
 		if self.client:
-			self.client._log(txt)
+			self.client.write_log_entry(txt)
 		else:
 			print txt
 
@@ -37,7 +37,7 @@ class Docker:
 		self.test(self.client.images_list[0].pretty_print)
 
 	def test(self, func, *args):
-		self.write_log('>>%s%s' % (func.func_name, args))
+		self.write_log('>>%s%s' % (func.im_func.func_name, args))
 		return func(*args)
 
 	def run(self):
