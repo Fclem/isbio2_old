@@ -1,5 +1,5 @@
 # from .utils import advanced_pretty_print as pp
-from utils import advanced_pretty_print as pp
+from utils import pp
 import cmd
 import os
 
@@ -30,8 +30,6 @@ def parse(source, the_path):
 	match = re.findall(str(pattern), source, re.DOTALL)
 	if len(match) == 0:
 		print 'NO MATCH IN LINE **************************************************************************'
-	# for el in match:
-	# 	print el
 	return match
 
 
@@ -93,7 +91,7 @@ def check_scripts():
 
 
 class HelloWorld(cmd.Cmd):
-	"""Simple command processor example."""
+	_locals = dict()
 
 	def __init__(self, *args, **kwargs):
 		cmd.Cmd.__init__(self, *args, **kwargs)
@@ -106,10 +104,18 @@ class HelloWorld(cmd.Cmd):
 			completions = [ignored]
 		return completions
 
-	def do_exit(self, _):
-		kill_self()
+	@classmethod
+	def kill_self(cls):
+		bash_command = "kill -15 %s" % os.getpid()
+		print "$ %s" % bash_command
+		os.system(bash_command)
 
-	def _has_valid_object(self, line):
+	@classmethod
+	def do_exit(cls, _):
+		cls.kill_self()
+
+	@classmethod
+	def _has_valid_object(cls, line):
 		a_list = [line.partition('.'), line.partition('('), line.partition('[')]
 		all_keys = globals().keys()
 		for each in a_list:
@@ -118,12 +124,16 @@ class HelloWorld(cmd.Cmd):
 		return False
 
 	def default(self, line=''):
+		import sys
+
 		parsed = self._has_valid_object(line)
 		# if parsed:
 		# 	return
 		if parsed or line:
 			try:
-				print eval(line, globals())
+				res = eval(compile(line, sys.stderr.name, 'single'), globals(), self._locals)
+				if res:
+					print 'ret:', type(res), res
 			except Exception as e:
 				print e
 		# print "def:", line
@@ -151,12 +161,6 @@ class HelloWorld(cmd.Cmd):
 		return dir(self.__class__) + globals().keys()
 
 
-def kill_self():
-	bash_command = "kill -15 %s" % os.getpid()
-	print "$ %s" % bash_command
-	os.system(bash_command)
-
-
 def base():
 	global docker, client
 	docker = dev()
@@ -168,7 +172,7 @@ def cmd_line():
 	try:
 		HelloWorld().cmdloop()
 	except KeyboardInterrupt:
-		kill_self()
+		HelloWorld.kill_self()
 	except Exception as e:
 		print e
 		return cmd_line()

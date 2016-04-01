@@ -35,7 +35,6 @@ class Docker:
 		self.test(self.client.img_run, 'fimm/r-light:candidate', 'echo "test"')
 		self.test(self.client.img_run, 'fimm/r-light:candidate', '/run.sh')
 		self.test(self.client.images_list[0].pretty_print)
-		self.test(self.client.run_default)
 
 	def test(self, func, *args):
 		self.write_log('>>%s%s' % (func.func_name, args))
