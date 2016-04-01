@@ -181,5 +181,3 @@ if __name__ == '__main__':
 elif __name__ == 'breeze.dev':
 	# PyCharm python console
 	base()
-
-

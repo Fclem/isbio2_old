@@ -1,9 +1,10 @@
 from docker import Client
 from docker.errors import NotFound, APIError, NullResource
-from utils import get_md5, advanced_pretty_print, Bcolors
 from threading import Thread, Lock
-import requests
+from utils import get_md5, advanced_pretty_print, Bcolors
 import curses
+import json
+import requests
 import time
 
 
@@ -465,6 +466,77 @@ class DockerEvent:
 		return '<DockerEvent [%s] %s %s>' % (self.timeNano, self.Type, txt)
 
 
+# clem 31/03/2016
+class DockerInfo:
+	ContainersPaused = 0
+	Labels = None
+	ContainersRunning = 0
+	NGoroutines = 0
+	LoggingDriver = u''
+	OSType = u''
+	HttpProxy = u''
+	DriverStatus = list()
+	OperatingSystem = u''
+	Containers = 0
+	HttpsProxy = u''
+	BridgeNfIp6tables = False
+	MemTotal = 0
+	Driver = u''
+	IndexServerAddress = u''
+	ClusterStore = u''
+	InitPath = u''
+	ExecutionDriver = u''
+	SystemStatus = None
+	OomKillDisable = False
+	ClusterAdvertise = u''
+	SystemTime = u''
+	Name = u''
+	CPUSet = False
+	RegistryConfig = dict()
+	ContainersStopped = 0
+	NCPU = 0
+	NFd = 0
+	Architecture = u''
+	CpuCfsQuota = False
+	Debug = False
+	ID = u''
+	IPv4Forwarding = False
+	KernelVersion = u''
+	BridgeNfIptables = False
+	NoProxy = u''
+	InitSha1 = u''
+	ServerVersion = u''
+	CpuCfsPeriod = False
+	ExperimentalBuild = False
+	MemoryLimit = False
+	SwapLimit = False
+	Plugins = dict()
+	Images = 0
+	DockerRootDir = u''
+	NEventsListener = 0
+	CPUShares = False
+
+	def __init__(self, a_dict):
+		assert isinstance(a_dict, (dict, str))
+		if type(a_dict) is str:
+			a_dict = json.loads(a_dict)
+		self.__dict__.update(a_dict)
+
+	def summary(self):
+		from filesize import size, Systems
+		return 'Docker daemon at "%s" running on (%s %s %s) %s\n' %\
+			(self.Name, self.Architecture, self.OSType, self.KernelVersion, self.OperatingSystem) + \
+			'Containers :\n' \
+			'\ttotal: %s\n' % self.Containers + \
+			'\tstopped: %s\n' % self.ContainersStopped + \
+			'\tpaused: %s\n' % self.ContainersPaused + \
+			'\trunning: %s\n' % self.ContainersRunning + \
+			'Images: %s\n' % self.Images + \
+			'nCPUs: %s\n' % self.NCPU + \
+			'memTotal: %s\n' % size(self.MemTotal, system=Systems.alternative, digit=2) + \
+			'version: %s' % self.ServerVersion
+
+
 # clem 29/03/2016
 class TermStreamer:
 	"""
@@ -672,7 +744,6 @@ class DockerClient:
 	def _json_parse(self, obj):
 		if type(obj) is str:
 			try:
-				import json
 				obj = json.loads(obj)
 			except ValueError:
 				pass
@@ -951,9 +1022,23 @@ class DockerClient:
 		elif isinstance(res_id, DockerImage):
 			self.rmi([res_id], force=force)
 
+	# clem 31/03/2016
+	def show_info(self):
+		print self.info().summary()
+
 	#
 	# DOCKER CLIENT MAPPINGS
 	#
+
+	# clem 31/03/2016
+	def info(self):
+		# data = self._json_parse(self.cli.info())
+		# return data
+		try:
+			info_obj = DockerInfo(self.cli.info())
+			return info_obj
+		except Exception as e:
+			self._exception_handler(e)
 
 	# clem 18/03/2016
 	def run(self, run_obj):
