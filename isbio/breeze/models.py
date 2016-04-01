@@ -1440,7 +1440,7 @@ class Runnable(FolderObj, models.Model):
 	RQ_SPECIFICS = ['request_data', 'sections']
 	FAILED_R = 'Execution halted'
 	SH_CL = '#!/bin/bash \nexport R_HOME=%s\ntouch ./%s' % (R_HOME, INC_RUN_FN) +\
-			' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
+		' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
 		% (SUCCESS_FN, INC_RUN_FN) + 'txt="%s"\n' % FAILED_R + 'CMD=`tail -n1<%s`\n' \
 		+ 'if [ "$CMD" = "$txt" ]; \nthen\n	touch ./%s\nfi' % FAILED_FN # TODO make a template
 	SYSTEM_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, INC_RUN_FN, FAILED_FN, SUCCESS_FN, FILE_MAKER_FN]
@@ -1495,9 +1495,9 @@ class Runnable(FolderObj, models.Model):
 		"""
 		if sgeid == self.sgeid:
 			return self
-		return Runnable.find_sge_instance(sgeid)
+		return Runnable.find_sge_instance(sgeid) # TODO change
 
-	@staticmethod
+	@staticmethod # TODO Change to @classmethod not to use class names
 	def find_sge_instance(sgeid):
 		"""
 		Return a runnable instance from an sge_id
@@ -1528,32 +1528,32 @@ class Runnable(FolderObj, models.Model):
 	##
 	# OTHER SHARED PROPERTIES
 	##
-	@property # Interface : has to be implemented in Report
+	@property # Interface : has to be implemented in Report TODO @abc.abstractmethod ?
 	def get_shiny_report(self):
 		"""
 		To be overridden by Report :
 		ShinyReport
 		:rtype: ShinyReport | NoneType
 		"""
-		return None
+		return None # raise NotImplementedError
 
-	@property # Interface : has to be implemented in Report
+	@property # Interface : has to be implemented in Report TODO @abc.abstractmethod ?
 	def is_shiny_enabled(self):
 		"""
 		To be overridden by Report :
 		Is this report's type associated to a ShinyReport, and if so is this ShinyReport enabled ?
 		:rtype: bool
 		"""
-		return False
+		return None # raise NotImplementedError
 
-	# Interface : has to be implemented in Report
+	# Interface : has to be implemented in Report TODO @abc.abstractmethod ?
 	def has_access_to_shiny(self, this_user=None):
 		"""
 		To be overridden by Report
 		:type this_user: User | OrderedUser
 		:rtype: bool
 		"""
-		return False
+		return None # raise NotImplementedError
 
 	@property
 	def sh_command_line(self):
@@ -1798,6 +1798,7 @@ class Runnable(FolderObj, models.Model):
 		os.chmod(self._r_exec_path.path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
+	# TODO @abc.abstractmethod ?
 	def generate_r_file(self, *args, **kwargs):
 		""" Place Holder for instance specific R files generation
 		THIS METHOD MUST BE overridden in subclasses
@@ -1805,6 +1806,7 @@ class Runnable(FolderObj, models.Model):
 		raise self.not_imp()
 
 	# INTERFACE for extending assembling process
+	# TODO @abc.abstractmethod ?
 	def deferred_instance_specific(self, *args, **kwargs):
 		"""
 		Specific operations to generate job or report instance dependencies.
@@ -2080,6 +2082,7 @@ class Runnable(FolderObj, models.Model):
 		self.trigger_run_failed(ret_val, exit_code)
 
 	# Clem 11/09/2015
+	# TODO @abc.abstractmethod ?
 	def trigger_run_success(self, ret_val):
 		"""
 		Trigger for subclass to override
@@ -2087,6 +2090,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		pass
 
+	# TODO @abc.abstractmethod ?
 	def trigger_run_user_aborted(self, ret_val, exit_code):
 		"""
 		Trigger for subclass to override
@@ -2094,6 +2098,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		pass
 
+	# TODO @abc.abstractmethod ?
 	def trigger_run_failed(self, ret_val, exit_code):
 		"""
 		Trigger for subclass to override

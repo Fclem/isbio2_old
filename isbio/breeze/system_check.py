@@ -15,7 +15,7 @@ DEBUG = True
 SKIP_SYSTEM_CHECK = False
 # FAIL_ON_CRITICAL_MISSING = True
 # RAISE_EXCEPTION = False
-# ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-criticals
+# ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-critical
 
 if DEBUG:
 	# quick fix to solve PyCharm Django console environment issue
@@ -32,7 +32,7 @@ WARN = '[' + Bcolors.warning('NO') + ']'
 class CheckerList(list):
 	""" list of SysCheckUnit with filtering properties """
 	FAIL_ON_CRITICAL_MISSING = True
-	ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-criticals
+	ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-critical
 
 	def __init__(self, check_list):
 		self._list_to_check = check_list
@@ -40,7 +40,7 @@ class CheckerList(list):
 		super(CheckerList, self).__init__()
 
 	@property
-	def runnings(self):
+	def still_running(self):
 		""" list of still active SysCheckUnit
 		:rtype: list
 		"""
@@ -53,11 +53,11 @@ class CheckerList(list):
 
 	@property
 	def article(self):
-		return 'is' if len(self.runnings) == 1 else 'are'
+		return 'is' if len(self.still_running) == 1 else 'are'
 
 	@property
 	def running_count(self):
-		return len(self.runnings)
+		return len(self.still_running)
 
 	@property
 	def any_running(self):
@@ -76,7 +76,7 @@ class CheckerList(list):
 		return result
 
 	@property
-	def suceeded(self):
+	def succeeded(self):
 		# return len([x for x in self._results if self._results[x] == True])
 		result = list()
 		for each in self.boot_tests:
@@ -92,10 +92,11 @@ class CheckerList(list):
 			if each.s_check():
 				self.append(each)
 
-	def rendez_vous(self, wait_for_all=not ONLY_WAIT_FOR_CRITICAL): # Rendez-vous for processes
+	def rendezvous(self, wait_for_all=not ONLY_WAIT_FOR_CRITICAL): # Rendez-vous for processes
 		"""
 		wait for all process in the list to complette
 		New version, replaces the 08/09/2015 one, better use of OOP
+		:type wait_for_all: bool
 		"""
 		offset = len(PRE_BOOT_CHECK_LIST)
 		for each in self[:]:
@@ -116,7 +117,7 @@ class CheckerList(list):
 		for each in self:
 			self._results[each.url] = each.exitcode == 0
 
-		success_text = 'successful : %s/%s' % (len(self.suceeded) + offset, len(self.boot_tests) + offset)
+		success_text = 'successful : %s/%s' % (len(self.succeeded) + offset, len(self.boot_tests) + offset)
 
 		if not self.any_running:
 			print Bcolors.ok_green('System is up and running, All checks done ! (%s)' % success_text)
@@ -124,10 +125,10 @@ class CheckerList(list):
 			print Bcolors.ok_green('System is up and running, %s, ') % success_text + \
 				Bcolors.warning('but %s (non critical) check%s %s still running %s') % \
 				(self.running_count, 's' if self.running_count > 1 else '', self.article,
-				self.runnings)
+				self.still_running)
 
 
-# Manage checks process for rendez-vous
+# Manage checks process for rendezvous
 # checking_list = CheckerList()
 
 
@@ -252,6 +253,7 @@ class SysCheckUnit(Process):
 		Runs checker function in a separate process for
 			_ concurrency and speed (from console)
 			_ process isolation, and main thread segfault avoidance (from UI)
+		:type from_ui: bool
 		"""
 		super(SysCheckUnit, self).__init__(target=self.split_runner, args=(from_ui,))
 		self.start()
@@ -271,6 +273,7 @@ class SysCheckUnit(Process):
 		"""
 		Checker function runner.
 		Call the function, display console message and exception if appropriate
+		:type from_ui: bool
 		"""
 		res = False
 		if callable(self.checker_function):
@@ -319,7 +322,7 @@ class SysCheckUnit(Process):
 
 
 # clem 08/09/2015
-# DEL check_rdv() on 25/09/2015 replaced by checking_list.rendez_vous()
+# DEL check_rdv() on 25/09/2015 replaced by checking_list.rendezvous()
 
 
 # clem 08/09/2015
@@ -337,7 +340,7 @@ def run_system_test():
 			pre_check.inline_check()
 		checking_list = CheckerList(CHECK_LIST)
 		checking_list.check_list()
-		checking_list.rendez_vous()
+		checking_list.rendezvous()
 	else:
 		print Bcolors.ok_blue('Skipping Breeze system integrity checks ......')
 
@@ -390,6 +393,7 @@ def generate_file_index(root_dir, exclude=list(), start_id=0):
 	:type root_dir: str
 	:param exclude: list of folder within rootDir to exclude
 	:type exclude: list
+	:type start_id: int
 	:rtype: dict
 	"""
 	from os import walk
@@ -498,6 +502,7 @@ def check_is_file_system_unchanged():
 def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 	"""
 	Return flag_changed, flag_invalid, files_state, folders_state
+	:type fix_file_perm: bool
 	:return: flag_changed, flag_invalid, files_state, folders_state
 	:rtype:
 	"""
@@ -654,9 +659,9 @@ def check_file_server():
 def check_db_connection():
 	from django.db import connections
 	from _mysql_exceptions import OperationalError
-	db_conn = connections['default']
+	db_connection = connections['default']
 	try:
-		_ = db_conn.cursor()
+		_ = db_connection.cursor()
 	except OperationalError:
 		return False
 	else:
@@ -677,6 +682,7 @@ def check_file_system_mounted():
 def check_shiny(request):
 	"""
 	Check if Shiny server is responding
+	:type request:
 	:rtype: bool
 	"""
 	from breeze.auxiliary import proxy_to
@@ -693,6 +699,7 @@ def check_shiny(request):
 def check_csc_shiny(request):
 	"""
 	Check if CSC Shiny server is responding
+	:type request:
 	:rtype: bool
 	"""
 	from breeze.auxiliary import proxy_to
@@ -702,7 +709,7 @@ def check_csc_shiny(request):
 			return True
 		else:
 			print 'prox to', settings.SHINY_REMOTE_LIBS_TARGET_URL, r.status_code
-	except Exception as e:
+	except Exception:
 		pass
 	return False
 
@@ -741,7 +748,7 @@ def check_csc_taito_mount():
 # clem on 09/09/2015
 def check_watcher():
 	from breeze.middlewares import JobKeeper
-	return JobKeeper.p.is_alive()
+	return JobKeeper.p and JobKeeper.p.is_alive()
 
 
 # clem on 20/08/2015
@@ -779,6 +786,7 @@ def check_sge_c():
 def check_cas(request):
 	"""
 	Check if CAS server is responding
+	:type request:
 	:rtype: bool
 	"""
 	from breeze.auxiliary import proxy_to
