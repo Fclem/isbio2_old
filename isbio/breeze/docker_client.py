@@ -442,6 +442,12 @@ class DockerEvent:
 		return self.dt.strftime('%Hh%M:%S.%f')
 
 	# clem 15/03/2016
+	@property
+	def now(self):
+		from datetime import datetime
+		return datetime.now().strftime('%Hh%M:%S.%f')
+
+	# clem 15/03/2016
 	def pretty_print(self):
 		advanced_pretty_print(self.__dict__)
 
@@ -461,7 +467,7 @@ class DockerEvent:
 		cont_title = self._get_container()
 		if isinstance(cont_title, DockerContainer):
 			cont_title = cont_title.name
-		return '%s [%s] %s %s' % (cont_title, self.time_formatted, self.Type, self.description)
+		return '%s [%s] %s %s [%s]' % (cont_title, self.time_formatted, self.Type, self.description, self.now)
 
 	def __repr__(self):
 		txt = 's:%s' % self.status if self.status else 'A:%s' % self.Action
@@ -794,6 +800,22 @@ class DockerClient:
 
 		return Prettyfy()
 
+	# clem 01/04/2016
+	@classmethod
+	def _time_stamp(self):
+		from datetime import datetime
+		return datetime.now()
+
+	# clem 01/04/2016
+	@classmethod
+	def _readable_time(self, dt):
+		return dt.strftime('%Hh%M:%S.%f')
+
+	# clem 01/04/2016
+	@property
+	def _readable_time_stamp(self):
+		return self._readable_time(self._time_stamp())
+
 	# _term_stream removed 29/03/2016 from 7398ad0 (replaced with class TermStreamer)
 
 	# clem 16/03/2016
@@ -834,7 +856,8 @@ class DockerClient:
 			except NotFound as e:
 				self._exception_handler(e, '%s: %s' % (msg, str(e)))
 			except APIError as e:
-				self._log('Container %s failed : %s' % (msg, e))
+				# self._log('Container %s failed : %s' % (msg, e))
+				self._log('Container %s failed : %s [%s]' % (msg, e, self._readable_time_stamp))
 				if isinstance(arg, DockerContainer):
 					out_log = self.logs(arg.Id)
 					if out_log:
@@ -1208,6 +1231,7 @@ class DockerClient:
 
 	# clem 16/03/2016
 	def _process_event(self, event):
+		import sys
 		assert isinstance(event, DockerEvent)
 		self._event_list.append(event)
 
@@ -1237,8 +1261,9 @@ class DockerClient:
 						while self._run_wait > 0 and not run: # wait for the run object to be added to this dict #sync
 							# TODO check for timeout
 							# self._log('.', direct=True)
-							print '.'
+							sys.stdout.write('.')
 							run = self._run_dict.pop(cont.Id, None)
+						print
 						if run and isinstance(run, DockerRun):
 							with self._data_mutex:
 								self._run_wait -= 1
