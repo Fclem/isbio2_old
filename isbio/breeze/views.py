@@ -2869,11 +2869,12 @@ def checker(request, what):
 	return status_button_json(check.ui_checker_proxy(test_obj), test_obj.ui_text)
 
 
-# FIXME del DEPRECATED
+# FIXME del DEPRECATED / STILL IN USE
 @login_required(login_url='/')
 def qstat_live(request):
 	"""
 	OLD AJAX qstat DEPRECATED
+	:type request:
 	:return: json
 	:rtype: HttpResponse
 	"""
@@ -2886,6 +2887,7 @@ def qstat_live(request):
 def qstat_json(request):
 	"""
 	Returns a smart HTML view of qstat and associated md5,
+	:type request:
 	:return: json
 	:rtype: HttpResponse
 	"""
@@ -2895,12 +2897,16 @@ def qstat_json(request):
 
 
 # Clem 22/09/2015
-@login_required(login_url='/')
+@login_required(login_url='/') # FIXME deprecated
 def qstat_lp(request, md5_t=None):
 	"""
 	Long-Polling view for qstat
 	Returns a smart HTML view of qstat and associated md5,
 	Only upon changes from last client's known output.
+	:type request:
+	:type md5_t: str|None
+	:return: json
+	:rtype: HttpResponse
 	"""
 	# FIXME : CPU consumption really too high
 	return aux.fail_with404(HttpRequest(), 'DISABLED')

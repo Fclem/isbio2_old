@@ -216,6 +216,8 @@ class Qstat(object): # would need some proper error management if SGE is not set
 			sup = ''
 			if each.runnable is None:
 				sup = ' &lt;ext&gt; '
+			else:
+				sup = ' &lt;%s%s&gt; ' % each.runnable.short_id
 			result += '<code>%s%s%s</code><br />' % (sup, '\t'.join(tab), sup)
 
 		if result == '':
