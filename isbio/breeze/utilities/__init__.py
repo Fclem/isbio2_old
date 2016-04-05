@@ -6,6 +6,7 @@ from filesize import UnitSystem, file_size2human
 from os.path import isfile, isdir, islink, exists, getsize, join
 from os import symlink, access, listdir, R_OK, chmod
 from subprocess import call
+from threading import Thread
 
 
 logger = logging.getLogger(__name__)
@@ -542,3 +543,18 @@ def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 # clem 01/04/2016
 def pp(data, unfold_objects=False, return_output=False):
 	return advanced_pretty_print(data, open_obj=unfold_objects, get_output=return_output)
+
+
+# clem 05/04/2016
+def new_thread(func):
+	"""
+	Wrapper to run functions in a new Thread
+	:type func:
+	:rtype:
+	"""
+	# assert callable(func)
+
+	def decorated(*args):
+		Thread(target=func, args=args).start()
+
+	return None if not func else decorated

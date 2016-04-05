@@ -37,9 +37,10 @@ class Docker:
 	# clem 16/03/2016
 	def write_log(self, txt):
 		if self.client:
+			# print '<docker>', txt
 			self.client.write_log_entry(txt)
 		else:
-			print txt
+			print '<docker>', txt
 
 	def self_test(self):
 		self.test(self.client.get_container, '12')
@@ -77,7 +78,9 @@ class Docker:
 				# self.write_log('%s died event managed' % event.container.name)
 				self.write_log(event.container.logs)
 			else:
-				self.client._event_log(event)
+				# self.write_log(event)
+				print '#'
+				# self.client._event_log(event)
 
 		return my_event_manager
 
