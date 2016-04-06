@@ -7,6 +7,8 @@ import json
 import requests
 import time
 
+__version__ = '0.1'
+__author__ = 'clem'
 DOCKER_HUB_URL = 'https://index.docker.io'
 
 

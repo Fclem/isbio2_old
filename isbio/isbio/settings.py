@@ -442,7 +442,8 @@ class DevSettings(BreezeSettings):
 	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
 	# SGE_QUEUE_NAME = 'breeze.q'
 	# SGE_QUEUE_NAME = 'breeze.q' # monitoring only
-
+	DOCKER_HUB_PASS_FILE = SOURCE_ROOT + 'docker_repo'
+	AZURE_PASS_FILE = SOURCE_ROOT + 'azure_pwd'
 
 
 	##

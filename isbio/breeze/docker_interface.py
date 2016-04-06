@@ -1,13 +1,77 @@
 from docker_client import *
+from paramiko.pkey import PKey
+from utils import password_from_file, new_thread
+# from django.conf import settings
+import os
 
-REPO_PWD = '.VaQOap_U"@%+D.YQZ[%\')7^}.#Heh?Dq'
+REPO_PWD = password_from_file('~/code/docker_repo') # FIXME
 REPO_LOGIN = 'fimm'
 REPO_EMAIL = 'clement.fiere@fimm.fi'
-AZURE_REMOTE_URL = 'tcp://127.0.0.1:4243'
+DOCKER_REMOTE_HOST = '127.0.0.1'
+DOCKER_REMOTE_PORT = 4243
+DOCKER_BIND_ADDR = (DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)
+DOCKER_DAEMON_URL = 'tcp://%s:%s' % DOCKER_BIND_ADDR
+
+SSH_HOST = 'breeze.northeurope.cloudapp.azure.com'
+SSH_PORT = 22
+SSH_HOST_KEY = 'AAAAB3NzaC1yc2EAAAADAQABAAABAQC/RWm8040HWNOr/B0CfXgr3ZxXZPbwhrpxumvUskut' \
+				'/003gNFAEne2TmZGxAZ1Y4knLM81FfIbkxjmMWI+Oz' \
+				'+VQ1hA3XEz0yRPJMFBzchOviF2g0MFMjpADc9ovuILrjpDtD7BzAv40rQRZugLo7Pz6M1JJeL7lFe' \
+				'+hMFVKlglEafAxiG1IlRLtcJKa5efcvVTBstmXkIHq5N3L1Fb1LQY+GDY/EiZApNlaf++f5UzyyfCCQzcV/J9eWyUxrL2ak1hxnX' \
+				'/404tWvrJSuASr4+gja9ZfjOi9oOhNgoHURf9tWGHjzpepb8I2q6d+mXNJhcPDxNT85DXbin7i1VuCM97'
+# SSH_HOST_KEY = PKey(data=SSH_HOST_KEY)
+SSH_PUB_KEY = 'AAAAB3NzaC1yc2EAAAADAQABAAABAQDG2LHqXF2zDOkWEj7upYHMLJuhFuv3VKh/xz+cqmb0gY7Rb6Y96vCpzf+7PE0uc' \
+				'/4XFrtHuZ6XM9JcistOWBbv/OoH3XaXlpeO0zXYUzhshDqlQgspCOMVq4Oc5YX7ZZG1bgti7xljYblPKnziFxwrzWsqsiU5' \
+				'+wi7foT0Tb5PGKFyYmWeAxvjJdHh8PE0Bw2EtJFxObtV9830K+etcEOdfV+/1DOz4EWkvl4bL12JUhvJJTgwEeXmV2aX5iZJ7' \
+				'+rpjn5TIHNVxxAcb4oI8IeOCq5t72har30S2CAssO1/1nEBB10VDgDQ+SPIXRQs6z3Sp6M8DQHSqWpWDMsXEVnB ' \
+				'dbychkov@breeze-dev'
+SSH_PUB_KEY = PKey(data=SSH_PUB_KEY)
+SSH_USER_NAME = os.getlogin()
+SSH_PRIVATE_KEY = os.path.expanduser('~/.ssh/id_rsa')
+SSH_REMOTE_BIND = DOCKER_BIND_ADDR
+SSH_PASSWORD = password_from_file('~/code/azure_pwd')  # FIXME
+
+
+# clem 06/04/2016
+class SSHTunnel:
+	server = None
+
+	def __init__(self, host, port, username, remote_bind_address, host_key=None, private_key=None, password=None):
+		if private_key and isinstance(private_key, str) and not os.path.exists(private_key):
+			# private_key = PKey(data=open(private_key).read())
+			private_key = open(private_key).read()
+		# print 'pk:', private_key
+		print 'passwd:', password
+
+		from sshtunnel import SSHTunnelForwarder
+
+		self.server = SSHTunnelForwarder(
+			(host, port),
+			ssh_host_key=host_key,
+			ssh_username=username,
+			ssh_password=password,
+			# ssh_private_key=private_key,
+			remote_bind_address=remote_bind_address,
+			) # local_bind_address=('', remote_bind_address[1])
+
+		self.server.start()
+
+		print(self.server.local_bind_port)
+		# work with `SECRET SERVICE` through `server.local_bind_port`.
+
+		print "LOCAL PORT:", self.server.local_bind_port
+
+	def __delete__(self, *_):
+		self.server.stop()
+
+	def __exit__(self, *_):
+		self.server.stop()
 
 
 # clem 15/03/2016
 class Docker:
+	ssh_tunnel = None
+	proc = None
 	client = None
 	volumes = {
 		'test': DockerVolume('/home/breeze/data/', '/breeze', 'rw')
@@ -21,9 +85,32 @@ class Docker:
 	MY_DOCKER_HUB = DockerRepo(REPO_LOGIN, REPO_PWD, email=REPO_EMAIL)
 
 	def __init__(self):
+		from time import sleep
 		# self.client = DockerClient(self.MY_DOCKER_HUB, AZURE_REMOTE_URL)
-		self.client = DockerClient(AZURE_REMOTE_URL, self.MY_DOCKER_HUB, False)
+		# self.ssh_tunnel = SSHTunnel(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, private_key=SSH_PRIVATE_KEY)
+		# self.ssh_tunnel = SSHTunnel(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, password=SSH_PASSWORD)
+		# self.get_ssh()
+		from multiprocessing import Process
+		# while not self.ssh_tunnel:
+		print '...',
+		sleep(1)
+		self.proc = Process(target=self.get_ssh, args=())
+		self.proc.start()
+		self.client = DockerClient(DOCKER_DAEMON_URL, self.MY_DOCKER_HUB, False)
 		self.attach_all_event_manager()
+
+	# clem 06/04/2016
+	# @new_thread
+	def get_ssh(self):
+
+		from forward import connect
+		# self.ssh_tunnel = connect(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, password=SSH_PASSWORD)
+		# self.ssh_tunnel = connect(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, private_key=SSH_PRIVATE_KEY)
+		from subprocess import call, Popen
+		import sys
+		Popen(os.path.expanduser("~/code/azure_port_forward.sh"), shell=True, stdin=open('/dev/null'),
+			stdout=sys.stdout, stderr=open('/dev/null'))
+		# self.ssh_tunnel = True
 
 	def attach_all_event_manager(self):
 		for name, run_object in self.runs.iteritems():

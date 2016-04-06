@@ -558,3 +558,13 @@ def new_thread(func):
 		Thread(target=func, args=args).start()
 
 	return None if not func else decorated
+
+
+# clem 06/04/2016
+def password_from_file(path):
+	from os.path import exists, expanduser
+	if not exists(path):
+		temp = expanduser(path)
+		if exists(temp):
+			path = temp
+	return open(path).read().replace('\n', '')
