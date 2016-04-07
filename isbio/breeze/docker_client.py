@@ -12,6 +12,16 @@ __author__ = 'clem'
 DOCKER_HUB_URL = 'https://index.docker.io'
 
 
+# clem 07/04/2016
+class DaemonNotConnected(Exception):
+	pass
+
+
+# clem 07/04/2016
+class CannotConnectToDaemon(DaemonNotConnected):
+	pass
+
+
 # clem 10/03/2016
 class DockerVolume:
 	path = ''
@@ -830,7 +840,7 @@ class DockerClient:
 		except requests.exceptions.ConnectionError as e:
 			self._force_log(Bcolors.fail('FATAL: Connection to docker daemon failed'))
 			self._raw_cli = None
-			self._exception_handler(e, force_raise=True)
+			self._exception_handler(e)
 
 	# clem 29/03/2016
 	@property
@@ -840,7 +850,7 @@ class DockerClient:
 			try:
 				self.__connect_to_daemon()
 			except Exception:
-				pass
+				raise CannotConnectToDaemon
 		return status
 
 	# clem 09/03/2016
@@ -1049,8 +1059,8 @@ class DockerClient:
 			else:
 				return self.__pp_cli
 		else:
-			self._force_log('ERR: Cannot use cli as there is no connetion to Docker daemon')
-			self._auto_raise(NullResource)
+			# self._log('ERR: Cannot use cli as Docker daemon is not connected')
+			self._auto_raise(DaemonNotConnected('Cannot use cli as Docker daemon is not connected'), True)
 
 	# clem 09/03/2016
 	@property # FIXME LEGACY DEV CODE
