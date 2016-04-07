@@ -719,7 +719,12 @@ class DockerClient:
 	# clem 14/03/2016
 	def __cleanup(self):
 		if self.__watcher:
-			self._force_log('watcher terminated')
+			# self._force_log('Closing docker cli...')
+			# self.cli.close()
+			if self.__watcher:
+				self._force_log('clearing watcher')
+				del self.__watcher # GC
+				self.__watcher = None
 
 	# clem 14/03/2016
 	def __del__(self):
@@ -816,6 +821,7 @@ class DockerClient:
 	# clem 05/04/2016
 	def __connect_to_daemon(self, auto_login=False):
 		try:
+			self._log('Connecting to docker daemon at %s ...' % self._daemon_url)
 			self._raw_cli = DockerApiClient(base_url=self._daemon_url)
 			self._raw_cli.info()
 			self._start_event_watcher()
@@ -1118,6 +1124,11 @@ class DockerClient:
 	#
 	# DOCKER CLIENT MAPPINGS
 	#
+
+	# clem 07/04/2016
+	def close(self):
+		self.__cleanup()
+		del self
 
 	# clem 31/03/2016
 	def info(self):

@@ -2,6 +2,7 @@
 from utils import pp
 import cmd
 import os
+import atexit
 
 docker = None
 client = None
@@ -106,9 +107,15 @@ class HelloWorld(cmd.Cmd):
 
 	@classmethod
 	def kill_self(cls):
-		bash_command = "kill -15 %s" % os.getpid()
-		print "$ %s" % bash_command
-		os.system(bash_command)
+		global docker
+		try:
+			__cleanup__()
+			bash_command = "kill -15 %s" % os.getpid()
+			print "$ %s" % bash_command
+			os.system(bash_command)
+		except Exception as e:
+			print e
+			pass
 
 	@classmethod
 	def do_exit(cls, _):
@@ -177,6 +184,17 @@ def cmd_line():
 		print e
 		return cmd_line()
 		# kill_self()
+
+
+def kill_self():
+	__cleanup__()
+
+
+# clem 07/04/2016
+@atexit.register
+def __cleanup__():
+	print 'cleaning up...'
+	docker.__cleanup__()
 
 if __name__ == '__main__':
 	# command line

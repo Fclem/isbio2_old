@@ -33,7 +33,10 @@ def creation_date(filename, formatted=False):
 
 
 def get_state():
-	return open('./breeze').read().lower().replace('\n', '').replace('\r', '').replace('\f', '').replace(' ', '')
+	try:
+		return open('./breeze').read().lower().replace('\n', '').replace('\r', '').replace('\f', '').replace(' ', '')
+	except IOError: # HACK
+		return 'on'
 
 
 def update_state():

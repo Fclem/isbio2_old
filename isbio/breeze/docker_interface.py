@@ -1,8 +1,8 @@
 from docker_client import *
 from paramiko.pkey import PKey
 from utils import password_from_file, new_thread
-# from django.conf import settings
 import os
+import atexit
 
 REPO_PWD = password_from_file('~/code/docker_repo') # FIXME
 REPO_LOGIN = 'fimm'
@@ -29,7 +29,10 @@ SSH_PUB_KEY = PKey(data=SSH_PUB_KEY)
 SSH_USER_NAME = os.getlogin()
 SSH_PRIVATE_KEY = os.path.expanduser('~/.ssh/id_rsa')
 SSH_REMOTE_BIND = DOCKER_BIND_ADDR
-SSH_PASSWORD = password_from_file('~/code/azure_pwd')  # FIXME
+SSH_PASSWORD = password_from_file('~/code/azure_pwd') # FIXME
+# FIXME
+SSH_CMD = ['ssh', '-CfNnL', '%s:%s:%s' % (DOCKER_REMOTE_PORT, DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT), SSH_HOST]
+SSH_BASH_KILL = 'ps aux | grep "%s"' % ' '.join(SSH_CMD) + " | awk '{ print $2 }' | tr '\\n' ' '"
 
 
 # clem 06/04/2016
@@ -73,6 +76,7 @@ class Docker:
 	ssh_tunnel = None
 	proc = None
 	client = None
+	_lock = None
 	volumes = {
 		'test': DockerVolume('/home/breeze/data/', '/breeze', 'rw')
 	}
@@ -90,12 +94,18 @@ class Docker:
 		# self.ssh_tunnel = SSHTunnel(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, private_key=SSH_PRIVATE_KEY)
 		# self.ssh_tunnel = SSHTunnel(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, password=SSH_PASSWORD)
 		# self.get_ssh()
-		from multiprocessing import Process
+		from threading import Lock
 		# while not self.ssh_tunnel:
-		print '...',
-		sleep(1)
-		self.proc = Process(target=self.get_ssh, args=())
-		self.proc.start()
+		# self.proc = Process(target=self.get_ssh, args=())
+		# self.proc.start()
+		# self._lock = Lock()
+		print 'Establishing ssh tunnel...'
+		self.get_ssh()
+		print 'pid:', self.ssh_tunnel.pid
+		self.connect()
+
+	# clem 07/04/2016
+	def connect(self):
 		self.client = DockerClient(DOCKER_DAEMON_URL, self.MY_DOCKER_HUB, False)
 		self.attach_all_event_manager()
 
@@ -103,14 +113,23 @@ class Docker:
 	# @new_thread
 	def get_ssh(self):
 
-		from forward import connect
+		# from forward import connect
 		# self.ssh_tunnel = connect(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, password=SSH_PASSWORD)
 		# self.ssh_tunnel = connect(SSH_HOST, SSH_PORT, SSH_USER_NAME, SSH_REMOTE_BIND, private_key=SSH_PRIVATE_KEY)
-		from subprocess import call, Popen
-		import sys
-		Popen(os.path.expanduser("~/code/azure_port_forward.sh"), shell=True, stdin=open('/dev/null'),
-			stdout=sys.stdout, stderr=open('/dev/null'))
-		# self.ssh_tunnel = True
+		# from subprocess import call, Popen
+		import subprocess
+		# import sys
+		# dev_null = open('/dev/null', 'w+')
+		# Popen(os.path.expanduser("~/code/azure_port_forward.sh"), stdin=dev_null, stdout=sys.stdout, stderr=dev_null)
+		# sub_cmd = os.path.expanduser("~/code/azure_port_forward.sh")
+		# sub_cmd = 'ssh -CfNnL %s:%s:%s %s' % (DOCKER_REMOTE_PORT, DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT, SSH_HOST)
+		print 'running', SSH_CMD, '...',
+		self.ssh_tunnel = subprocess.Popen(SSH_CMD)
+		print 'done'
+		stat = self.ssh_tunnel.poll()
+		while stat is None:
+			stat = self.ssh_tunnel.poll()
+		print "ssh in background"
 
 	def attach_all_event_manager(self):
 		for name, run_object in self.runs.iteritems():
@@ -171,3 +190,27 @@ class Docker:
 
 		return my_event_manager
 
+	# clem 07/04/2016
+	@atexit.register # TODO FIXME
+	def __cleanup__(self):
+		try:
+			self.ssh_tunnel.kill()
+		except Exception as e:
+			print e
+			pass
+
+		bash_command = 'ps aux | grep "%s"' % ' '.join(SSH_CMD) + " | awk '{ print $2 }' | tr '\\n' ' '"
+		# print "$ %s" % bash_command
+		import commands
+		try:
+			bash_command = 'kill -15 %s' % commands.getstatusoutput(bash_command)[1]
+			print "$ %s" % bash_command
+			print 'killing: %s' % str(commands.getstatusoutput(bash_command))
+		except Exception as e:
+			print e
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		self.__cleanup__()
+
+	def __delete__(self, instance):
+		self.__cleanup__()
