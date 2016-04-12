@@ -568,3 +568,28 @@ def password_from_file(path):
 		if exists(temp):
 			path = temp
 	return open(path).read().replace('\n', '')
+
+
+# clem 08/04/2016
+def function_name(delta=0):
+	return sys._getframe(1 + delta).f_code.co_name
+
+
+# clem 08/04/2016
+def caller_function_name(delta=0):
+	return sys._getframe(2 + delta).f_code.co_name
+
+
+# clem 08/04/2016
+def is_from_cli():
+	""" Tells if the caller was called from command line or not
+	:rtype: bool
+	"""
+	return caller_function_name(1) == '<module>'
+
+
+# clem 08/04/2016
+def get_named_tuple(class_name, a_dict):
+	assert isinstance(class_name, basestring) and isinstance(a_dict, dict)
+	from collections import namedtuple
+	return namedtuple(class_name, ' '.join(a_dict.keys()))(**a_dict)
