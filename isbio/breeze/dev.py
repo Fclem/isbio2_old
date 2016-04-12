@@ -9,7 +9,6 @@ client = None
 
 
 def dev():
-	# global client
 	from docker_interface import Docker
 
 	return Docker()
@@ -142,7 +141,7 @@ class HelloWorld(cmd.Cmd):
 				if res:
 					print 'ret:', type(res), res
 			except Exception as e:
-				print e
+				raise e
 		# print "def:", line
 
 	def completenames(self, text, *ignored):
@@ -183,7 +182,6 @@ def cmd_line():
 	except Exception as e:
 		print e
 		return cmd_line()
-		# kill_self()
 
 
 def kill_self():
