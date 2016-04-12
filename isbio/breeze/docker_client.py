@@ -1,7 +1,7 @@
 from docker import Client as DockerApiClient
 from docker.errors import NotFound, APIError, NullResource
 from threading import Thread, Lock
-from utils import get_md5, advanced_pretty_print, Bcolors, new_thread
+from utils import get_md5, advanced_pretty_print, Bcolors, new_thread, get_named_tuple
 import curses
 import json
 import requests
@@ -41,7 +41,11 @@ class DockerVolume:
 
 	# clem 14/03/2016
 	def __str__(self):
-		return '%s:%s:%s' % (self.path, self.mount_point, self.mode)
+		return '<DockerVolume %s:%s:%s>' % (self.mode, self.path, self.mount_point)
+
+	# clem 08/04/2016
+	def __repr__(self):
+		return 'DockerVolume' + str((self.path, self.mount_point, self.mode))
 
 
 # clem 10/03/2016
@@ -50,8 +54,10 @@ class DockerRun:
 	_image = None
 	cmd = ''
 	_volumes = list()
+	auto_rm = True
 	created_container_id = ''
 	created_container = None
+	event_listener = None
 
 	# clem 11/03/2016
 	@property
@@ -62,13 +68,14 @@ class DockerRun:
 	# _check_if_volume_exists deleted 14/03/2016 (last git commit 32844a2)
 	# _volume_exists deleted 14/03/2016 (last git commit 32844a2)
 
-	def __init__(self, image_full_name_tag, cmd='', volumes=None, ev_listener=None, stream=False):
+	def __init__(self, image_full_name_tag, cmd='', volumes=None, ev_listener=None, stream=False, auto_rm=False):
 		assert isinstance(image_full_name_tag, (DockerImage, basestring)) and isinstance(cmd, basestring) and\
-			(volumes is None or isinstance(volumes, (list, DockerVolume)))
+			(volumes is None or isinstance(volumes, (list, DockerVolume))) and type(auto_rm) is bool
 		self.image_full_name = image_full_name_tag
 		self.cmd = cmd
-		self.stream = stream
+		self.stream = stream # TODO #notImplemented
 		self._volumes = volumes
+		self.auto_rm = auto_rm
 		self.event_listener = ev_listener
 
 	# clem 17/03/2016
@@ -78,10 +85,12 @@ class DockerRun:
 		:type container: DockerContainer
 		"""
 		# container._log('Container created')
-		if self.event_listener and isinstance(container, DockerContainer) and callable(self.event_listener):
+		if isinstance(container, DockerContainer):
 			self.created_container = container
 			self.created_container_id = container.Id
-			container.register_event_listener(self.event_listener)
+			container.register_run(self)
+			if self.event_listener and callable(self.event_listener):
+				container.register_event_listener(self.event_listener)
 
 	# clem 14/03/2016
 	def config_dict(self):
@@ -114,8 +123,12 @@ class DockerRun:
 	def pretty_print(self):
 		advanced_pretty_print(self.__dict__)
 
+	# clem 08/04/2016
+	def __str__(self):
+		return '<DockerRun %s$%s:%s@%s>' % (self.image_full_name, self.cmd, self.volumes, self.event_listener)
+
 	def __repr__(self):
-		return str((self.image, self.cmd, self.volumes))
+		return 'DockerRun' + str((self.image, self.cmd, [self.volumes], self.event_listener, self.stream, self.auto_rm))
 
 
 # clem 10/03/2016
@@ -258,17 +271,19 @@ class DockerContainer:
 	Ports = list()
 	Args = list()
 	Mounts = list()
+	_start_time = 0
+	_end_time = 0
 	_sig = u''
 	_log = u''
 	_event_list = list()
 	_event_buffer = list()
 	_event_listener = None
+	__run = None
 	__client = None
 
 	def __init__(self, a_dict, client=None, event_callback=None):
 		assert not client or isinstance(client, DockerClient)
-		if client:
-			self.__client = client
+		self.__client = client
 		self.__dict__.update(a_dict)
 		# _ = self.get_image # CAUSES DEADLOCKING
 		self.register_event_listener(event_callback)
@@ -283,6 +298,11 @@ class DockerContainer:
 		assert isinstance(client, DockerClient) or isinstance(self.__client, DockerClient)
 		the_client = client or self.__client
 		the_client._start(self)
+
+	# clem 08/04/2016
+	def register_run(self, run_object):
+		assert isinstance(run_object, DockerRun)
+		self.__run = run_object
 
 	# clem 15/03/2016
 	def register_event_listener(self, listener, replace=False):
@@ -299,6 +319,7 @@ class DockerContainer:
 		return self._event_listener and callable(self._event_listener)
 
 	# clem 05/04/2016
+	# @new_thread
 	def _event_dispatcher(self, event):
 		if self.has_event_listener:
 			self._event_list.append(event)
@@ -308,15 +329,42 @@ class DockerContainer:
 			# if and once one got registered, all the buffered events will be processed
 			self._event_buffer.append(event)
 
+	# clem 11/04/2016
+	def remove_container(self, force=True):
+		self._grab_logs()
+		if self.__run and self.__client:
+				self.__client.rm(self, force=force)
+
 	# clem 15/03/2016
 	@new_thread
 	def new_event(self, event):
-		if event.status == 'die':
-			print 's==d?%s' % event.description == DockerEventCategories.DIE
+		self._event_dispatcher(event)
+		if event.description == DockerEventCategories.DIE:
+			self._end_time = event.dt
 			self._grab_logs()
+			if self.__run and self.__run.auto_rm:
+				self.remove_container()
 		if event.description == DockerEventCategories.CREATE:
 			self.start()
-		self._event_dispatcher(event)
+		elif event.description == DockerEventCategories.START:
+			self._start_time = event.dt
+
+	# clem 11/04/2016
+	@property
+	def delta(self):
+		# from datetime import datetime
+		if self._end_time and self._start_time:
+			return self._end_time - self._start_time
+		return 0
+		# return '+%.03fs' % delta.total_seconds()
+
+	# clem 11/04/2016
+	@property
+	def delta_display(self):
+		d = self.delta
+		if d:
+			return '+%.03fs' % self.delta.total_seconds()
+		return ''
 
 	# clem 18/03/2016
 	@property
@@ -342,6 +390,11 @@ class DockerContainer:
 				self.Image = self.__client.get_image(self.Image)
 				return self.Image
 
+	# clem 08/04/2016
+	@property
+	def short_id(self):
+		return self.Id[0:12]
+
 	# clem 14/03/2016
 	@property
 	def name(self):
@@ -350,7 +403,7 @@ class DockerContainer:
 		elif self.Name:
 			return self.Name
 		else:
-			return self.Id
+			return self.short_id
 
 	# clem 15/03/2016
 	def pretty_print(self):
@@ -360,6 +413,35 @@ class DockerContainer:
 	@property
 	def textual(self):
 		return self.name
+
+	# clem 08/04/2016
+	def get_status(self):
+		return get_named_tuple('ContainerState', self.State)
+
+	# clem 08/04/2016
+	@property
+	def status(self):
+		return self.get_status()
+
+	# clem 08/04/2016
+	@property
+	def is_running(self):
+		return self.status.Running
+
+	# clem 08/04/2016
+	@property
+	def is_dead(self):
+		return self.status.Dead
+
+	# clem 08/04/2016
+	@property
+	def is_paused(self):
+		return self.status.Paused
+
+	# clem 08/04/2016
+	@property
+	def is_restarting(self):
+		return self.status.Restarting
 
 	# clem 18/03/2016
 	def __nonzero__(self):
@@ -420,7 +502,7 @@ class DockerEvent:
 		self.__dict__.update(a_dict)
 		# if client: # if we got a client in argument, we chain this container to its DockerImage object
 		self.__client = client
-		self._get_container() # we''ll do it upon access, as this container might not yet be in the ps list
+		# self.get_container() # we''ll do it upon access, as this container might not yet be in the ps list
 
 	# clem 16/03/2016 # FIXME : very slow
 	def _attach_container(self, res_id):
@@ -429,8 +511,9 @@ class DockerEvent:
 		return self._container
 
 	# FIXME : very slow
-	def _get_container(self):
-		if not self._container or not self._container.name: # if not a container or container has no name, refresh
+	def get_container(self, no_update=False):
+		if not no_update and (not self._container or not self._container.name): # if not a container or container has
+		#  no name, refresh
 			if self.Type == 'container':
 				try:
 					return self._attach_container(self.res_id)
@@ -439,20 +522,27 @@ class DockerEvent:
 			elif 'Attributes' in self.Actor and 'container' in self.Actor['Attributes']:
 				return self._attach_container(self.Actor['Attributes']['container'])
 			return self.res_id
+		if not self._container:
+			return self.short_id
 		return self._container
 
 	@property
 	def container(self):
-		return self._get_container()
+		return self.get_container()
 
 	@property
 	def res_id(self):
-		ret = None
+		ret = ''
 		if self.id:
 			ret = self.id
 		elif self.Type == 'container':
 			ret = self.Actor['Attributes']['container']
 		return ret
+
+	# clem 08/04/2016
+	@property
+	def short_id(self):
+		return self.res_id[0:12]
 
 	# clem 16/03/2016
 	@property
@@ -513,9 +603,12 @@ class DockerEvent:
 
 	# TODO rewrite / re-design
 	def __str__(self):
-		cont_title = self._get_container()
-		if isinstance(cont_title, DockerContainer):
-			cont_title = cont_title.name
+		cont_title = self.get_container(True)
+		if cont_title:
+			if isinstance(cont_title, DockerContainer):
+				cont_title = cont_title.name
+		else:
+			cont_title = self.short_id
 		return u'%s [%s] %s %s [%s]' % (cont_title, self.time_formatted, self.Type, self.description, self.delta)
 
 	def __repr__(self):
@@ -680,12 +773,17 @@ class TermStreamer:
 
 	# inspired from http://stackoverflow.com/a/6840469/5094389
 	def full_write(self, a_dict):
+		from _curses import error
 		if not self.stdscr:
 			return self._legacy_term_stream(a_dict)
 		i = 0
-		for value in a_dict.itervalues():
-			self.stdscr.addstr(i, 0, str(value).ljust(80))
-			i += 1
+		try:
+			for value in a_dict.itervalues():
+				i += 1
+				self.stdscr.addstr(i, 0, str(value).ljust(80))
+		except error as e:
+			# print 'err: %s' % e
+			pass
 		self.stdscr.refresh()
 
 
@@ -713,6 +811,7 @@ class DockerClient:
 	_event_list = list()
 	_run_wait = 0
 	_run_dict = dict()
+	_destroyed_objects = dict()
 
 	#
 	# CLASS MANAGEMENT
@@ -842,16 +941,21 @@ class DockerClient:
 			self._raw_cli = None
 			self._exception_handler(e)
 
+	# clem 08/04/2016
+	@property
+	def __connection_state(self):
+		return bool(self._raw_cli)
+
 	# clem 29/03/2016
 	@property
 	def __connected(self):
-		status = bool(self._raw_cli)
-		if not status:
+		if not self.__connection_state:
 			try:
+				from time import sleep
 				self.__connect_to_daemon()
 			except Exception:
 				raise CannotConnectToDaemon
-		return status
+		return self.__connection_state
 
 	# clem 09/03/2016
 	@property
@@ -935,7 +1039,7 @@ class DockerClient:
 			except APIError as e:
 				# self._log('Container %s failed : %s' % (msg, e))
 				self._log('Container %s failed : %s [%s]' % (msg, e, self._readable_time_stamp))
-				if isinstance(arg, DockerContainer):
+				if self.DEV and isinstance(arg, DockerContainer): # FIXME dev code
 					out_log = self.logs(arg.Id)
 					if out_log:
 						self._log('Container run log :\n%s' % advanced_pretty_print(out_log, get_output=True))
@@ -989,6 +1093,7 @@ class DockerClient:
 		:type container: basestring | DockerContainer
 		:rtype: None
 		"""
+		assert isinstance(container, DockerContainer)
 		self.cli.start(str(container))
 
 	# clem 17/03/2016
@@ -1002,6 +1107,7 @@ class DockerClient:
 			return self.cli.inspect_container(container_desc)
 		except (NotFound, APIError) as e:
 			import sys
+			# print 'plop'
 			if sys._getframe(1).f_code.co_name != '_update_container_data':
 				self._exception_handler(e)
 		except Exception as e:
@@ -1054,10 +1160,10 @@ class DockerClient:
 	@property
 	def cli(self):
 		if self.__connected: # system wide check for active connection
-			if not self.DEV:
-				return self._raw_cli
-			else:
+			if self.DEV:
 				return self.__pp_cli
+			else:
+				return self._raw_cli
 		else:
 			# self._log('ERR: Cannot use cli as Docker daemon is not connected')
 			self._auto_raise(DaemonNotConnected('Cannot use cli as Docker daemon is not connected'), True)
@@ -1179,7 +1285,7 @@ class DockerClient:
 	def rm(self, container_list, v=False, link=False, force=False):
 		"""
 		Removes a list of containers, designated by name or Id
-		:type container_list: list | basestring
+		:type container_list: list | DockerContainer | basestring
 		:type v: bool
 		:type link: bool
 		:type force: bool
@@ -1190,6 +1296,8 @@ class DockerClient:
 		try:
 			assert isinstance(container_list, list) # bug-fix for PyCharm code assistance
 			for container in container_list:
+				self._log('docker rm %s%s%s%s' % ('-v ' if v else '', '', '--force ' if force else '',
+				str(container)))
 				self.cli.remove_container(str(container), v, link, force)
 			return True
 		except Exception as e:
@@ -1265,6 +1373,26 @@ class DockerClient:
 			self._exception_handler(e, 'cli.logs: %s' % e)
 		return ''
 
+	# clem 10/03/2016 # TODO #notImplemented
+	def ps(self):
+		"""
+		Params:
+
+		quiet (bool): Only display numeric Ids
+		all (bool): Show all containers. Only running containers are shown by default
+		trunc (bool): Truncate output
+		latest (bool): Show only the latest created container, include non-running ones.
+		since (str): Show only containers created since Id or Name, include non-running ones
+		before (str): Show only container created before Id or Name, include non-running ones
+		limit (int): Show limit last created containers, include non-running ones
+		size (bool): Display sizes
+		filters (dict): Filters to be processed on the image list. Available filters:
+		exited (int): Only containers with specified exit code
+		status (str): One of restarting, running, paused, exited
+		label (str): format either "key" or "key=value"
+		"""
+		pass
+
 	#
 	# EVENTS LISTENER, PROCESSOR AND DISPATCHER
 	#
@@ -1307,16 +1435,19 @@ class DockerClient:
 		:type res_id: basestring
 		:rtype: None
 		"""
+		from copy import copy
 		assert isinstance(a_dict, dict)
 		try:
-			with self._data_mutex:
-				del a_dict[res_id]
+			if res_id in a_dict:
+				with self._data_mutex:
+					self._destroyed_objects[res_id] = copy(a_dict[res_id])
+					del a_dict[res_id]
 		except Exception as e:
 			self._exception_handler(e)
 
+	# TODO : REDESIGN
 	# clem 16/03/2016
-	@new_thread
-	def _process_event(self, event):
+	def _process_event(self, event, container=None):
 		assert isinstance(event, DockerEvent)
 		self._event_list.append(event)
 
@@ -1325,20 +1456,31 @@ class DockerClient:
 				pass
 			elif event.Type == 'container':
 				pass
-
 		if event.description == DockerEventCategories.DELETE:
 			if event.Type == 'image':
 				self._del_res(self.__image_dict_by_id, event.res_id )
 			elif event.Type == 'container':
-				self._del_res(self._container_dict_by_id, event.container.Id)
+				self._dispatch_event(event, container) # manual dispach for antecedance
+				self._del_res(self._container_dict_by_id, event.res_id)
+				return False
+		if event.description == DockerEventCategories.DIE:
+			pass
+			# self._log('%s died' % container)
+			# event.container.
+			# check destroy
 		if event.description == DockerEventCategories.DESTROY:
 			if event.Type == 'container':
-				self._del_res(self._container_dict_by_id, event.container.Id)
+				self._dispatch_event(event, container) # manual dispach for antecedance
+				self._del_res(self._container_dict_by_id, event.res_id)
+				return False
+		return True
 
 	# clem 16/03/2016
-	def _dispatch_event(self, event):
+	# TODO : REDESIGN
+	# @new_thread
+	def _dispatch_event(self, event, cont=None):
 		assert isinstance(event, DockerEvent)
-		cont = event.container
+		# cont = event.container(True)
 		# TODO add any resources
 		if cont and isinstance(cont, DockerContainer):
 			if not cont.has_event_listener:
@@ -1349,13 +1491,16 @@ class DockerClient:
 			self._log('<%s> (no related containers, i.e. external event)' % event)
 
 	# clem 16/03/2016
-	@new_thread
+	# TODO : REDESIGN
+	# @new_thread
 	def _new_event(self, event_literal):
 		event = DockerEvent(event_literal, self)
+		cont = event.get_container(True) # get rel. container, with no refresh (the container might not exist anymore)
 		# process the event (for example removing object from image or container dict)
-		self._process_event(event)
-		# dispatch the event to the related container
-		self._dispatch_event(event)
+		if self._process_event(event, cont):
+			cont = event.get_container() # the container has not been deleted / destroy we update it's data
+			# dispatch the event to the related container
+			self._dispatch_event(event, cont)
 
 	# clem 14/03/2016
 	def _event_watcher(self):
@@ -1367,7 +1512,8 @@ class DockerClient:
 		try:
 			self._log('Event watcher started')
 			for event in self.cli.events(): # Generator, do no run code in here, but rather in _new_event for non blocking
-				self._event_log(DockerEvent(event), ' <RT>')
+				if self.DEV: # FIXME dev code
+					self._event_log(DockerEvent(event), ' <RT>')
 				self._new_event(event)
 		except requests.exceptions.ConnectionError as e:
 			self._exception_handler(e, 'Starting event watcher failed: %s' % e)
@@ -1386,7 +1532,7 @@ class DockerClient:
 
 	# clem 10/03/2016
 	@property
-	def containers_by_id(self):
+	def containers_by_id(self, all=False):
 		"""
 		a dictionary of DockerContainer objects indexed by Id
 		internally containers lists is stored in a dict indexed with containers' Ids.
@@ -1395,10 +1541,11 @@ class DockerClient:
 		DockerContainer objects stores an internal md5 of its dictionary so that a modified container (invariant Id)
 			will be updated
 		similar to images_by_id()
+		:type all: bool
 		:rtype: dict(DockerContainer.Id: DockerContainer)
 		"""
 		try:
-			containers = self.cli.containers()
+			containers = self.cli.containers(all=all)
 			for e in containers: # retrieve, updates, or create the container object
 				self._get_container(e.get('Id'))
 			return self._container_dict_by_id
@@ -1457,9 +1604,6 @@ class DockerClient:
 		"""
 		return self._get_containers_by_name(self.containers_by_id)
 
-	# clem 10/03/2016
-	def ps(self):
-		pass
 
 	#
 	# IMAGES DATA OBJECT MANAGEMENT AND INTERFACE
