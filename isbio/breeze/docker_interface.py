@@ -1,4 +1,5 @@
 from docker_client import *
+from azure.storage.blob import BlockBlobService
 from utils import password_from_file, function_name, is_from_cli # , new_thread
 import os
 import atexit
@@ -17,11 +18,21 @@ SSH_BASH_KILL = 'ps aux | grep "%s"' % ' '.join(SSH_CMD) + " | awk '{ print $2 }
 
 NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
 
+AZURE_ACCOUNT = 'breeze5496'
+AZURE_KEY = password_from_file('~/code/azure_storage') # FIXME
+AZURE_CONTAINERS_NAME = ['dockertest', 'vhds']
+AZURE_BLOB_BASE_URL = 'https://%s.blob.core.windows.net/%s/'
+
+
+def container_url(container):
+	return AZURE_BLOB_BASE_URL % (AZURE_ACCOUNT, container)
+
 
 # clem 15/03/2016
 class Docker:
 	ssh_tunnel = None
 	auto_remove = True
+	block_blob_service = None
 	proc = None
 	client = None
 	_lock = None
@@ -191,3 +202,16 @@ class Docker:
 
 	def __delete__(self, *_):
 		self.__cleanup__()
+
+	def azure(self):
+		if not self.block_blob_service:
+			self.block_blob_service = BlockBlobService(account_name=AZURE_ACCOUNT, account_key=AZURE_KEY)
+			for each in AZURE_CONTAINERS_NAME:
+				self.list_blobs(each)
+		return self.block_blob_service
+
+	def list_blobs(self, blob_name):
+		generator = self.azure().list_blobs(blob_name)
+		print 'Azure container %s :' % blob_name
+		for blob in generator:
+			print blob.name
