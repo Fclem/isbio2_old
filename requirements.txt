@@ -58,3 +58,5 @@ websockify==0.6.0
 wsgiref==0.1.2
 sshtunnel>=0.0.8.1
 paramiko>=1.9.0
+docker-py>=1.7.2
+azure>=0.31
