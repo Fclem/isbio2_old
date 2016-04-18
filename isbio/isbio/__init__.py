@@ -11,7 +11,8 @@ def patch_broken_pipe_error():
 
 	def is_broken_pipe_error():
 		_, err, _ = sys.exc_info()
-		return err.errno == 32
+		num = err.errno if hasattr(err, 'errno') else 0
+		return num == 32
 
 	def my_handle_error(self, request, client_address):
 		if not is_broken_pipe_error():
