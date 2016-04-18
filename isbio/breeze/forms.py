@@ -234,6 +234,13 @@ class AddOffsiteUser(forms.ModelForm):
 	# queryset = breeze.models.User.objects.all(),
 
 
+# TODO move elsewhere
+AUTHORIZED_REPORT = ['ValidationToDss']
+DEFAULT_TARGET = tuple(('fimm_sge', 'FIMM (SGE)'))
+AZURE_DOCK = tuple(('azure_docker', 'AzureCloud (docker)'))
+CSC_DOCK = tuple(('csc_docker', 'CSC (docker)'))
+
+
 # clem 18/04/2016
 class ReportPropsFormMixin:
 	request = None
@@ -264,9 +271,10 @@ class ReportPropsFormMixin:
 		rtype = self.request.rtype
 		if not self._target_list:
 			self._target_list = list()
-			self._target_list.append(tuple(('fimm', 'SGE@FIMM')))
-			if rtype and rtype in ['ValidationToDss']: # FIXME
-				self._target_list.append(tuple(('azure_docker', 'Docker@Azure')))
+			self._target_list.append(DEFAULT_TARGET)
+			if rtype and rtype in AUTHORIZED_REPORT: # FIXME
+				self._target_list.append(AZURE_DOCK)
+				self._target_list.append(CSC_DOCK)
 		return self._target_list
 
 	@property
@@ -295,9 +303,17 @@ class ReportPropsFormMixin:
 			)
 		)
 
+		is_disabled = dict() # { 'class': 'multiselect', }
+		# if len(self.target_list) == 1:
+		# 	is_disabled.update({ 'disabled': 'disabled', })
+
 		self.fields["target"] = forms.ChoiceField(
 			choices=self.target_list,
-			initial=self.target_list[0]
+			initial=self.target_list[0],
+			widget=forms.Select(
+				attrs=is_disabled
+			)
+
 		)
 
 
