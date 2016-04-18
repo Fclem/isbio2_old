@@ -5,6 +5,7 @@ import os
 import socket
 import time
 from datetime import datetime
+from breeze.utilities import git_get_status, git_get_branch
 
 ENABLE_DATADOG = True
 try:
@@ -740,8 +741,12 @@ else:
 	logging.debug('source home : ' + DevSettings.SOURCE_ROOT)
 	print 'project home : ' + DevSettings.PROJECT_PATH
 	logging.debug('project home : ' + DevSettings.PROJECT_PATH)
-	print 'Logging on %s\nSettings loaded. Running %s on %s' % \
-		(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(Bcolors.bold(DevSettings.RUN_MODE)), Bcolors.ok_blue(DevSettings.FULL_HOST_NAME))
+	print 'Logging on %s\nSettings loaded. Running %s / %s on %s' % \
+		(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(git_get_branch()), Bcolors.ok_blue(Bcolors.bold(DevSettings.RUN_MODE)),
+		Bcolors.ok_blue(DevSettings.FULL_HOST_NAME))
+	git_stat = git_get_status()
+	print git_stat
 	if DevSettings.PHARMA_MODE:
 		print Bcolors.bold('RUNNING WITH PHARMA')
 	logging.info('Settings loaded. Running %s on %s' % (DevSettings.RUN_MODE, DevSettings.FULL_HOST_NAME))
+	logging.info(git_stat)
