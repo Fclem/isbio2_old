@@ -37,3 +37,6 @@ run.sh
 /diagram.png
 re_run.sh
 running
+azure_pwd
+azure_blob_pwd
+docker_repo

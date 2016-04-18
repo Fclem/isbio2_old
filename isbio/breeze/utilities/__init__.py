@@ -5,7 +5,8 @@ import time
 from filesize import UnitSystem, file_size2human
 from os.path import isfile, isdir, islink, exists, getsize, join
 from os import symlink, access, listdir, R_OK, chmod
-from subprocess import call
+from subprocess import call, Popen, PIPE
+from threading import Thread
 
 
 logger = logging.getLogger(__name__)
@@ -542,3 +543,108 @@ def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 # clem 01/04/2016
 def pp(data, unfold_objects=False, return_output=False):
 	return advanced_pretty_print(data, open_obj=unfold_objects, get_output=return_output)
+
+
+# clem 05/04/2016
+def new_thread(func):
+	"""
+	Wrapper to run functions in a new Thread
+	:type func:
+	:rtype:
+	"""
+	# assert callable(func)
+
+	def decorated(*args):
+		Thread(target=func, args=args).start()
+
+	return None if not func else decorated
+
+
+# clem 06/04/2016
+def password_from_file(path):
+	from os.path import exists, expanduser
+	if not exists(path):
+		temp = expanduser(path)
+		if exists(temp):
+			path = temp
+	return open(path).read().replace('\n', '')
+
+
+# clem 08/04/2016
+def function_name(delta=0):
+	return sys._getframe(1 + delta).f_code.co_name
+
+
+# clem 08/04/2016
+def caller_function_name(delta=0):
+	return sys._getframe(2 + delta).f_code.co_name
+
+
+# clem 08/04/2016
+def is_from_cli():
+	""" Tells if the caller was called from command line or not
+	:rtype: bool
+	"""
+	return caller_function_name(1) == '<module>'
+
+
+# clem 08/04/2016
+def get_named_tuple(class_name, a_dict):
+	assert isinstance(class_name, basestring) and isinstance(a_dict, dict)
+	from collections import namedtuple
+	return namedtuple(class_name, ' '.join(a_dict.keys()))(**a_dict)
+
+
+# clem 18/04/2016
+def get_term_cmd_stdout(cmd_list_with_args):
+	assert isinstance(cmd_list_with_args, list)
+	ret = ''
+	a = Popen(cmd_list_with_args, stdout=PIPE)
+	b = a.communicate()
+	if b:
+		s = b[0].split('\n')
+		return s
+	return ret
+
+
+# clem 18/04/2016
+def git_get_branch():
+	ret = ''
+	s = get_term_cmd_stdout(["git", "branch"])
+	if s:
+		ret = s[0].replace('*', '').strip()
+	return ret
+
+
+# clem 18/04/2016
+def git_get_status():
+	ret = ''
+	s = get_term_cmd_stdout(["git", "status"])
+	if s:
+		ret = '%s / %s\n%s' % (s[0].strip(), git_get_commit_line(), s[1].strip())
+	return ret
+
+
+# clem 18/04/2016
+def git_get_commit_line(full=False, hash_only=False):
+	ret = ''
+	s = get_term_cmd_stdout(["git", "show"])
+	if s:
+		commit = s[0].strip()[:14] if not full else s[0].strip()
+		if hash_only:
+			return commit
+		ret = '%s on %s' % (commit, s[2].replace('Date:   ', '').strip())
+	return ret
+
+
+# clem 18/04/2016
+def git_get_commit(full=False):
+	return git_get_commit_line(full, True).replace('commit', '').strip()
+
+
+# clem 18/04/2016
+def git_get_head(folder=''):
+	try:
+		return open('%s.git/FETCH_HEAD' % folder).readline().replace('\n', '')
+	except IOError:
+		return ''
