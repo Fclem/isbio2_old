@@ -276,18 +276,11 @@ class ReportPropsFormMixin:
 				~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
 		return self._project_qs
 
-	def _sup_init_(self, *args, **kwargs):
-		# super(ReportPropsFormMixin, self).__init__(*args, **kwargs)
-		print 'init'
+	def _sup_init_(self, *_, **kwargs):
 		if not self.request and 'request' in kwargs:
 			self.request = kwargs.get("request")
 		if not hasattr(self, 'fields'):
 			self.fields = dict()
-
-		self.fields["target"] = forms.ChoiceField(
-			choices=self.target_list,
-			initial=self.target_list[0]
-		)
 
 		# FIXME : use manager instead
 		self.fields["project"] = forms.ModelChoiceField(
@@ -302,31 +295,41 @@ class ReportPropsFormMixin:
 			)
 		)
 
+		self.fields["target"] = forms.ChoiceField(
+			choices=self.target_list,
+			initial=self.target_list[0]
+		)
 
-# NewForm = forms.Form
-def new_init(self, *args, **kwargs):
-	super(forms.Form, self).__init__(*args, **kwargs)
-forms.Form.__init__ = new_init
 
-
-class ReportPropsForm(forms.Form, ReportPropsFormMixin):
+class ReportPropsFormMixinWrapperOne(forms.Form, ReportPropsFormMixin):
 	def __init__(self, *args, **kwargs):
 		import copy
-		kwargs_copy = copy.deepcopy(kwargs)
-		self.request = kwargs.pop("request")
-		super(ReportPropsForm, self).__init__(*args, **kwargs)
-		self._sup_init_(*args, **kwargs_copy)
-		print self.fields
+		self.kwargs_copy = copy.copy(kwargs)
+		self.request = kwargs.pop("request", None)
+		super(ReportPropsFormMixinWrapperOne, self).__init__(*args, **kwargs)
+		self._sup_init_(*args, **self.kwargs_copy)
 
 
-# TODO check if this class could herit from the previous Form class, so as to remove this code duplication
-class ReportPropsFormRE(forms.ModelForm, ReportPropsFormMixin):
+class ReportPropsFormMixinWrapperTwo(forms.ModelForm, ReportPropsFormMixin):
 	def __init__(self, *args, **kwargs):
-		self.request = kwargs.pop("request")
+		import copy
+		self.kwargs_copy = copy.copy(kwargs)
+		self.request = kwargs.pop("request", None)
+		super(ReportPropsFormMixinWrapperTwo, self).__init__(*args, **kwargs)
+		self._sup_init_(*args, **self.kwargs_copy)
+
+
+class ReportPropsForm(ReportPropsFormMixinWrapperOne):
+	def __init__(self, *args, **kwargs):
+		super(ReportPropsForm, self).__init__(*args, **kwargs)
+
+
+class ReportPropsFormRE(ReportPropsFormMixinWrapperTwo):
+	def __init__(self, *args, **kwargs):
 		super(ReportPropsFormRE, self).__init__(*args, **kwargs)
 
 		self.fields["shared"] = self.fields["Share"]
-		# del self.fields["Share"]
+		del self.fields["Share"]
 
 	class Meta:
 		model = breeze.models.Report
