@@ -234,68 +234,99 @@ class AddOffsiteUser(forms.ModelForm):
 	# queryset = breeze.models.User.objects.all(),
 
 
-class ReportPropsForm(forms.Form):
-	def __init__(self, *args, **kwargs):
-		self.request = kwargs.pop("request")
-		super(ReportPropsForm, self).__init__(*args, **kwargs)
+# clem 18/04/2016
+class ReportPropsFormMixin:
+	request = None
+	_share_options = None
+	_target_list = None
+	_project_qs = None
 
-		group_list_of_tuples = list()
-		users_list_of_tuples = list()
+	@property
+	def share_options(self):
+		if not self._share_options:
+			group_list_of_tuples = list()
+			users_list_of_tuples = list()
 
-		for ur in breeze.models.OrderedUser.objects.all():
-			users_list_of_tuples.append(tuple((ur.id, ur.username)))
+			for ur in breeze.models.OrderedUser.objects.all():
+				users_list_of_tuples.append(tuple((ur.id, ur.username)))
 
-		for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
-			group_list_of_tuples.append(tuple((gr.id, gr.name)))
+			for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
+				group_list_of_tuples.append(tuple((gr.id, gr.name)))
 
-		share_options = list()
-		share_options.append(tuple(( 'Groups', tuple(group_list_of_tuples) )))
-		share_options.append(tuple(( 'Individual Users', tuple(users_list_of_tuples) )))
+			self._share_options = list()
+			self._share_options.append(tuple(('Groups', tuple(group_list_of_tuples))))
+			self._share_options.append(tuple(('Individual Users', tuple(users_list_of_tuples))))
+		return self._share_options
 
-		self.fields["project"] = forms.ModelChoiceField(
-			queryset=breeze.models.Project.objects.exclude(
+	@property
+	def target_list(self):
+		# FIXME : have this loaded dynamically from a matching db : ReportType <-> TargetList
+		rtype = self.request.rtype
+		if not self._target_list:
+			self._target_list = list()
+			self._target_list.append(tuple(('fimm', 'SGE@FIMM')))
+			if rtype and rtype in ['ValidationToDss']: # FIXME
+				self._target_list.append(tuple(('azure_docker', 'Docker@Azure')))
+		return self._target_list
+
+	@property
+	def project_qs(self):
+		if not self._project_qs:
+			self._project_qs = breeze.models.Project.objects.exclude(
 				~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
+		return self._project_qs
+
+	def _sup_init_(self, *args, **kwargs):
+		# super(ReportPropsFormMixin, self).__init__(*args, **kwargs)
+		print 'init'
+		if not self.request and 'request' in kwargs:
+			self.request = kwargs.get("request")
+		if not hasattr(self, 'fields'):
+			self.fields = dict()
+
+		self.fields["target"] = forms.ChoiceField(
+			choices=self.target_list,
+			initial=self.target_list[0]
+		)
+
+		# FIXME : use manager instead
+		self.fields["project"] = forms.ModelChoiceField(
+			queryset=self.project_qs
 		)
 
 		self.fields["Share"] = forms.MultipleChoiceField(
 			required=False,
-			choices=share_options,  # queryset=breeze.models.OrderedUser.objects.all(),
+			choices=self.share_options,
 			widget=forms.SelectMultiple(
-				attrs={'class': 'multiselect', }
+				attrs={ 'class': 'multiselect', }
 			)
 		)
 
 
-class ReportPropsFormRE(forms.ModelForm):
+# NewForm = forms.Form
+def new_init(self, *args, **kwargs):
+	super(forms.Form, self).__init__(*args, **kwargs)
+forms.Form.__init__ = new_init
+
+
+class ReportPropsForm(forms.Form, ReportPropsFormMixin):
+	def __init__(self, *args, **kwargs):
+		import copy
+		kwargs_copy = copy.deepcopy(kwargs)
+		self.request = kwargs.pop("request")
+		super(ReportPropsForm, self).__init__(*args, **kwargs)
+		self._sup_init_(*args, **kwargs_copy)
+		print self.fields
+
+
+# TODO check if this class could herit from the previous Form class, so as to remove this code duplication
+class ReportPropsFormRE(forms.ModelForm, ReportPropsFormMixin):
 	def __init__(self, *args, **kwargs):
 		self.request = kwargs.pop("request")
 		super(ReportPropsFormRE, self).__init__(*args, **kwargs)
 
-		group_list_of_tuples = list()
-		users_list_of_tuples = list()
-
-		for ur in breeze.models.OrderedUser.objects.all():
-			users_list_of_tuples.append(tuple((ur.id, ur.username)))
-
-		for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
-			group_list_of_tuples.append(tuple((gr.id, gr.name)))
-
-		share_options = list()
-		share_options.append(tuple(( 'Groups', tuple(group_list_of_tuples) )))
-		share_options.append(tuple(( 'Individual Users', tuple(users_list_of_tuples) )))
-
-		self.fields["project"] = forms.ModelChoiceField(
-			queryset=breeze.models.Project.objects.exclude(
-				~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
-		)
-
-		self.fields["shared"] = forms.MultipleChoiceField(
-			required=False,
-			choices=share_options,  # queryset=breeze.models.OrderedUser.objects.all(),
-			widget=forms.SelectMultiple(
-				attrs={'class': 'multiselect', }
-			)
-		)
+		self.fields["shared"] = self.fields["Share"]
+		# del self.fields["Share"]
 
 	class Meta:
 		model = breeze.models.Report
