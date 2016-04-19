@@ -15,9 +15,12 @@ def password_from_file(path):
 			return False
 	return open(path).read().replace('\n', '')
 
-AZURE_ACCOUNT = 'breeze5496'
-AZURE_KEY = password_from_file('~/code/azure_blob_pwd') or password_from_file('./azure_blob_pwd')
-AZURE_CONTAINERS_NAME = ['dockertest', 'vhds']
+# AZURE_ACCOUNT = 'breeze5496'
+AZURE_ACCOUNT = 'breezedata'
+# AZURE_KEY = password_from_file('~/code/azure_blob_pwd') or password_from_file('./azure_blob_pwd')
+azure_file_name = 'azure_pwd_%s' % AZURE_ACCOUNT
+AZURE_KEY = password_from_file('~/code/%s' % azure_file_name) or password_from_file('./%s' % azure_file_name)
+AZURE_CONTAINERS_NAME = ['dockertest']
 AZURE_BLOB_BASE_URL = 'https://%s.blob.core.windows.net/%s/'
 __DEV__ = True
 RESULT_FILE = 'job.tar.xz'
