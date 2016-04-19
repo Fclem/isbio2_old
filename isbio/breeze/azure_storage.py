@@ -15,9 +15,7 @@ def password_from_file(path):
 			return False
 	return open(path).read().replace('\n', '')
 
-# AZURE_ACCOUNT = 'breeze5496'
 AZURE_ACCOUNT = 'breezedata'
-# AZURE_KEY = password_from_file('~/code/azure_blob_pwd') or password_from_file('./azure_blob_pwd')
 azure_file_name = 'azure_pwd_%s' % AZURE_ACCOUNT
 AZURE_KEY = password_from_file('~/code/%s' % azure_file_name) or password_from_file('./%s' % azure_file_name)
 AZURE_CONTAINERS_NAME = ['dockertest']
@@ -30,14 +28,17 @@ JOB_FILE = 'in.tar.xz'
 # clem 14/04/2016
 class AzureStorage:
 	_blob_service = None
+	container = None
 	ACCOUNT_LOGIN = ''
 	ACCOUNT_KEY = ''
 
-	def __init__(self, login, key):
+	def __init__(self, login, key, container):
 		assert isinstance(login, basestring)
 		assert isinstance(key, basestring)
+		assert isinstance(container, basestring)
 		self.ACCOUNT_LOGIN = login
 		self.ACCOUNT_KEY = key
+		self.container = container
 
 	@property
 	def blob_service(self):
@@ -48,37 +49,49 @@ class AzureStorage:
 			self._blob_service = BlockBlobService(account_name=self.ACCOUNT_LOGIN, account_key=self.ACCOUNT_KEY)
 			if __DEV__:
 				for each in AZURE_CONTAINERS_NAME:
-					self.list_blobs(each)
+					self._list_blobs(each)
 		return self._blob_service
 
-	def container_url(self, container):
+	def container_url(self):
+		return self._container_url(self.container)
+
+	def _container_url(self, container):
 		return AZURE_BLOB_BASE_URL % (self.ACCOUNT_LOGIN, container)
 
-	def list_blobs(self, blob_name):
-		generator = self.blob_service.list_blobs(blob_name)
-		print 'Azure container %s :' % blob_name
+	def list_blobs(self):
+		return self._list_blobs(self.container)
+
+	def _list_blobs(self, container):
+		generator = self.blob_service.list_blobs(container)
+		print 'Azure container %s :' % container
 		for blob in generator:
 			print blob.name
+
+	def blob_info(self, blob_name):
+		return self._blob_info(self.container, blob_name)
+
+	def _blob_info(self, cont_name, blob_name):
+		return self.blob_service.get_blob_properties(cont_name, blob_name)
 
 	# clem 15/04/2016
 	def upload(self, blob_name, file_path):
 		if os.path.exists(file_path):
-			cont_name = 'mycontainer'
+			cont_name = AZURE_CONTAINERS_NAME[0]
 			self.blob_service.create_container(cont_name)
 			print "create_blob_from_path(%s, %s, %s)" % (cont_name, blob_name, file_path)
-			# self.blob_service.put_block_blob_from_path(cont_name, blob_name, file_path)
 			self.blob_service.create_blob_from_path(cont_name, blob_name, file_path)
 		else:
 			raise NotImplementedError('File %s not found in %s !' % (file_path, os.path.curdir))
-		return True
+		return self.blob_service.get_blob_properties(cont_name, blob_name)
 
 	# clem 15/04/2016
 	def download(self, blob_name, file_path):
 		try:
-			print "get_blob_to_path(%s, %s, %s)" % (AZURE_CONTAINERS_NAME[0], blob_name, file_path)
-			self.blob_service.get_blob_to_path(AZURE_CONTAINERS_NAME[0], blob_name, file_path)
+			print "get_blob_to_path(%s, %s, %s)" % (self.container, blob_name, file_path)
+			self.blob_service.get_blob_to_path(self.container, blob_name, file_path)
 		except AzureMissingResourceHttpError as e: # FIXME HAS NO EFFECT
 			raise e
+
 		return True
 
 
@@ -101,7 +114,7 @@ if __name__ == '__main__':
 
 	__DEV__ = False
 	try:
-		storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY)
+		storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME[0])
 		if action == 'load':
 			path = DOCK_HOME + '/' + JOB_FILE
 			storage.download(obj_id, path)
