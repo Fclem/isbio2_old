@@ -1,5 +1,3 @@
-__breeze__started__
-[94mMYSQL DB		 [0m[[92mOK[0m]
 BEGIN;
 CREATE TABLE `breeze_post` (
     `id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY,
@@ -161,8 +159,8 @@ CREATE TABLE `breeze_rscripts` (
     `logo` varchar(100) NOT NULL
 )
 ;
-ALTER TABLE `breeze_rscripts` ADD CONSTRAINT `author_id_refs_id_6020a003` FOREIGN KEY (`author_id`) REFERENCES `auth_user` (`id`);
 ALTER TABLE `breeze_rscripts` ADD CONSTRAINT `category_id_refs_category_91c63922` FOREIGN KEY (`category_id`) REFERENCES `breeze_script_categories` (`category`);
+ALTER TABLE `breeze_rscripts` ADD CONSTRAINT `author_id_refs_id_6020a003` FOREIGN KEY (`author_id`) REFERENCES `auth_user` (`id`);
 ALTER TABLE `breeze_rscripts_report_type` ADD CONSTRAINT `rscripts_id_refs_id_f1ef62d9` FOREIGN KEY (`rscripts_id`) REFERENCES `breeze_rscripts` (`id`);
 ALTER TABLE `breeze_rscripts_access` ADD CONSTRAINT `rscripts_id_refs_id_ec9e7575` FOREIGN KEY (`rscripts_id`) REFERENCES `breeze_rscripts` (`id`);
 ALTER TABLE `breeze_rscripts_install_date` ADD CONSTRAINT `rscripts_id_refs_id_cf07916b` FOREIGN KEY (`rscripts_id`) REFERENCES `breeze_rscripts` (`id`);
@@ -252,13 +250,15 @@ CREATE TABLE `breeze_report` (
     `conf_params` longtext,
     `conf_files` longtext,
     `fm_flag` bool NOT NULL,
+    `target_id` integer NOT NULL,
     `shiny_key` varchar(64),
     `rora_id` integer UNSIGNED NOT NULL
 )
 ;
-ALTER TABLE `breeze_report` ADD CONSTRAINT `project_id_refs_id_e871ccad` FOREIGN KEY (`project_id`) REFERENCES `breeze_project` (`id`);
 ALTER TABLE `breeze_report` ADD CONSTRAINT `institute_id_refs_id_c39c9995` FOREIGN KEY (`institute_id`) REFERENCES `breeze_institute` (`id`);
 ALTER TABLE `breeze_report` ADD CONSTRAINT `type_id_refs_id_7a90ceef` FOREIGN KEY (`type_id`) REFERENCES `breeze_reporttype` (`id`);
+ALTER TABLE `breeze_report` ADD CONSTRAINT `target_id_refs_id_ee2c2728` FOREIGN KEY (`target_id`) REFERENCES `breeze_computetarget` (`id`);
+ALTER TABLE `breeze_report` ADD CONSTRAINT `project_id_refs_id_e871ccad` FOREIGN KEY (`project_id`) REFERENCES `breeze_project` (`id`);
 ALTER TABLE `breeze_report` ADD CONSTRAINT `author_id_refs_id_28cb3493` FOREIGN KEY (`author_id`) REFERENCES `auth_user` (`id`);
 ALTER TABLE `breeze_report_shared` ADD CONSTRAINT `report_id_refs_id_1e60dfd0` FOREIGN KEY (`report_id`) REFERENCES `breeze_report` (`id`);
 CREATE TABLE `breeze_shinytag_attached_report` (
