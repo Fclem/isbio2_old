@@ -40,4 +40,7 @@ running
 azure_pwd
 azure_blob_pwd
 azure_pwd_*
+azure_pwd_breezedata
+isbio/breeze/azure_pwd_*
+isbio/breeze/azure_pwd_breezedata
 docker_repo
