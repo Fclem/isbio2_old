@@ -39,4 +39,5 @@ re_run.sh
 running
 azure_pwd
 azure_blob_pwd
+azure_pwd_*
 docker_repo
