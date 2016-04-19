@@ -462,7 +462,7 @@ def do_reboot():
 	return True
 
 
-# TODO rewrite, as a class maybe ?
+# gitgit TODO rewrite, as a class maybe ?
 # clem 09/03/2016 contains code from from http://stackoverflow.com/a/3229493/5094389
 def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 	""" Prints a tree from a nested dict

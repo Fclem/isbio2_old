@@ -234,19 +234,16 @@ class AddOffsiteUser(forms.ModelForm):
 	# queryset = breeze.models.User.objects.all(),
 
 
-# TODO move elsewhere
-AUTHORIZED_REPORT = ['ValidationToDss']
-DEFAULT_TARGET = tuple(('fimm_sge', 'FIMM (SGE)'))
-AZURE_DOCK = tuple(('azure_docker', 'AzureCloud (docker)'))
-CSC_DOCK = tuple(('csc_docker', 'CSC (docker)'))
-
-
 # clem 18/04/2016
 class ReportPropsFormMixin:
 	request = None
 	_share_options = None
 	_target_list = None
 	_project_qs = None
+
+	# clem 19/04/2016
+	def __init__(self, *args, **kwargs):
+		super(ReportPropsFormMixin, self).__init__(*args, **kwargs)
 
 	@property
 	def share_options(self):
@@ -265,24 +262,10 @@ class ReportPropsFormMixin:
 			self._share_options.append(tuple(('Individual Users', tuple(users_list_of_tuples))))
 		return self._share_options
 
+	# clem 19/04/2016
 	@property
-	def target_list(self):
-		# FIXME : have this loaded dynamically from a matching db : ReportType <-> TargetList
-		rtype = self.request.rtype
-		if not self._target_list:
-			self._target_list = list()
-			self._target_list.append(DEFAULT_TARGET)
-			if rtype and rtype in AUTHORIZED_REPORT: # FIXME
-				self._target_list.append(AZURE_DOCK)
-				self._target_list.append(CSC_DOCK)
-		return self._target_list
-
-	@property
-	def project_qs(self):
-		if not self._project_qs:
-			self._project_qs = breeze.models.Project.objects.exclude(
-				~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
-		return self._project_qs
+	def target_list(self): # code moved to ReportType.target_list
+		return breeze.models.ReportType.objects.get(type=self.request.rtype).target_list
 
 	def _sup_init_(self, *_, **kwargs):
 		if not self.request and 'request' in kwargs:
@@ -292,28 +275,22 @@ class ReportPropsFormMixin:
 
 		# FIXME : use manager instead
 		self.fields["project"] = forms.ModelChoiceField(
-			queryset=self.project_qs
+			queryset=breeze.models.Project.objects.available(self.request.user)
 		)
 
-		self.fields["Share"] = forms.MultipleChoiceField(
+		self.fields["target"] = forms.ChoiceField(
+			choices=self.target_list,
+			initial=self.target_list[0],
+			widget=forms.Select()
+		)
+
+		# self.fields["Share"] = forms.MultipleChoiceField( # TODO find out why this has various spelling
+		self.fields["shared"] = forms.MultipleChoiceField(
 			required=False,
 			choices=self.share_options,
 			widget=forms.SelectMultiple(
 				attrs={ 'class': 'multiselect', }
 			)
-		)
-
-		is_disabled = dict() # { 'class': 'multiselect', }
-		# if len(self.target_list) == 1:
-		# 	is_disabled.update({ 'disabled': 'disabled', })
-
-		self.fields["target"] = forms.ChoiceField(
-			choices=self.target_list,
-			initial=self.target_list[0],
-			widget=forms.Select(
-				attrs=is_disabled
-			)
-
 		)
 
 
@@ -344,8 +321,9 @@ class ReportPropsFormRE(ReportPropsFormMixinWrapperTwo):
 	def __init__(self, *args, **kwargs):
 		super(ReportPropsFormRE, self).__init__(*args, **kwargs)
 
-		self.fields["shared"] = self.fields["Share"]
-		del self.fields["Share"]
+		# if 'Share' in self.fields:
+		#	self.fields["shared"] = self.fields["Share"]
+		#	del self.fields["Share"]
 
 	class Meta:
 		model = breeze.models.Report

@@ -249,8 +249,8 @@ class FolderObj(object):
 		"""
 		if self.BASE_FOLDER_NAME is None:
 			raise NotDefined("BASE_FOLDER_NAME was not implemented in concrete class %s." % self.__class__.__name__)
-		if self.folder_name is None or self.folder_name == '':
-			raise NotDefined("folder_name is empty for %s." % self)
+		# if self.folder_name is None or self.folder_name == '':
+		#	raise NotDefined("folder_name is empty for %s." % self)
 		return '%s%s/' % (self.BASE_FOLDER_NAME, slugify(self.folder_name))
 
 	@property
@@ -483,7 +483,9 @@ class Project(models.Model):
 	wbs = models.CharField(max_length=50, blank=True)
 	external_id = models.CharField(max_length=50, blank=True)
 	description = models.CharField(max_length=1100, blank=True)
-	
+
+	objects = managers.ProjectManager() # Custom manage 19/04/2016
+
 	def __unicode__(self):
 		return self.name
 
@@ -1096,6 +1098,106 @@ class ShinyReport(models.Model):
 		return self.get_name
 
 
+# 19/04/2016
+class ComputeTarget(FolderObj, models.Model):
+	"""
+	Defines and describes every shared attributes/methods of computing resource abstract classes.
+	"""
+	name = models.CharField(max_length=32, blank=False, help_text="Name of this Compute resource target")
+	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
+	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+
+	BASE_FOLDER_NAME = ''
+
+	def file_name(self, filename):
+		return super(ComputeTarget, self).file_name(filename)
+
+	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+		help_text="The config file for this target")
+	enabled = models.BooleanField(default=True, help_text="Uncheck to disable target")
+
+	__config = None
+	CONFIG_GENERAL_SECTION = 'general'
+	CONFIG_TYPE = 'type'
+	CONFIG_TUNNEL = 'tunnel'
+	CONFIG_ENGINE = 'engine'
+
+	@property
+	def folder_name(self):
+		"""
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		return settings.COMPUTE_CONFIG_FN
+
+	def __init__(self, *args, **kwargs):
+		super(ComputeTarget, self).__init__(*args, **kwargs)
+
+	def __unicode__(self): # Python 3: def __str__(self):
+		return '%s (%s)' % (self.label, self.name)
+
+	def conf_check(self):
+		""" Return whether this computing resource is properly configured """
+		return False
+
+	def online_check(self):
+		""" Return whether this computing resource is currently online (reachable+ready) """
+		return False
+
+	def job_status(self):
+		"""
+		Returns the job status as a JobState instance
+		:rtype: breeze.models.JobState
+		"""
+		return
+
+	def abort(self):
+		return False
+
+	@property
+	def target_config(self):
+		if not self.__config:
+			import ConfigParser
+
+			if isfile(self.config_file.path):
+				self.__config = ConfigParser.SafeConfigParser()
+				self.__config.readfp(open(self.config_file.path))
+			else:
+				raise IOError('The file %s could not be found' % self.config_file.path)
+		return self.__config
+
+	@property
+	def target_type(self):
+		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TYPE)
+
+	@property
+	def target_tunnel(self):
+		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TUNNEL)
+
+	@property
+	def target_use_tunnel(self):
+		return self.target_tunnel != 'no'
+
+	@property
+	def target_engine(self):
+		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
+
+	@property
+	def target_engine_conf(self):
+		return self.target_config.items(self.target_engine)
+
+	@property
+	def target_tunnel_conf(self):
+		if self.target_use_tunnel:
+			return self.target_config.items(self.target_tunnel)
+		return list()
+
+
+	class Meta(FolderObj.Meta): # TODO check if inheritance is required here
+		abstract = False
+		db_table = 'breeze_computetarget'
+
+
 class ReportType(FolderObj, models.Model):
 	BASE_FOLDER_NAME = settings.REPORT_TYPE_FN
 
@@ -1106,6 +1208,8 @@ class ReportType(FolderObj, models.Model):
 	search = models.BooleanField(default=False, help_text="NB : LEAVE THIS UN-CHECKED")
 	access = models.ManyToManyField(User, null=True, blank=True, default=None,
 									related_name='pipeline_access')  # share list
+	targets = models.ManyToManyField(ComputeTarget, null=True, blank=True, default=None,
+		related_name='compute_targets')  # available compute targets
 	# tags = models.ManyToManyField(Rscripts, blank=True)
 	
 	# who creates this report
@@ -1124,6 +1228,8 @@ class ReportType(FolderObj, models.Model):
 
 	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to",
 		default=0, blank=True, null=True)
+
+	_target_list = None # clem 19/04/2016
 
 	# clem 21/12/2015
 	def __init__(self, *args, **kwargs):
@@ -1195,6 +1301,21 @@ class ReportType(FolderObj, models.Model):
 		if shiny_r is not None:
 			shiny_r.regen_report()
 		return True
+
+	# clem 19/04/2016
+	@property
+	def target_list(self):
+		"""
+		Return a list of (enabled) compute target for this report type, that is suitable to use in a Form
+		:rtype: list
+		"""
+		if not self._target_list:
+			self._target_list = list()
+			targets = self.targets.filter(enabled=True)
+			if targets:
+				for each in targets:
+					self._target_list.append(tuple((each.name, each.label)))
+		return self._target_list
 
 	class Meta:
 		ordering = ('type',)
@@ -1446,7 +1567,7 @@ class Runnable(FolderObj, models.Model):
 	SYSTEM_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, INC_RUN_FN, FAILED_FN, SUCCESS_FN, FILE_MAKER_FN]
 	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN] # TODO add FM file ?
 
-	objects = managers.WorkersManager() # The default manager.
+	objects = managers.WorkersManager() # Custom manage
 
 	def __init__(self, *args, **kwargs):
 		super(Runnable, self).__init__(*args, **kwargs)

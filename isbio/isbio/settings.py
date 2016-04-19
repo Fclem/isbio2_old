@@ -446,6 +446,9 @@ class DevSettings(BreezeSettings):
 	DOCKER_HUB_PASS_FILE = SOURCE_ROOT + 'docker_repo'
 	AZURE_PASS_FILE = SOURCE_ROOT + 'azure_pwd'
 
+	# 19/04/2016
+	COMPUTE_CONFIG_FN = 'compute_config/'
+	COMPUTE_CONFIG_PATH = MEDIA_ROOT + COMPUTE_CONFIG_FN
 
 	##
 	# Report config
