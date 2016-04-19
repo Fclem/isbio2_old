@@ -106,6 +106,7 @@ if __name__ == '__main__':
 
 	action = str(sys.argv[1])
 	obj_id = str(sys.argv[2])
+	file_n = '' if len(sys.argv) <= 3 else sys.argv[3]
 
 	print action, obj_id
 
@@ -120,6 +121,9 @@ if __name__ == '__main__':
 			storage.download(obj_id, path)
 		elif action == 'save':
 			path = DOCK_HOME + '/' + RESULT_FILE
+			storage.upload(obj_id, path)
+		elif action == 'upload' and file_n:
+			path = DOCK_HOME + '/' + file_n
 			storage.upload(obj_id, path)
 	except Exception as e:
 		raise e
