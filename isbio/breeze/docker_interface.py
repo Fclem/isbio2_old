@@ -1,5 +1,5 @@
 from docker_client import *
-from utils import password_from_file, function_name, is_from_cli # , new_thread
+from utils import password_from_file, function_name, is_from_cli, get_file_md5 # , new_thread
 import os
 import atexit
 
@@ -22,7 +22,10 @@ NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
 class Docker:
 	ssh_tunnel = None
 	auto_remove = True
-	_storage = None
+	_docker_storage = None
+	_data_storage = None
+	_jobs_storage = None
+	run_id = '' # stores the md5 of the sent archive ie. the job id
 	proc = None
 	client = None
 	_lock = None
@@ -162,6 +165,7 @@ class Docker:
 						self.write_log('It seems there was some errors, run log :\n%s' % log)
 					if self.auto_remove:
 						cont.remove_container()
+					self.get_results() #
 			elif event.description == DockerEventCategories.START:
 				self.write_log('%s started' % event.container.name)
 
@@ -193,17 +197,68 @@ class Docker:
 	def __delete__(self, *_):
 		self.__cleanup__()
 
+	# clem 21/04/2016
+	def _get_storage(self, container):
+		from azure_storage import AzureStorage, AZURE_ACCOUNT, AZURE_KEY
+		return AzureStorage(AZURE_ACCOUNT, AZURE_KEY, container)
+
 	# clem 20/04/2016
 	@property
-	def storage(self):
-		if not self._storage:
-			from azure_storage import AzureStorage, AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME
-			self._storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME[0])
-		return self._storage
+	def job_storage(self):
+		if not self._jobs_storage:
+			from azure_storage import AZURE_JOBS_CONTAINER
+			self._jobs_storage = self._get_storage(AZURE_JOBS_CONTAINER)
+		return self._jobs_storage
 
+	# clem 21/04/2016
+	@property
+	def result_storage(self):
+		if not self._data_storage:
+			from azure_storage import AZURE_DATA_CONTAINER
+			self._data_storage = self._get_storage(AZURE_DATA_CONTAINER)
+		return self._data_storage
+
+	# clem 21/04/2016
+	@property
+	def docker_storage(self):
+		if not self._docker_storage:
+			from azure_storage import AZURE_MNGT_CONTAINER
+			self._docker_storage = self._get_storage(AZURE_MNGT_CONTAINER)
+		return self._docker_storage
+
+	# clem 20/04/2016
 	def azure_test(self):
 		from azure_storage import IN_FILE
 		DOCK_HOME = os.environ.get('DOCK_HOME', '/homes/breeze/code/isbio/breeze')
-
 		path = DOCK_HOME + '/' + IN_FILE
-		return self.storage.upload(IN_FILE, path)
+		return self.job_storage.upload(IN_FILE, path)
+
+	def send_job(self, job_folder=None, output_filename=None):
+		if not job_folder:
+			job_folder = '/projects/breeze-dev/db/testing/in/'
+		if not output_filename:
+			output_filename = '/projects/breeze-dev/db/testing/temp.tar.bz2'
+		if self._make_tarfile(output_filename, job_folder):
+			a = self.docker_storage.upload_self() # update the cloud version of azure_storage.py
+			self.run_id = get_file_md5(output_filename)
+			b = self.job_storage.upload(self.run_id, output_filename)
+			print a, b
+			my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.volumes['test'])
+			self.run(my_run)
+			return True
+		else:
+			print 'failed'
+		return False
+
+	# clem 21/04/2016
+	def get_results(self, output_filename=None):
+		if not output_filename:
+			output_filename = '/projects/breeze-dev/db/testing/results_%s.tar.xz' % self.run_id
+		return self.result_storage.download(self.run_id, output_filename)
+
+	# clem 20/04/2016
+	def _make_tarfile(self, output_filename, source_dir):
+		import tarfile
+		with tarfile.open(output_filename, "w:bz2") as tar:
+			tar.add(source_dir, arcname=os.path.basename(source_dir))
+		return True

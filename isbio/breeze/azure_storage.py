@@ -224,6 +224,8 @@ class AzureStorage:
 	# clem 20/04/2016
 	def _print_call(self, function_name, args):
 		arg_list = ''
+		if isinstance(args, basestring):
+			args = [args]
 		for each in args:
 			# new_args.append("'%s'" % Bcolors.warning(each))
 			arg_list += "'%s', " % Bcolors.warning(each)
@@ -292,6 +294,29 @@ class AzureStorage:
 			return True
 		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
 
+	# clem 21/04/2016
+	def erase(self, blob_name, container=None, verbose=True):
+		""" Delete the specified blob in self.container or in the specified container if said blob exists
+
+		:param blob_name: Name of the blob to delete from Azure storage
+		:type blob_name: str
+		:param container: Name of the container where the blob is stored (default to self.container)
+		:type container: str or None
+		:param verbose: Print actions (default to True)
+		:type verbose: bool or None
+		:return: success?
+		:rtype: bool
+		:raise: azure.common.AzureMissingResourceHttpError
+		"""
+		if not container:
+			container = self.container
+		if self.blob_service.exists(container, blob_name):
+			if verbose:
+				self._print_call('delete_blob', (container, blob_name))
+			self.blob_service.delete_blob(container, blob_name)
+			return True
+		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
+
 
 # clem on 21/08/2015
 def get_md5(content):
@@ -350,7 +375,9 @@ if __name__ == '__main__':
 			path = HOME + '/' + IN_FILE
 			if not storage.download(obj_id, path):
 				exit(1)
-		elif action == ACTION_LIST[1]: # uploads the job resulting archive to azure blob storage
+			else: # if the download was successful we delete the job file
+				storage.erase(obj_id)
+		elif action == ACTION_LIST[1]: # uploads the job resulting data's archive to azure blob storage
 			path = HOME + '/' + OUT_FILE
 			if not obj_id: # the job id must be in env(ENV_JOB_ID[0]) if not we use either the hostname or the md5
 				obj_id = os.environ.get(ENV_JOB_ID[0], os.environ.get(ENV_HOSTNAME[0], get_file_md5(path)))
