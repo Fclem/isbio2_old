@@ -1,6 +1,6 @@
 #!/usr/bin/python
-from azure.storage.blob import BlockBlobService
 from azure.common import AzureMissingResourceHttpError
+from azure.storage.blob import BlockBlobService
 import os
 import sys
 
@@ -19,24 +19,71 @@ def password_from_file(path):
 
 # general config
 __DEV__ = True
+__path__ = os.path.realpath(__file__)
+__dir_path__ = os.path.dirname(__path__)
+__file_name__ = os.path.basename(__file__)
 AZURE_ACCOUNT = 'breezedata'
 AZURE_PWD_FILE = 'azure_pwd_%s' % AZURE_ACCOUNT
-AZURE_KEY = password_from_file('~/code/%s' % AZURE_PWD_FILE) or password_from_file('./%s' % AZURE_PWD_FILE)
-AZURE_CONTAINERS_NAME = ['dockertest', 'mycontainer']
-AZURE_DEFAULT_CONTAINER = AZURE_CONTAINERS_NAME[0]
-AZURE_SELF_UPDATE_CONTAINER = AZURE_CONTAINERS_NAME[1]
+AZURE_KEY = password_from_file('~/code/%s' % AZURE_PWD_FILE) or \
+	password_from_file('%s/%s' % (__dir_path__, AZURE_PWD_FILE))
+# AZURE_CONTAINERS_NAME = ['dockertest', 'mycontainer']
+AZURE_CONTAINERS_NAME = ['breeze_jobs', 'breeze_results', 'docker_config']
+AZURE_JOBS_CONTAINER = AZURE_CONTAINERS_NAME[0]
+AZURE_DATA_CONTAINER = AZURE_CONTAINERS_NAME[1]
+AZURE_SELF_UPDATE_CONTAINER = AZURE_CONTAINERS_NAME[2]
 AZURE_BLOB_BASE_URL = 'https://%s.blob.core.windows.net/%s/'
 # command line config
-OUT_FILE = 'out.tar.xz'
-IN_FILE = 'in.tar.xz'
+ENV_OUT_FILE = ('OUT_FILE', 'out.tar.xz')
+ENV_IN_FILE = ('IN_FILE', 'in.tar.xz')
 ENV_DOCK_HOME = ('DOCK_HOME', '/breeze')
 ENV_HOME = ('HOME', '/root')
 ENV_JOB_ID = ('JOB_ID', '')
 ENV_HOSTNAME = ('HOSTNAME', '')
 # command line CONSTs
+OUT_FILE = os.environ.get(*ENV_OUT_FILE)
+IN_FILE = os.environ.get(*ENV_IN_FILE)
 DOCK_HOME = os.environ.get(*ENV_DOCK_HOME)
 HOME = os.environ.get(*ENV_HOME)
 ACTION_LIST = ('load', 'save', 'upload', 'upgrade') # DO NOT change item order
+
+
+class Bcolors:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[33m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
+
+	@staticmethod
+	def ok_blue(text):
+		return Bcolors.OKBLUE + text + Bcolors.ENDC
+
+	@staticmethod
+	def ok_green(text):
+		return Bcolors.OKGREEN + text + Bcolors.ENDC
+
+	@staticmethod
+	def fail(text):
+		return Bcolors.FAIL + text + Bcolors.ENDC
+
+	@staticmethod
+	def warning(text):
+		return Bcolors.WARNING + text + Bcolors.ENDC
+
+	@staticmethod
+	def header(text):
+		return Bcolors.HEADER + text + Bcolors.ENDC
+
+	@staticmethod
+	def bold(text):
+		return Bcolors.BOLD + text + Bcolors.ENDC
+
+	@staticmethod
+	def underlined(text):
+		return Bcolors.UNDERLINE + text + Bcolors.ENDC
 
 
 # clem 14/04/2016
@@ -45,6 +92,7 @@ class AzureStorage:
 	container = None
 	ACCOUNT_LOGIN = ''
 	ACCOUNT_KEY = ''
+	old_md5 = ''
 
 	def __init__(self, login, key, container):
 		assert isinstance(login, basestring)
@@ -146,7 +194,7 @@ class AzureStorage:
 		"""
 		if not container:
 			container = AZURE_SELF_UPDATE_CONTAINER
-		return self.upload(os.path.basename(__file__), __file__, container)
+		return self.upload(__file_name__, __file__, container)
 
 	# clem 20/04/2016
 	def update_self(self, container=None):
@@ -162,7 +210,18 @@ class AzureStorage:
 		assert __name__ == '__main__' # restrict access
 		if not container:
 			container = AZURE_SELF_UPDATE_CONTAINER
-		return self.download(os.path.basename(__file__), __file__, container)
+		try:
+			return self.download(__file_name__, __file__, container)
+		except AzureMissingResourceHttpError: # blob was not found
+			return False
+
+	# clem 20/04/2016
+	def _print_call(self, function_name, args):
+		arg_list = ''
+		for each in args:
+			# new_args.append("'%s'" % Bcolors.warning(each))
+			arg_list += "'%s', " % Bcolors.warning(each)
+		print Bcolors.bold(function_name) + "(%s)" % arg_list[:-2]
 
 	# clem 15/04/2016
 	def upload(self, blob_name, file_path, container=None, verbose=True):
@@ -188,14 +247,14 @@ class AzureStorage:
 			if not self.blob_service.exists(container):
 				# if container does not exist yet, we create it
 				if verbose:
-					print "create_container(\'%s\')" % container
+					self._print_call('create_container', container)
 				self.blob_service.create_container(container)
 			if verbose:
-				print "create_blob_from_path(\'%s\', \'%s\', \'%s\')" % (container, blob_name, file_path)
+				self._print_call('create_blob_from_path', (container, blob_name, file_path))
 			self.blob_service.create_blob_from_path(container, blob_name, file_path)
 		else:
 			err = getattr(__builtins__, 'FileNotFoundError', IOError)
-			raise err('File \'%s\' not found in \'%s\' !' % (os.path.basename(file_path),
+			raise err("File '%s' not found in '%s' !" % (os.path.basename(file_path),
 				os.path.dirname(file_path)))
 		return self.blob_service.get_blob_properties(container, blob_name)
 
@@ -215,19 +274,17 @@ class AzureStorage:
 		:type verbose: bool or None
 		:return: success?
 		:rtype: bool
-		:raise: AzureMissingResourceHttpError
+		:raise: azure.common.AzureMissingResourceHttpError
 		"""
 		if not container:
 			container = self.container
-		if self.blob_service.exists(container):
-			try:
-				if verbose:
-					print "get_blob_to_path(\'%s\', \'%s\', \'%s\')" % (container, blob_name, file_path)
-				self.blob_service.get_blob_to_path(container, blob_name, file_path)
-			except AzureMissingResourceHttpError as e: # FIXME HAS NO EFFECT
-				raise e
+		if self.blob_service.exists(container, blob_name): # avoid error, and having blank files on error
+			if verbose:
+				self._print_call('get_blob_to_path', (container, blob_name, file_path))
+			# purposely not catching AzureMissingResourceHttpError (to be managed from caller code)
+			self.blob_service.get_blob_to_path(container, blob_name, file_path)
 			return True
-		return False
+		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
 
 
 # clem on 21/08/2015
@@ -276,8 +333,6 @@ if __name__ == '__main__':
 	obj_id = '' if len(sys.argv) <= 2 else str(sys.argv[2])
 	file_n = '' if len(sys.argv) <= 3 else str(sys.argv[3])
 
-	print 'args :', sys.argv
-
 	assert isinstance(action, basestring) and action in ACTION_LIST
 
 	__DEV__ = False
@@ -287,10 +342,11 @@ if __name__ == '__main__':
 			if not obj_id:
 				obj_id = os.environ.get(*ENV_JOB_ID)
 			path = HOME + '/' + IN_FILE
-			storage.download(obj_id, path)
+			if not storage.download(obj_id, path):
+				exit(1)
 		elif action == ACTION_LIST[1]: # uploads the job resulting archive to azure blob storage
 			path = HOME + '/' + OUT_FILE
-			if not obj_id:
+			if not obj_id: # the job id must be in env(ENV_JOB_ID[0]) if not we use either the hostname or the md5
 				obj_id = os.environ.get(ENV_JOB_ID[0], os.environ.get(ENV_HOSTNAME[0], get_file_md5(path)))
 			storage.upload(obj_id, path)
 		elif action == ACTION_LIST[2]: # uploads an arbitrary file to azure blob storage
@@ -299,6 +355,28 @@ if __name__ == '__main__':
 			path = HOME + '/' + file_n
 			storage.upload(obj_id, path)
 		elif action == ACTION_LIST[3]: # self update
-			print storage.update_self()
+			old_md5 = get_file_md5(__file__)
+			if storage.update_self():
+				new_md5 = get_file_md5(__file__)
+				if new_md5 != old_md5:
+					print Bcolors.ok_green('successfully'), 'updated from %s to %s' % (Bcolors.bold(old_md5),
+					Bcolors.bold(new_md5))
+				else:
+					print Bcolors.ok_green('not updated') + ',', Bcolors.ok_blue('this is already the latest version.')
+			else:
+				print Bcolors.fail('Upgrade failure')
+				exit(1)
 	except Exception as e:
-		raise e
+		print Bcolors.fail('FAILURE :')
+		code = 1
+		if hasattr(e, 'msg') and e.msg:
+			print e.msg
+		elif hasattr(e, 'message') and e.message:
+			print e.message
+		else:
+			raise
+		if hasattr(e, 'status_code'):
+			code = e.status_code
+		elif hasattr(e, 'code'):
+			code = e.code
+		exit(code)

@@ -22,7 +22,7 @@ NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
 class Docker:
 	ssh_tunnel = None
 	auto_remove = True
-	storage = None
+	_storage = None
 	proc = None
 	client = None
 	_lock = None
@@ -193,24 +193,17 @@ class Docker:
 	def __delete__(self, *_):
 		self.__cleanup__()
 
+	# clem 20/04/2016
+	@property
+	def storage(self):
+		if not self._storage:
+			from azure_storage import AzureStorage, AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME
+			self._storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME[0])
+		return self._storage
+
 	def azure_test(self):
-		from azure_storage import AzureStorage, AZURE_ACCOUNT, AZURE_KEY
-		self.storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY)
+		from azure_storage import IN_FILE
 		DOCK_HOME = os.environ.get('DOCK_HOME', '/homes/breeze/code/isbio/breeze')
-		RESULT_FILE = 'job.tar.xz'
-		JOB_FILE = 'azure_storage.py'
 
-		path = DOCK_HOME + '/' + JOB_FILE
-		self.storage.upload(JOB_FILE, path)
-
-	# clem 18/04/2016
-	def azure_bis(self):
-		from azure_io import BlockBlobSamples
-		from azure.storage.cloudstorageaccount import CloudStorageAccount
-		from azure_storage import AZURE_ACCOUNT, AZURE_KEY
-		account = CloudStorageAccount(AZURE_ACCOUNT, AZURE_KEY)
-		manager = BlockBlobSamples(account)
-		# manager.blob_with_path()
-		manager.run_all_samples()
-		import subprocess
-		subprocess.call()
+		path = DOCK_HOME + '/' + IN_FILE
+		return self.storage.upload(IN_FILE, path)
