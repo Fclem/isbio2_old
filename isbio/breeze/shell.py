@@ -9,9 +9,8 @@ from django.core.files import File, base
 import breeze.models
 import auxiliary as aux
 import logging
-
-from breeze.models import Report, Jobs, JobStat, Rscripts, Runnable
-from exceptions import Exception
+from breeze.models import Report, Jobs, JobStat, Rscripts # , Runnable
+# from exceptions import Exception
 # import hashlib
 # from django.utils import timezone
 # from datetime import timedelta
@@ -19,10 +18,6 @@ from exceptions import Exception
 # from multiprocessing import Process
 # from views import breeze
 # from django.template.defaulttags import now
-
-
-if settings.HOST_NAME.startswith('breeze'):
-	import drmaa
 
 logger = logging.getLogger(__name__)
 
@@ -204,9 +199,9 @@ def build_header(data):
 	return header
 
 # DELETED add_file_to_report on 13/07/2015 (now part of Runnable)
-# DELETED add_file_to_job on 13/07/2015 (now part of Runnable)
-# DELETED get_job_folder on 14/07/2015 (now part of Runnable)
-# DELETED get_folder_name on 14/07/2015 (now part of Rsript and ReportType)
+# DELETED add_file_to_job on 	13/07/2015 (now part of Runnable)
+# DELETED get_job_folder on 	14/07/2015 (now part of Runnable)
+# DELETED get_folder_name on 	14/07/2015 (now part of Rsript and ReportType)
 
 
 # TODO : seems useless
@@ -315,7 +310,7 @@ def report_search(data_set, report_type, query):
 	"""
 	lst = list()
 
-	# !!! HANDLE EXCEPTIONS IN THIS FUNCTION !!! #
+	# TODO !!! HANDLE EXCEPTIONS IN THIS FUNCTION !!! #
 
 	# GENE - Entrez search with BioPython #
 	if str(report_type) == 'Gene' and len(query) > 0:
@@ -385,7 +380,7 @@ def build_report(report_data, request_data, report_property, sections):
 	:rtype: bool
 	"""
 
-	from breeze.models import Project, UserProfile, ReportType, Report
+	from breeze.models import Project, UserProfile, ReportType, Report, ComputeTarget
 	from django.contrib.auth.models import User
 	log = logger.getChild('build_report')
 	assert isinstance(log, logging.getLoggerClass())
@@ -402,6 +397,12 @@ def build_report(report_data, request_data, report_property, sections):
 	the_user.prof = UserProfile.objects.get(user=the_user)
 	assert isinstance(the_user.prof, UserProfile)
 
+	# target profile :
+	target = ComputeTarget.objects.get(pk=request_data.POST.get('target'))
+	assert target.id in rt.target_id_list # TODO make a validator in the form section
+
+	print 'target is', request_data.POST.get('target')
+
 	# create initial instance so that we can use its db id
 	dbitem = Report(
 		_type=rt,
@@ -410,6 +411,7 @@ def build_report(report_data, request_data, report_property, sections):
 		project=Project.objects.get(id=request_data.POST.get('project')),
 		_institute=the_user.prof.institute_info,
 		_breeze_stat=JobStat.INIT,
+		target=target,
 		rora_id=report_data['instance_id']
 	)
 	dbitem.assemble(request_data=request_data, shared_users=shared_users, sections=sections)

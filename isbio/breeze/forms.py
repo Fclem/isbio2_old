@@ -265,7 +265,7 @@ class ReportPropsFormMixin:
 	# clem 19/04/2016
 	@property
 	def target_list(self): # code moved to ReportType.target_list
-		return breeze.models.ReportType.objects.get(type=self.request.rtype).target_list
+		return breeze.models.ReportType.objects.get(type=self.request.rtype).target_form_list
 
 	def _sup_init_(self, *_, **kwargs):
 		if not self.request and 'request' in kwargs:
@@ -294,6 +294,7 @@ class ReportPropsFormMixin:
 		)
 
 
+# clem 18/04/2016
 class ReportPropsFormMixinWrapperOne(forms.Form, ReportPropsFormMixin):
 	def __init__(self, *args, **kwargs):
 		import copy
@@ -303,6 +304,7 @@ class ReportPropsFormMixinWrapperOne(forms.Form, ReportPropsFormMixin):
 		self._sup_init_(*args, **self.kwargs_copy)
 
 
+# clem 18/04/2016
 class ReportPropsFormMixinWrapperTwo(forms.ModelForm, ReportPropsFormMixin):
 	def __init__(self, *args, **kwargs):
 		import copy

@@ -1136,6 +1136,9 @@ class ComputeTarget(FolderObj, models.Model):
 	def __unicode__(self): # Python 3: def __str__(self):
 		return '%s (%s)' % (self.label, self.name)
 
+	def __int__(self):
+		return self.id
+
 	def conf_check(self):
 		""" Return whether this computing resource is properly configured """
 		return False
@@ -1191,7 +1194,6 @@ class ComputeTarget(FolderObj, models.Model):
 		if self.target_use_tunnel:
 			return self.target_config.items(self.target_tunnel)
 		return list()
-
 
 	class Meta(FolderObj.Meta): # TODO check if inheritance is required here
 		abstract = False
@@ -1304,9 +1306,10 @@ class ReportType(FolderObj, models.Model):
 
 	# clem 19/04/2016
 	@property
-	def target_list(self):
+	def target_form_list(self):
 		"""
-		Return a list of (enabled) compute target for this report type, that is suitable to use in a Form
+		Return a list of tuple, of (enabled) compute target for this report type, that is suitable to use in a Form
+		tuple : (id, label)
 		:rtype: list
 		"""
 		if not self._target_list:
@@ -1314,8 +1317,20 @@ class ReportType(FolderObj, models.Model):
 			targets = self.targets.filter(enabled=True)
 			if targets:
 				for each in targets:
-					self._target_list.append(tuple((each.name, each.label)))
+					self._target_list.append(tuple((each.id, each.label)))
 		return self._target_list
+
+	# clem 19/04/2016
+	@property
+	def target_id_list(self):
+		"""
+		Return a list of (enabled) compute target ids for this report type
+		:rtype: list
+		"""
+		result = list()
+		for each in self.target_form_list:
+			result.append(each[0])
+		return result
 
 	class Meta:
 		ordering = ('type',)
@@ -2595,6 +2610,7 @@ class Report(Runnable):
 	conf_params = models.TextField(null=True, editable=False)
 	conf_files = models.TextField(null=True, editable=False)
 	fm_flag = models.BooleanField(default=False)
+	target = models.ForeignKey(ComputeTarget, default=1)
 	# Shiny specific
 	shiny_key = models.CharField(max_length=64, null=True, editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
