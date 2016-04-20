@@ -26,11 +26,11 @@ AZURE_ACCOUNT = 'breezedata'
 AZURE_PWD_FILE = 'azure_pwd_%s' % AZURE_ACCOUNT
 AZURE_KEY = password_from_file('~/code/%s' % AZURE_PWD_FILE) or \
 	password_from_file('%s/%s' % (__dir_path__, AZURE_PWD_FILE))
-# AZURE_CONTAINERS_NAME = ['dockertest', 'mycontainer']
-AZURE_CONTAINERS_NAME = ['breeze_jobs', 'breeze_results', 'docker_config']
-AZURE_JOBS_CONTAINER = AZURE_CONTAINERS_NAME[0]
-AZURE_DATA_CONTAINER = AZURE_CONTAINERS_NAME[1]
-AZURE_SELF_UPDATE_CONTAINER = AZURE_CONTAINERS_NAME[2]
+# TODO : storage containers should be named after the intended docker target
+AZURE_CONTAINERS_NAME = ['breeze-queue', 'breeze-results', 'docker-config']
+AZURE_JOBS_CONTAINER = AZURE_CONTAINERS_NAME[0] # container where jobs to be run are stored
+AZURE_DATA_CONTAINER = AZURE_CONTAINERS_NAME[1] # container where jobs' results data are stored
+AZURE_MNGT_CONTAINER = AZURE_CONTAINERS_NAME[2] # container where some configuration and code is stored
 AZURE_BLOB_BASE_URL = 'https://%s.blob.core.windows.net/%s/'
 # command line config
 ENV_OUT_FILE = ('OUT_FILE', 'out.tar.xz')
@@ -45,6 +45,12 @@ IN_FILE = os.environ.get(*ENV_IN_FILE)
 DOCK_HOME = os.environ.get(*ENV_DOCK_HOME)
 HOME = os.environ.get(*ENV_HOME)
 ACTION_LIST = ('load', 'save', 'upload', 'upgrade') # DO NOT change item order
+ACT_CONT_MAPPING = {
+	ACTION_LIST[0]: AZURE_JOBS_CONTAINER,
+	ACTION_LIST[1]: AZURE_DATA_CONTAINER,
+	ACTION_LIST[2]: AZURE_MNGT_CONTAINER,
+	ACTION_LIST[3]: AZURE_MNGT_CONTAINER,
+}
 
 
 class Bcolors:
@@ -193,7 +199,7 @@ class AzureStorage:
 		:rtype: Blob
 		"""
 		if not container:
-			container = AZURE_SELF_UPDATE_CONTAINER
+			container = AZURE_MNGT_CONTAINER
 		return self.upload(__file_name__, __file__, container)
 
 	# clem 20/04/2016
@@ -209,7 +215,7 @@ class AzureStorage:
 		"""
 		assert __name__ == '__main__' # restrict access
 		if not container:
-			container = AZURE_SELF_UPDATE_CONTAINER
+			container = AZURE_MNGT_CONTAINER
 		try:
 			return self.download(__file_name__, __file__, container)
 		except AzureMissingResourceHttpError: # blob was not found
@@ -315,15 +321,14 @@ def get_file_md5(file_path):
 	:return: md5 checksum of file
 	:rtype: str
 	"""
-	content = list()
+	# content = list()
 	try:
 		fd = open(file_path, "rb")
 		content = fd.readlines()
 		fd.close()
+		return get_md5(content)
 	except IOError:
 		return ''
-
-	return get_md5(content)
 
 
 if __name__ == '__main__':
@@ -337,7 +342,8 @@ if __name__ == '__main__':
 
 	__DEV__ = False
 	try:
-		storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME[0])
+		# storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME[0])
+		storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, ACT_CONT_MAPPING[action])
 		if action == ACTION_LIST[0]: # download the job archive from azure blob storage
 			if not obj_id:
 				obj_id = os.environ.get(*ENV_JOB_ID)
