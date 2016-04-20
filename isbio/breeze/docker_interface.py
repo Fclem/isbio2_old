@@ -160,7 +160,10 @@ class Docker:
 					self.write_log('Success !')
 					the_end = log.split('\n')[-5:-1] # copy the last 4 lines
 					arch = the_end[-2] # copy the line about the archive
-					del the_end[-2] # remove the second last which should be about the archive
+					if the_end[-3].startswith('Creating archive /root/out.tar.xz'):
+						del the_end[-3] # remove the third last which should be about the archive
+					if the_end[-2].startswith("create_blob_from_path("):
+						del the_end[-2] # remove the second last which should be about the upload
 					if the_end != NORMAL_ENDING:
 						self.write_log('It seems there was some errors, run log :\n%s' % log)
 					if self.auto_remove:
@@ -242,19 +245,29 @@ class Docker:
 			a = self.docker_storage.upload_self() # update the cloud version of azure_storage.py
 			self.run_id = get_file_md5(output_filename)
 			b = self.job_storage.upload(self.run_id, output_filename)
-			print a, b
-			my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.volumes['test'])
-			self.run(my_run)
-			return True
+			if b:
+				os.remove(output_filename)
+				my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.volumes['test'])
+				self.runs['my_run'] = my_run
+				self.attach_event_manager(my_run)
+				self.run(my_run)
+				return True
 		else:
 			print 'failed'
 		return False
 
 	# clem 21/04/2016
 	def get_results(self, output_filename=None):
+		from azure_storage import AzureMissingResourceHttpError
 		if not output_filename:
 			output_filename = '/projects/breeze-dev/db/testing/results_%s.tar.xz' % self.run_id
-		return self.result_storage.download(self.run_id, output_filename)
+		try:
+			e = self.result_storage.download(self.run_id, output_filename)
+			# TODO extract in original path
+			return e
+		except AzureMissingResourceHttpError:
+			self.write_log('No result found for job %s' % self.run_id)
+			raise
 
 	# clem 20/04/2016
 	def _make_tarfile(self, output_filename, source_dir):

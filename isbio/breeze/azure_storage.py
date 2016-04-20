@@ -4,6 +4,9 @@ from azure.storage.blob import BlockBlobService
 import os
 import sys
 
+__version__ = '0.2'
+__author__ = 'clem'
+
 
 # clem 06/04/2016
 def password_from_file(path):
