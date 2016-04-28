@@ -21,11 +21,14 @@ def password_from_file(the_path):
 	return open(the_path).read().replace('\n', '')
 
 
-# general config
+# TODO set this configs :
+SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (container_name, url)
 __DEV__ = True
 __path__ = os.path.realpath(__file__)
 __dir_path__ = os.path.dirname(__path__)
 __file_name__ = os.path.basename(__file__)
+
+# general config
 ENV_OUT_FILE = ('OUT_FILE', 'out.tar.xz')
 ENV_IN_FILE = ('IN_FILE', 'in.tar.xz')
 ENV_DOCK_HOME = ('DOCK_HOME', '/breeze')
@@ -36,7 +39,7 @@ CONTAINERS_NAME = ['breeze-queue', 'breeze-results', 'docker-config']
 JOBS_CONTAINER = CONTAINERS_NAME[0] # container where jobs to be run are stored
 DATA_CONTAINER = CONTAINERS_NAME[1] # container where jobs' results data are stored
 MNGT_CONTAINER = CONTAINERS_NAME[2] # container where some configuration and code is stored
-SERVICE_BLOB_BASE_URL = ''
+
 # command line CONSTs
 OUT_FILE = os.environ.get(*ENV_OUT_FILE)
 IN_FILE = os.environ.get(*ENV_IN_FILE)
@@ -44,10 +47,10 @@ DOCK_HOME = os.environ.get(*ENV_DOCK_HOME)
 HOME = os.environ.get(*ENV_HOME)
 ACTION_LIST = ('load', 'save', 'upload', 'upgrade') # DO NOT change item order
 ACT_CONT_MAPPING = {
-	ACTION_LIST[0]: None,
-	ACTION_LIST[1]: None,
-	ACTION_LIST[2]: None,
-	ACTION_LIST[3]: None,
+	ACTION_LIST[0]: JOBS_CONTAINER,
+	ACTION_LIST[1]: DATA_CONTAINER,
+	ACTION_LIST[2]: MNGT_CONTAINER,
+	ACTION_LIST[3]: MNGT_CONTAINER,
 }
 
 
@@ -170,22 +173,6 @@ class StorageModule:
 		"""
 		return self._container_url(self.container)
 
-	# clem 28/04/201
-	@abc.abstractmethod
-	def _container_url(self, container):
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
-
-	# clem 28/04/201
-	@abc.abstractmethod
-	def list_containers(self, do_print=False):
-		""" The list of container in the current * storage account
-
-		:param do_print: print the resulting list ? (default to False)
-		:type do_print: bool
-		:return: generator of the list of containers in self.ACCOUNT_LOGIN storage account
-		"""
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
-
 	def list_blobs(self, do_print=False):
 		""" The list of blob in self.container
 
@@ -195,17 +182,6 @@ class StorageModule:
 		"""
 		return self._list_blobs(self.container, do_print)
 
-	# clem 28/04/201
-	@abc.abstractmethod
-	def _list_blobs(self, container, do_print=False):
-		"""
-		:param container: name of the container to list content from
-		:type container: str
-		:param do_print: print the resulting list ? (default to False)
-		:type do_print: bool
-		"""
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
-
 	def blob_info(self, blob_name):
 		"""
 		:param blob_name: a blob existing in self.container to get info about
@@ -214,11 +190,6 @@ class StorageModule:
 		:rtype: Blob
 		"""
 		return self._blob_info(self.container, blob_name)
-
-	# clem 28/04/201
-	@abc.abstractmethod
-	def _blob_info(self, cont_name, blob_name):
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
 	# clem 20/04/2016
 	def upload_self(self, container=None):
@@ -260,6 +231,38 @@ class StorageModule:
 		for each in args:
 			arg_list += "'%s', " % Bcolors.warning(each)
 		print Bcolors.bold(fun_name) + "(%s)" % arg_list[:-2]
+
+	# clem 28/04/201
+	@abc.abstractmethod
+	def _container_url(self, container):
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+
+	# clem 28/04/201
+	@abc.abstractmethod
+	def list_containers(self, do_print=False):
+		""" The list of container in the current * storage account
+
+		:param do_print: print the resulting list ? (default to False)
+		:type do_print: bool
+		:return: generator of the list of containers in self.ACCOUNT_LOGIN storage account
+		"""
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+
+	# clem 28/04/201
+	@abc.abstractmethod
+	def _list_blobs(self, container, do_print=False):
+		"""
+		:param container: name of the container to list content from
+		:type container: str
+		:param do_print: print the resulting list ? (default to False)
+		:type do_print: bool
+		"""
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+
+	# clem 28/04/201
+	@abc.abstractmethod
+	def _blob_info(self, cont_name, blob_name):
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
 	# clem 28/04/201
 	@abc.abstractmethod
@@ -322,30 +325,33 @@ class StorageModule:
 
 
 # clem on 28/04/2016
-def command_line_interface(module, account, key):
+def input_pre_handling():
+	assert len(sys.argv) >= 2
+
+	aa = str(sys.argv[1])
+	bb = '' if len(sys.argv) <= 2 else str(sys.argv[2])
+	cc = '' if len(sys.argv) <= 3 else str(sys.argv[3])
+
+	assert isinstance(aa, basestring) and aa in ACTION_LIST
+	return aa, bb, cc
+
+
+# clem on 28/04/2016
+def command_line_interface(storage_implementation_instance, action, obj_id='', file_n=''):
 	"""	Command line interface of the module, it's the interface the docker container will use.
 	original base code by clem 14/04/2016
 
-	:type module: StorageModule
-	:type account: basestring
-	:type key: basestring
+	:type storage_implementation_instance: StorageModule
+	:type action: basestring
+	:type obj_id: basestring
+	:type file_n: basestring
 	:return: exit code
 	:rtype: int
 	"""
-	assert len(sys.argv) >= 2
-	assert isinstance(module, StorageModule)
-	assert isinstance(account, basestring)
-	assert isinstance(key, basestring)
-
-	action = str(sys.argv[1])
-	obj_id = '' if len(sys.argv) <= 2 else str(sys.argv[2])
-	file_n = '' if len(sys.argv) <= 3 else str(sys.argv[3])
-
-	assert isinstance(action, basestring) and action in ACTION_LIST
-
+	assert isinstance(storage_implementation_instance, StorageModule)
 	__DEV__ = False
 	try:
-		storage = module(account, key, ACT_CONT_MAPPING[action])
+		storage = storage_implementation_instance
 		if action == ACTION_LIST[0]: # download the job archive from * blob storage
 			if not obj_id:
 				obj_id = os.environ.get(*ENV_JOB_ID)
@@ -391,7 +397,9 @@ def command_line_interface(module, account, key):
 			code = e.code
 		exit(code)
 
-# TODO : in your concrete class, simply add those two line at the end
+# TODO : in your concrete class, simply add those four line at the end
 if __name__ == '__main__':
-	command_line_interface(StorageModule, 'account', 'key') # TODO change StorageModule with your implemented class
-# and account with the name of your account, and key with the RW access key to this account
+	a, b, c = input_pre_handling()
+	# TODO : replace StorageModule with your implemented class
+	storage_inst = StorageModule('account', 'key', ACT_CONT_MAPPING[a])
+	command_line_interface(storage_inst, a, b, c)
