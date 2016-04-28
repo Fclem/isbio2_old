@@ -51,6 +51,43 @@ ACT_CONT_MAPPING = {
 }
 
 
+# clem on 21/08/2015
+def get_md5(content):
+	""" compute the md5 checksum of the content argument
+
+	:param content: the content to be hashed
+	:type content: list or str
+	:return: md5 checksum of the provided content
+	:rtype: str
+	"""
+	import hashlib
+	m = hashlib.md5()
+	if type(content) == list:
+		for eachLine in content:
+			m.update(eachLine)
+	else:
+		m.update(content)
+	return m.hexdigest()
+
+
+# clem on 21/08/2015
+def get_file_md5(file_path):
+	""" compute the md5 checksum of a file
+
+	:param file_path: path of the local file to hash
+	:type file_path: str
+	:return: md5 checksum of file
+	:rtype: str
+	"""
+	try:
+		fd = open(file_path, "rb")
+		content = fd.readlines()
+		fd.close()
+		return get_md5(content)
+	except IOError:
+		return ''
+
+
 class Bcolors:
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
@@ -284,46 +321,21 @@ class StorageModule:
 		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
 
-# clem on 21/08/2015
-def get_md5(content):
-	""" compute the md5 checksum of the content argument
+# clem on 28/04/2016
+def command_line_interface(module, account, key):
+	"""	Command line interface of the module, it's the interface the docker container will use.
+	original base code by clem 14/04/2016
 
-	:param content: the content to be hashed
-	:type content: list or str
-	:return: md5 checksum of the provided content
-	:rtype: str
+	:type module: StorageModule
+	:type account: basestring
+	:type key: basestring
+	:return: exit code
+	:rtype: int
 	"""
-	import hashlib
-	m = hashlib.md5()
-	if type(content) == list:
-		for eachLine in content:
-			m.update(eachLine)
-	else:
-		m.update(content)
-	return m.hexdigest()
-
-
-# clem on 21/08/2015
-def get_file_md5(file_path):
-	""" compute the md5 checksum of a file
-
-	:param file_path: path of the local file to hash
-	:type file_path: str
-	:return: md5 checksum of file
-	:rtype: str
-	"""
-	# content = list()
-	try:
-		fd = open(file_path, "rb")
-		content = fd.readlines()
-		fd.close()
-		return get_md5(content)
-	except IOError:
-		return ''
-
-
-if __name__ == '__main__':
 	assert len(sys.argv) >= 2
+	assert isinstance(module, StorageModule)
+	assert isinstance(account, basestring)
+	assert isinstance(key, basestring)
 
 	action = str(sys.argv[1])
 	obj_id = '' if len(sys.argv) <= 2 else str(sys.argv[2])
@@ -333,9 +345,8 @@ if __name__ == '__main__':
 
 	__DEV__ = False
 	try:
-		# storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, AZURE_CONTAINERS_NAME[0])
-		storage = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, ACT_CONT_MAPPING[action])
-		if action == ACTION_LIST[0]: # download the job archive from azure blob storage
+		storage = module(account, key, ACT_CONT_MAPPING[action])
+		if action == ACTION_LIST[0]: # download the job archive from * blob storage
 			if not obj_id:
 				obj_id = os.environ.get(*ENV_JOB_ID)
 			path = HOME + '/' + IN_FILE
@@ -343,12 +354,12 @@ if __name__ == '__main__':
 				exit(1)
 			else: # if the download was successful we delete the job file
 				storage.erase(obj_id)
-		elif action == ACTION_LIST[1]: # uploads the job resulting data's archive to azure blob storage
+		elif action == ACTION_LIST[1]: # uploads the job resulting data's archive to * blob storage
 			path = HOME + '/' + OUT_FILE
 			if not obj_id: # the job id must be in env(ENV_JOB_ID[0]) if not we use either the hostname or the md5
 				obj_id = os.environ.get(ENV_JOB_ID[0], os.environ.get(ENV_HOSTNAME[0], get_file_md5(path)))
 			storage.upload(obj_id, path)
-		elif action == ACTION_LIST[2]: # uploads an arbitrary file to azure blob storage
+		elif action == ACTION_LIST[2]: # uploads an arbitrary file to * blob storage
 			assert file_n and len(file_n) > 3
 			assert obj_id and len(obj_id) > 4
 			path = HOME + '/' + file_n
@@ -379,3 +390,8 @@ if __name__ == '__main__':
 		elif hasattr(e, 'code'):
 			code = e.code
 		exit(code)
+
+# TODO : in your concrete class, simply add those two line at the end
+if __name__ == '__main__':
+	command_line_interface(StorageModule, 'account', 'key') # TODO change StorageModule with your implemented class
+# and account with the name of your account, and key with the RW access key to this account
