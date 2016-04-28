@@ -212,24 +212,24 @@ class Docker:
 	@property
 	def job_storage(self):
 		if not self._jobs_storage:
-			from azure_storage import AZURE_JOBS_CONTAINER
-			self._jobs_storage = self._get_storage(AZURE_JOBS_CONTAINER)
+			from azure_storage import JOBS_CONTAINER
+			self._jobs_storage = self._get_storage(JOBS_CONTAINER)
 		return self._jobs_storage
 
 	# clem 21/04/2016
 	@property
 	def result_storage(self):
 		if not self._data_storage:
-			from azure_storage import AZURE_DATA_CONTAINER
-			self._data_storage = self._get_storage(AZURE_DATA_CONTAINER)
+			from azure_storage import DATA_CONTAINER
+			self._data_storage = self._get_storage(DATA_CONTAINER)
 		return self._data_storage
 
 	# clem 21/04/2016
 	@property
 	def docker_storage(self):
 		if not self._docker_storage:
-			from azure_storage import AZURE_MNGT_CONTAINER
-			self._docker_storage = self._get_storage(AZURE_MNGT_CONTAINER)
+			from azure_storage import MNGT_CONTAINER
+			self._docker_storage = self._get_storage(MNGT_CONTAINER)
 		return self._docker_storage
 
 	# clem 20/04/2016
