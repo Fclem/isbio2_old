@@ -10,15 +10,15 @@ __date__ = '28/04/2016'
 
 
 # clem 06/04/2016
-def password_from_file(path):
+def password_from_file(the_path):
 	from os.path import exists, expanduser
-	if not exists(path):
-		temp = expanduser(path)
+	if not exists(the_path):
+		temp = expanduser(the_path)
 		if exists(temp):
-			path = temp
+			the_path = temp
 		else:
 			return False
-	return open(path).read().replace('\n', '')
+	return open(the_path).read().replace('\n', '')
 
 
 # general config
@@ -91,24 +91,25 @@ class Bcolors:
 
 
 # clem 14/04/2016
-class AzureStorage:
+class StorageModule:
 	__metaclass__ = abc.ABCMeta
 	_blob_service = None
 	container = None
 	ACCOUNT_LOGIN = ''
 	ACCOUNT_KEY = ''
 	old_md5 = ''
-	_interface = None
+	# TODO : populate these values accordingly in concrete class
+	_interface = None # as to be defined as a BlobStorageObject that support argument list : (account_name=self
+	# .ACCOUNT_LOGIN, account_key=self.ACCOUNT_KEY). OR you can override the 'blob_service' property
 	missing_res_error = None # AzureMissingResourceHttpError
 
-	def __init__(self, login, key, container, interface=None):
+	def __init__(self, login, key, container):
 		assert isinstance(login, basestring)
 		assert isinstance(key, basestring)
 		assert isinstance(container, basestring)
 		self.ACCOUNT_LOGIN = login
 		self.ACCOUNT_KEY = key
 		self.container = container
-		self._interface = interface
 
 	@property
 	def blob_service(self):
@@ -200,7 +201,7 @@ class AzureStorage:
 		""" Download a possibly updated version of this script from azure blob storage
 		Will only work from command line.
 
-		:param container: target container (default to AZURE_SELF_UPDATE_CONTAINER)
+		:param container: target container (default to MNGT_CONTAINER)
 		:type container: str|None
 		:return: success ?
 		:rtype: bool
@@ -215,14 +216,13 @@ class AzureStorage:
 			return False
 
 	# clem 20/04/2016
-	def _print_call(self, function_name, args):
+	def _print_call(self, fun_name, args):
 		arg_list = ''
 		if isinstance(args, basestring):
 			args = [args]
 		for each in args:
-			# new_args.append("'%s'" % Bcolors.warning(each))
 			arg_list += "'%s', " % Bcolors.warning(each)
-		print Bcolors.bold(function_name) + "(%s)" % arg_list[:-2]
+		print Bcolors.bold(fun_name) + "(%s)" % arg_list[:-2]
 
 	# clem 28/04/201
 	@abc.abstractmethod
