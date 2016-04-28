@@ -1,5 +1,4 @@
 #!/usr/bin/python
-from utilities import function_name
 import os
 import sys
 import abc
@@ -54,7 +53,12 @@ ACT_CONT_MAPPING = {
 }
 
 
-# clem on 21/08/2015
+# clem 08/04/2016 (from utilities)
+def function_name(delta=0):
+	return sys._getframe(1 + delta).f_code.co_name
+
+
+# clem on 21/08/2015 (from utilities)
 def get_md5(content):
 	""" compute the md5 checksum of the content argument
 
@@ -73,7 +77,7 @@ def get_md5(content):
 	return m.hexdigest()
 
 
-# clem on 21/08/2015
+# clem on 21/08/2015 (from utilities)
 def get_file_md5(file_path):
 	""" compute the md5 checksum of a file
 
@@ -91,6 +95,7 @@ def get_file_md5(file_path):
 		return ''
 
 
+# from utilities
 class Bcolors:
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
