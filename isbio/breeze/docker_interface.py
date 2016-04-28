@@ -42,6 +42,9 @@ class Docker:
 	container = None
 	cat = DockerEventCategories
 	MY_DOCKER_HUB = DockerRepo(REPO_LOGIN, REPO_PWD, email=REPO_EMAIL)
+	LINE3 = '\x1b[34mCreating archive /root/out.tar.xz'
+	LINE2 = '\x1b[1mcreate_blob_from_path\x1b[0m('
+	LINES = dict([(-3, LINE3), (-2, LINE2)])
 
 	def __init__(self):
 		if not self.test_connection(DOCKER_BIND_ADDR):
@@ -151,21 +154,21 @@ class Docker:
 				cont = event.container
 				log = str(cont.logs)
 				assert isinstance(cont, DockerContainer)
-				# self.write_log('%s died event managed' % event.container.name)
 				self.write_log('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
 					cont.delta_display))
 				if cont.status.ExitCode > 0:
-					self.write_log('Failure (container won\t be deleted) ! Run log :\n%s' % log)
+					self.write_log('Failure (container won1\'t be deleted) ! Run log :\n%s' % log)
 				else:
 					self.write_log('Success !')
-					the_end = log.split('\n')[-5:-1] # copy the last 4 lines
-					arch = the_end[-2] # copy the line about the archive
-					if the_end[-3].startswith('Creating archive /root/out.tar.xz'):
-						del the_end[-3] # remove the third last which should be about the archive
-					if the_end[-2].startswith("create_blob_from_path("):
-						del the_end[-2] # remove the second last which should be about the upload
+					# filter the end of the log to match it to a specific pattern, to ensure no unexpected event
+					# happened
+					the_end = log.split('\n')[-6:-1] # copy the last 5 lines
+					for (k, v) in self.LINES.iteritems():
+						if the_end[k].startswith(v):
+							del the_end[k]
 					if the_end != NORMAL_ENDING:
-						self.write_log('It seems there was some errors, run log :\n%s' % log)
+						self.write_log('It seems there was some errors, run log :\n%s\nEND OF RUN LOGS !! '
+							'##########################' % log)
 					if self.auto_remove:
 						cont.remove_container()
 					self.get_results() #
@@ -263,6 +266,9 @@ class Docker:
 			output_filename = '/projects/breeze-dev/db/testing/results_%s.tar.xz' % self.run_id
 		try:
 			e = self.result_storage.download(self.run_id, output_filename)
+
+			# if e:
+			# 	self.result_storage.erase(self.run_id)
 			# TODO extract in original path
 			return e
 		except AzureMissingResourceHttpError:
