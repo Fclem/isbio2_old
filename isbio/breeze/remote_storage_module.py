@@ -1,11 +1,12 @@
 #!/usr/bin/python
-from azure.common import AzureMissingResourceHttpError
-from azure.storage.blob import BlockBlobService
+from utilities import function_name
 import os
 import sys
+import abc
 
-__version__ = '0.2'
+__version__ = '0.3'
 __author__ = 'clem'
+__date__ = '28/04/2016'
 
 
 # clem 06/04/2016
@@ -25,23 +26,17 @@ __DEV__ = True
 __path__ = os.path.realpath(__file__)
 __dir_path__ = os.path.dirname(__path__)
 __file_name__ = os.path.basename(__file__)
-AZURE_ACCOUNT = 'breezedata'
-AZURE_PWD_FILE = 'azure_pwd_%s' % AZURE_ACCOUNT
-AZURE_KEY = password_from_file('~/code/%s' % AZURE_PWD_FILE) or \
-	password_from_file('%s/%s' % (__dir_path__, AZURE_PWD_FILE))
-# TODO : storage containers should be named after the intended docker target
-AZURE_CONTAINERS_NAME = ['breeze-queue', 'breeze-results', 'docker-config']
-AZURE_JOBS_CONTAINER = AZURE_CONTAINERS_NAME[0] # container where jobs to be run are stored
-AZURE_DATA_CONTAINER = AZURE_CONTAINERS_NAME[1] # container where jobs' results data are stored
-AZURE_MNGT_CONTAINER = AZURE_CONTAINERS_NAME[2] # container where some configuration and code is stored
-AZURE_BLOB_BASE_URL = 'https://%s.blob.core.windows.net/%s/'
-# command line config
 ENV_OUT_FILE = ('OUT_FILE', 'out.tar.xz')
 ENV_IN_FILE = ('IN_FILE', 'in.tar.xz')
 ENV_DOCK_HOME = ('DOCK_HOME', '/breeze')
 ENV_HOME = ('HOME', '/root')
 ENV_JOB_ID = ('JOB_ID', '')
 ENV_HOSTNAME = ('HOSTNAME', '')
+CONTAINERS_NAME = ['breeze-queue', 'breeze-results', 'docker-config']
+JOBS_CONTAINER = CONTAINERS_NAME[0] # container where jobs to be run are stored
+DATA_CONTAINER = CONTAINERS_NAME[1] # container where jobs' results data are stored
+MNGT_CONTAINER = CONTAINERS_NAME[2] # container where some configuration and code is stored
+SERVICE_BLOB_BASE_URL = ''
 # command line CONSTs
 OUT_FILE = os.environ.get(*ENV_OUT_FILE)
 IN_FILE = os.environ.get(*ENV_IN_FILE)
@@ -49,10 +44,10 @@ DOCK_HOME = os.environ.get(*ENV_DOCK_HOME)
 HOME = os.environ.get(*ENV_HOME)
 ACTION_LIST = ('load', 'save', 'upload', 'upgrade') # DO NOT change item order
 ACT_CONT_MAPPING = {
-	ACTION_LIST[0]: AZURE_JOBS_CONTAINER,
-	ACTION_LIST[1]: AZURE_DATA_CONTAINER,
-	ACTION_LIST[2]: AZURE_MNGT_CONTAINER,
-	ACTION_LIST[3]: AZURE_MNGT_CONTAINER,
+	ACTION_LIST[0]: None,
+	ACTION_LIST[1]: None,
+	ACTION_LIST[2]: None,
+	ACTION_LIST[3]: None,
 }
 
 
@@ -97,31 +92,35 @@ class Bcolors:
 
 # clem 14/04/2016
 class AzureStorage:
+	__metaclass__ = abc.ABCMeta
 	_blob_service = None
 	container = None
 	ACCOUNT_LOGIN = ''
 	ACCOUNT_KEY = ''
 	old_md5 = ''
+	_interface = None
+	missing_res_error = None # AzureMissingResourceHttpError
 
-	def __init__(self, login, key, container):
+	def __init__(self, login, key, container, interface=None):
 		assert isinstance(login, basestring)
 		assert isinstance(key, basestring)
 		assert isinstance(container, basestring)
 		self.ACCOUNT_LOGIN = login
 		self.ACCOUNT_KEY = key
 		self.container = container
+		self._interface = interface
 
 	@property
 	def blob_service(self):
-		""" the Azure storage interface to self.ACCOUNT_LOGIN\n
+		""" the * storage interface to self.ACCOUNT_LOGIN\n
 		if not connected yet, establish the link and save it
 
-		:return: Azure storage interface
+		:return: * storage interface
 		:rtype: BlockBlobService
 		:raise: Exception
 		"""
 		if not self._blob_service:
-			self._blob_service = BlockBlobService(account_name=self.ACCOUNT_LOGIN, account_key=self.ACCOUNT_KEY)
+			self._blob_service = self._interface(account_name=self.ACCOUNT_LOGIN, account_key=self.ACCOUNT_KEY)
 		return self._blob_service
 
 	def container_url(self):
@@ -133,25 +132,21 @@ class AzureStorage:
 		"""
 		return self._container_url(self.container)
 
-	# clem 19/04/2016
+	# clem 28/04/201
+	@abc.abstractmethod
 	def _container_url(self, container):
-		return AZURE_BLOB_BASE_URL % (self.ACCOUNT_LOGIN, container)
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
-	# clem 20/04/2016
+	# clem 28/04/201
+	@abc.abstractmethod
 	def list_containers(self, do_print=False):
-		""" The list of container in the current Azure storage account
+		""" The list of container in the current * storage account
 
 		:param do_print: print the resulting list ? (default to False)
 		:type do_print: bool
 		:return: generator of the list of containers in self.ACCOUNT_LOGIN storage account
-		:rtype: azure.storage.models.ListGenerator
 		"""
-		generator = self.blob_service.list_containers()
-		if do_print:
-			print 'Azure account \'%s\' containers list :' % self.ACCOUNT_LOGIN
-			for container in generator:
-				print container.name
-		return generator
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
 	def list_blobs(self, do_print=False):
 		""" The list of blob in self.container
@@ -159,25 +154,19 @@ class AzureStorage:
 		:param do_print: print the resulting list ? (default to False)
 		:type do_print: bool
 		:return: generator of the list of blob in self.container
-		:rtype: azure.storage.models.ListGenerator
 		"""
 		return self._list_blobs(self.container, do_print)
 
-	# clem 19/04/2016
+	# clem 28/04/201
+	@abc.abstractmethod
 	def _list_blobs(self, container, do_print=False):
 		"""
 		:param container: name of the container to list content from
 		:type container: str
 		:param do_print: print the resulting list ? (default to False)
 		:type do_print: bool
-		:rtype: azure.storage.models.ListGenerator
 		"""
-		generator = self.blob_service.list_blobs(container)
-		if do_print:
-			print 'Azure container \'%s\' content :' % container
-			for blob in generator:
-				print blob.name
-		return generator
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
 	def blob_info(self, blob_name):
 		"""
@@ -188,21 +177,22 @@ class AzureStorage:
 		"""
 		return self._blob_info(self.container, blob_name)
 
-	# clem 19/04/2016
+	# clem 28/04/201
+	@abc.abstractmethod
 	def _blob_info(self, cont_name, blob_name):
-		return self.blob_service.get_blob_properties(cont_name, blob_name)
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
 	# clem 20/04/2016
 	def upload_self(self, container=None):
 		""" Upload this script to azure blob storage
 
-		:param container: target container (default to AZURE_SELF_UPDATE_CONTAINER)
+		:param container: target container (default to MNGT_CONTAINER)
 		:type container: str|None
 		:return: Info on the created blob as a Blob object
 		:rtype: Blob
 		"""
 		if not container:
-			container = AZURE_MNGT_CONTAINER
+			container = MNGT_CONTAINER
 		return self.upload(__file_name__, __file__, container)
 
 	# clem 20/04/2016
@@ -218,10 +208,10 @@ class AzureStorage:
 		"""
 		assert __name__ == '__main__' # restrict access
 		if not container:
-			container = AZURE_MNGT_CONTAINER
+			container = MNGT_CONTAINER
 		try:
 			return self.download(__file_name__, __file__, container)
-		except AzureMissingResourceHttpError: # blob was not found
+		except self.missing_res_error: # blob was not found
 			return False
 
 	# clem 20/04/2016
@@ -234,7 +224,8 @@ class AzureStorage:
 			arg_list += "'%s', " % Bcolors.warning(each)
 		print Bcolors.bold(function_name) + "(%s)" % arg_list[:-2]
 
-	# clem 15/04/2016
+	# clem 28/04/201
+	@abc.abstractmethod
 	def upload(self, blob_name, file_path, container=None, verbose=True):
 		""" Upload wrapper (around BlockBlobService().blob_service.get_blob_properties) for Azure block blob storage :\n
 		upload a local file to the default container or a specified one on Azure storage
@@ -252,30 +243,16 @@ class AzureStorage:
 		:rtype: Blob
 		:raise: IOError or FileNotFoundError
 		"""
-		if not container:
-			container = self.container
-		if os.path.exists(file_path):
-			if not self.blob_service.exists(container):
-				# if container does not exist yet, we create it
-				if verbose:
-					self._print_call('create_container', container)
-				self.blob_service.create_container(container)
-			if verbose:
-				self._print_call('create_blob_from_path', (container, blob_name, file_path))
-			self.blob_service.create_blob_from_path(container, blob_name, file_path)
-		else:
-			err = getattr(__builtins__, 'FileNotFoundError', IOError)
-			raise err("File '%s' not found in '%s' !" % (os.path.basename(file_path),
-				os.path.dirname(file_path)))
-		return self.blob_service.get_blob_properties(container, blob_name)
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
-	# clem 15/04/2016
+	# clem 28/04/201
+	@abc.abstractmethod
 	def download(self, blob_name, file_path, container=None, verbose=True):
-		""" Download wrapper (around BlockBlobService().blob_service.get_blob_to_path) for Azure block blob storage :\n
+		""" Download wrapper (around BlockBlobService().blob_service.get_blob_to_path) for * block blob storage :\n
 		download a blob from the default container (or a specified one) from azure storage and save it as a local file
 		if the container does not exists, the operation will fail
 
-		:param blob_name: Name of the blob to retrieve from Azure storage
+		:param blob_name: Name of the blob to retrieve from * storage
 		:type blob_name: str
 		:param file_path: Path of the local file to save the downloaded blob
 		:type file_path: str
@@ -285,23 +262,16 @@ class AzureStorage:
 		:type verbose: bool or None
 		:return: success?
 		:rtype: bool
-		:raise: azure.common.AzureMissingResourceHttpError
+		:raise: self.missing_res_error
 		"""
-		if not container:
-			container = self.container
-		if self.blob_service.exists(container, blob_name): # avoid error, and having blank files on error
-			if verbose:
-				self._print_call('get_blob_to_path', (container, blob_name, file_path))
-			# purposely not catching AzureMissingResourceHttpError (to be managed from caller code)
-			self.blob_service.get_blob_to_path(container, blob_name, file_path)
-			return True
-		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
-	# clem 21/04/2016
+	# clem 28/04/201
+	@abc.abstractmethod
 	def erase(self, blob_name, container=None, verbose=True):
 		""" Delete the specified blob in self.container or in the specified container if said blob exists
 
-		:param blob_name: Name of the blob to delete from Azure storage
+		:param blob_name: Name of the blob to delete from * storage
 		:type blob_name: str
 		:param container: Name of the container where the blob is stored (default to self.container)
 		:type container: str or None
@@ -309,16 +279,9 @@ class AzureStorage:
 		:type verbose: bool or None
 		:return: success?
 		:rtype: bool
-		:raise: azure.common.AzureMissingResourceHttpError
+		:raise: self.missing_res_error
 		"""
-		if not container:
-			container = self.container
-		if self.blob_service.exists(container, blob_name):
-			if verbose:
-				self._print_call('delete_blob', (container, blob_name))
-			self.blob_service.delete_blob(container, blob_name)
-			return True
-		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
+		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
 
 
 # clem on 21/08/2015

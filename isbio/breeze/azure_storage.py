@@ -210,7 +210,7 @@ class AzureStorage:
 		""" Download a possibly updated version of this script from azure blob storage
 		Will only work from command line.
 
-		:param container: target container (default to AZURE_SELF_UPDATE_CONTAINER)
+		:param container: target container (default to AZURE_MNGT_CONTAINER)
 		:type container: str|None
 		:return: success ?
 		:rtype: bool
