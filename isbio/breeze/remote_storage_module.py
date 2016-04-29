@@ -146,7 +146,7 @@ class StorageModule:
 	# TODO : populate these values accordingly in concrete class
 	_interface = None # as to be defined as a BlobStorageObject that support argument list : (account_name=self
 	# .ACCOUNT_LOGIN, account_key=self.ACCOUNT_KEY). OR you can override the 'blob_service' property
-	missing_res_error = None # AzureMissingResourceHttpError
+	missing_res_exception = None # AzureMissingResourceHttpError
 
 	def __init__(self, login, key, container):
 		assert isinstance(login, basestring)
@@ -339,6 +339,18 @@ class StorageModule:
 		:raise: self.missing_res_error
 		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+
+
+def jobs_container():
+	return JOBS_CONTAINER
+
+
+def data_container():
+	return DATA_CONTAINER
+
+
+def management_container():
+	return MNGT_CONTAINER
 
 
 # clem on 28/04/2016
