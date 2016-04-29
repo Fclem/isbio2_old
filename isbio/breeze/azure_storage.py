@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from remote_storage_module import * # import constructor, already has os, sys and abc
+from remote_storage_module import * # import interface, already has os, sys and abc
 from azure.common import AzureMissingResourceHttpError
 from azure.storage.blob import BlockBlobService
 
@@ -27,7 +27,7 @@ class AzureStorage(StorageModule):
 
 	# clem 19/04/2016
 	def _container_url(self, container):
-		return AZURE_BLOB_BASE_URL % (self.ACCOUNT_LOGIN, container)
+		return SERVICE_BLOB_BASE_URL % (self.ACCOUNT_LOGIN, container)
 
 	# clem 20/04/2016
 	def list_containers(self, do_print=False):
@@ -82,7 +82,7 @@ class AzureStorage(StorageModule):
 			return False
 
 	# clem 20/04/2016 @override
-	def update_self(self, container=None):
+	def _update_self(self, container=None):
 		""" Download a possibly updated version of this script from azure blob storage
 		Will only work from command line.
 
@@ -90,7 +90,7 @@ class AzureStorage(StorageModule):
 		:type container: str|None
 		:return: success ?
 		:rtype: bool
-		:raise: AssertionError
+		:raise: AssertionError or AzureMissingResourceHttpError
 		"""
 		assert __name__ == '__main__' # restrict access
 		if not container:

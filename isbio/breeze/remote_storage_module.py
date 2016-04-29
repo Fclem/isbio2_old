@@ -96,7 +96,7 @@ def get_file_md5(file_path):
 
 
 # from utilities
-class Bcolors:
+class Bcolors(object):
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
 	OKGREEN = '\033[92m'
@@ -138,6 +138,7 @@ class Bcolors:
 # clem 14/04/2016
 class StorageModule:
 	__metaclass__ = abc.ABCMeta
+	_not = "Class %s doesn't implement %s()"
 	_blob_service = None
 	container = None
 	ACCOUNT_LOGIN = ''
@@ -210,9 +211,8 @@ class StorageModule:
 		return self.upload(__file_name__, __file__, container)
 
 	# clem 20/04/2016
-	def update_self(self, container=None):
-		""" Download a possibly updated version of this script from azure blob storage
-		Will only work from command line.
+	def __update_self(self, container=None):
+		""" Download a possibly updated version of this script from * blob storage
 
 		:param container: target container (default to MNGT_CONTAINER)
 		:type container: str|None
@@ -220,7 +220,8 @@ class StorageModule:
 		:rtype: bool
 		:raise: AssertionError
 		"""
-		assert __name__ == '__main__' # restrict access
+		print __name__
+		# assert __name__ == '__main__' # restrict access
 		if not container:
 			container = MNGT_CONTAINER
 		try:
@@ -237,10 +238,41 @@ class StorageModule:
 			arg_list += "'%s', " % Bcolors.warning(each)
 		print Bcolors.bold(fun_name) + "(%s)" % arg_list[:-2]
 
+	# clem 29/04/2016
+	def update_self(self, container=None):
+		""" Download a possibly updated version of this script from * blob storage
+		Will only work from command line for the implementation.
+		The storage module, use its own routine to update itself
+		DO NOT override this method, instead implement _update_self
+
+		:param container: target container (default to MNGT_CONTAINER)
+		:type container: str|None
+		:return: success ?
+		:rtype: bool
+		:raise: AssertionError
+		"""
+		return self.__update_self(container) and self._update_self(container)
+
+	# clem 29/04/2016
+	@abc.abstractmethod
+	def _update_self(self, container=None):
+		""" Concrete implementation
+		Download a possibly updated version of this script from * blob storage
+		Will only work from command line for the implementation.
+		The storage module, use its own routine to update itself
+
+		:param container: target container (default to MNGT_CONTAINER)
+		:type container: str|None
+		:return: success ?
+		:rtype: bool
+		:raise: AssertionError
+		"""
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+
 	# clem 28/04/201
 	@abc.abstractmethod
 	def _container_url(self, container):
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	# clem 28/04/201
 	@abc.abstractmethod
@@ -251,7 +283,7 @@ class StorageModule:
 		:type do_print: bool
 		:return: generator of the list of containers in self.ACCOUNT_LOGIN storage account
 		"""
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	# clem 28/04/201
 	@abc.abstractmethod
@@ -262,12 +294,12 @@ class StorageModule:
 		:param do_print: print the resulting list ? (default to False)
 		:type do_print: bool
 		"""
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	# clem 28/04/201
 	@abc.abstractmethod
 	def _blob_info(self, cont_name, blob_name):
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	# clem 28/04/201
 	@abc.abstractmethod
@@ -288,7 +320,7 @@ class StorageModule:
 		:rtype: Blob
 		:raise: IOError or FileNotFoundError
 		"""
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	# clem 28/04/201
 	@abc.abstractmethod
@@ -309,7 +341,7 @@ class StorageModule:
 		:rtype: bool
 		:raise: self.missing_res_error
 		"""
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	# clem 28/04/201
 	@abc.abstractmethod
@@ -326,7 +358,7 @@ class StorageModule:
 		:rtype: bool
 		:raise: self.missing_res_error
 		"""
-		raise NotImplementedError("Class %s doesn't implement %s()" % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 
 # clem on 28/04/2016
