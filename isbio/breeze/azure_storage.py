@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from remote_storage_module import * # import interface, already has os, sys and abc
-from azure.common import AzureMissingResourceHttpError
+from azure.common import AzureMissingResourceHttpError as MissingResException
 from azure.storage.blob import BlockBlobService
 
 __version__ = '0.4'
@@ -23,7 +23,7 @@ AZURE_KEY = password_from_file('~/code/%s' % AZURE_PWD_FILE) or \
 # clem 14/04/2016
 class AzureStorage(StorageModule):
 	_interface = BlockBlobService
-	missing_res_error = AzureMissingResourceHttpError
+	missing_res_exception = MissingResException
 
 	# clem 19/04/2016
 	def _container_url(self, container):
@@ -153,7 +153,7 @@ class AzureStorage(StorageModule):
 			# purposely not catching AzureMissingResourceHttpError (to be managed from caller code)
 			self.blob_service.get_blob_to_path(container, blob_name, file_path)
 			return True
-		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
+		raise MissingResException('Not found %s / %s' % (container, blob_name), 404)
 
 	# clem 21/04/2016
 	def erase(self, blob_name, container=None, verbose=True):
@@ -176,7 +176,12 @@ class AzureStorage(StorageModule):
 				self._print_call('delete_blob', (container, blob_name))
 			self.blob_service.delete_blob(container, blob_name)
 			return True
-		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
+		raise MissingResException('Not found %s / %s' % (container, blob_name), 404)
+
+
+# clem 29/04/2016
+def back_end_initiator(container):
+	return AzureStorage(AZURE_ACCOUNT, AZURE_KEY, container)
 
 
 if __name__ == '__main__':
