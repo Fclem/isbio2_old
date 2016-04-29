@@ -96,8 +96,7 @@ class AzureStorage(StorageModule):
 		if not container:
 			container = MNGT_CONTAINER
 		try:
-			return self.download(__file_name__, __file__, container) and super(AzureStorage, self).update_self(
-				container)
+			return self.download(__file_name__, __file__, container)
 		except AzureMissingResourceHttpError: # blob was not found
 			return False
 
