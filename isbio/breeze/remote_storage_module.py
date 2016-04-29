@@ -21,7 +21,7 @@ def password_from_file(the_path):
 
 
 # TODO set this configs :
-SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (container_name, url)
+SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (ontainer_name, url)
 __DEV__ = True
 __path__ = os.path.realpath(__file__)
 __dir_path__ = os.path.dirname(__path__)
