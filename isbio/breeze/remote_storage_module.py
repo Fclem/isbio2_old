@@ -25,7 +25,7 @@ SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (ontainer_name, ur
 __DEV__ = True
 __path__ = os.path.realpath(__file__)
 __dir_path__ = os.path.dirname(__path__)
-__file_name__ = os.path.basename(__file__)
+__file_name__ = __name__ + '.py' # os.path.basename(__file__)
 
 # general config
 ENV_OUT_FILE = ('OUT_FILE', 'out.tar.xz')
@@ -223,10 +223,10 @@ class StorageModule:
 		assert __name__ == 'remote_storage_module' # restrict access
 		if not container:
 			container = MNGT_CONTAINER
-		# try:
-		return self.download(__file_name__, __file__, container)
-		# except Exception: # blob was not found
-		#	return False
+		try:
+			self.download(__file_name__, __file__, container)
+		except self.missing_res_error: # blob was not found
+			return False
 
 	# clem 20/04/2016
 	def _print_call(self, fun_name, args):
