@@ -116,7 +116,7 @@ class Bcolors(object):
 
 	@staticmethod
 	def fail(text):
-		return Bcolors.FAIL + text + Bcolors.ENDC
+		return Bcolors.FAIL + text + Bcolors.ENDC + ' (%s)' % __name__
 
 	@staticmethod
 	def warning(text):
@@ -220,8 +220,7 @@ class StorageModule:
 		:rtype: bool
 		:raise: AssertionError
 		"""
-		print __name__
-		# assert __name__ == '__main__' # restrict access
+		assert __name__ == 'remote_storage_module' # restrict access
 		if not container:
 			container = MNGT_CONTAINER
 		try:

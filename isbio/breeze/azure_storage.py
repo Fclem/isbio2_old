@@ -97,7 +97,7 @@ class AzureStorage(StorageModule):
 			container = MNGT_CONTAINER
 		try:
 			return self.download(__file_name__, __file__, container)
-		except AzureMissingResourceHttpError: # blob was not found
+		except self.missing_res_error: # blob was not found
 			return False
 
 	# clem 15/04/2016
@@ -161,7 +161,7 @@ class AzureStorage(StorageModule):
 			# purposely not catching AzureMissingResourceHttpError (to be managed from caller code)
 			self.blob_service.get_blob_to_path(container, blob_name, file_path)
 			return True
-		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
+		raise self.missing_res_error('Not found %s / %s' % (container, blob_name), 404)
 
 	# clem 21/04/2016
 	def erase(self, blob_name, container=None, verbose=True):
@@ -184,7 +184,7 @@ class AzureStorage(StorageModule):
 				self._print_call('delete_blob', (container, blob_name))
 			self.blob_service.delete_blob(container, blob_name)
 			return True
-		raise AzureMissingResourceHttpError('Not found %s / %s' % (container, blob_name), 404)
+		raise self.missing_res_error('Not found %s / %s' % (container, blob_name), 404)
 
 
 if __name__ == '__main__':
