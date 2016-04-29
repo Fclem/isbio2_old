@@ -224,10 +224,10 @@ class StorageModule:
 		assert __name__ == 'remote_storage_module' # restrict access
 		if not container:
 			container = MNGT_CONTAINER
-		try:
-			self.download(__file_name__, __file__, container)
-		except self.missing_res_error: # blob was not found
-			return False
+		# try:
+		self.download(__file_name__, __file__, container)
+		# except Exception: # blob was not found
+		#	return False
 
 	# clem 20/04/2016
 	def _print_call(self, fun_name, args):
