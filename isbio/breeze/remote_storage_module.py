@@ -21,12 +21,11 @@ def password_from_file(the_path):
 
 
 # TODO set this configs :
-SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (ontainer_name, url)
+SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (container_name, url)
 __DEV__ = True
-__path__ = os.path.realpath(__file__).replace('.pyc', '.py')
-__file__ = __file__.replace('.pyc', '.py')
+__path__ = os.path.realpath(__file__)
 __dir_path__ = os.path.dirname(__path__)
-__file_name__ = os.path.basename(__file__).replace('.pyc', '.py')
+__file_name__ = os.path.basename(__file__)
 
 # general config
 ENV_OUT_FILE = ('OUT_FILE', 'out.tar.xz')
@@ -212,22 +211,13 @@ class StorageModule:
 		return self.upload(__file_name__, __file__, container)
 
 	# clem 20/04/2016
-	def __update_self(self, container=None):
-		""" Download a possibly updated version of this script from * blob storage
-
-		:param container: target container (default to MNGT_CONTAINER)
-		:type container: str|None
-		:return: success ?
-		:rtype: bool
-		:raise: AssertionError
-		"""
-		assert __name__ == 'remote_storage_module' # restrict access
+	def _update_self_sub(self, blob_name, file_name, container=None):
 		if not container:
 			container = MNGT_CONTAINER
-		# try:
-		self.download(__file_name__, __file__, container)
-		# except Exception: # blob was not found
-		#	return False
+		try:
+			self.download(blob_name, file_name, container)
+		except Exception: # blob was not found
+			return False
 
 	# clem 20/04/2016
 	def _print_call(self, fun_name, args):
@@ -251,7 +241,7 @@ class StorageModule:
 		:rtype: bool
 		:raise: AssertionError
 		"""
-		return self.__update_self(container) and self._update_self(container)
+		return self._update_self_sub(__file_name__, __file__, container) and self._update_self(container)
 
 	# clem 29/04/2016
 	@abc.abstractmethod
@@ -259,7 +249,8 @@ class StorageModule:
 		""" Concrete implementation
 		Download a possibly updated version of this script from * blob storage
 		Will only work from command line for the implementation.
-		The storage module, use its own routine to update itself
+		Typically this single line is enough :
+			self._update_self_sub(__file_name__, __file__, container)
 
 		:param container: target container (default to MNGT_CONTAINER)
 		:type container: str|None

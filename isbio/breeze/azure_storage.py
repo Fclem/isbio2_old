@@ -93,12 +93,7 @@ class AzureStorage(StorageModule):
 		:raise: AssertionError or AzureMissingResourceHttpError
 		"""
 		assert __name__ == '__main__' # restrict access
-		if not container:
-			container = MNGT_CONTAINER
-		try:
-			return self.download(__file_name__, __file__, container)
-		except AzureMissingResourceHttpError: # blob was not found
-			return False
+		return self._update_self_sub(__file_name__, __file__, container)
 
 	# clem 15/04/2016
 	def upload(self, blob_name, file_path, container=None, verbose=True):
