@@ -9,7 +9,7 @@ client = None
 
 
 def dev():
-	from docker_interface import Docker
+	from docker_azure import Docker
 
 	return Docker()
 

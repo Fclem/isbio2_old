@@ -1,25 +1,17 @@
-from docker_client import *
-from utils import password_from_file, function_name, is_from_cli, get_file_md5 # , new_thread
-import os
-import atexit
+from docker_interface import *
 
-REPO_PWD = password_from_file('~/code/docker_repo') # FIXME
-REPO_LOGIN = 'fimm'
-REPO_EMAIL = 'clement.fiere@fimm.fi'
-DOCKER_REMOTE_HOST = '127.0.0.1'
-DOCKER_REMOTE_PORT = 4243
-DOCKER_BIND_ADDR = (DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)
-DOCKER_DAEMON_URL = 'tcp://%s:%s' % DOCKER_BIND_ADDR
+__version__ = '0.1'
+__author__ = 'clem'
+__date__ = '29/04/2016'
+
 SSH_HOST = 'breeze.northeurope.cloudapp.azure.com'
 # FIXME
 SSH_CMD = ['ssh', '-CfNnL', '%s:%s:%s' % (DOCKER_REMOTE_PORT, DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT), SSH_HOST]
 SSH_BASH_KILL = 'ps aux | grep "%s"' % ' '.join(SSH_CMD) + " | awk '{ print $2 }' | tr '\\n' ' '"
 
-NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
-
 
 # clem 15/03/2016
-class Docker:
+class Docker(DockerInterface):
 	ssh_tunnel = None
 	auto_remove = True
 	_docker_storage = None
