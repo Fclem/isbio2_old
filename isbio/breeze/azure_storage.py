@@ -81,8 +81,8 @@ class AzureStorage(StorageModule):
 		else:
 			return False
 
-	# clem 20/04/2016 @override
-	def _update_self(self, container=None):
+	# clem 20/04/2016
+	def update_self(self, container=None):
 		""" Download a possibly updated version of this script from azure blob storage
 		Will only work from command line.
 
@@ -93,7 +93,7 @@ class AzureStorage(StorageModule):
 		:raise: AssertionError or AzureMissingResourceHttpError
 		"""
 		assert __name__ == '__main__' # restrict access
-		return self._update_self_sub(__file_name__, __file__, container)
+		return self._update_self_sub(__file_name__, __file__, container) and super(AzureStorage, self).update_self()
 
 	# clem 15/04/2016
 	def upload(self, blob_name, file_path, container=None, verbose=True):
