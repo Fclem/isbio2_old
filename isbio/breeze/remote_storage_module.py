@@ -24,7 +24,7 @@ def password_from_file(the_path):
 SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (ontainer_name, url)
 __DEV__ = True
 __path__ = os.path.realpath(__file__).replace('.pyc', '.py')
-__file__ = __file__.replace('.pyc', 'py')
+__file__ = __file__.replace('.pyc', '.py')
 __dir_path__ = os.path.dirname(__path__)
 __file_name__ = os.path.basename(__file__).replace('.pyc', '.py')
 
