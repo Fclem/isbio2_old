@@ -225,7 +225,7 @@ class StorageModule:
 			container = MNGT_CONTAINER
 		try:
 			return self.download(__file_name__, __file__, container)
-		except self.missing_res_error: # blob was not found
+		except Exception: # blob was not found
 			return False
 
 	# clem 20/04/2016
