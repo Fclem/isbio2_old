@@ -3,7 +3,7 @@ from remote_storage_module import * # import interface, already has os, sys and 
 from azure.common import AzureMissingResourceHttpError
 from azure.storage.blob import BlockBlobService
 
-__version__ = '0.2'
+__version__ = '0.4'
 __author__ = 'clem'
 
 
@@ -74,12 +74,8 @@ class AzureStorage(StorageModule):
 		:return: Info on the created blob as a Blob object
 		:rtype: Blob
 		"""
-		if not container:
-			container = MNGT_CONTAINER
-		if super(AzureStorage, self).upload_self(container):
-			return self.upload(__file_name__, __file__, container)
-		else:
-			return False
+		return super(AzureStorage, self).upload_self(container) and self._upload_self_sub(__file_name__, __file__,
+			container)
 
 	# clem 20/04/2016
 	def update_self(self, container=None):
@@ -93,7 +89,8 @@ class AzureStorage(StorageModule):
 		:raise: AssertionError or AzureMissingResourceHttpError
 		"""
 		assert __name__ == '__main__' # restrict access
-		return self._update_self_sub(__file_name__, __file__, container) and super(AzureStorage, self).update_self()
+		return super(AzureStorage, self).update_self(container) and self._update_self_sub(__file_name__, __file__,
+			container)
 
 	# clem 15/04/2016
 	def upload(self, blob_name, file_path, container=None, verbose=True):

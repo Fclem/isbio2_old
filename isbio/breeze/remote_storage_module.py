@@ -1,9 +1,8 @@
-#!/usr/bin/python
 import os
 import sys
 import abc
 
-__version__ = '0.3'
+__version__ = '0.4'
 __author__ = 'clem'
 __date__ = '28/04/2016'
 
@@ -198,28 +197,6 @@ class StorageModule:
 		return self._blob_info(self.container, blob_name)
 
 	# clem 20/04/2016
-	def upload_self(self, container=None):
-		""" Upload this script to azure blob storage
-
-		:param container: target container (default to MNGT_CONTAINER)
-		:type container: str|None
-		:return: Info on the created blob as a Blob object
-		:rtype: Blob
-		"""
-		if not container:
-			container = MNGT_CONTAINER
-		return self.upload(__file_name__, __file__, container)
-
-	# clem 20/04/2016
-	def _update_self_sub(self, blob_name, file_name, container=None):
-		if not container:
-			container = MNGT_CONTAINER
-		# try:
-		self.download(blob_name, file_name, container)
-		#except Exception: # blob was not found
-		#	return False
-
-	# clem 20/04/2016
 	def _print_call(self, fun_name, args):
 		arg_list = ''
 		if isinstance(args, basestring):
@@ -229,11 +206,40 @@ class StorageModule:
 		print Bcolors.bold(fun_name) + "(%s)" % arg_list[:-2]
 
 	# clem 29/04/2016
+	def _upload_self_sub(self, blob_name, file_name, container=None):
+		if not container:
+			container = MNGT_CONTAINER
+		self.erase(blob_name, container)
+		return self.upload(blob_name, file_name, container)
+
+	# clem 20/04/2016
+	def upload_self(self, container=None):
+		""" Upload this script to * blob storage
+
+		:param container: target container (default to MNGT_CONTAINER)
+		:type container: str|None
+		:return: Info on the created blob as a Blob object
+		:rtype: Blob
+		"""
+		return self._upload_self_sub(__file_name__, __file__, container)
+
+	# clem 29/04/2016
+	def _update_self_sub(self, blob_name, file_name, container=None):
+		if not container:
+			container = MNGT_CONTAINER
+		# try:
+		blob_name = blob_name.replace('.pyc', '.py')
+		file_name = file_name.replace('.pyc', '.py')
+		return self.download(blob_name, file_name, container)
+		#except Exception: # blob was not found
+		#	return False
+
+	# clem 20/04/2016
 	def update_self(self, container=None):
 		""" Download a possibly updated version of this script from * blob storage
 		Will only work from command line for the implementation.
 		You must override this method, use _update_self_sub, and call it using super, like so :
-		return self._update_self_sub(__file_name__, __file__, container) and super(__class_name__, self).update_self()
+		return super(__class_name__, self).update_self() and self._update_self_sub(__file_name__, __file__, container)
 
 		:param container: target container (default to MNGT_CONTAINER)
 		:type container: str|None
@@ -278,11 +284,11 @@ class StorageModule:
 	# clem 28/04/201
 	@abc.abstractmethod
 	def upload(self, blob_name, file_path, container=None, verbose=True):
-		""" Upload wrapper (around BlockBlobService().blob_service.get_blob_properties) for Azure block blob storage :\n
-		upload a local file to the default container or a specified one on Azure storage
+		""" Upload wrapper (around BlockBlobService().blob_service.get_blob_properties) for * block blob storage :\n
+		upload a local file to the default container or a specified one on * storage
 		if the container does not exists, it will be created using BlockBlobService().blob_service.create_container
 
-		:param blob_name: Name of the blob as to be stored in Azure storage
+		:param blob_name: Name of the blob as to be stored in * storage
 		:type blob_name: str
 		:param file_path: Path of the local file to upload
 		:type file_path: str
@@ -300,7 +306,7 @@ class StorageModule:
 	@abc.abstractmethod
 	def download(self, blob_name, file_path, container=None, verbose=True):
 		""" Download wrapper (around BlockBlobService().blob_service.get_blob_to_path) for * block blob storage :\n
-		download a blob from the default container (or a specified one) from azure storage and save it as a local file
+		download a blob from the default container (or a specified one) from * storage and save it as a local file
 		if the container does not exists, the operation will fail
 
 		:param blob_name: Name of the blob to retrieve from * storage
