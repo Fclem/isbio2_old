@@ -2,31 +2,24 @@ from docker_client import *
 from utils import password_from_file, function_name, is_from_cli, get_file_md5 # , new_thread
 import os
 import atexit
+import abc
 
 __version__ = '0.2'
 __author__ = 'clem'
 __date__ = '15/03/2016'
 
-# DOCKER HUB RELATED CONF
-REPO_PWD = password_from_file('~/code/docker_repo') # FIXME
-REPO_LOGIN = 'fimm'
-REPO_EMAIL = 'clement.fiere@fimm.fi'
-# TARGET DOCKER DAEMON CONF
-DOCKER_REMOTE_HOST = '127.0.0.1'
-DOCKER_REMOTE_PORT = 4243
-DOCKER_BIND_ADDR = (DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)
-DOCKER_DAEMON_URL = 'tcp://%s:%s' % DOCKER_BIND_ADDR
-# SSH TUNNEL CONFIG
-SSH_HOST = 'breeze.northeurope.cloudapp.azure.com'
-# FIXME
-SSH_CMD = ['ssh', '-CfNnL', '%s:%s:%s' % (DOCKER_REMOTE_PORT, DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT), SSH_HOST]
-SSH_BASH_KILL = 'ps aux | grep "%s"' % ' '.join(SSH_CMD) + " | awk '{ print $2 }' | tr '\\n' ' '"
-# CONTAINER SPECIFIC
-NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
+
+def get_free_port():
+	from socket import socket
+	sock = socket()
+	sock.bind(('', 0))
+	return sock.getsockname()[1]
 
 
 # clem 15/03/2016
 class DockerInterface:
+	__metaclass__ = abc.ABCMeta
+	_not = "Class %s doesn't implement %s()"
 	ssh_tunnel = None
 	auto_remove = True
 	_docker_storage = None
@@ -36,6 +29,8 @@ class DockerInterface:
 	proc = None
 	client = None
 	_lock = None
+	_missing_exception = None
+	label = ''
 	volumes = {
 		'test': DockerVolume('/home/breeze/data/', '/breeze', 'rw'),
 		'final': DockerVolume('/home/breeze/data/', '/breeze', 'rw')
@@ -48,16 +43,60 @@ class DockerInterface:
 	}
 	container = None
 	cat = DockerEventCategories
+	storage_backend = None
+
+	# DOCKER HUB RELATED CONF
+	REPO_PWD = password_from_file('~/code/docker_repo') # FIXME
+	REPO_LOGIN = 'fimm'
+	REPO_EMAIL = 'clement.fiere@fimm.fi'
+	# TARGET DOCKER DAEMON CONF
+	DOCKER_REMOTE_HOST = '127.0.0.1'
+	DOCKER_REMOTE_PORT = 4243
+	DOCKER_LOCAL_PORT = 0
+	DOCKER_REMOTE_BIND_ADDR = (DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)
+	DOCKER_LOCAL_BIND_ADDR = None # ('127.0.0.1', DOCKER_LOCAL_PORT)
+	DOCKER_REMOTE_DAEMON_URL = 'tcp://%s:%s' % DOCKER_REMOTE_BIND_ADDR
+	DOCKER_LOCAL_DAEMON_URL = ''
+	# SSH TUNNEL CONFIG
+	SSH_HOST = None
+	SSH_CMD_BASE = ['ssh', '-CfNnL', '%s:%s:%s' % (DOCKER_LOCAL_PORT, DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)]
+	SSH_BASH_KILL_BASE = 'ps aux | grep "%s"' + " | awk '{ print $2 }' | tr '\\n' ' '"
+	# CONTAINER SPECIFIC
+	NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
+
 	MY_DOCKER_HUB = DockerRepo(REPO_LOGIN, REPO_PWD, email=REPO_EMAIL)
 	LINE3 = '\x1b[34mCreating archive /root/out.tar.xz'
-	LINE2 = '\x1b[1mcreate_blob_from_path\x1b[0m('
+	LINE2 = '\x1b[1mcreate_blob_from_path\x1b[0m(' # FIXME NOT ABSTRACT
 	LINES = dict([(-3, LINE3), (-2, LINE2)])
 
-	def __init__(self):
-		if not self.test_connection(DOCKER_BIND_ADDR):
+	def __init__(self, storage_backend, ssh_host=None, label=''):
+		""" The implementation class must define :
+		SSH_HOST as basestring, and _missing_exception as Exception
+		before calling this method through super
+
+		:type storage_backend: module
+		:type ssh_host: basestring
+		:type label: basestring
+		"""
+		assert ssh_host is None or isinstance(ssh_host, basestring)
+		assert label is None or isinstance(label, basestring)
+		assert hasattr(storage_backend, 'MissingResException')
+
+		# TODO changes thoses to factory
+		self.DOCKER_LOCAL_PORT = get_free_port()
+		self.DOCKER_LOCAL_BIND_ADDR = ('127.0.0.1', self.DOCKER_LOCAL_PORT)
+		self.DOCKER_LOCAL_DAEMON_URL = 'tcp://%s:%s' % self.DOCKER_LOCAL_BIND_ADDR
+		self.SSH_CMD = ['ssh', '-CfNnL', '%s:%s:%s' % (self.DOCKER_LOCAL_PORT, self.DOCKER_REMOTE_HOST,
+		self.DOCKER_REMOTE_PORT), ssh_host]
+
+		self.storage_backend = storage_backend
+		self.label = label
+		self._missing_exception = self.storage_backend.MissingResException
+		self.SSH_HOST = ssh_host
+		if not self.test_connection(self.DOCKER_LOCAL_BIND_ADDR):
 			self.write_log('No connection to daemon, trying ssh tunnel')
 			self.get_ssh()
-			if self.test_connection(DOCKER_BIND_ADDR):
+			if self.test_connection(self.DOCKER_LOCAL_BIND_ADDR):
 				self.connect()
 		else:
 			self.connect()
@@ -74,6 +113,8 @@ class DockerInterface:
 			return True
 		except socket.timeout:
 			self.write_log('connect %s: Time-out' % str(target))
+		except socket.error as e:
+			self.write_log('connect %s: %s' % (str(target), e[1]))
 		except Exception as e:
 			self.write_log('connect %s' % str((type(e), e)))
 		finally:
@@ -83,19 +124,23 @@ class DockerInterface:
 
 	# clem 07/04/2016
 	def connect(self):
-		self.client = DockerClient(DOCKER_DAEMON_URL, self.MY_DOCKER_HUB, False)
+		self.client = DockerClient(self.DOCKER_LOCAL_DAEMON_URL, self.MY_DOCKER_HUB, False)
 		self.attach_all_event_manager()
 
 	# clem 06/04/2016 # FIXME change print to log
 	def get_ssh(self):
-		import subprocess
-		print 'Establishing ssh tunnel, running', SSH_CMD, '...',
-		self.ssh_tunnel = subprocess.Popen(SSH_CMD, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
-		print 'done,',
-		stat = self.ssh_tunnel.poll()
-		while stat is None:
+		if self.SSH_HOST:
+			import subprocess
+			print 'Establishing ssh tunnel, running', self.ssh_cmd_list, '...',
+			self.ssh_tunnel = subprocess.Popen(self.ssh_cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+				preexec_fn=os.setsid)
+			print 'done,',
 			stat = self.ssh_tunnel.poll()
-		print 'bg PID :', self.ssh_tunnel.pid
+			while stat is None:
+				stat = self.ssh_tunnel.poll()
+			print 'bg PID :', self.ssh_tunnel.pid
+		else:
+			raise AttributeError('Cannot establish ssh tunnel since no ssh_host provided during init')
 
 	def attach_all_event_manager(self):
 		for name, run_object in self.runs.iteritems():
@@ -110,12 +155,12 @@ class DockerInterface:
 	def write_log(self, txt):
 		if str(txt).strip():
 			if self.client:
-				print '<docker>', txt
+				print '<docker%s>' % ('_' + self.label), txt
 				# self.client.write_log_entry(txt)
 			else:
-				print '<docker?>', txt
+				print '<docker%s ?>' % ('_' + self.label), txt
 
-	def self_test(self):
+	def self_test(self): # FIXME Obsolete
 		self.test(self.client.get_container, '12')
 		self.test(self.client.get_container, '153565748415')
 		self.test(self.client.img_run, 'fimm/r-light:op', 'echo "test"')
@@ -124,7 +169,7 @@ class DockerInterface:
 		self.test(self.client.img_run, 'fimm/r-light:candidate', '/run.sh')
 		self.test(self.client.images_list[0].pretty_print)
 
-	def test(self, func, *args):
+	def test(self, func, *args): # FIXME Obsolete
 		self.write_log('>>%s%s' % (func.im_func.func_name, args))
 		return func(*args)
 
@@ -173,7 +218,7 @@ class DockerInterface:
 					for (k, v) in self.LINES.iteritems():
 						if the_end[k].startswith(v):
 							del the_end[k]
-					if the_end != NORMAL_ENDING:
+					if the_end != self.NORMAL_ENDING:
 						self.write_log('It seems there was some errors, run log :\n%s\nEND OF RUN LOGS !! '
 							'##########################' % log)
 					if self.auto_remove:
@@ -183,6 +228,20 @@ class DockerInterface:
 				self.write_log('%s started' % event.container.name)
 
 		return my_event_manager
+
+	# clem 29/04/2016
+	@property
+	def ssh_cmd_list(self):
+		assert isinstance(self.SSH_HOST, basestring)
+		return self.SSH_CMD
+		if len(self.SSH_CMD_BASE) == 3:
+			self.SSH_CMD_BASE.append(self.SSH_HOST)
+		return self.SSH_CMD_BASE
+
+	# clem 29/04/2016
+	@property
+	def ssh_bash_kill_line(self):
+		return self.SSH_BASH_KILL_BASE % ' '.join(self.ssh_cmd_list)
 
 	# clem 07/04/2016
 	@atexit.register # TODO FIXME
@@ -197,7 +256,7 @@ class DockerInterface:
 		import commands
 		import signal
 
-		pid_list = commands.getstatusoutput(SSH_BASH_KILL)[1].strip().split(' ')
+		pid_list = commands.getstatusoutput(self.ssh_bash_kill_line)[1].strip().split(' ')
 		for each in pid_list:
 			try:
 				print 'pid', each, os.kill(int(each), signal.SIGTERM)
@@ -212,39 +271,28 @@ class DockerInterface:
 
 	# clem 21/04/2016
 	def _get_storage(self, container):
-		from azure_storage import AzureStorage, AZURE_ACCOUNT, AZURE_KEY
-		return AzureStorage(AZURE_ACCOUNT, AZURE_KEY, container)
+		return self.storage_backend.back_end_initiator(container)
 
 	# clem 20/04/2016
 	@property
 	def job_storage(self):
 		if not self._jobs_storage:
-			from azure_storage import JOBS_CONTAINER
-			self._jobs_storage = self._get_storage(JOBS_CONTAINER)
+			self._jobs_storage = self._get_storage(self.storage_backend.jobs_container())
 		return self._jobs_storage
 
 	# clem 21/04/2016
 	@property
 	def result_storage(self):
 		if not self._data_storage:
-			from azure_storage import DATA_CONTAINER
-			self._data_storage = self._get_storage(DATA_CONTAINER)
+			self._data_storage = self._get_storage(self.storage_backend.data_container())
 		return self._data_storage
 
 	# clem 21/04/2016
 	@property
 	def docker_storage(self):
 		if not self._docker_storage:
-			from azure_storage import MNGT_CONTAINER
-			self._docker_storage = self._get_storage(MNGT_CONTAINER)
+			self._docker_storage = self._get_storage(self.storage_backend.management_container())
 		return self._docker_storage
-
-	# clem 20/04/2016
-	def azure_test(self):
-		from azure_storage import IN_FILE
-		DOCK_HOME = os.environ.get('DOCK_HOME', '/homes/breeze/code/isbio/breeze')
-		path = DOCK_HOME + '/' + IN_FILE
-		return self.job_storage.upload(IN_FILE, path)
 
 	def send_job(self, job_folder=None, output_filename=None):
 		if not job_folder:
@@ -268,7 +316,6 @@ class DockerInterface:
 
 	# clem 21/04/2016
 	def get_results(self, output_filename=None):
-		from azure_storage import AzureMissingResourceHttpError
 		if not output_filename:
 			output_filename = '/projects/breeze-dev/db/testing/results_%s.tar.xz' % self.run_id
 		try:
@@ -278,7 +325,7 @@ class DockerInterface:
 			# 	self.result_storage.erase(self.run_id)
 			# TODO extract in original path
 			return e
-		except AzureMissingResourceHttpError:
+		except self._missing_exception:
 			self.write_log('No result found for job %s' % self.run_id)
 			raise
 

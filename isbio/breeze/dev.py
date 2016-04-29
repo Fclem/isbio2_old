@@ -4,14 +4,20 @@ import cmd
 import os
 import atexit
 
-docker = None
-client = None
+dockerA = None
+dockerC = None
+clientA = None
+clientC = None
 
 
-def dev():
-	from docker_azure import Docker
+def azure():
+	from docker_azure import DockerAzure
+	return DockerAzure()
 
-	return Docker()
+
+def csc():
+	from docker_csc import DockerCSC
+	return DockerCSC()
 
 
 def init():
@@ -101,10 +107,11 @@ class HelloWorld(cmd.Cmd):
 
 
 def base():
-	global docker, client
-	docker = dev()
-	# docker.self_test()
-	client = docker.client
+	global dockerA, clientA, dockerC, clientC
+	dockerA = azure()
+	# dockerC = csc()
+	clientA = dockerA.client
+	# clientC = dockerC.client
 
 
 def cmd_line():
