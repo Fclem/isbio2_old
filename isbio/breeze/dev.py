@@ -1,13 +1,19 @@
 # from .utils import advanced_pretty_print as pp
+import docker_csc
 from utils import pp
 import cmd
 import os
 import atexit
 
-dockerA = None
-dockerC = None
-clientA = None
-clientC = None
+
+class TempClass:
+	pass
+
+docker = TempClass()
+docker.csc = None
+docker.azure = None
+targets = None
+b = None
 
 
 def azure():
@@ -107,11 +113,13 @@ class HelloWorld(cmd.Cmd):
 
 
 def base():
-	global dockerA, clientA, dockerC, clientC
-	dockerA = azure()
-	# dockerC = csc()
-	clientA = dockerA.client
-	# clientC = dockerC.client
+	global docker, targets, b
+	# docker = object()
+	# docker.csc = csc()
+	# docker.azure = azure()
+	from breeze.models import ComputeTarget
+	targets = ComputeTarget.objects.all()
+	b = targets[2]
 
 
 def cmd_line():
@@ -132,7 +140,10 @@ def kill_self():
 @atexit.register
 def __cleanup__():
 	print 'cleaning up...'
-	docker.__cleanup__()
+	if docker.csc:
+		docker.csc.__cleanup__()
+	if docker.azure:
+		docker.azure.__cleanup__()
 
 if __name__ == '__main__':
 	# command line

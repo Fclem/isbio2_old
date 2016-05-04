@@ -1117,10 +1117,18 @@ class ComputeTarget(FolderObj, models.Model):
 	enabled = models.BooleanField(default=True, help_text="Uncheck to disable target")
 
 	__config = None
+	_storage_module = None
+	_compute_module = None
+	__compute_interface = None
 	CONFIG_GENERAL_SECTION = 'general'
 	CONFIG_TYPE = 'type'
 	CONFIG_TUNNEL = 'tunnel'
 	CONFIG_ENGINE = 'engine'
+	CONFIG_STORAGE = 'storage'
+
+	CONFIG_TUNNEL_HOST = 'host'
+	CONFIG_TUNNEL_USER = 'user'
+	CONFIG_TUNNEL_PORT = 'port'
 
 	@property
 	def folder_name(self):
@@ -1194,6 +1202,69 @@ class ComputeTarget(FolderObj, models.Model):
 		if self.target_use_tunnel:
 			return self.target_config.items(self.target_tunnel)
 		return list()
+
+	# clem 04/05/2016
+	@property
+	def target_storage_engine(self):
+		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_STORAGE)
+
+	# clem 04/05/2016
+	@property
+	def tunnel_host(self):
+		if self.target_use_tunnel:
+			return self.target_config.get(self.target_tunnel, self.CONFIG_TUNNEL_HOST)
+		return ''
+
+	# clem 04/05/2016
+	@property
+	def tunnel_user(self):
+		if self.target_use_tunnel:
+			return self.target_config.get(self.target_tunnel, self.CONFIG_TUNNEL_USER)
+		return ''
+
+	# clem 04/05/2016
+	@property
+	def tunnel_port(self):
+		if self.target_use_tunnel:
+			return self.target_config.get(self.target_tunnel, self.CONFIG_TUNNEL_PORT)
+		return ''
+
+	# clem 04/05/2016
+	@property
+	def storage_module(self):
+		if not self._storage_module:
+			import importlib
+			self._storage_module = importlib.import_module(self.target_storage_engine)
+			# self._storage_module = __import__(self.target_storage_engine, fromlist=[''])
+		return self._storage_module
+
+	# clem 04/05/2016
+	@property
+	def compute_module(self):
+		if not self._compute_module:
+			import importlib
+			# self._compute_module = __import__(self.target_engine + '_interface', fromlist=[''])
+			self._compute_module = importlib.import_module(self.target_engine + '_interface')
+		return self._compute_module
+
+	# clem 04/05/2016
+	@property
+	def compute_interface(self):
+		if not self.__compute_interface:
+			self.__compute_interface = self.compute_module.initiator(self.storage_module, self)
+		return self.__compute_interface
+
+	def send_job(self, job_folder=None, output_filename=None):
+		comp = self.compute_interface
+		if comp and hasattr(comp, 'send_job'):
+			return comp.send_job(job_folder, output_filename)
+		return False
+
+	def get_results(self, output_filename=None):
+		comp = self.compute_interface
+		if comp and hasattr(comp, 'send_job'):
+			return comp.get_results(output_filename)
+		return False
 
 	class Meta(FolderObj.Meta): # TODO check if inheritance is required here
 		abstract = False
