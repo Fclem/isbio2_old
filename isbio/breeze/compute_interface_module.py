@@ -7,28 +7,30 @@ __author__ = 'clem'
 __date__ = '04/05/2016'
 
 
-# clem 15/03/2016
+# clem 04/05/2016
 class ComputeInterface:
 	__metaclass__ = abc.ABCMeta
 	_not = "Class %s doesn't implement %s()"
 	storage_backend = None
+	_missing_exception = None
 
-	# clem 04/05/2016
+	def __init__(self, storage_backend): # TODO call from child-class, as the first instruction
+		assert hasattr(storage_backend, 'MissingResException')
+		self.storage_backend = storage_backend
+		self._missing_exception = self.storage_backend.MissingResException
+
 	@abc.abstractmethod
-	def write_log(self, txt):
+	def _write_log(self, txt):
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
-	# clem 04/05/2016
 	@abc.abstractmethod
 	def send_job(self, job_folder=None, output_filename=None):
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
-	# clem 04/05/2016
 	@abc.abstractmethod
 	def get_results(self, output_filename=None):
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
-	# clem 04/05/2016
 	def _get_storage(self, container=None):
 		return self.storage_backend.back_end_initiator(container)
 
@@ -38,3 +40,8 @@ class ComputeInterface:
 		with tarfile.open(output_filename, "w:bz2") as tar:
 			tar.add(source_dir, arcname=os.path.basename(source_dir))
 		return True
+
+
+# clem 04/05/2016
+def initiator(storage_backend, *args): # TODO override in implementation
+	return ComputeInterface(storage_backend, *args)
