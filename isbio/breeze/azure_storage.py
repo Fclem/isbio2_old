@@ -186,5 +186,5 @@ def back_end_initiator(container):
 
 if __name__ == '__main__':
 	a, b, c = input_pre_handling()
-	storage_inst = AzureStorage(AZURE_ACCOUNT, AZURE_KEY, ACT_CONT_MAPPING[a])
+	storage_inst = back_end_initiator(ACT_CONT_MAPPING[a])
 	command_line_interface(storage_inst, a, b, c)
