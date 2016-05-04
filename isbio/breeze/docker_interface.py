@@ -1,25 +1,14 @@
+from compute_interface_module import * # has os, abc, function_name
 from docker_client import *
-from utils import password_from_file, function_name, is_from_cli, get_file_md5 # , new_thread
-import os
-import atexit
-import abc
+from utils import password_from_file, is_from_cli, get_file_md5, get_free_port # , new_thread
 
 __version__ = '0.2'
 __author__ = 'clem'
 __date__ = '15/03/2016'
 
 
-def get_free_port():
-	from socket import socket
-	sock = socket()
-	sock.bind(('', 0))
-	return sock.getsockname()[1]
-
-
 # clem 15/03/2016
-class DockerInterface:
-	__metaclass__ = abc.ABCMeta
-	_not = "Class %s doesn't implement %s()"
+class DockerInterface(ComputeInterface):
 	ssh_tunnel = None
 	auto_remove = True
 	_docker_storage = None
@@ -43,7 +32,6 @@ class DockerInterface:
 	}
 	container = None
 	cat = DockerEventCategories
-	storage_backend = None
 
 	# DOCKER HUB RELATED CONF
 	REPO_PWD = password_from_file('~/code/docker_repo') # FIXME
@@ -101,6 +89,7 @@ class DockerInterface:
 		else:
 			self.connect()
 
+	# TODO externalize
 	# clem 08/09/2016
 	def test_connection(self, target):
 		import socket
@@ -127,6 +116,7 @@ class DockerInterface:
 		self.client = DockerClient(self.DOCKER_LOCAL_DAEMON_URL, self.MY_DOCKER_HUB, False)
 		self.attach_all_event_manager()
 
+	# TODO externalize
 	# clem 06/04/2016 # FIXME change print to log
 	def get_ssh(self):
 		if self.SSH_HOST:
@@ -160,19 +150,6 @@ class DockerInterface:
 			else:
 				print '<docker%s ?>' % ('_' + self.label), txt
 
-	def self_test(self): # FIXME Obsolete
-		self.test(self.client.get_container, '12')
-		self.test(self.client.get_container, '153565748415')
-		self.test(self.client.img_run, 'fimm/r-light:op', 'echo "test"')
-		self.test(self.client.img_run, 'fimm/r-light:op', '/run.sh')
-		self.test(self.client.img_run, 'fimm/r-light:candidate', 'echo "test"')
-		self.test(self.client.img_run, 'fimm/r-light:candidate', '/run.sh')
-		self.test(self.client.images_list[0].pretty_print)
-
-	def test(self, func, *args): # FIXME Obsolete
-		self.write_log('>>%s%s' % (func.im_func.func_name, args))
-		return func(*args)
-
 	def run(self, run=None):
 		if not run:
 			run = self.runs['op']
@@ -193,10 +170,6 @@ class DockerInterface:
 			if not run:
 				self.write_log('No run named "%s", running default one' % name)
 			self.run(run)
-
-	# clem 08/04/2016
-	def call_test(self):
-		return self.custom_run()
 
 	def event_manager_wrapper(self):
 		def my_event_manager(event):
@@ -234,44 +207,6 @@ class DockerInterface:
 	def ssh_cmd_list(self):
 		assert isinstance(self.SSH_HOST, basestring)
 		return self.SSH_CMD
-		if len(self.SSH_CMD_BASE) == 3:
-			self.SSH_CMD_BASE.append(self.SSH_HOST)
-		return self.SSH_CMD_BASE
-
-	# clem 29/04/2016
-	@property
-	def ssh_bash_kill_line(self):
-		return self.SSH_BASH_KILL_BASE % ' '.join(self.ssh_cmd_list)
-
-	# clem 07/04/2016
-	@atexit.register # TODO FIXME
-	def __cleanup__(self):
-		try:
-			self.ssh_tunnel.terminate()
-			self.ssh_tunnel.kill()
-		except Exception as e:
-			print e
-			pass
-
-		import commands
-		import signal
-
-		pid_list = commands.getstatusoutput(self.ssh_bash_kill_line)[1].strip().split(' ')
-		for each in pid_list:
-			try:
-				print 'pid', each, os.kill(int(each), signal.SIGTERM)
-			except Exception as e:
-				print e
-
-	def __exit__(self, *_):
-		self.__cleanup__()
-
-	def __delete__(self, *_):
-		self.__cleanup__()
-
-	# clem 21/04/2016
-	def _get_storage(self, container):
-		return self.storage_backend.back_end_initiator(container)
 
 	# clem 20/04/2016
 	@property
@@ -328,10 +263,3 @@ class DockerInterface:
 		except self._missing_exception:
 			self.write_log('No result found for job %s' % self.run_id)
 			raise
-
-	# clem 20/04/2016
-	def _make_tarfile(self, output_filename, source_dir):
-		import tarfile
-		with tarfile.open(output_filename, "w:bz2") as tar:
-			tar.add(source_dir, arcname=os.path.basename(source_dir))
-		return True
