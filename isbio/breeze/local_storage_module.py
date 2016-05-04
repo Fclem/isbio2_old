@@ -1,5 +1,5 @@
+from utils import Bcolors
 import os
-import sys
 import abc
 
 __version__ = '0.1'
@@ -24,91 +24,6 @@ __DEV__ = True
 __path__ = os.path.realpath(__file__)
 __dir_path__ = os.path.dirname(__path__)
 __file_name__ = os.path.basename(__file__)
-
-# general config
-ENV_JOB_ID = ('JOB_ID', '')
-
-
-# clem 08/04/2016 (from utilities)
-def function_name(delta=0):
-	return sys._getframe(1 + delta).f_code.co_name
-
-
-# clem on 21/08/2015 (from utilities)
-def get_md5(content):
-	""" compute the md5 checksum of the content argument
-
-	:param content: the content to be hashed
-	:type content: list or str
-	:return: md5 checksum of the provided content
-	:rtype: str
-	"""
-	import hashlib
-	m = hashlib.md5()
-	if type(content) == list:
-		for eachLine in content:
-			m.update(eachLine)
-	else:
-		m.update(content)
-	return m.hexdigest()
-
-
-# clem on 21/08/2015 (from utilities)
-def get_file_md5(file_path):
-	""" compute the md5 checksum of a file
-
-	:param file_path: path of the local file to hash
-	:type file_path: str
-	:return: md5 checksum of file
-	:rtype: str
-	"""
-	try:
-		fd = open(file_path, "rb")
-		content = fd.readlines()
-		fd.close()
-		return get_md5(content)
-	except IOError:
-		return ''
-
-
-# from utilities
-class Bcolors(object):
-	HEADER = '\033[95m'
-	OKBLUE = '\033[94m'
-	OKGREEN = '\033[92m'
-	WARNING = '\033[33m'
-	FAIL = '\033[91m'
-	ENDC = '\033[0m'
-	BOLD = '\033[1m'
-	UNDERLINE = '\033[4m'
-
-	@staticmethod
-	def ok_blue(text):
-		return Bcolors.OKBLUE + text + Bcolors.ENDC
-
-	@staticmethod
-	def ok_green(text):
-		return Bcolors.OKGREEN + text + Bcolors.ENDC
-
-	@staticmethod
-	def fail(text):
-		return Bcolors.FAIL + text + Bcolors.ENDC + ' (%s)' % __name__
-
-	@staticmethod
-	def warning(text):
-		return Bcolors.WARNING + text + Bcolors.ENDC
-
-	@staticmethod
-	def header(text):
-		return Bcolors.HEADER + text + Bcolors.ENDC
-
-	@staticmethod
-	def bold(text):
-		return Bcolors.BOLD + text + Bcolors.ENDC
-
-	@staticmethod
-	def underlined(text):
-		return Bcolors.UNDERLINE + text + Bcolors.ENDC
 
 
 class StorageModule:

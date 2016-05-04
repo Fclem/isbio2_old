@@ -16,6 +16,6 @@ class ProjectStorage(StorageModule):
 	pass
 
 
-def back_end_initiator():
+def back_end_initiator(_):
 	return ProjectStorage()
 
