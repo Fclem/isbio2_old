@@ -115,10 +115,6 @@ def kill_self():
 @atexit.register
 def __cleanup__():
 	print 'cleaning up...'
-	if docker.csc:
-		docker.csc.__cleanup__()
-	if docker.azure:
-		docker.azure.__cleanup__()
 
 if __name__ == '__main__':
 	# command line

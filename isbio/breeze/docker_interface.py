@@ -19,21 +19,13 @@ class DockerInterface(ComputeInterface):
 	client = None
 	_lock = None
 	label = ''
-	volumes = {
-		'test': DockerVolume('/home/breeze/data/', '/breeze', 'rw'),
-		'final': DockerVolume('/home/breeze/data/', '/breeze', 'rw')
-	}
-	runs = {
-		'op': DockerRun('fimm/r-light:op', './run.sh', volumes['test']),
-		'rtest': DockerRun('fimm/r-security-blanket:new', './run.sh', volumes['test']),
-		'flat': DockerRun('fimm/r-light:flat', '/breeze/run.sh', volumes['test']),
-		'final': DockerRun('fimm/r-light:latest', '/run.sh', volumes['final']),
-	}
+	my_volume = DockerVolume('/home/breeze/data/', '/breeze', 'r')
+	my_run = None
 	container = None
 	cat = DockerEventCategories
 
 	# DOCKER HUB RELATED CONF
-	REPO_PWD = password_from_file('~/code/docker_repo') # FIXME
+	REPO_PWD = password_from_file('~/code/docker_repo')
 	REPO_LOGIN = 'fimm'
 	REPO_EMAIL = 'clement.fiere@fimm.fi'
 	# TARGET DOCKER DAEMON CONF
@@ -41,7 +33,7 @@ class DockerInterface(ComputeInterface):
 	DOCKER_REMOTE_PORT = 4243
 	DOCKER_LOCAL_PORT = 0
 	DOCKER_REMOTE_BIND_ADDR = (DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)
-	DOCKER_LOCAL_BIND_ADDR = None # ('127.0.0.1', DOCKER_LOCAL_PORT)
+	DOCKER_LOCAL_BIND_ADDR = None
 	DOCKER_REMOTE_DAEMON_URL = 'tcp://%s:%s' % DOCKER_REMOTE_BIND_ADDR
 	DOCKER_LOCAL_DAEMON_URL = ''
 	# SSH TUNNEL CONFIG
@@ -57,9 +49,7 @@ class DockerInterface(ComputeInterface):
 	LINES = dict([(-3, LINE3), (-2, LINE2)])
 
 	def __init__(self, storage_backend, ssh_host=None, label=''):
-		""" The implementation class must define :
-		SSH_HOST as basestring, and _missing_exception as Exception
-		before calling this method through super
+		"""
 
 		:type storage_backend: module
 		:type ssh_host: basestring
@@ -116,7 +106,7 @@ class DockerInterface(ComputeInterface):
 	# clem 07/04/2016
 	def _connect(self):
 		self.client = DockerClient(self.DOCKER_LOCAL_DAEMON_URL, self.MY_DOCKER_HUB, False)
-		return self._attach_all_event_manager() and self.client
+		return self._attach_event_manager() and self.client
 
 	# TODO externalize
 	# clem 06/04/2016 # FIXME change print to log
@@ -134,12 +124,9 @@ class DockerInterface(ComputeInterface):
 		else:
 			raise AttributeError('Cannot establish ssh tunnel since no ssh_host provided during init')
 
-	def _attach_all_event_manager(self):
-		for name, run_object in self.runs.iteritems():
-			self.runs[name] = self._attach_event_manager(run_object)
-		return True
-
-	def _attach_event_manager(self, run):
+	def _attach_event_manager(self, run=None):
+		if not run and self.my_run:
+				run = self.my_run
 		assert isinstance(run, DockerRun)
 		run.event_listener = self._event_manager_wrapper()
 		return run
@@ -153,9 +140,7 @@ class DockerInterface(ComputeInterface):
 			else:
 				print '<docker%s ?>' % ('_' + self.label), txt
 
-	def _run(self, run=None):
-		if not run:
-			run = self.runs['op']
+	def _run(self, run):
 		self.container = self.client.run(run)
 		self._write_log('Got %s' % repr(self.container))
 
@@ -228,8 +213,7 @@ class DockerInterface(ComputeInterface):
 			b = self._job_storage.upload(self.run_id, output_filename)
 			if b:
 				os.remove(output_filename)
-				my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.volumes['test'])
-				self.runs['my_run'] = my_run
+				my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.my_volume)
 				self._attach_event_manager(my_run)
 				self._run(my_run)
 				return True
@@ -262,6 +246,22 @@ def initiator(storage_module, config, *args):
 
 # clem 15/03/2016
 class DockerIfTest(DockerInterface): # TEST CLASS
+	volumes = {
+		'test' : DockerVolume('/home/breeze/data/', '/breeze', 'rw'),
+		'final': DockerVolume('/home/breeze/data/', '/breeze', 'rw')
+	}
+	runs = {
+		'op'   : DockerRun('fimm/r-light:op', './run.sh', volumes['test']),
+		'rtest': DockerRun('fimm/r-security-blanket:new', './run.sh', volumes['test']),
+		'flat' : DockerRun('fimm/r-light:flat', '/breeze/run.sh', volumes['test']),
+		'final': DockerRun('fimm/r-light:latest', '/run.sh', volumes['final']),
+	}
+
+	def _attach_all_event_manager(self):
+		for name, run_object in self.runs.iteritems():
+			self.runs[name] = self._attach_event_manager(run_object)
+		return True
+
 	# clem 06/04/2016
 	def custom_run(self, name=''):
 		if not is_from_cli():
@@ -275,7 +275,7 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 			run = self.runs.get(name, None)
 			if not run:
 				self._write_log('No run named "%s", running default one' % name)
-			self.run(run)
+			self._run(run)
 
 	def self_test(self): # FIXME Obsolete
 		self.test(self.client.get_container, '12')
@@ -286,7 +286,6 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 		self.test(self.client.img_run, 'fimm/r-light:candidate', '/run.sh')
 		self.test(self.client.images_list[0].pretty_print)
 
-
 	def test(self, func, *args): # FIXME Obsolete
-		self.write_log('>>%s%s' % (func.im_func.func_name, args))
+		self._write_log('>>%s%s' % (func.im_func.func_name, args))
 		return func(*args)
