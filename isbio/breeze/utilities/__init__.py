@@ -648,3 +648,14 @@ def git_get_head(folder=''):
 		return open('%s.git/FETCH_HEAD' % folder).readline().replace('\n', '')
 	except IOError:
 		return ''
+
+
+# clem 29/04/2016
+def get_free_port():
+	"""
+	:return: the number of a free TCP port on the local machine
+	"""
+	from socket import socket
+	sock = socket()
+	sock.bind(('', 0))
+	return sock.getsockname()[1]
