@@ -1,34 +1,12 @@
 # from .utils import advanced_pretty_print as pp
-import docker_csc
 from utils import pp
 import cmd
 import os
 import atexit
 
-
-class TempClass:
-	pass
-
-docker = TempClass()
-docker.csc = None
-docker.azure = None
+csc = None
+azure = None
 targets = None
-b = None
-
-
-def azure():
-	from docker_azure import DockerAzure
-	return DockerAzure()
-
-
-def csc():
-	from docker_csc import DockerCSC
-	return DockerCSC()
-
-
-def init():
-	pass
-	# return dev()
 
 
 def same(a, b):
@@ -51,7 +29,6 @@ class HelloWorld(cmd.Cmd):
 
 	@classmethod
 	def kill_self(cls):
-		global docker
 		try:
 			__cleanup__()
 			bash_command = "kill -15 %s" % os.getpid()
@@ -113,13 +90,11 @@ class HelloWorld(cmd.Cmd):
 
 
 def base():
-	global docker, targets, b
-	# docker = object()
-	# docker.csc = csc()
-	# docker.azure = azure()
+	global csc, azure, targets
 	from breeze.models import ComputeTarget
 	targets = ComputeTarget.objects.all()
-	b = targets[2]
+	azure = targets[2]
+	csc = targets[3]
 
 
 def cmd_line():

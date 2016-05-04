@@ -1194,6 +1194,7 @@ class DockerClient:
 		:rtype: DockerContainer
 		"""
 		if container_id:
+			time.sleep(.5)
 			_ = self.containers_by_id # refresh cache
 			return self._get_container(container_id)
 		return None
