@@ -209,6 +209,8 @@ class StorageModule:
 	def _upload_self_sub(self, blob_name, file_name, container=None):
 		if not container:
 			container = MNGT_CONTAINER
+		blob_name = blob_name.replace('.pyc', '.py')
+		file_name = file_name.replace('.pyc', '.py')
 		self.erase(blob_name, container)
 		return self.upload(blob_name, file_name, container)
 
