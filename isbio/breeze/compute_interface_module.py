@@ -1,4 +1,5 @@
 from utils import function_name
+from models import ComputeTarget, Runnable, JobStat
 import os
 import abc
 
@@ -13,10 +14,20 @@ class ComputeInterface:
 	_not = "Class %s doesn't implement %s()"
 	storage_backend = None
 	_missing_exception = None
+	_compute_target = None
+	_runnable = None
 
-	def __init__(self, storage_backend): # TODO call from child-class, as the first instruction
-		assert hasattr(storage_backend, 'MissingResException')
+	def __init__(self, compute_target, storage_backend=None): # TODO call from child-class, as the first instruction
+		assert isinstance(compute_target, ComputeTarget)
+		self._compute_target = compute_target
+		self._runnable = self._compute_target.runnable
+		assert isinstance(self._runnable, Runnable)
+
 		self.storage_backend = storage_backend
+		if not self.storage_backend:
+			self.storage_backend = self._compute_target.storage_module
+		assert hasattr(self.storage_backend, 'MissingResException')
+
 		self._missing_exception = self.storage_backend.MissingResException
 
 	@abc.abstractmethod
@@ -24,11 +35,31 @@ class ComputeInterface:
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	@abc.abstractmethod
-	def send_job(self, job_folder=None, output_filename=None):
+	def send_job(self):
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	@abc.abstractmethod
 	def get_results(self, output_filename=None):
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+
+	# clem 06/05/2016
+	@abc.abstractmethod
+	def abort(self):
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+
+	# clem 06/05/2016
+	@abc.abstractmethod
+	def status(self):
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+
+	# clem 06/05/2016
+	@abc.abstractmethod
+	def busy_waiting(self, *args):
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+
+	# clem 06/05/2016
+	@abc.abstractmethod
+	def job_is_done(self):
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	def _get_storage(self, container=None):
@@ -43,5 +74,8 @@ class ComputeInterface:
 
 
 # clem 04/05/2016
-def initiator(storage_backend, *args): # TODO override in implementation
-	return ComputeInterface(storage_backend, *args)
+def initiator(compute_target, *args): # TODO override in implementation
+	assert isinstance(compute_target, ComputeTarget)
+	# Replace compute_target.storage_module with another module.
+	# Note : compute_target.storage_module is also the default
+	return ComputeInterface(compute_target, compute_target.storage_module)

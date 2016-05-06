@@ -48,27 +48,24 @@ class DockerInterface(ComputeInterface):
 	LINE2 = '\x1b[1mcreate_blob_from_path\x1b[0m(' # FIXME NOT ABSTRACT
 	LINES = dict([(-3, LINE3), (-2, LINE2)])
 
-	def __init__(self, storage_backend, ssh_host=None, label=''):
+	def __init__(self, compute_target, storage_backend=None):
 		"""
 
 		:type storage_backend: module
-		:type ssh_host: basestring
-		:type label: basestring
 		"""
-		assert ssh_host is None or isinstance(ssh_host, basestring)
-		assert label is None or isinstance(label, basestring)
+		assert isinstance(compute_target, ComputeTarget)
 
-		super(DockerInterface, self).__init__(storage_backend)
+		super(DockerInterface, self).__init__(compute_target, storage_backend)
 
+		self.SSH_HOST = compute_target.tunnel_host
 		# TODO changes these to factory
 		self.DOCKER_LOCAL_PORT = get_free_port()
 		self.DOCKER_LOCAL_BIND_ADDR = ('127.0.0.1', self.DOCKER_LOCAL_PORT)
 		self.DOCKER_LOCAL_DAEMON_URL = 'tcp://%s:%s' % self.DOCKER_LOCAL_BIND_ADDR
 		self.SSH_CMD = ['ssh', '-CfNnL', '%s:%s:%s' % (self.DOCKER_LOCAL_PORT, self.DOCKER_REMOTE_HOST,
-		self.DOCKER_REMOTE_PORT), ssh_host]
+		self.DOCKER_REMOTE_PORT), self.SSH_HOST]
+		self.label = compute_target.tunnel_host[0:2]
 
-		self.label = label
-		self.SSH_HOST = ssh_host
 		res = False
 		if not self._test_connection(self.DOCKER_LOCAL_BIND_ADDR):
 			self._write_log('No connection to daemon, trying ssh tunnel')
@@ -149,27 +146,7 @@ class DockerInterface(ComputeInterface):
 			assert isinstance(event, DockerEvent)
 			# self.write_log(event)
 			if event.description == DockerEventCategories.DIE:
-				cont = event.container
-				log = str(cont.logs)
-				assert isinstance(cont, DockerContainer)
-				self._write_log('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
-					cont.delta_display))
-				if cont.status.ExitCode > 0:
-					self._write_log('Failure (container won1\'t be deleted) ! Run log :\n%s' % log)
-				else:
-					self._write_log('Success !')
-					# filter the end of the log to match it to a specific pattern, to ensure no unexpected event
-					# happened
-					the_end = log.split('\n')[-6:-1] # copy the last 5 lines
-					for (k, v) in self.LINES.iteritems():
-						if the_end[k].startswith(v):
-							del the_end[k]
-					if the_end != self.NORMAL_ENDING:
-						self._write_log('It seems there was some errors, run log :\n%s\nEND OF RUN LOGS !! '
-							'##########################' % log)
-					if self.auto_remove:
-						cont.remove_container()
-					self.get_results() #
+				self.job_is_done()
 			elif event.description == DockerEventCategories.START:
 				self._write_log('%s started' % event.container.name)
 
@@ -202,11 +179,16 @@ class DockerInterface(ComputeInterface):
 			self.__docker_storage = self._get_storage(self.storage_backend.management_container())
 		return self.__docker_storage
 
-	def send_job(self, job_folder=None, output_filename=None):
+	def send_job(self):
+		# FIXME : still on test design (using a pre-assembled report job)
+		job_folder = None
+		output_filename = None
 		if not job_folder:
 			job_folder = '/projects/breeze-dev/db/testing/in/'
 		if not output_filename:
 			output_filename = '/projects/breeze-dev/db/testing/temp.tar.bz2'
+
+		# real implementation
 		if self.make_tarfile(output_filename, job_folder):
 			self._docker_storage.upload_self() # update the cloud version of azure_storage.py
 			self.run_id = get_file_md5(output_filename)
@@ -236,12 +218,49 @@ class DockerInterface(ComputeInterface):
 			self._write_log('No result found for job %s' % self.run_id)
 			raise
 
+	# clem 06/05/2016
+	def abort(self):
+		self.container.kill()
+		self.container.remove_container()
+
+	# clem 06/05/2016
+	def busy_waiting(self, *args):
+		while self.container.is_running and not self._runnable.aborting:
+			time.sleep(1)
+
+	# clem 06/05/2016
+	def status(self): # TODO
+		return 'unknown'
+
+	# clem 06/05/2016
+	def job_is_done(self):
+		cont = self.container
+		log = str(cont.logs)
+		assert isinstance(cont, DockerContainer)
+		self._write_log('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
+		cont.delta_display))
+		if cont.status.ExitCode > 0:
+			self._write_log('Failure (container won\'t be deleted) ! Run log :\n%s' % log)
+		else:
+			self._write_log('Success !')
+			# filter the end of the log to match it to a specific pattern, to ensure no unexpected event
+			# happened
+			the_end = log.split('\n')[-6:-1] # copy the last 5 lines
+			for (k, v) in self.LINES.iteritems():
+				if the_end[k].startswith(v):
+					del the_end[k]
+			if the_end != self.NORMAL_ENDING:
+				self._write_log('It seems there was some errors, run log :\n%s\nEND OF RUN LOGS !! '
+								'##########################' % log)
+			if self.auto_remove:
+				cont.remove_container()
+			self.get_results() #
+
 
 # clem 04/05/2016
-def initiator(storage_module, config, *args):
-	from breeze.models import ComputeTarget
-	assert isinstance(config, ComputeTarget)
-	return DockerInterface(storage_module, config.tunnel_host, config.tunnel_host[0:2])
+def initiator(compute_target, *args):
+	assert isinstance(compute_target, ComputeTarget)
+	return DockerInterface(compute_target)
 
 
 # clem 15/03/2016

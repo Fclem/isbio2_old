@@ -11,9 +11,19 @@ __date__ = '06/05/2016'
 class SGEInterface(ComputeInterface):
 	run_id = ''
 	client = None
+	_compute_target = ComputeTarget
 
-	def __init__(self, storage_backend):
-		super(SGEInterface, self).__init__(storage_backend)
+	def __init__(self, compute_target, storage_backend=None):
+		super(SGEInterface, self).__init__(compute_target, storage_backend)
+
+	# clem 06/05/2016
+	@property
+	def _sge_obj(self): # TODO move it all here ( or not )
+		return Qstat().job_info(self._runnable.sgeid)
+
+	# clem 06/05/2016
+	def status(self): # TODO move it all here
+		return self._sge_obj.state
 
 	# clem 16/03/2016
 	def _write_log(self, txt):
@@ -23,8 +33,23 @@ class SGEInterface(ComputeInterface):
 			else:
 				print '<sge%s ?>', txt
 
-	def send_job(self, job_folder=None, output_filename=None):
-		pass
+	def send_job(self): # TODO move it all here
+		self._runnable.old_sge_run()
+
+	# clem 06/05/2016
+	def busy_waiting(self, *args): # TODO move it all here
+		return self._runnable.old_sge_waiter(*args)
+
+	# clem 06/05/2016
+	def abort(self):
+		if self._runnable.breeze_stat != JobStat.DONE:
+			self._runnable.breeze_stat = JobStat.ABORT
+			if not self._runnable.is_sgeid_empty:
+				self._sge_obj.abort()
+			else:
+				self._runnable.breeze_stat = JobStat.ABORTED
+			return True
+		return False
 
 	# clem 21/04/2016
 	def get_results(self, output_filename=None):
@@ -32,7 +57,7 @@ class SGEInterface(ComputeInterface):
 
 
 # clem 04/05/2016
-def initiator(storage_module, config, *args):
+def initiator(compute_target, *args):
 	from breeze.models import ComputeTarget
-	assert isinstance(config, ComputeTarget)
-	return SGEInterface(storage_module)
+	assert isinstance(compute_target, ComputeTarget)
+	return SGEInterface(compute_target)

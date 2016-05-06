@@ -1120,6 +1120,7 @@ class ComputeTarget(FolderObj, models.Model):
 	_storage_module = None
 	_compute_module = None
 	__compute_interface = None
+	_runnable = None
 	CONFIG_GENERAL_SECTION = 'general'
 	CONFIG_TYPE = 'type'
 	CONFIG_TUNNEL = 'tunnel'
@@ -1250,21 +1251,20 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 04/05/2016
 	@property
 	def compute_interface(self):
+		"""
+		:rtype: breeze.compute_interface_module.ComputeInterface
+		"""
 		if not self.__compute_interface:
 			self.__compute_interface = self.compute_module.initiator(self.storage_module, self)
 		return self.__compute_interface
 
-	def send_job(self, job_folder=None, output_filename=None):
-		comp = self.compute_interface
-		if comp and hasattr(comp, 'send_job'):
-			return comp.send_job(job_folder, output_filename)
-		return False
-
-	def get_results(self, output_filename=None):
-		comp = self.compute_interface
-		if comp and hasattr(comp, 'send_job'):
-			return comp.get_results(output_filename)
-		return False
+	# clem 06/05/2016
+	@property
+	def runnable(self):
+		"""
+		:rtype: Runnable
+		"""
+		return self._runnable
 
 	class Meta(FolderObj.Meta): # TODO check if inheritance is required here
 		abstract = False
@@ -1671,6 +1671,8 @@ class Runnable(FolderObj, models.Model):
 	# WRAPPERS
 	##
 
+	__target = None
+
 	# GENERICS
 	def __getattr__(self, item):
 		try:
@@ -1967,18 +1969,13 @@ class Runnable(FolderObj, models.Model):
 	##
 	# SHARED CONCRETE METHODS (SGE_JOB MANAGEMENT RELATED)
 	##
+	# FIXME : LEGACY ONLY
 	def abort(self):
-		""" Abort the job using qdel
+		""" Abort the job using
+
 		:rtype: bool
 		"""
-		if self.breeze_stat != JobStat.DONE:
-			self.breeze_stat = JobStat.ABORT
-			if not self.is_sgeid_empty:
-				print self.sge_obj.abort()
-			else:
-				self.breeze_stat = JobStat.ABORTED
-			return True
-		return False
+		return self.compute_target.abort()
 
 	def write_sh_file(self):
 		"""
@@ -2064,7 +2061,13 @@ class Runnable(FolderObj, models.Model):
 			self.created = timezone.now() # important to be able to timeout sgeid
 			self.breeze_stat = JobStat.RUN_WAIT
 
+	# FIXME LEGACY INTERFACE ONLY
+	# clem 06/05/2016
 	def run(self):
+		return self.compute_target.send_job()
+
+	# FIXME LEGACY ONLY
+	def old_sge_run(self):
 		"""
 			Submits reports as an R-job to cluster with SGE;
 			This submission implements REPORTS concept in BREEZE
@@ -2139,15 +2142,12 @@ class Runnable(FolderObj, models.Model):
 		log.debug('%s%s : ' % self.short_id + 'drmaa submit ended successfully !')
 		return 0
 
-	@property
-	def sge_obj(self):
-		from qstat import Qstat
-		return Qstat().job_info(self.sgeid)
-
-	def qstat_stat(self):
-		return self.sge_obj.state
-
+	# FIXME LEGACY INTERFACE ONLY
 	def waiter(self, s, drmaa_waiting=False):
+		return self.compute_target.busy_waiting(s, drmaa_waiting)
+
+	# FIXME LEGACY ONLY
+	def old_sge_waiter(self, s, drmaa_waiting=False):
 		"""
 		:param s:
 		:type s: drmaa.Session
@@ -2173,7 +2173,7 @@ class Runnable(FolderObj, models.Model):
 				try:
 					while True:
 						time.sleep(1)
-						self.qstat_stat()
+						self.compute_target.status()
 						if self.aborting:
 							break
 				except NoSuchJob:
@@ -2386,7 +2386,7 @@ class Runnable(FolderObj, models.Model):
 		Use this, if it hadn't had an SGEid or the run was unexpectedly terminated
 		DO NOT WORK on SUCCEEDED JOB."""
 		if False: # not self.is_successful or force:
-			# TODO finnish
+			# TODO finish
 			import copy
 			import os
 			from django.core.files import base
@@ -2450,6 +2450,18 @@ class Runnable(FolderObj, models.Model):
 		else:
 			raise NotImplementedError("%s was not implemented in concrete class %s." % (
 			sys._getframe(1).f_code.co_name, self.__class__.__name__))
+
+	# clem 06/05/2016
+	@property
+	def compute_target(self):
+		if not self.__target:
+			if self.is_report and self.compute_target:
+				assert isinstance(self.target, ComputeTarget)
+				self.__target = self.target
+			else:
+				self.__target = ComputeTarget.objects.get(pk=2)
+			self.__target._runnable = self
+		return self.__target.compute_interface
 
 	@property
 	def is_report(self):
