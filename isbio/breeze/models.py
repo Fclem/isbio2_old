@@ -1424,27 +1424,27 @@ class Runnable(FolderObj, models.Model):
 	ALLOW_DOWNLOAD = True
 	BASE_FOLDER_NAME = '' # folder name
 	BASE_FOLDER_PATH = '' # absolute path to the container folder
-	FAILED_FN = 'failed'
-	SUCCESS_FN = 'done'
-	SH_NAME = settings.GENERAL_SH_NAME
-	FILE_MAKER_FN = settings.REPORTS_FM_FN
-	R_HOME = settings.R_HOME
-	INC_RUN_FN = settings.INCOMPLETE_RUN_FN
+	FAILED_FN = settings.FAILED_FN 				# '.failed'
+	SUCCESS_FN = settings.SUCCESS_FN			# '.done'
+	SUB_DONE_FN = settings.R_DONE_FN			# '.sub_done'
+	SH_NAME = settings.GENERAL_SH_NAME			# 'run_job.sh'
+	FILE_MAKER_FN = settings.REPORTS_FM_FN		# 'transfer_to_fm.txt'
+	R_HOME = settings.R_HOME					# %project_folder%/R/lib64/R
+	INC_RUN_FN = settings.INCOMPLETE_RUN_FN		# '.INCOMPLETE_RUN'
 	# output file name (without extension) for nozzle report. MIGHT not be enforced everywhere
-	REPORT_FILE_NAME = 'report'
+	REPORT_FILE_NAME = settings.NOZZLE_REPORT_FN	# 'report'
 	RQ_FIELDS = ['_name', '_author', '_type']
-	R_FILE_NAME_BASE = 'script'
-	R_FILE_NAME = R_FILE_NAME_BASE + '.r'
-	R_OUT_EXT = '.Rout'
+	R_FILE_NAME_BASE = settings.R_FILE_NAME_BASE	# 'script'
+	R_FILE_NAME = settings.R_FILE_NAME				# R_FILE_NAME_BASE + '.r'
+	R_OUT_EXT = settings.R_OUT_EXT					# '.Rout'
 	R_OUT_FILE_NAME = R_FILE_NAME + R_OUT_EXT
+	R_FULL_PATH = settings.R_ENGINE_PATH			# 'R '
+	R_CMD = 'CMD BATCH --no-save'
 	RQ_SPECIFICS = ['request_data', 'sections']
-	FAILED_R = 'Execution halted'
-	SH_CL = '#!/bin/bash \nexport R_HOME=%s\ntouch ./%s' % (R_HOME, INC_RUN_FN) +\
-		' && %sCMD BATCH --no-save %s && ' + 'touch ./%s\nrm ./%s\n' \
-		% (SUCCESS_FN, INC_RUN_FN) + 'txt="%s"\n' % FAILED_R + 'CMD=`tail -n1<%s`\n' \
-		+ 'if [ "$CMD" = "$txt" ]; \nthen\n	touch ./%s\nfi' % FAILED_FN # TODO make a template
-	SYSTEM_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, INC_RUN_FN, FAILED_FN, SUCCESS_FN, FILE_MAKER_FN]
-	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN] # TODO add FM file ?
+	FAILED_TEXT = 'Execution halted'
+
+	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ?
+	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
 
 	objects = managers.WorkersManager() # The default manager.
 
@@ -1554,10 +1554,6 @@ class Runnable(FolderObj, models.Model):
 		:rtype: bool
 		"""
 		return None # raise NotImplementedError
-
-	@property
-	def sh_command_line(self):
-		return self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path, self._rout_file)
 
 	@property # UNUSED ?
 	def html_path(self):
@@ -1779,19 +1775,25 @@ class Runnable(FolderObj, models.Model):
 
 	def write_sh_file(self):
 		"""
-		Generate the SH file that will be executed on the cluster by SGE
+		Generate the SH file that will be executed on the compute target to configure and run the job
 		"""
 		import os
-		# import stat
-		# configure shell-file
-		config = open(self._sh_file_path, 'w')
 
-		# st = os.stat(self._sh_file_path)
+		conf_dict = {
+			'failed_fn'		: self.FAILED_FN,
+			'inc_run_fn'	: self.INC_RUN_FN,
+			'success_fn'	: self.SUCCESS_FN,
+			'done_fn'		: self.SUB_DONE_FN,
+			'file_name'		: self.R_FILE_NAME,
+			'out_file_name'	: self.R_OUT_FILE_NAME,
+			'full_path'		: self.R_FULL_PATH,
+			'cmd'			: self.R_CMD,
+			'failed_txt'	: self.FAILED_TEXT,
+			'user'			: self._author,
+			'date'			: datetime.now(),
+		}
 
-		# Thanks to ' && touch ./done' breeze can always asses if the run was completed (successful or not)
-		command = self.sh_command_line # self.SH_CL % (settings.R_ENGINE_PATH, self._r_exec_path)
-		config.write(command)
-		config.close()
+		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self._sh_file_path)
 
 		# config should be readable and executable but not writable, same for script.R
 		os.chmod(self._sh_file_path, ACL.RX_RX_)
@@ -1837,7 +1839,8 @@ class Runnable(FolderObj, models.Model):
 
 		# BUILD instance specific R-File
 		# self.generate_r_file(kwargs['sections'], kwargs['request_data'], custom_form=kwargs['custom_form'])
-		# self.generate_r_file(sections=kwargs['sections'], request_data=kwargs['request_data'], custom_form=kwargs['custom_form'])
+		# self.generate_r_file(sections=kwargs['sections'], request_data=kwargs['request_data'],
+		# 	custom_form=kwargs['custom_form'])
 		self.generate_r_file(*args, **kwargs)
 		# other stuff that might be needed by specific kind of instances (Report and Jobs)
 		self.deferred_instance_specific(*args, **kwargs)
@@ -2650,6 +2653,7 @@ class Report(Runnable):
 			'pipeline_config': self.dump_pipeline_config,
 			'tags': '\n'.join(tag_list),
 			'dochtml': str(self._dochtml),
+			'sub_done': self.SUB_DONE_FN,
 			}
 		# do the substitution
 		result = src.substitute(d)
