@@ -608,7 +608,7 @@ def get_term_cmd_stdout(cmd_list_with_args):
 
 
 # clem 18/04/2016
-def git_get_branch(): # FIXME : does not report the correct branch
+def git_get_branch():
 	ret = ''
 	s = get_term_cmd_stdout(["git", "branch"])
 	if s:
