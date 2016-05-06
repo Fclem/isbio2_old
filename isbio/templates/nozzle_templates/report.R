@@ -19,5 +19,5 @@ $tags
 # Render the report to a file
 writeReport( REPORT, filename=toString("$dochtml"))
 # system("chmod -R 770 .")
-system("touch r_done")
+system("touch $sub_done")
 
