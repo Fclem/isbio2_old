@@ -2378,11 +2378,11 @@ class Runnable(FolderObj, models.Model):
 			return t_delta > timedelta(seconds=settings.NO_SGEID_EXPIRY)
 		return False
 
-	def re_submit_to_cluster(self, force=False, duplicate=True):
+	def re_submit_to_cluster(self, force=False, duplicate=True): # TODO FIXME
 		""" Reset the job status, so it can be run again
 		Use this, if it hadn't had an SGEid or the run was unexpectedly terminated
 		DO NOT WORK on SUCCEEDED JOB."""
-		if not self.is_successful or force:
+		if False: # not self.is_successful or force:
 			# TODO finnish
 			import copy
 			import os
