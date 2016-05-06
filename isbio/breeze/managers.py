@@ -6,6 +6,8 @@ from django.http import Http404
 from breeze.b_exceptions import InvalidArguments
 from comp import translate
 
+org_Q = django.db.models.query_utils.Q
+
 
 class Q(django.db.models.query_utils.Q):
 	def __init__(self, *args, **kwargs):
@@ -292,4 +294,16 @@ class ObjectsWithAuth(django.db.models.Manager):
 			raise PermissionDenied
 
 		return obj
+
+
+# clem 19/04/2016
+class ProjectManager(django.db.models.Manager):
+	def available(self, user):
+		"""
+		Rerturn a list of projects available to the specified user
+		:type user:
+		:rtype: list
+		"""
+		return super(ProjectManager, self).exclude(
+			~org_Q(author__exact=user) & org_Q(collaborative=False)).order_by("name")
 

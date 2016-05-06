@@ -462,7 +462,7 @@ def do_reboot():
 	return True
 
 
-# TODO rewrite, as a class maybe ?
+# gitgit TODO rewrite, as a class maybe ?
 # clem 09/03/2016 contains code from from http://stackoverflow.com/a/3229493/5094389
 def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 	""" Prints a tree from a nested dict
@@ -650,3 +650,14 @@ def git_get_head(folder=''):
 		return open('%s.git/FETCH_HEAD' % folder).readline().replace('\n', '')
 	except IOError:
 		return ''
+
+
+# clem 29/04/2016
+def get_free_port():
+	"""
+	:return: the number of a free TCP port on the local machine
+	"""
+	from socket import socket
+	sock = socket()
+	sock.bind(('', 0))
+	return sock.getsockname()[1]

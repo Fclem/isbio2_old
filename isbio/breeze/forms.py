@@ -234,68 +234,98 @@ class AddOffsiteUser(forms.ModelForm):
 	# queryset = breeze.models.User.objects.all(),
 
 
-class ReportPropsForm(forms.Form):
+# clem 18/04/2016
+class ReportPropsFormMixin:
+	request = None
+	_share_options = None
+	_target_list = None
+	_project_qs = None
+
+	# clem 19/04/2016
 	def __init__(self, *args, **kwargs):
-		self.request = kwargs.pop("request")
-		super(ReportPropsForm, self).__init__(*args, **kwargs)
+		super(ReportPropsFormMixin, self).__init__(*args, **kwargs)
 
-		group_list_of_tuples = list()
-		users_list_of_tuples = list()
+	@property
+	def share_options(self):
+		if not self._share_options:
+			group_list_of_tuples = list()
+			users_list_of_tuples = list()
 
-		for ur in breeze.models.OrderedUser.objects.all():
-			users_list_of_tuples.append(tuple((ur.id, ur.username)))
+			for ur in breeze.models.OrderedUser.objects.all():
+				users_list_of_tuples.append(tuple((ur.id, ur.username)))
 
-		for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
-			group_list_of_tuples.append(tuple((gr.id, gr.name)))
+			for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
+				group_list_of_tuples.append(tuple((gr.id, gr.name)))
 
-		share_options = list()
-		share_options.append(tuple(( 'Groups', tuple(group_list_of_tuples) )))
-		share_options.append(tuple(( 'Individual Users', tuple(users_list_of_tuples) )))
+			self._share_options = list()
+			self._share_options.append(tuple(('Groups', tuple(group_list_of_tuples))))
+			self._share_options.append(tuple(('Individual Users', tuple(users_list_of_tuples))))
+		return self._share_options
 
+	# clem 19/04/2016
+	@property
+	def target_list(self): # code moved to ReportType.target_list
+		return breeze.models.ReportType.objects.get(type=self.request.rtype).target_form_list
+
+	def _sup_init_(self, *_, **kwargs):
+		if not self.request and 'request' in kwargs:
+			self.request = kwargs.get("request")
+		if not hasattr(self, 'fields'):
+			self.fields = dict()
+
+		# FIXME : use manager instead
 		self.fields["project"] = forms.ModelChoiceField(
-			queryset=breeze.models.Project.objects.exclude(
-				~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
+			queryset=breeze.models.Project.objects.available(self.request.user)
 		)
 
-		self.fields["Share"] = forms.MultipleChoiceField(
-			required=False,
-			choices=share_options,  # queryset=breeze.models.OrderedUser.objects.all(),
-			widget=forms.SelectMultiple(
-				attrs={'class': 'multiselect', }
-			)
+		self.fields["target"] = forms.ChoiceField(
+			choices=self.target_list,
+			initial=self.target_list[0],
+			widget=forms.Select()
 		)
 
-
-class ReportPropsFormRE(forms.ModelForm):
-	def __init__(self, *args, **kwargs):
-		self.request = kwargs.pop("request")
-		super(ReportPropsFormRE, self).__init__(*args, **kwargs)
-
-		group_list_of_tuples = list()
-		users_list_of_tuples = list()
-
-		for ur in breeze.models.OrderedUser.objects.all():
-			users_list_of_tuples.append(tuple((ur.id, ur.username)))
-
-		for gr in breeze.models.Group.objects.exclude(~Q(author__exact=self.request.user)).order_by("name"):
-			group_list_of_tuples.append(tuple((gr.id, gr.name)))
-
-		share_options = list()
-		share_options.append(tuple(( 'Groups', tuple(group_list_of_tuples) )))
-		share_options.append(tuple(( 'Individual Users', tuple(users_list_of_tuples) )))
-
-		self.fields["project"] = forms.ModelChoiceField(
-			queryset=breeze.models.Project.objects.exclude(
-				~Q(author__exact=self.request.user) & Q(collaborative=False)).order_by("name")
-		)
-
+		# self.fields["Share"] = forms.MultipleChoiceField( # TODO find out why this has various spelling
 		self.fields["shared"] = forms.MultipleChoiceField(
 			required=False,
-			choices=share_options,  # queryset=breeze.models.OrderedUser.objects.all(),
+			choices=self.share_options,
 			widget=forms.SelectMultiple(
-				attrs={'class': 'multiselect', }
+				attrs={ 'class': 'multiselect', }
 			)
 		)
+
+
+# clem 18/04/2016
+class ReportPropsFormMixinWrapperOne(forms.Form, ReportPropsFormMixin):
+	def __init__(self, *args, **kwargs):
+		import copy
+		self.kwargs_copy = copy.copy(kwargs)
+		self.request = kwargs.pop("request", None)
+		super(ReportPropsFormMixinWrapperOne, self).__init__(*args, **kwargs)
+		self._sup_init_(*args, **self.kwargs_copy)
+
+
+# clem 18/04/2016
+class ReportPropsFormMixinWrapperTwo(forms.ModelForm, ReportPropsFormMixin):
+	def __init__(self, *args, **kwargs):
+		import copy
+		self.kwargs_copy = copy.copy(kwargs)
+		self.request = kwargs.pop("request", None)
+		super(ReportPropsFormMixinWrapperTwo, self).__init__(*args, **kwargs)
+		self._sup_init_(*args, **self.kwargs_copy)
+
+
+class ReportPropsForm(ReportPropsFormMixinWrapperOne):
+	def __init__(self, *args, **kwargs):
+		super(ReportPropsForm, self).__init__(*args, **kwargs)
+
+
+class ReportPropsFormRE(ReportPropsFormMixinWrapperTwo):
+	def __init__(self, *args, **kwargs):
+		super(ReportPropsFormRE, self).__init__(*args, **kwargs)
+
+		# if 'Share' in self.fields:
+		#	self.fields["shared"] = self.fields["Share"]
+		#	del self.fields["Share"]
 
 	class Meta:
 		model = breeze.models.Report

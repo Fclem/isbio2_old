@@ -985,6 +985,10 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 	overview = dict()
 	overview['report_type'] = rtype
 	overview['instance_name'] = iname
+	request.rtype = rtype
+	# overview['target'] = ['SGE@FIMM']
+	# if rtype in ['ValidationToDss']:
+	#	overview['target'].append('Docker@Azure')
 	overview['instance_id'] = iid
 	overview['details'] = rshell.get_report_overview(rtype, iname, iid)
 	manual = str(ReportType.objects.get(type=rtype).manual) or None
