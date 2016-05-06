@@ -107,6 +107,7 @@ else:
 		# new
 		url(r'^jobs/info_lp/(?P<jid>\d+)/(?P<md5_t>[a-z0-9_]{32})?$', views.update_jobs_lp, { 'item': 'script' }),
 		url(r'^reports/info_lp/(?P<jid>\d+)/(?P<md5_t>[a-z0-9_]{32})?$', views.update_jobs_lp, { 'item': 'report' }),
+		url(r'^hook/(?P<rid>\d+)/(?P<md5>[a-z0-9_]{32})/(?P<code>\w+)?$', views.job_url_hook),
 		# url(r'^update-all-jobs/$', views.update_all_jobs), # DO NOT USE : TOOOOOOOO SLOW
 		url(r'^scripts/(?P<layout>[a-z]+)?$', views.scripts),
 		url(r'^scripts/delete/(?P<sid>\d+)$', views.delete_script),

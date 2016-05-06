@@ -2872,8 +2872,8 @@ def checker(request, what):
 # FIXME del DEPRECATED / STILL IN USE
 @login_required(login_url='/')
 def qstat_live(request):
-	"""
-	OLD AJAX qstat DEPRECATED
+	""" OLD AJAX qstat DEPRECATED
+
 	:type request:
 	:return: json
 	:rtype: HttpResponse
@@ -2885,8 +2885,8 @@ def qstat_live(request):
 # Clem 22/09/2015
 @login_required(login_url='/')
 def qstat_json(request):
-	"""
-	Returns a smart HTML view of qstat and associated md5,
+	""" Returns a smart HTML view of qstat and associated md5,
+
 	:type request:
 	:return: json
 	:rtype: HttpResponse
@@ -2903,6 +2903,7 @@ def qstat_lp(request, md5_t=None):
 	Long-Polling view for qstat
 	Returns a smart HTML view of qstat and associated md5,
 	Only upon changes from last client's known output.
+
 	:type request:
 	:type md5_t: str|None
 	:return: json
@@ -3081,3 +3082,27 @@ def job_list(request):
 			})
 	return HttpResponse(simplejson.dumps(resources) + '\n\n' + simplejson.dumps(resources2), mimetype='application/json')
 	# print last100
+
+
+# clem 06/05/2016
+def job_url_hook(request, rid, md5, code=''):
+	""" Endpoint of job feedback url.
+	Instead of polling local jobs for completion, they will reach out to this url, upon termination
+
+	:param request: usual request object
+	:type request: int | str
+	:param rid: id of the job
+	:type rid: int | str
+	:param md5: key identifying the job
+	:type md5: str
+	:param code: code or string stating the exit status
+	:type code: int | str
+	:rtype: HttpResponse
+	"""
+	try:
+		a_report = Report.objects.f.get(pk=rid)
+		if get_file_md5(a_report.rexec.path) == md5:
+			print 'OKAY GOOD' # TODO do stuff
+	except ObjectDoesNotExist:
+		pass
+	return HttpResponse('ok', mimetype='text/plain')
