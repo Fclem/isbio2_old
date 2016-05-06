@@ -299,6 +299,35 @@ class DockerContainer:
 		the_client = client or self.__client
 		the_client._start(self)
 
+	# clem 06/05/2016
+	def pause(self, client=None):
+		assert isinstance(client, DockerClient) or isinstance(self.__client, DockerClient)
+		the_client = client or self.__client
+		return the_client.pause(self)
+
+	# clem 06/05/2016
+	def resume(self, client=None):
+		assert isinstance(client, DockerClient) or isinstance(self.__client, DockerClient)
+		the_client = client or self.__client
+		return the_client.unpause(self)
+
+	# clem 06/05/2016
+	def unpause(self, client=None):
+		return self.resume(client)
+
+	# clem 06/05/2016
+	def stop(self, client=None):
+		assert isinstance(client, DockerClient) or isinstance(self.__client, DockerClient)
+		the_client = client or self.__client
+		return the_client.stop(self)
+
+	# clem 06/05/2016
+	def kill(self, client=None):
+		assert isinstance(client, DockerClient) or isinstance(self.__client, DockerClient)
+		the_client = client or self.__client
+		from signal import SIGTERM
+		return the_client.kill(self, SIGTERM)
+
 	# clem 08/04/2016
 	def register_run(self, run_object):
 		assert isinstance(run_object, DockerRun)
@@ -793,7 +822,7 @@ class DockerClient:
 	DEV = False
 	DEBUG = True
 	repo = None
-	_raw_cli = None
+	_raw_cli = DockerApiClient
 	_logged_in = False
 	__console_mutex = None # use to ensure exclusive access to console
 	__data_mutex = None # use to ensure exclusive access to console
@@ -1159,6 +1188,11 @@ class DockerClient:
 	# clem 09/03/2016
 	@property
 	def cli(self):
+		"""
+
+		:return: the docker client API direct command line interface
+		:rtype: DockerApiClient
+		"""
 		if self.__connected: # system wide check for active connection
 			if self.DEV:
 				return self.__pp_cli
@@ -1247,13 +1281,42 @@ class DockerClient:
 		self.__cleanup()
 		del self
 
-	# clem 31/03/2016
-	def info(self):
-		# data = self._json_parse(self.cli.info())
-		# return data
+	# clem 06/05/2016
+	def stop(self, container, timeout=10):
 		try:
-			info_obj = DockerInfo(self.cli.info())
-			return info_obj
+			self.cli.stop(container, timeout)
+			return True
+		except Exception as e:
+			self._exception_handler(e)
+		return False
+
+	# clem 06/05/2016
+	def pause(self, container):
+		try:
+			self.cli.pause(container)
+			return True
+		except Exception as e:
+			self._exception_handler(e)
+		return False
+
+	# clem 06/05/2016
+	def unpause(self, container):
+		try:
+			self.cli.unpause(container)
+			return True
+		except Exception as e:
+			self._exception_handler(e)
+		return False
+
+	# clem 06/05/2016
+	def resume(self, container):
+		self.unpause(container)
+
+	# clem 06/05/2016
+	def kill(self, container, signal):
+		try:
+			self.cli.kill(container, signal)
+			return True
 		except Exception as e:
 			self._exception_handler(e)
 
