@@ -612,7 +612,9 @@ def git_get_branch():
 	ret = ''
 	s = get_term_cmd_stdout(["git", "branch"])
 	if s:
-		ret = s[0].replace('*', '').strip()
+		for line in s:
+			if line.startswith('*'):
+				ret = line.replace('*', '').strip()
 	return ret
 
 

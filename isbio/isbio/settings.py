@@ -263,7 +263,7 @@ class BreezeSettings(Settings):
 		'django.contrib.admin',
 		'django_requestlogging',
 		# Uncomment the next line to enable admin documentation:
-		# 'django.contrib.admindocs',
+		'django.contrib.admindocs',
 	)
 
 	# A sample logging configuration. The only tangible logging
@@ -319,7 +319,8 @@ class BreezeSettings(Settings):
 		'django.contrib.auth.context_processors.auth',
 		'django.core.context_processors.media',
 		'django.core.context_processors.static',
-		'breeze.context.user_context'
+		'breeze.context.user_context',
+		'breeze.context.date_context'
 	)
 
 
@@ -439,8 +440,12 @@ class DevSettings(BreezeSettings):
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
 	MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
-	GENERAL_SH_NAME = 'sgeconfig.sh'
-	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
+	# GENERAL_SH_NAME = 'sgeconfig.sh'
+	GENERAL_SH_NAME = 'run_job.sh'
+	INCOMPLETE_RUN_FN = '.INCOMPLETE_RUN'
+	FAILED_FN = '.failed'
+	SUCCESS_FN = '.done'
+	R_DONE_FN = '.sub_done'
 	# SGE_QUEUE_NAME = 'breeze.q'
 	# SGE_QUEUE_NAME = 'breeze.q' # monitoring only
 	DOCKER_HUB_PASS_FILE = SOURCE_ROOT + 'docker_repo'
@@ -453,6 +458,8 @@ class DevSettings(BreezeSettings):
 	##
 	# Report config
 	##
+	BOOTSTRAP_SH_TEMPLATE = TEMPLATE_FOLDER + GENERAL_SH_NAME
+
 	NOZZLE_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'nozzle_templates/'
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
 	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
@@ -468,6 +475,10 @@ class DevSettings(BreezeSettings):
 	REPORTS_PATH = '%s%s' % (MEDIA_ROOT, REPORTS_FN)
 	REPORTS_SH = GENERAL_SH_NAME
 	REPORTS_FM_FN = 'transfer_to_fm.txt'
+
+	R_FILE_NAME_BASE = 'script'
+	R_FILE_NAME = R_FILE_NAME_BASE + '.r'
+	R_OUT_EXT = '.Rout'
 	##
 	# Jobs configs
 	##
@@ -744,7 +755,7 @@ else:
 	logging.debug('source home : ' + DevSettings.SOURCE_ROOT)
 	print 'project home : ' + DevSettings.PROJECT_PATH
 	logging.debug('project home : ' + DevSettings.PROJECT_PATH)
-	print 'Logging on %s\nSettings loaded. Running %s / %s on %s' % \
+	print 'Logging on %s\nSettings loaded. Running branch %s, mode %s on %s' % \
 		(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(git_get_branch()), Bcolors.ok_blue(Bcolors.bold(DevSettings.RUN_MODE)),
 		Bcolors.ok_blue(DevSettings.FULL_HOST_NAME))
 	git_stat = git_get_status()

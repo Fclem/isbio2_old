@@ -10,3 +10,8 @@ def user_context(request):
         'is_local_admin': is_admin,
         'is_authenticated': is_auth
     }
+
+
+def date_context(_):
+    import datetime
+    return { 'now': datetime.datetime.now() }

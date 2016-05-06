@@ -266,17 +266,17 @@
 					}
 				</script>
 				<h4 style="text-decoration: underline;padding-bottom: 8px;">Maintenance Break notice</h4>
-				There will be a maintenance break on Breeze web server <span style="font-weight: bold">Today</span>
-				(Monday 14 September) starting around (EEST) 5pm<span id="notice_extend" onclick="toggler();"> [...]
+				Breeze web server is <span style="font-weight: bold">currently under maintenance</span>
+				<span id="notice_extend" onclick="toggler();"> [...]
 				<a style="font-size: small; float: right;" href="#" >read more
 					<span style="font-size: smaller;">(important notice following)</span></a>
 				</span><span id="notice_more" style="display:none;">.
-					<br/>The break should not exceed five hours, and Breeze should be back by Tuesday morning.
-					The reason for the break is the deployment of new version.<br /><br/>
+					<br/>The break should be short, and Breeze should be back as soon as possible.<br /><br/>
 					<span style="text-decoration: underline; font-weight: bold">N.B. :</span>
-					Jobs/Reports lunched before the beginning of the break won't be impacted, but they might not show up
+					Jobs/Reports launched before the beginning of the break won't be impacted, but they might not
+				show up
 					in the dashboard after the update (if so, please <a href="mailto:clement.fiere@helsinki.fi">contact
-					me</a>).<br>In the mean time, if you need to run urgent/critical work you should use the development
+					me</a>).<br>In the mean time, if you need to run urgent/critical work you may use the development
 					server : <a href="http://breeze-dev.giu.fi/">breeze-dev.giu.fi</a> (Note that this is a totally
 					different server, and you will have to re-authenticate)
 					<a style="font-size: small; float: right;" onclick="toggler();" href="#">Hide</a>
@@ -295,7 +295,7 @@
 			<hr>
 			<footer>
 				<div class="container">
-					<p align="center">&middot; &copy; FIMM 2015 &middot;</p>
+					<p align="center">&middot; &copy; FIMM 2013-{{ now|date:"Y" }} &middot;</p>
 				</div>
 			</footer>
 		{% endblock %}
