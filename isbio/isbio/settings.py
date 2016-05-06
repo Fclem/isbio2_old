@@ -263,7 +263,7 @@ class BreezeSettings(Settings):
 		'django.contrib.admin',
 		'django_requestlogging',
 		# Uncomment the next line to enable admin documentation:
-		# 'django.contrib.admindocs',
+		'django.contrib.admindocs',
 	)
 
 	# A sample logging configuration. The only tangible logging
@@ -319,7 +319,8 @@ class BreezeSettings(Settings):
 		'django.contrib.auth.context_processors.auth',
 		'django.core.context_processors.media',
 		'django.core.context_processors.static',
-		'breeze.context.user_context'
+		'breeze.context.user_context',
+		'breeze.context.date_context'
 	)
 
 
@@ -439,7 +440,8 @@ class DevSettings(BreezeSettings):
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
 	MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
-	GENERAL_SH_NAME = 'sgeconfig.sh'
+	# GENERAL_SH_NAME = 'sgeconfig.sh'
+	GENERAL_SH_NAME = 'run_job.sh'
 	INCOMPLETE_RUN_FN = 'INCOMPLETE_RUN'
 	# SGE_QUEUE_NAME = 'breeze.q'
 	# SGE_QUEUE_NAME = 'breeze.q' # monitoring only
@@ -449,6 +451,8 @@ class DevSettings(BreezeSettings):
 	##
 	# Report config
 	##
+	BOOTSTRAP_SH_TEMPLATE = TEMPLATE_FOLDER + GENERAL_SH_NAME
+
 	NOZZLE_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'nozzle_templates/'
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
 	NOZZLE_REPORT_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'report.R'
