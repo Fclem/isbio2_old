@@ -1196,6 +1196,11 @@ class ComputeTarget(FolderObj, models.Model):
 
 	@property
 	def target_engine_conf(self):
+		"""
+
+		:return:
+		:rtype: list
+		"""
 		return self.target_config.items(self.target_engine)
 
 	@property
@@ -1235,8 +1240,7 @@ class ComputeTarget(FolderObj, models.Model):
 	def storage_module(self):
 		if not self._storage_module:
 			import importlib
-			self._storage_module = importlib.import_module(self.target_storage_engine)
-			# self._storage_module = __import__(self.target_storage_engine, fromlist=[''])
+			self._storage_module = importlib.import_module('breeze.%s' % self.target_storage_engine)
 		return self._storage_module
 
 	# clem 04/05/2016
@@ -1244,8 +1248,7 @@ class ComputeTarget(FolderObj, models.Model):
 	def compute_module(self):
 		if not self._compute_module:
 			import importlib
-			# self._compute_module = __import__(self.target_engine + '_interface', fromlist=[''])
-			self._compute_module = importlib.import_module(self.target_engine + '_interface')
+			self._compute_module = importlib.import_module('breeze.%s_interface' % self.target_engine)
 		return self._compute_module
 
 	# clem 04/05/2016
@@ -1255,7 +1258,7 @@ class ComputeTarget(FolderObj, models.Model):
 		:rtype: breeze.compute_interface_module.ComputeInterface
 		"""
 		if not self.__compute_interface:
-			self.__compute_interface = self.compute_module.initiator(self.storage_module, self)
+			self.__compute_interface = self.compute_module.initiator(self)
 		return self.__compute_interface
 
 	# clem 06/05/2016
@@ -2093,7 +2096,7 @@ class Runnable(FolderObj, models.Model):
 				os.system(settings.JDBC_BRIDGE_PATH)
 
 			# *MAY* prevent db from being dropped
-			django.db.close_connection()
+			# django.db.close_connection()
 			self.breeze_stat = JobStat.PREPARE_RUN
 		except Exception as e:
 			log.exception('%s%s : ' % self.short_id + 'pre-run error %s (process continues)' % e)
@@ -2381,7 +2384,9 @@ class Runnable(FolderObj, models.Model):
 			return t_delta > timedelta(seconds=settings.NO_SGEID_EXPIRY)
 		return False
 
-	def re_submit_to_cluster(self, force=False, duplicate=True): # TODO FIXME
+	# TODO FIXME
+	# ie : plein de merde
+	def re_submit_to_cluster(self, force=False, duplicate=True):
 		""" Reset the job status, so it can be run again
 		Use this, if it hadn't had an SGEid or the run was unexpectedly terminated
 		DO NOT WORK on SUCCEEDED JOB."""
@@ -2434,7 +2439,8 @@ class Runnable(FolderObj, models.Model):
 		super(Runnable, self).save(*args, **kwargs) # Call the "real" save() method.
 
 	def delete(self, using=None):
-		self.abort()
+		if self._breeze_stat != JobStat.DONE:
+			self.abort()
 		txt = str(self)
 		super(Runnable, self).delete(using=using) # Call the "real" delete() method.
 		get_logger().info("%s has been deleted" % txt)
@@ -2455,7 +2461,7 @@ class Runnable(FolderObj, models.Model):
 	@property
 	def compute_target(self):
 		if not self.__target:
-			if self.is_report and self.compute_target:
+			if self.is_report and self.target:
 				assert isinstance(self.target, ComputeTarget)
 				self.__target = self.target
 			else:
@@ -2533,6 +2539,7 @@ class Jobs(Runnable):
 	_author = ForeignKey(User, db_column='juser_id')
 	_type = ForeignKey(Rscripts, db_column='script_id')
 	_created = models.DateTimeField(auto_now_add=True, db_column='staged')
+	target = ComputeTarget.objects.get(pk=2)
 
 	def _institute(self):
 		return self.institute
@@ -2696,7 +2703,7 @@ class Report(Runnable):
 	conf_params = models.TextField(null=True, editable=False)
 	conf_files = models.TextField(null=True, editable=False)
 	fm_flag = models.BooleanField(default=False)
-	target = models.ForeignKey(ComputeTarget, default=1)
+	target = models.ForeignKey(ComputeTarget, default=2)
 	# Shiny specific
 	shiny_key = models.CharField(max_length=64, null=True, editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
