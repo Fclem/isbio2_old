@@ -1,5 +1,5 @@
-from utils import function_name
-from models import ComputeTarget, Runnable, JobStat
+from utils import function_name, gen_file_from_template
+from breeze.models import JobStat, Runnable, ComputeTarget
 import os
 import abc
 
