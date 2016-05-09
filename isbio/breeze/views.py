@@ -1572,8 +1572,8 @@ def delete_report(request, rid, redir):
 	except ObjectDoesNotExist:
 		return aux.fail_with404(request, 'There is no report with id ' + str(rid) + ' in database')
 	except Exception as e:
-		console_print('Exception in delete_report : %s' % e)
-		pass
+		logger.exception('Exception in delete_report : %s' % e)
+		# console_print('Exception in delete_report : %s' % e)
 
 	if redir == '-dash':
 		return dash_redir(request, report)
