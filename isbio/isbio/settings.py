@@ -82,6 +82,17 @@ def recur_rec(nb, funct, args):
 	return args
 
 
+# dynamically change the environement
+def import_env():
+	# os.system('. ~/.sge_profile')
+	import subprocess as sp
+	import json
+	source = 'source ~/.sge_profile'
+	dump = 'python -c "import os, json;print json.dumps(dict(os.environ))"'
+	pipe = sp.Popen(['/bin/bash', '-c', '%s && %s' % (source, dump)], stdout=sp.PIPE)
+	env = json.loads(pipe.stdout.read())
+	os.environ = env
+
 PID = os.getpid()
 
 MAINTENANCE = False
@@ -333,36 +344,23 @@ class DevSettings(BreezeSettings):
 	APPEND_SLASH = True
 
 	ADMINS = (
-	('Clement FIERE', 'clement.fiere@helsinki.fi'),  # ('Dmitrii Bychkov', 'piter.dmitry@gmail.com'),
+	('Clement FIERE', 'clement.fiere@helsinki.fi'),
 	)
 
 	MANAGERS = ADMINS
 
-	# os.system('. ~/.sge_profile')
-	# dynamically change the environement
-	import os, subprocess as sp, json
-	source = 'source ~/.sge_profile'
-	dump = 'python -c "import os, json;print json.dumps(dict(os.environ))"'
-	pipe = sp.Popen(['/bin/bash', '-c', '%s && %s' % (source, dump)], stdout=sp.PIPE)
-	env = json.loads(pipe.stdout.read())
-	os.environ = env
+	import_env()
 
-	# sge_arch = "lx26-amd64"
-	# os.environ['SGE_ROOT'] = '/opt/gridengine'
-	# os.environ['QSTAT_BIN'] = os.environ['SGE_ROOT']+'/bin/'+sge_arch+'/qstat'
 	# Q_BIN = '/usr/bin/'
-	Q_BIN = os.environ['Q_BIN']
-	QSTAT_BIN = '%sqstat' % Q_BIN
-	QDEL_BIN = '%sqdel' % Q_BIN
-	SGE_QUEUE_NAME = os.environ['SGE_QUEUE']
-	# os.environ['QSTAT_BIN'] = QSTAT_BIN
-	# os.environ['SGE_ARCH'] = 'UNSUPPORTED-lx3.2.0-40-generic-amd64'
-	# os.environ['LD_LIBRARY_PATH'] = os.environ['SGE_ROOT'] + '/lib/' + os.environ['SGE_ARCH']
-	# os.environ['SGE_QMASTER_PORT'] = '6444'
-	# os.environ['SGE_EXECD_PORT'] = '6445'
-	# os.environ['SGE_CELL'] = 'default'
-	# os.environ['DRMAA_LIBRARY_PATH'] = os.environ['SGE_ROOT']+'/lib/'+sge_arch+'/libdrmaa.so'
-	# os.environ['DRMAA_LIBRARY_PATH'] = os.environ['SGE_ROOT'] + '/lib/' + sge_arch + '/libdrmaa.so.1.0'
+	# Q_BIN = os.environ.get('Q_BIN', '')
+	Q_BIN = ''
+	# QSTAT_BIN = '%sqstat' % Q_BIN
+	QSTAT_BIN = ''
+	# QDEL_BIN = '%sqdel' % Q_BIN
+	QDEL_BIN = ''
+	# SGE_QUEUE_NAME = os.environ.get('SGE_QUEUE', '')
+	# SGE_QUEUE_NAME = ''
+	SGE_QUEUE = ''
 	os.environ['MAIL'] = '/var/mail/dbychkov'
 
 	DATABASES = {
@@ -442,6 +440,7 @@ class DevSettings(BreezeSettings):
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
 	# GENERAL_SH_NAME = 'sgeconfig.sh'
 	GENERAL_SH_NAME = 'run_job.sh'
+	SGE_REQUEST_FN = '.sge_request'
 	INCOMPLETE_RUN_FN = '.INCOMPLETE_RUN'
 	FAILED_FN = '.failed'
 	SUCCESS_FN = '.done'
@@ -459,6 +458,7 @@ class DevSettings(BreezeSettings):
 	# Report config
 	##
 	BOOTSTRAP_SH_TEMPLATE = TEMPLATE_FOLDER + GENERAL_SH_NAME
+	SGE_REQUEST_TEMPLATE = TEMPLATE_FOLDER + SGE_REQUEST_FN
 
 	NOZZLE_TEMPLATE_FOLDER = TEMPLATE_FOLDER + 'nozzle_templates/'
 	TAGS_TEMPLATE_PATH = NOZZLE_TEMPLATE_FOLDER + 'tag.R'
