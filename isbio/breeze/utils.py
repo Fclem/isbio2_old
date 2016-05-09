@@ -132,7 +132,7 @@ def gen_file_from_template(template_path, sub_dict, output_path=None, safe=True)
 	:return: Either a success flag is output_path was provided, or the result of the replacement if successful, or False
 	:rtype: bool or basestring
 	"""
-	from os.path import exists
+	from os.path import exists, expanduser, realpath
 	assert isinstance(template_path, (str, unicode))
 	assert exists(template_path)
 	assert output_path is None or isinstance(output_path, (str, unicode))
@@ -148,6 +148,7 @@ def gen_file_from_template(template_path, sub_dict, output_path=None, safe=True)
 	result = src.safe_substitute(sub_dict) if safe else src.substitute(sub_dict)
 
 	if output_path:
+		output_path = expanduser(output_path)
 		with open(output_path, 'w') as output_fd:
 			# writes the result to the output file
 			while output_fd.write(result):
