@@ -92,3 +92,7 @@ class ReadOnlyAttribute(RuntimeWarning):
 class NotDefined(BaseException):
 	pass
 
+
+class ObjectNotFound(BaseException):
+	pass
+
