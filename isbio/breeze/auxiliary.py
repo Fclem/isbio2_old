@@ -471,6 +471,8 @@ def fail_with404(request, error_msg=None):
 	"""
 	custom 404 method that enable 404 template even in debug mode (discriminate from real 404),
 	Raise no exception so call it with return
+	Will log a warning message
+
 	:param request: Django request object
 	:type request: http.HttpRequest
 	:param error_msg: The message to display on the 404 page
@@ -484,8 +486,12 @@ def fail_with404(request, error_msg=None):
 	if type(error_msg) is not list:
 		error_msg = [error_msg]
 
+	rq_path = request.path if request is not None else ''
+
+	logger.warning('404 %s: %s' % (rq_path, error_msg))
+
 	return http.HttpResponseNotFound(t.render(RequestContext(request, {
-		'request_path': request.path if request is not None else '',
+		'request_path': rq_path,
 		'messages': error_msg,
 	})))
 
