@@ -1,6 +1,7 @@
 from utils import Bcolors
 import os
 import abc
+from b_exceptions import ObjectNotFound as MissingResException
 
 __version__ = '0.1'
 __author__ = 'clem'
@@ -30,6 +31,7 @@ class StorageModule:
 	__metaclass__ = abc.ABCMeta
 	_not = "Class %s doesn't implement %s()"
 	_interface = None # as to be defined as a BlobStorageObject that support argument list : (account_name=self
+	missing_res_exception = MissingResException
 
 	def __init__(self):
 		pass
