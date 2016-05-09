@@ -124,8 +124,8 @@ class DockerInterface(ComputeInterface):
 	def _attach_event_manager(self, run=None):
 		if not run and self.my_run:
 				run = self.my_run
-		assert isinstance(run, DockerRun)
-		run.event_listener = self._event_manager_wrapper()
+		if run and isinstance(run, DockerRun):
+			run.event_listener = self._event_manager_wrapper()
 		return run
 
 	# clem 16/03/2016
@@ -196,6 +196,7 @@ class DockerInterface(ComputeInterface):
 			if b:
 				os.remove(output_filename)
 				my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.my_volume)
+				# self.my_run = my_run
 				self._attach_event_manager(my_run)
 				self._run(my_run)
 				return True
