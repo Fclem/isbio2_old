@@ -1,6 +1,7 @@
 from breeze.b_exceptions import NoSuchJob # , InvalidArgument
 from breeze.models import JOB_PS
 from django.conf import settings
+import StringIO
 # from breeze.utils import get_logger
 
 
@@ -49,9 +50,9 @@ class SgeJob(object):
 	@property
 	def state(self):
 		"""
-		Returns the SgeJob state as a JobStat parameter
-		:return:
-		:rtype:
+
+		:return: the SgeJob state as a JobStat parameter
+		:rtype: str
 		"""
 		if self._state in JOB_PS:
 			return JOB_PS[self._state]
@@ -61,7 +62,8 @@ class SgeJob(object):
 	@property
 	def raw_out(self):
 		"""
-		displays text line output similar to qstat output
+
+		:return: text line output similar to qstat output
 		:rtype: str
 		"""
 		return '\t'.join(self.raw_out_tab)
@@ -69,7 +71,8 @@ class SgeJob(object):
 	@property
 	def raw_out_tab(self):
 		"""
-		displays text line output similar to qstat output
+
+		:return: text line output similar to qstat output
 		:rtype: [str]
 		"""
 		return [str(self.id), self.prior, self.name, self.user, self.state, self.start_d, self.start_t, self.queue, self.slot]
@@ -77,11 +80,12 @@ class SgeJob(object):
 	def abort(self):
 		"""
 		Abort a job using command line
-		:return:
-		:rtype:
+
 		"""
 		import subprocess
-		return subprocess.Popen('%s %s' % (settings.QDEL_BIN, self.id), shell=True, stdout=subprocess.PIPE).stdout
+		if settings.QDEL_BIN:
+			return subprocess.Popen('%s %s' % (settings.QDEL_BIN, self.id), shell=True, stdout=subprocess.PIPE).stdout
+		return ''
 
 	def __repr__(self):
 		return '<SgeJob %s>' % self.name
@@ -103,32 +107,37 @@ class Qstat(object): # would need some proper error management if SGE is not set
 
 	def __sub_proc(self, arg):
 		import subprocess
-		return subprocess.Popen('%s|grep %s' % (self.qstat, str(arg)), shell=True, stdout=subprocess.PIPE).stdout
+		if self.qstat:
+			return subprocess.Popen('%s|grep %s' % (self.qstat, str(arg)), shell=True, stdout=subprocess.PIPE).stdout
+		return StringIO.StringIO()
 
 	# clem 12/10/2015
 	@property
-	def queue_stat(self, queue_name=settings.SGE_QUEUE_NAME):
+	def queue_stat(self, queue_name=settings.SGE_QUEUE):
 		import subprocess
 		from collections import namedtuple
-		try:
-			p = subprocess.Popen('%s -g c|grep %s' % (self.qstat, str(queue_name)), shell=True, stdout=subprocess.PIPE)
-			output, err = p.communicate()
-			server_info = dict()
-			for each in output.splitlines():
-				if queue_name in each.split():
-					server_info['s_name'] = str(each.split()[0])
-					server_info['cqload'] = str(float(each.split()[1]) * 100)
-					server_info['used'] = str(each.split()[2])
-					server_info['avail'] = str(each.split()[4])
-					server_info['total'] = str(each.split()[5])
-					server_info['cdsuE'] = str(each.split()[7])
-					server_info['cdsuE'] = str(each.split()[7])
-					break
+		if self.qstat and queue_name:
+			try:
+				p = subprocess.Popen('%s -g c|grep %s' % (self.qstat, str(queue_name)), shell=True, stdout=subprocess.PIPE)
+				output, err = p.communicate()
+				server_info = dict()
+				for each in output.splitlines():
+					if queue_name in each.split():
+						server_info['s_name'] = str(each.split()[0])
+						server_info['cqload'] = str(float(each.split()[1]) * 100)
+						server_info['used'] = str(each.split()[2])
+						server_info['avail'] = str(each.split()[4])
+						server_info['total'] = str(each.split()[5])
+						server_info['cdsuE'] = str(each.split()[7])
+						server_info['cdsuE'] = str(each.split()[7])
+						break
 
-			return namedtuple('Struct', server_info.keys())(*server_info.values())
-		except Exception:
-			from b_exceptions import SGEError
-			raise SGEError('SGE seems to be not properly configured')
+				return namedtuple('Struct', server_info.keys())(*server_info.values())
+			except Exception:
+				from b_exceptions import SGEError
+				raise SGEError('SGE seems to be not properly configured')
+		else:
+			return namedtuple('Struct', [])(*[])
 
 	# clem 12/10/2015
 	@property
@@ -142,10 +151,11 @@ class Qstat(object): # would need some proper error management if SGE is not set
 	# clem 12/10/2015
 	@property
 	def is_queue_full(self):
-		try:
-			return not self.queue_stat_int.avail
-		except AttributeError:
-			return True
+		return False
+		# try:
+		# 	return not self.queue_stat_int.avail
+		# except AttributeError:
+		# 	return True
 
 	@property
 	def job_dict(self):
@@ -193,7 +203,7 @@ class Qstat(object): # would need some proper error management if SGE is not set
 			if jid in self._job_list:
 				return self._job_list[jid]
 			else:
-				raise NoSuchJob('%s was not found. SgeJob run was completed or SgeJob never existed.' % jid)
+				raise NoSuchJob('%s was not found. It usually mean the SgeJob run was completed.' % jid)
 				# return None, self.job_list[jid]
 
 	# Clem 22/09/2015
