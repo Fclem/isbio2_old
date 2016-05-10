@@ -1,6 +1,5 @@
 import django.db
 import os
-from multiprocessing import Process
 from threading import Thread
 from utils import console_print as cp
 from breeze.models import Report, Jobs, JobStat
@@ -51,7 +50,7 @@ def with_drmaa(func):
 
 class ProcItem(object):
 	def __init__(self, proc, dbitem):
-		assert isinstance(proc, (Process, Thread)) or proc is None
+		assert isinstance(proc, Thread) or proc is None
 		assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 		self.process = proc
 		self._db_item_id = dbitem.id
@@ -112,7 +111,8 @@ def refresh_proc():
 		dbitem = proc_item.db_item
 		proc = proc_item.process
 
-		if not proc.is_alive(): # process finished
+		# if not proc.is_alive(): # process finished
+		if not proc.is_alive: # process finished
 			exit_c = 0
 			end_tracking(proc_item)
 			msg = '%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,))
