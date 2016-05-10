@@ -1,6 +1,7 @@
 import django.db
 import os
 from multiprocessing import Process
+from threading import Thread
 from utils import console_print as cp
 from breeze.models import Report, Jobs, JobStat
 import drmaa
@@ -50,7 +51,7 @@ def with_drmaa(func):
 
 class ProcItem(object):
 	def __init__(self, proc, dbitem):
-		assert isinstance(proc, Process) or proc is None
+		assert isinstance(proc, (Process, Thread)) or proc is None
 		assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 		self.process = proc
 		self._db_item_id = dbitem.id
@@ -112,7 +113,7 @@ def refresh_proc():
 		proc = proc_item.process
 
 		if not proc.is_alive(): # process finished
-			exit_c = proc.exitcode
+			exit_c = 0
 			end_tracking(proc_item)
 			msg = '%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,))
 			if exit_c != 0:
@@ -168,11 +169,11 @@ def _reattach_the_job(dbitem):
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 	# if not dbitem.aborting:
 	try:
-		p = Process(target=dbitem.waiter, args=(s, ))
+		p = Thread(target=dbitem.waiter, args=(s, ))
 		p.start()
 		proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
-		log.debug('%s%s : reattaching job.waiter in PID%s' % (dbitem.short_id + (p.pid,)))
+		log.debug('%s%s : reattaching job.waiter in tID%s' % (dbitem.short_id + (p.ident,)))
 		if statsd:
 			statsd.increment('python.breeze.running_jobs')
 	except Exception as e:
@@ -189,12 +190,12 @@ def _spawn_the_job(dbitem):
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 	if not dbitem.aborting:
 		try:
-			p = Process(target=dbitem.run)
+			p = Thread(target=dbitem.run)
 			p.start()
 			# proc_lst.update({ dbitem.id: (p, dbitem) })
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
-			log.debug('%s%s : spawning job.run in PID%s' % (dbitem.short_id + (p.pid,)))
+			log.debug('%s%s : spawning job.run in PID%s' % (dbitem.short_id + (p.ident,)))
 			if statsd:
 				statsd.increment('python.breeze.running_jobs')
 		except Exception as e:

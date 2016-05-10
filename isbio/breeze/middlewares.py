@@ -11,9 +11,11 @@ from django.conf import settings
 
 if settings.DEBUG:
 	# quick fix to solve PyCharm Django console environment issue
-	from breeze.process import Process
+	# from breeze.process import Process
+	from threading import Thread
 else:
-	from multiprocessing import Process
+	# from multiprocessing import Process
+	from threading import Thread
 
 logger = logging.getLogger(__name__)
 check_file_dt = ''
@@ -72,7 +74,8 @@ def check_state():
 
 
 class JobKeeper:
-	p = Process(target=runner)
+	# p = Process(target=runner)
+	p = Thread(target=runner)
 	log = None
 
 	def __init__(self):
@@ -89,8 +92,8 @@ class JobKeeper:
 
 	def process_request(self, request):
 		if not JobKeeper.p.is_alive():
-			JobKeeper.p.terminate()
-			JobKeeper.p = Process(target=runner)
+			# JobKeeper.p.terminate()
+			JobKeeper.p = Thread(target=runner)
 			self.log.warning('watcher was down, restarting...')
 			self.__init__()
 
