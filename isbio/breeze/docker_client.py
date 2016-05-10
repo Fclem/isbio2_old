@@ -1765,3 +1765,26 @@ class DockerClient:
 	# clem 09/03/2016
 	def show_repo_tree(self):
 		advanced_pretty_print(self.images_tree)
+
+
+__client_list = dict()
+
+
+# clem 10/05/2016
+def get_docker_client(daemon_url, repo=None, auto_connect=True):
+	""" Return and save the DockerClient, so that only one get instantiated per daemon_url / repo couple
+
+	:param daemon_url: The url of the target Docker daemon. Can be anything docker api will accept (socket, tcp, etc)
+	:type daemon_url: basestring
+	:param repo: an object representing configuration for the docker hub repository to use, default: None
+	:type repo: DockerRepo | None
+	:param auto_connect: connect upon creation of the object, default: True
+	:type auto_connect: bool | None
+	:return: The client
+	:rtype: DockerClient
+	"""
+	key = (daemon_url, repo)
+	if key not in __client_list.keys():
+		print 'DockerClient %s not found in cache, creating a new one...' % str(key)
+		__client_list.update({ key: DockerClient(daemon_url, repo, auto_connect)})
+	return __client_list[key]
