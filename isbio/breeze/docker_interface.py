@@ -87,7 +87,6 @@ class DockerInterface(ComputeInterface):
 	def get_a_port(self):
 		""" Give the port number of an existing ssh tunnel, or return a free port if no (or more than 1) tunnel exists
 
-
 		:return: a TCP port number
 		:rtype: int
 		"""
@@ -95,7 +94,6 @@ class DockerInterface(ComputeInterface):
 		lookup = ' '.join(self.SSH_CMD_BASE + [self.SSH_HOST]) %\
 			('.*', self.DOCKER_REMOTE_HOST, self.DOCKER_REMOTE_PORT)
 		full_string = 'ps aux|grep "%s"|grep -v grep' % lookup
-		print full_string
 		tmp = subprocess.Popen(full_string, shell=True, stdout=subprocess.PIPE).stdout
 		lines = []
 		for line in tmp.readlines():
@@ -170,7 +168,7 @@ class DockerInterface(ComputeInterface):
 				label = '<docker%s>' % ('_' + self.label)
 			else:
 				label = '<docker%s ?>' % ('_' + self.label)
-			get_logger().debug(label + ' ' + str(txt))
+			get_logger(level=2).debug(label + ' ' + str(txt))
 
 	def _run(self, run):
 		self.container = self.client.run(run)

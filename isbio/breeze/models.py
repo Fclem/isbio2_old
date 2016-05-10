@@ -103,7 +103,7 @@ class JobStat(object):
 		JobState.USER_SUSPENDED: 'job is user suspended',
 		JobState.DONE: 'job finished normally',
 		SUCCEED: 'job finished normally',
-		JobState.FAILED: 'job failed due to system error%s',
+		JobState.FAILED: 'job failed due to system error',
 		JobState.R_FAILDED: 'job failed due to R script issue',
 		ABORTED: 'job has been aborted',
 		ABORT: 'job is being aborted...',

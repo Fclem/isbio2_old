@@ -1419,7 +1419,8 @@ class DockerClient:
 			tag = 'latest'
 		try:
 			self.login()
-			do_stream = self.DEBUG or force_print
+			# do_stream = self.DEBUG or force_print
+			do_stream = False
 			gen = self.cli.pull(image_name, tag, stream=do_stream)
 			if do_stream:
 				return printer(gen)
