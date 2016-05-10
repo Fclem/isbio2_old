@@ -1,4 +1,4 @@
-from utils import function_name, gen_file_from_template
+from utils import function_name, gen_file_from_template, get_logger
 from breeze.models import JobStat, Runnable, ComputeTarget
 import os
 import abc
