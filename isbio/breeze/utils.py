@@ -50,12 +50,13 @@ def safe_rm(path, ignore_errors=False):
 
 
 # Clem 24/09/2015
-def safe_copytree(source, destination, symlinks=True, ignore=None, force=False):
+def safe_copytree(source, destination, symlinks=True, ignore=None):
 	"""
 	Copy a folder recursively
 	Provide a smart shutil.copytree wrapper with system folder protection
 	Avoid mistake caused by malformed auto generated paths
 	Avoid non existent source folder, and warn about existent destination folders
+
 	:type source: str
 	:type destination: str
 	:type symlinks: bool
@@ -63,16 +64,12 @@ def safe_copytree(source, destination, symlinks=True, ignore=None, force=False):
 	:rtype: bool
 	"""
 	import os
-	# import shutil
 	if destination not in settings.FOLDERS_LST:
 		if os.path.isdir(source):
 			if os.path.isdir(destination):
-			# 	os.mkdir(destination)
-			# else:
 				log_txt = 'copytree, destination folder %s exists, proceed' % destination
 				get_logger().warning(log_txt)
-			# shutil.copytree(source, destination, symlinks, ignore)
-			custom_copytree(source, destination, symlinks, ignore, verbose=True)
+			custom_copytree(source, destination, symlinks, ignore)
 			return True
 		else:
 			log_txt = 'copytree, source folder %s don\'t exists, STOP' % source
@@ -132,7 +129,7 @@ def gen_file_from_template(template_path, sub_dict, output_path=None, safe=True)
 	:return: Either a success flag is output_path was provided, or the result of the replacement if successful, or False
 	:rtype: bool or basestring
 	"""
-	from os.path import exists, expanduser, realpath
+	from os.path import exists, expanduser
 	assert isinstance(template_path, (str, unicode))
 	assert exists(template_path)
 	assert output_path is None or isinstance(output_path, (str, unicode))
