@@ -19,7 +19,7 @@ class DockerInterface(ComputeInterface):
 	client = None
 	_lock = None
 	label = ''
-	my_volume = DockerVolume('/home/breeze/data/', '/breeze', 'r')
+	my_volume = DockerVolume('/home/breeze/data/', '/breeze')
 	my_run = None
 	container = None
 	cat = DockerEventCategories
@@ -38,7 +38,8 @@ class DockerInterface(ComputeInterface):
 	DOCKER_LOCAL_DAEMON_URL = ''
 	# SSH TUNNEL CONFIG
 	SSH_HOST = None
-	SSH_CMD_BASE = ['ssh', '-CfNnL', '%s:%s:%s' % (DOCKER_LOCAL_PORT, DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)]
+	SSH_CMD_BASE = ['ssh', '-CfNnL', '%s:%s:%s']
+	# SSH_CMD_BASE = ['ssh', '-CfNnL', '%s:%s:%s' % (DOCKER_LOCAL_PORT, DOCKER_REMOTE_HOST, DOCKER_REMOTE_PORT)]
 	SSH_BASH_KILL_BASE = 'ps aux | grep "%s"' + " | awk '{ print $2 }' | tr '\\n' ' '"
 	# CONTAINER SPECIFIC
 	NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
@@ -47,6 +48,8 @@ class DockerInterface(ComputeInterface):
 	LINE3 = '\x1b[34mCreating archive /root/out.tar.xz'
 	LINE2 = '\x1b[1mcreate_blob_from_path\x1b[0m(' # FIXME NOT ABSTRACT
 	LINES = dict([(-3, LINE3), (-2, LINE2)])
+
+	_status = JobStat.INIT
 
 	def __init__(self, compute_target, storage_backend=None):
 		"""
@@ -59,7 +62,7 @@ class DockerInterface(ComputeInterface):
 
 		self.SSH_HOST = compute_target.tunnel_host
 		# TODO changes these to factory
-		self.DOCKER_LOCAL_PORT = get_free_port()
+		self.DOCKER_LOCAL_PORT = self.get_a_port()
 		self.DOCKER_LOCAL_BIND_ADDR = ('127.0.0.1', self.DOCKER_LOCAL_PORT)
 		self.DOCKER_LOCAL_DAEMON_URL = 'tcp://%s:%s' % self.DOCKER_LOCAL_BIND_ADDR
 		self.SSH_CMD = ['ssh', '-CfNnL', '%s:%s:%s' % (self.DOCKER_LOCAL_PORT, self.DOCKER_REMOTE_HOST,
@@ -76,7 +79,38 @@ class DockerInterface(ComputeInterface):
 			res = self._connect()
 		if not res:
 			self._write_log('FAILURE connecting to docker daemon, cannot proceed')
+			self._set_status(JobStat.FAILED)
+			self._runnable._manage_run_failed(1, 99)
 			raise DaemonNotConnected
+
+	# clem 10/05/2016
+	def get_a_port(self):
+		""" Give the port number of an existing ssh tunnel, or return a free port if no (or more than 1) tunnel exists
+
+
+		:return: a TCP port number
+		:rtype: int
+		"""
+		import subprocess
+		lookup = ' '.join(self.SSH_CMD_BASE + [self.SSH_HOST]) %\
+			('.*', self.DOCKER_REMOTE_HOST, self.DOCKER_REMOTE_PORT)
+		full_string = 'ps aux|grep "%s"|grep -v grep' % lookup
+		print full_string
+		tmp = subprocess.Popen(full_string, shell=True, stdout=subprocess.PIPE).stdout
+		lines = []
+		for line in tmp.readlines():
+			try:
+				lines.append(line.split(' ')[-2].split(':')[0])
+			except Exception:
+				pass
+		if len(lines) > 0:
+			if len(lines) == 1:
+				self._write_log('Found pre-existing active ssh tunnel. Trying to reuse it...')
+				return int(lines[0])
+			else:
+				self._write_log('Found %s active ssh tunnels, killing them all...' % len(lines))
+				subprocess.Popen('killall ssh && killall ssh', shell=True, stdout=subprocess.PIPE)
+		return int(get_free_port())
 
 	# TODO externalize
 	# clem 08/09/2016
@@ -102,8 +136,9 @@ class DockerInterface(ComputeInterface):
 
 	# clem 07/04/2016
 	def _connect(self):
-		self.client = DockerClient(self.DOCKER_LOCAL_DAEMON_URL, self.MY_DOCKER_HUB, False)
-		return self._attach_event_manager() and self.client
+		# self.client = DockerClient(self.DOCKER_LOCAL_DAEMON_URL, self.MY_DOCKER_HUB, False)
+		self.client = get_docker_client(self.DOCKER_LOCAL_DAEMON_URL, self.MY_DOCKER_HUB, False)
+		return self.client
 
 	# TODO externalize
 	# clem 06/04/2016 # FIXME change print to log
@@ -126,29 +161,31 @@ class DockerInterface(ComputeInterface):
 				run = self.my_run
 		if run and isinstance(run, DockerRun):
 			run.event_listener = self._event_manager_wrapper()
-		return run
+		return True
 
 	# clem 16/03/2016
 	def _write_log(self, txt):
 		if str(txt).strip():
 			if self.client:
-				print '<docker%s>' % ('_' + self.label), txt
-				# self.client.write_log_entry(txt)
+				label = '<docker%s>' % ('_' + self.label)
 			else:
-				print '<docker%s ?>' % ('_' + self.label), txt
+				label = '<docker%s ?>' % ('_' + self.label)
+			get_logger().debug(label + ' ' + str(txt))
 
 	def _run(self, run):
 		self.container = self.client.run(run)
 		self._write_log('Got %s' % repr(self.container))
+		return self.container
 
 	def _event_manager_wrapper(self):
 		def my_event_manager(event):
 			assert isinstance(event, DockerEvent)
 			# self.write_log(event)
-			if event.description == DockerEventCategories.DIE:
+			if event.description in (DockerEventCategories.DIE, DockerEventCategories.KILL):
 				self.job_is_done()
 			elif event.description == DockerEventCategories.START:
 				self._write_log('%s started' % event.container.name)
+				self._set_global_status(JobStat.RUNNING)
 
 		return my_event_manager
 
@@ -180,6 +217,7 @@ class DockerInterface(ComputeInterface):
 		return self.__docker_storage
 
 	def send_job(self):
+		self._set_global_status(JobStat.PREPARE_RUN)
 		# FIXME : still on test design (using a pre-assembled report job)
 		job_folder = None
 		output_filename = None
@@ -198,11 +236,34 @@ class DockerInterface(ComputeInterface):
 				my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.my_volume)
 				# self.my_run = my_run
 				self._attach_event_manager(my_run)
-				self._run(my_run)
-				return True
+				if self._run(my_run):
+					self._runnable.sgeid = self.container.short_id
+					self._set_global_status(JobStat.SUBMITTED)
+					return True
 		else:
 			print 'failed'
+		self._set_status(JobStat.FAILED)
+		self._runnable._manage_run_failed(1, 88)
 		return False
+
+	# clem 10/05/2016
+	def _set_status(self, status):
+		""" Set status of local object for state tracking
+
+		:param status: status
+		:type status: JobStat
+		"""
+		self._status = status
+
+	# clem 10/05/2016
+	def _set_global_status(self, status):
+		""" Set status of both local and runnable object for state tracking
+
+		:param status: status
+		:type status: JobStat
+		"""
+		self._set_status(status)
+		self._runnable.breeze_stat = status
 
 	# clem 21/04/2016
 	def get_results(self, output_filename=None):
@@ -213,25 +274,48 @@ class DockerInterface(ComputeInterface):
 
 			# if e:
 			# 	self.result_storage.erase(self.run_id)
+			self._set_status(JobStat.SUCCEED)
+			self._runnable._manage_run_success(0)
 			# TODO extract in original path
 			return e
 		except self._missing_exception:
 			self._write_log('No result found for job %s' % self.run_id)
+			self._set_status(JobStat.FAILED)
+			self._runnable._manage_run_failed(1, 92)
 			raise
 
 	# clem 06/05/2016
 	def abort(self):
-		self.container.kill()
-		self.container.remove_container()
+		if self._runnable.breeze_stat != JobStat.DONE:
+			self._set_global_status(JobStat.ABORT)
+			try:
+				self.container.stop()
+			except Exception as e:
+				self._write_log('Stopping container failed : %s' % str(e))
+			try:
+				self.container.kill()
+			except Exception as e:
+				self._write_log('Killing container failed : %s' % str(e))
+			try:
+				self.container.remove_container()
+			except Exception as e:
+				self._write_log('Removing container failed : %s' % str(e))
+			self._set_status(JobStat.ABORTED)
+			self._runnable._manage_run_aborted(1, 95)
+			return True
+		return False
 
 	# clem 06/05/2016
 	def busy_waiting(self, *args):
+		if not self.container:
+			return False
 		while self.container.is_running and not self._runnable.aborting:
 			time.sleep(1)
+		return True
 
 	# clem 06/05/2016
 	def status(self): # TODO
-		return 'unknown'
+		return self._status
 
 	# clem 06/05/2016
 	def job_is_done(self):
@@ -241,7 +325,10 @@ class DockerInterface(ComputeInterface):
 		self._write_log('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
 		cont.delta_display))
 		if cont.status.ExitCode > 0:
-			self._write_log('Failure (container won\'t be deleted) ! Run log :\n%s' % log)
+			self._set_status(JobStat.FAILED)
+			self._runnable._manage_run_failed(1, cont.status.ExitCode)
+			self._set_global_status(JobStat.FAILED)
+			self._write_log('Failure (container will not be deleted) ! Run log :\n%s' % log)
 		else:
 			self._write_log('Success !')
 			# filter the end of the log to match it to a specific pattern, to ensure no unexpected event
@@ -258,10 +345,16 @@ class DockerInterface(ComputeInterface):
 			self.get_results() #
 
 
+__target_list = dict()
+
+
 # clem 04/05/2016
 def initiator(compute_target, *args):
 	assert isinstance(compute_target, ComputeTarget)
-	return DockerInterface(compute_target)
+	key = compute_target.runnable.id
+	if key not in __target_list.keys():
+		__target_list.update({key: DockerInterface(compute_target)})
+	return __target_list[key]
 
 
 # clem 15/03/2016
