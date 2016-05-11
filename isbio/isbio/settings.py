@@ -98,9 +98,9 @@ PID = os.getpid()
 MAINTENANCE = False
 USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 USUAL_LOG_FORMAT = \
-	'%(asctime)s,%(msecs)03d  P%(process)05d %(levelname)-8s %(lineno)04d:%(module)-14s %(funcName)-25s %(message)s'
+	'%(asctime)s,%(msecs)03d  P%(process)05d %(levelname)-8s %(lineno)04d:%(module)-20s %(funcName)-25s %(message)s'
 USUAL_LOG_FORMAT_DESCRIPTOR =\
-	'DATE       TIME,milisec  PID   LEVEL     LINE:MODULE         FUNCTION                  MESSAGE'
+	'DATE       TIME,milisec  PID   LEVEL     LINE:MODULE               FUNCTION                  MESSAGE'
 DB_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FOLDER = '/var/log/breeze/'
 # log_fname = 'breeze_%s.log' % datetime.now().strftime("%Y-%m-%d_%H-%M-%S%z")
