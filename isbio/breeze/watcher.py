@@ -1,7 +1,5 @@
 import django.db
-import os
-from threading import Thread
-from utils import console_print as cp
+
 from breeze.models import Report, Jobs, JobStat
 import drmaa
 from utils import *
@@ -12,8 +10,11 @@ if settings.ENABLE_DATADOG:
 	from datadog import statsd
 
 # import time
+# from utils import console_print as cp
 # from exceptions import Exception
 # import logging
+# import os
+# from threading import Thread
 # logger = logging.getLogger(__name__)
 DB_REFRESH = settings.WATCHER_DB_REFRESH
 PROC_REFRESH = settings.WATCHER_PROC_REFRESH
@@ -23,11 +24,11 @@ if settings.HOST_NAME.startswith('breeze'):
 	proc_lst = dict()
 
 
-def console_print(text, dbitem=None):
-	sup = ''
-	if dbitem is not None:
-		sup = '%s%s ' % (dbitem.instance_type[0], dbitem.id)
-	cp("PID%s : %s" % (os.getpid(), sup + text), settings.CONSOLE_DATE_F)
+# def console_print(text, dbitem=None):
+# 	sup = ''
+# 	if dbitem is not None:
+# 		sup = '%s%s ' % (dbitem.instance_type[0], dbitem.id)
+# 	cp("PID%s : %s" % (os.getpid(), sup + text), settings.CONSOLE_DATE_F)
 
 
 def with_drmaa(func):
@@ -78,10 +79,11 @@ def refresh_db():
 	lst_j = Jobs.objects.f.get_active()
 	for item in lst_r:
 		if item.id not in proc_lst.keys():
-			get_logger().debug('%s%s' % item.short_id + ' : found report active but not monitored : %s, %s' % (item.name, item.status))
+			item.log.debug('found active report but not monitored : %s, %s' % (item.name, item.status))
 			_reattach_the_job(item)
 	for item in lst_j:
 		if item.id not in proc_lst.keys():
+			item.log.debug('found active job but not monitored : %s, %s' % (item.name, item.status))
 			_reattach_the_job(item)
 
 
@@ -92,7 +94,7 @@ def end_tracking(proc_item): # proc_item):
 	"""
 	# TODO check that
 	# proc_item.db_item.breeze_stat = JobStat.DONE
-	get_logger().debug('%s%s : ending tracking' % proc_item.db_item.short_id)
+	proc_item.db_item.log.debug('ending tracking')
 	a = proc_item.db_item.is_r_successful
 	# proc_item.process.terminate()
 	del proc_lst[proc_item.db_item.id]
@@ -117,15 +119,15 @@ def refresh_proc():
 			if not proc.is_alive: # process finished
 				exit_c = 0
 				end_tracking(proc_item)
-				msg = '%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,))
+				msg = 'waiting process ended with code %s' % exit_c
 				if exit_c != 0:
-					get_logger().error(msg)
+					dbitem.log.error(msg)
 					# drmaa waiter failed on first wait run
 					dbitem.breeze_stat = JobStat.FAILED
 					# relunch wait to check out
 					_reattach_the_job(dbitem)
 				else:
-					get_logger().debug(msg)
+					dbitem.log.debug(msg)
 				# else : clean exit, success assessment code is managed by waiter
 			else:
 				refresh_qstat(proc_item)
@@ -140,25 +142,24 @@ def refresh_qstat(proc_item):
 	:param proc_item: a ProcItem object
 	:type proc_item: ProcItem
 	"""
-	# from qstat import Qstat
 	assert isinstance(proc_item, ProcItem)
 	dbitem = proc_item.db_item
-	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
-	log = get_logger()
+	assert isinstance(dbitem, (Report, Jobs))
 
 	status = None
 	if not dbitem.is_sgeid_empty:
 		if not dbitem.is_done:
 			try:
 				status = dbitem.compute_target.status()
-				# log.debug('%s%s : qstat says %s' % (dbitem.short_id + (status,)) )
 			except NoSuchJob as e:
-				log.warning('%s%s : qstat InvalidJobException (%s)' % (dbitem.short_id + (e,)))
+				dbitem.log.warning('qstat InvalidJobException (%s)' % (e,))
 				end_tracking(proc_item)
-			if status is not None and status != dbitem.status and not dbitem.aborting:
+			# if the status has changed and is not consistent with one from the object
+			if status is not None and status != dbitem._status and not dbitem.aborting:
+				print 'PLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOP'
 				dbitem.breeze_stat = status
 	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
-		log.warning('%s%s : SgeId timeout !' % dbitem.short_id)
+		dbitem.log.warning('SgeId timeout !')
 		end_tracking(proc_item)
 		dbitem.re_submit_to_cluster()
 
@@ -177,11 +178,11 @@ def _reattach_the_job(dbitem):
 		p.start()
 		proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
-		log.debug('%s%s : reattaching job.waiter in tID%s' % (dbitem.short_id + (p.ident,)))
+		dbitem.log.debug('reattaching job.waiter in tID%s' % p.ident)
 		if statsd:
 			statsd.increment('python.breeze.running_jobs')
 	except Exception as e:
-		log.exception('%s%s : unhandled exception : %s' % (dbitem.short_id + (e,)))
+		dbitem.log.exception('unhandled exception : %s' % e)
 		return False
 
 
@@ -199,11 +200,11 @@ def _spawn_the_job(dbitem):
 			# proc_lst.update({ dbitem.id: (p, dbitem) })
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
-			log.debug('%s%s : spawning job.run in PID%s' % (dbitem.short_id + (p.ident,)))
+			log.debug('%s%s : spawning job.run in PID%s' % (dbitem.short_id_tuple + (p.ident,)))
 			if statsd:
 				statsd.increment('python.breeze.running_jobs')
 		except Exception as e:
-			log.exception('%s%s : unhandled exception : %s' % (dbitem.short_id + (e,)))
+			log.exception('%s%s : unhandled exception : %s' % (dbitem.short_id_tuple + (e,)))
 			return False
 	else:
 		# abort_sub(ProcItem(None, dbitem), s)
