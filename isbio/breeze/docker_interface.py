@@ -1,6 +1,7 @@
 from compute_interface_module import * # has os, abc, function_name
 from docker_client import *
 from utils import password_from_file, is_from_cli, get_file_md5, get_free_port # , new_thread
+import copy
 
 __version__ = '0.2'
 __author__ = 'clem'
@@ -18,7 +19,7 @@ class DockerInterface(ComputeInterface):
 	proc = None
 	client = None
 	_lock = None
-	label = ''
+	_label = ''
 	my_volume = DockerVolume('/home/breeze/data/', '/breeze')
 	my_run = None
 	container = None
@@ -67,18 +68,18 @@ class DockerInterface(ComputeInterface):
 		self.DOCKER_LOCAL_DAEMON_URL = 'tcp://%s:%s' % self.DOCKER_LOCAL_BIND_ADDR
 		self.SSH_CMD = ['ssh', '-CfNnL', '%s:%s:%s' % (self.DOCKER_LOCAL_PORT, self.DOCKER_REMOTE_HOST,
 		self.DOCKER_REMOTE_PORT), self.SSH_HOST]
-		self.label = compute_target.tunnel_host[0:2]
+		self._label = compute_target.tunnel_host[0:2]
 
 		res = False
 		if not self._test_connection(self.DOCKER_LOCAL_BIND_ADDR):
-			self._write_log('No connection to daemon, trying ssh tunnel')
+			self.log.debug('No connection to daemon, trying ssh tunnel')
 			self._get_ssh()
 			if self._test_connection(self.DOCKER_LOCAL_BIND_ADDR):
 				res = self._connect()
 		else:
 			res = self._connect()
 		if not res:
-			self._write_log('FAILURE connecting to docker daemon, cannot proceed')
+			self.log.error('FAILURE connecting to docker daemon, cannot proceed')
 			self._set_status(JobStat.FAILED)
 			self._runnable._manage_run_failed(1, 99)
 			raise DaemonNotConnected
@@ -103,10 +104,10 @@ class DockerInterface(ComputeInterface):
 				pass
 		if len(lines) > 0:
 			if len(lines) == 1:
-				self._write_log('Found pre-existing active ssh tunnel. Trying to reuse it...')
+				self.log.debug('Found pre-existing active ssh tunnel, gonna re-use it')
 				return int(lines[0])
 			else:
-				self._write_log('Found %s active ssh tunnels, killing them all...' % len(lines))
+				self.log.warning('Found %s active ssh tunnels, killing them all...' % len(lines))
 				subprocess.Popen('killall ssh && killall ssh', shell=True, stdout=subprocess.PIPE)
 		return int(get_free_port())
 
@@ -117,16 +118,16 @@ class DockerInterface(ComputeInterface):
 		s = socket.socket() # socket.AF_INET, socket.SOCK_STREAM
 		try:
 			s.settimeout(2)
-			self._write_log('testing connection to %s Tout: %s sec' % (str(target), s.gettimeout()))
+			self.log.debug('testing connection to %s Tout: %s sec' % (str(target), s.gettimeout()))
 			s.connect(target)
-			self._write_log('success')
+			self.log.debug('success')
 			return True
 		except socket.timeout:
-			self._write_log('connect %s: Time-out' % str(target))
+			self.log.exception('connect %s: Time-out' % str(target))
 		except socket.error as e:
-			self._write_log('connect %s: %s' % (str(target), e[1]))
+			self.log.exception('connect %s: %s' % (str(target), e[1]))
 		except Exception as e:
-			self._write_log('connect %s' % str((type(e), e)))
+			self.log.error('connect %s' % str((type(e), e)))
 		finally:
 			s.close()
 
@@ -154,25 +155,27 @@ class DockerInterface(ComputeInterface):
 		else:
 			raise AttributeError('Cannot establish ssh tunnel since no ssh_host provided during init')
 
-	def _attach_event_manager(self, run=None):
-		if not run and self.my_run:
-				run = self.my_run
-		if run and isinstance(run, DockerRun):
-			run.event_listener = self._event_manager_wrapper()
+	def _attach_event_manager(self):
+		if self.my_run and isinstance(self.my_run, DockerRun):
+			self.my_run.event_listener = self._event_manager_wrapper()
 		return True
 
-	# clem 16/03/2016
-	def _write_log(self, txt):
-		if str(txt).strip():
-			if self.client:
-				label = '<docker%s>' % ('_' + self.label)
-			else:
-				label = '<docker%s ?>' % ('_' + self.label)
-			get_logger(level=2).debug(label + ' ' + str(txt))
+	# clem 11/05/2016
+	@property
+	def label(self):
+		return '<docker%s%s>' % ('_' + self._label, '' if self.client else ' ?')
 
-	def _run(self, run):
-		self.container = self.client.run(run)
-		self._write_log('Got %s' % repr(self.container))
+	# clem 11/05/2016
+	@property
+	def log(self):
+		log_obj = logging.LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
+		bridge = log_obj.process
+		log_obj.process = lambda msg, kwargs: bridge(self.label + ' ' + str(msg), kwargs)
+		return log_obj
+
+	def _run(self):
+		self.container = self.client.run(self.my_run)
+		self.log.debug('Got %s' % repr(self.container))
 		return self.container
 
 	def _event_manager_wrapper(self):
@@ -182,7 +185,7 @@ class DockerInterface(ComputeInterface):
 			if event.description in (DockerEventCategories.DIE, DockerEventCategories.KILL):
 				self.job_is_done()
 			elif event.description == DockerEventCategories.START:
-				self._write_log('%s started' % event.container.name)
+				self.log.debug('%s started' % event.container.name)
 				self._set_global_status(JobStat.RUNNING)
 
 		return my_event_manager
@@ -231,10 +234,10 @@ class DockerInterface(ComputeInterface):
 			b = self._job_storage.upload(self.run_id, output_filename)
 			if b:
 				os.remove(output_filename)
-				my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.my_volume)
+				self.my_run = DockerRun('fimm/r-light:latest', '/run.sh %s' % self.run_id, self.my_volume)
 				# self.my_run = my_run
-				self._attach_event_manager(my_run)
-				if self._run(my_run):
+				self._attach_event_manager()
+				if self._run():
 					self._runnable.sgeid = self.container.short_id
 					self._set_global_status(JobStat.SUBMITTED)
 					return True
@@ -277,7 +280,7 @@ class DockerInterface(ComputeInterface):
 			# TODO extract in original path
 			return e
 		except self._missing_exception:
-			self._write_log('No result found for job %s' % self.run_id)
+			self.log.error('No result found for job %s' % self.run_id)
 			self._set_status(JobStat.FAILED)
 			self._runnable._manage_run_failed(1, 92)
 			raise
@@ -289,15 +292,15 @@ class DockerInterface(ComputeInterface):
 			try:
 				self.container.stop()
 			except Exception as e:
-				self._write_log('Stopping container failed : %s' % str(e))
+				self.log.exception('Stopping container failed : %s' % str(e))
 			try:
 				self.container.kill()
 			except Exception as e:
-				self._write_log('Killing container failed : %s' % str(e))
+				self.log.exception('Killing container failed : %s' % str(e))
 			try:
 				self.container.remove_container()
 			except Exception as e:
-				self._write_log('Removing container failed : %s' % str(e))
+				self.log.exception('Removing container failed : %s' % str(e))
 			self._set_status(JobStat.ABORTED)
 			self._runnable._manage_run_aborted(1, 95)
 			return True
@@ -320,15 +323,15 @@ class DockerInterface(ComputeInterface):
 		cont = self.container
 		log = str(cont.logs)
 		assert isinstance(cont, DockerContainer)
-		self._write_log('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
+		self.log.info('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
 		cont.delta_display))
 		if cont.status.ExitCode > 0:
 			self._set_status(JobStat.FAILED)
 			self._runnable._manage_run_failed(1, cont.status.ExitCode)
 			self._set_global_status(JobStat.FAILED)
-			self._write_log('Failure (container will not be deleted) ! Run log :\n%s' % log)
+			self.log.warning('Failure (container will not be deleted) ! Run log :\n%s' % log)
 		else:
-			self._write_log('Success !')
+			self.log.info('Success !')
 			# filter the end of the log to match it to a specific pattern, to ensure no unexpected event
 			# happened
 			the_end = log.split('\n')[-6:-1] # copy the last 5 lines
@@ -336,7 +339,7 @@ class DockerInterface(ComputeInterface):
 				if the_end[k].startswith(v):
 					del the_end[k]
 			if the_end != self.NORMAL_ENDING:
-				self._write_log('It seems there was some errors, run log :\n%s\nEND OF RUN LOGS !! '
+				self.log.warning('It seems there was some errors, run log :\n%s\nEND OF RUN LOGS !! '
 								'##########################' % log)
 			if self.auto_remove:
 				cont.remove_container()
@@ -351,6 +354,7 @@ def initiator(compute_target, *args):
 	assert isinstance(compute_target, ComputeTarget)
 	key = compute_target.runnable.id
 	if key not in __target_list.keys():
+		print 'DockerInterface %s not found in cache, creating a new one...' % str(key)
 		__target_list.update({key: DockerInterface(compute_target)})
 	return __target_list[key]
 
@@ -368,10 +372,20 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 		'final': DockerRun('fimm/r-light:latest', '/run.sh', volumes['final']),
 	}
 
+	def _attach_event_manager(self, run):
+		if run and isinstance(run, DockerRun):
+			run.event_listener = self._event_manager_wrapper()
+		return run
+
 	def _attach_all_event_manager(self):
 		for name, run_object in self.runs.iteritems():
 			self.runs[name] = self._attach_event_manager(run_object)
 		return True
+
+	def _run(self, run):
+		self.container = self.client.run(run)
+		self.log.debug('Got %s' % repr(self.container))
+		return self.container
 
 	# clem 06/04/2016
 	def custom_run(self, name=''):
@@ -385,7 +399,7 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 		else:
 			run = self.runs.get(name, None)
 			if not run:
-				self._write_log('No run named "%s", running default one' % name)
+				self.log.debug('No run named "%s", running default one' % name)
 			self._run(run)
 
 	def self_test(self): # FIXME Obsolete
@@ -398,5 +412,5 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 		self.test(self.client.images_list[0].pretty_print)
 
 	def test(self, func, *args): # FIXME Obsolete
-		self._write_log('>>%s%s' % (func.im_func.func_name, args))
+		self.log.debug('>>%s%s' % (func.im_func.func_name, args))
 		return func(*args)
