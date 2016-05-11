@@ -691,7 +691,6 @@ def ajax_patients(request, which):
 			patient['description'] = patient_form.cleaned_data.get('description')
 			patient['organism'] = patient_form.cleaned_data.get('organism')
 			patient['sex'] = patient_form.cleaned_data.get('sex')
-			# print(type(patient_form.cleaned_data.get('birthdate')))
 			patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
 			rora.update_patient(patient)
 			return ('/dbviewer') # FIXME hardcoded url
@@ -737,7 +736,6 @@ def ajax_patients_new(request):
 			patient['description'] = patient_form.cleaned_data.get('description')
 			patient['organism'] = patient_form.cleaned_data.get('organism')
 			patient['sex'] = patient_form.cleaned_data.get('sex')
-			# print(type(patient_form.cleaned_data.get('birthdate')))
 			patient['birthdate'] = str(patient_form.cleaned_data.get('birthdate'))
 			rora.insert_row("patients", patient)
 			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
@@ -776,7 +774,6 @@ def screen_data(request, which):
 			screen['disease_stage'] = screen_form.cleaned_data.get('disease_stage')
 			screen['read_out'] = screen_form.cleaned_data.get('read_out')
 			screen['createdate'] = str(screen_form.cleaned_data.get('createdate'))
-			# print(screen)
 			rora.update_screen(screen)
 			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
 		else:
@@ -784,7 +781,6 @@ def screen_data(request, which):
 
 	else:
 		data = rora.screen_data(which)
-		# print(data[22])
 		if isinstance(data[2], rpy2.rinterface.NACharacterType):
 			data[2] = ''
 		screen_info = breezeForms.ScreenInfo(initial={
@@ -794,7 +790,6 @@ def screen_data(request, which):
 				int(data[13]), 'plate_count': data[14], 'dg': int(data[15]), 'disease_stage': int(data[16]), 'read_out':
 				int(data[21]), 'createdate': data[22].split()[0]
 		})
-	# print(screen_info)
 	return render_to_response('forms/basic_form_dialog.html', RequestContext(request, {
 		'form': screen_info,
 		'action': '/screen-data/0',
@@ -836,14 +831,11 @@ def add_to_cart(request, sid=None):
 	try:
 
 		# scr = Rscripts.objects.get(id = sid)
-		# print(scr.author)
 
 		items = CartInfo.objects.get(product=sid, script_buyer=request.user)
 		return HttpResponse(simplejson.dumps({"exist": "Yes"}), mimetype='application/json')
 	except CartInfo.DoesNotExist:
-		# print("shit")
 		scripts = Rscripts.objects.get(id=sid)
-		# print(scripts)
 		mycart = CartInfo()
 		mycart.script_buyer = request.user
 		mycart.product = scripts
@@ -920,7 +912,6 @@ def group_name(request):
 			group['group_name'] = screen_group.cleaned_data.get('name')
 			group['group_user'] = request.user.username
 			table = 'groups'
-			# print(request.user.username)
 			feedback = rora.insert_row(table=table, data=group)
 			# rora.update_screen(screen)
 			return HttpResponseRedirect('/dbviewer') # FIXME hardcoded url
@@ -951,8 +942,6 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 	files = None
 	title = None
 	report = None
-
-	# print rtype, iname, iid
 
 	if mod == 'reload':
 		try:
@@ -1008,21 +997,8 @@ def report_overview(request, rtype, iname=None, iid=None, mod=None):
 			# lunches the script generation in a separate thread in order to avoid long blocking operation
 			# thread.start_new_thread(rshell.build_report, (overview, request, property_form, tags))
 			rshell.build_report(overview, request, property_form, tags)
-			# print request.POST['shared']
-			"""
-			for tag in tags:
-				secID = 'Section_dbID_' + str(tag.id)
-				if secID in request.POST and request.POST[secID] == '1':
-					# update the statistics table
-					print("hello")
-
-
-				else:
-					pass
-			"""
 			return HttpResponse(True)
 		else:
-			#  print('Has posted, not valid')
 			for x in tags_data_list:
 				x['value'] = request.POST.get('Section_dbID_' + str(x['id']))
 				if not 'size' in x:
@@ -2364,7 +2340,7 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 			response['Content-Disposition'] = 'filename=' + a_file
 		return response
 	except IOError:
-		print 'IOError', path_to_file
+		logger.exception('IOError %s' % path_to_file)
 		return aux.fail_with404(request, 'File not found in expected location')
 
 
@@ -2664,7 +2640,6 @@ def update_user_info_dialog(request):
 				user_details = UserProfile()
 				user_details.user = user_info
 				user_details.institute_info = Institute.objects.get(id=request.POST['institute'])
-				# print(personal_form.cleaned_data.get('institute', None))
 				user_info.save()
 				user_details.save()
 			return HttpResponseRedirect('/home')  # FIXME hardcoded url
@@ -2836,7 +2811,6 @@ def proxy_to(request, path, target_url, query_s=''):
 
 
 def custom_404_view(request, message=None):
-	# print message
 	if type(message) != list:
 		message = [str(message)]
 	t = loader.get_template('404.html')
@@ -3081,7 +3055,6 @@ def job_list(request):
 				jt.name: new_l
 			})
 	return HttpResponse(simplejson.dumps(resources) + '\n\n' + simplejson.dumps(resources2), mimetype='application/json')
-	# print last100
 
 
 # clem 06/05/2016
