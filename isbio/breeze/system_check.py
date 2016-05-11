@@ -19,7 +19,7 @@ SKIP_SYSTEM_CHECK = False
 
 if DEBUG:
 	# quick fix to solve PyCharm Django console environment issue
-	from breeze.process import MyProcess as Process
+	from breeze.process import Process
 else:
 	from multiprocessing import Process
 

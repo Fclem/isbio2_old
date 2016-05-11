@@ -18,7 +18,7 @@ except OSError:
 	ORIGINAL_DIR = None
 
 
-class MyProcess(Process, object):
+class Process(Process):
 	def _bootstrap(self):
 		from multiprocessing import util
 		global _current_process
