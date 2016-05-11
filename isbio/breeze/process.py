@@ -1,16 +1,8 @@
-__author__ = 'clem'
-
-#
-# Imports
-#
 from multiprocessing import Process
 import os
 import sys
 import itertools
-
-#
-#
-#
+__author__ = 'clem'
 
 try:
 	ORIGINAL_DIR = os.path.abspath(os.getcwd())
@@ -18,7 +10,7 @@ except OSError:
 	ORIGINAL_DIR = None
 
 
-class Process(Process):
+class MyProcess(Process, object):
 	def _bootstrap(self):
 		from multiprocessing import util
 		global _current_process
