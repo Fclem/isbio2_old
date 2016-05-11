@@ -7,6 +7,7 @@ import drmaa
 from utils import *
 from b_exceptions import *
 from django.conf import settings
+from django.db.models import ObjectDoesNotExist
 if settings.ENABLE_DATADOG:
 	from datadog import statsd
 
@@ -54,11 +55,11 @@ class ProcItem(object):
 		assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 		self.process = proc
 		self._db_item_id = dbitem.id
-		self._inst_type = dbitem.instance_of
+		self.inst_type = dbitem.instance_of
 
 	@property
 	def db_item(self):
-		return self._inst_type.objects.get(pk=self._db_item_id)
+		return self.inst_type.objects.get(pk=self._db_item_id)
 
 
 def refresh_db():
@@ -108,25 +109,28 @@ def refresh_proc():
 	for each in proc_lst.keys():
 		proc_item = proc_lst[each]
 		assert isinstance(proc_item, ProcItem)
-		dbitem = proc_item.db_item
-		proc = proc_item.process
+		try:
+			dbitem = proc_item.db_item
+			proc = proc_item.process
 
-		# if not proc.is_alive(): # process finished
-		if not proc.is_alive: # process finished
-			exit_c = 0
-			end_tracking(proc_item)
-			msg = '%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,))
-			if exit_c != 0:
-				get_logger().error(msg)
-				# drmaa waiter failed on first wait run
-				dbitem.breeze_stat = JobStat.FAILED
-				# relunch wait to check out
-				_reattach_the_job(dbitem)
+			# if not proc.is_alive(): # process finished
+			if not proc.is_alive: # process finished
+				exit_c = 0
+				end_tracking(proc_item)
+				msg = '%s%s : waiting process ended with code %s' % (dbitem.short_id + (exit_c,))
+				if exit_c != 0:
+					get_logger().error(msg)
+					# drmaa waiter failed on first wait run
+					dbitem.breeze_stat = JobStat.FAILED
+					# relunch wait to check out
+					_reattach_the_job(dbitem)
+				else:
+					get_logger().debug(msg)
+				# else : clean exit, success assessment code is managed by waiter
 			else:
-				get_logger().debug(msg)
-			# else : clean exit, success assessment code is managed by waiter
-		else:
-			refresh_qstat(proc_item)
+				refresh_qstat(proc_item)
+		except proc_item.inst_type.DoesNotExist:
+			del proc_lst[each]
 
 
 def refresh_qstat(proc_item):
