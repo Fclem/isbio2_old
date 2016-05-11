@@ -549,6 +549,7 @@ def pp(data, unfold_objects=False, return_output=False):
 def new_thread(func):
 	"""
 	Wrapper to run functions in a new Thread
+
 	:type func:
 	:rtype:
 	"""
