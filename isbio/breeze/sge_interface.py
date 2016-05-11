@@ -67,11 +67,7 @@ class SGEInterface(ComputeInterface):
 
 	# clem 16/03/2016
 	def _write_log(self, txt):
-		if str(txt).strip():
-			if self.client:
-				print '<sge%s>', txt
-			else:
-				print '<sge%s ?>', txt
+		self.log.debug(txt)
 
 	def send_job(self): # TODO move it all here
 		# TODO fully switch to qsub, to get finally totally rid of DRMAA F*****G SHIT
@@ -86,7 +82,7 @@ class SGEInterface(ComputeInterface):
 
 	# clem 09/05/2016
 	def job_is_done(self):
-		pass
+		self.log.debug('done')
 
 	# clem 06/05/2016
 	def abort(self):
