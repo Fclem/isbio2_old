@@ -289,18 +289,19 @@ class DockerInterface(ComputeInterface):
 	def abort(self):
 		if self._runnable.breeze_stat != JobStat.DONE:
 			self._set_global_status(JobStat.ABORT)
-			try:
-				self.container.stop()
-			except Exception as e:
-				self.log.exception('Stopping container failed : %s' % str(e))
-			try:
-				self.container.kill()
-			except Exception as e:
-				self.log.exception('Killing container failed : %s' % str(e))
-			try:
-				self.container.remove_container()
-			except Exception as e:
-				self.log.exception('Removing container failed : %s' % str(e))
+			if self.container:
+				try:
+					self.container.stop()
+				except Exception as e:
+					self.log.exception('Stopping container failed : %s' % str(e))
+				try:
+					self.container.kill()
+				except Exception as e:
+					self.log.exception('Killing container failed : %s' % str(e))
+				try:
+					self.container.remove_container()
+				except Exception as e:
+					self.log.exception('Removing container failed : %s' % str(e))
 			self._set_status(JobStat.ABORTED)
 			self._runnable._manage_run_aborted(1, 95)
 			return True
