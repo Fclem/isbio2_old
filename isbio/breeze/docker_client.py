@@ -146,6 +146,12 @@ class DockerRepo:
 		self.email = email
 		self.url = url
 
+	def __hash__(self):
+		return (self.login + self.email + self.url).__hash__()
+
+	def __str__(self):
+		return '<DockerRepo %s>' % self.__hash__()
+
 
 # clem 09/03/2016
 class DockerImage:
@@ -1051,6 +1057,7 @@ class DockerClient:
 	def __error_managed(func):
 		"""
 		Error management wrapper for _run and _start
+
 		:type func: function
 		:rtype: function
 		"""
@@ -1087,6 +1094,7 @@ class DockerClient:
 	def _run(self, run):
 		"""
 		TBD
+
 		:type run: DockerRun
 		:rtype: DockerContainer
 		"""
@@ -1784,8 +1792,9 @@ def get_docker_client(daemon_url, repo=None, auto_connect=True):
 	:return: The client
 	:rtype: DockerClient
 	"""
-	key = (daemon_url, repo)
+	key = ('%s%s' % ( daemon_url, repo)).__hash__()
 	if key not in __client_list.keys():
+		print __client_list
 		print 'DockerClient %s not found in cache, creating a new one...' % str(key)
 		__client_list.update({ key: DockerClient(daemon_url, repo, auto_connect)})
 	return __client_list[key]
