@@ -13,13 +13,12 @@ from os.path import isfile # , isdir, islink, exists, getsize
 from django.conf import settings
 from django.db import models
 import system_check
+import importlib
 # import sys
 # from pandas.tslib import re_compile
 # from os import symlink
 # import os.path
 # from operator import isCallable
-
-_dyn_modules = dict()
 
 system_check.db_conn.inline_check()
 
@@ -310,6 +309,7 @@ class FolderObj(object):
 		# open home's folder for others
 		# st = os.stat(self.home_folder_full_path)
 		# os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
+		pass
 
 	def add_file(self, f):
 		"""
@@ -1235,7 +1235,6 @@ class ComputeTarget(FolderObj, models.Model):
 	@property
 	def storage_module(self):
 		if not self._storage_module:
-			import importlib
 			self._storage_module = importlib.import_module('breeze.%s' % self.target_storage_engine)
 		return self._storage_module
 
@@ -1243,12 +1242,9 @@ class ComputeTarget(FolderObj, models.Model):
 	@property
 	def compute_module(self):
 		if not self._compute_module:
-			if self.target_engine not in _dyn_modules.keys():
-				import importlib
-				_dyn_modules.update({
-					self.target_engine: importlib.import_module('breeze.%s_interface' % self.target_engine) })
-				# self._compute_module = importlib.import_module('breeze.%s_interface' % self.target_engine)
-		return _dyn_modules[self.target_engine]
+			mod_name = 'breeze.%s_interface' % self.target_engine
+			self._compute_module = importlib.import_module(mod_name)
+		return self._compute_module
 
 	# clem 04/05/2016
 	@property
@@ -1267,6 +1263,10 @@ class ComputeTarget(FolderObj, models.Model):
 		:rtype: Runnable
 		"""
 		return self._runnable
+
+	# clem 11/05/2016
+	def _download_ignore(self, *args):
+		pass
 
 	class Meta(FolderObj.Meta): # TODO check if inheritance is required here
 		abstract = False
@@ -2089,7 +2089,7 @@ class Runnable(FolderObj, models.Model):
 			# django.db.close_connection()
 			self.breeze_stat = JobStat.PREPARE_RUN
 		except Exception as e:
-			log.exception('%s%s : ' % self.short_id + 'pre-run error %s (process continues)' % e)
+			log.exception('%s%s : ' % self.short_id_tuple + 'pre-run error %s (process continues)' % e)
 
 		try:
 			s = drmaa.Session()
@@ -2114,7 +2114,7 @@ class Runnable(FolderObj, models.Model):
 			import copy
 			if not self.aborting:
 				self.sgeid = copy.deepcopy(s.runJob(jt))
-				log.debug('%s%s : ' % self.short_id + 'returned sge_id "%s"' % self.sgeid)
+				log.debug('%s%s : ' % self.short_id_tuple + 'returned sge_id "%s"' % self.sgeid)
 				self.breeze_stat = JobStat.SUBMITTED
 			# waiting for the job to end
 			self.waiter(s, True)
@@ -2125,14 +2125,14 @@ class Runnable(FolderObj, models.Model):
 
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				Exception) as e:
-			log.error('%s%s : ' % self.short_id + 'drmaa submit failed : %s' % e)
+			log.error('%s%s : ' % self.short_id_tuple + 'drmaa submit failed : %s' % e)
 			self._manage_run_failed(None, '')
 			if s is not None:
 				s.exit()
 			raise e
 			return 1
 
-		log.debug('%s%s : ' % self.short_id + 'drmaa submit ended successfully !')
+		log.debug('%s%s : ' % self.short_id_tuple + 'drmaa submit ended successfully !')
 		return 0
 
 	# FIXME LEGACY INTERFACE ONLY
@@ -2191,15 +2191,15 @@ class Runnable(FolderObj, models.Model):
 			self.progress = 100
 			if exit_code == 0:  # normal termination
 				self.breeze_stat = JobStat.DONE
-				log.info('%s%s : ' % self.short_id + 'sge job finished !')
+				log.info('%s%s : ' % self.short_id_tuple + 'sge job finished !')
 				if not self.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
-					get_logger().info('%s%s : ' % self.short_id + 'exit code %s, SGE success !' % exit_code)
+					get_logger().info('%s%s : ' % self.short_id_tuple + 'exit code %s, SGE success !' % exit_code)
 					self._manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
 				else: # FULL SUCCESS
 					self._manage_run_success(ret_val)
 			else: # abnormal termination
 				if not aborted: # SGE FAILED
-					get_logger().info('%s%s : ' % self.short_id + 'exit code %s, SGE FAILED !' % exit_code)
+					get_logger().info('%s%s : ' % self.short_id_tuple + 'exit code %s, SGE FAILED !' % exit_code)
 					self._manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
 				else: # USER ABORTED
 					self._manage_run_aborted(ret_val, exit_code)
@@ -2207,7 +2207,7 @@ class Runnable(FolderObj, models.Model):
 			return exit_code
 		except Exception as e:
 			# FIXME this is SHITTY
-			log.error('%s%s : ' % self.short_id + ' while waiting : %s' % e)
+			log.error('%s%s : ' % self.short_id_tuple + ' while waiting : %s' % e)
 			# if e.message == 'code 24: no usage information was returned for the completed job' or self.aborting:
 			#	self.__manage_run_failed(None, exit_code)
 			#	log.info('%s%s : ' % self.short_id + ' FAIL CODE 24 (FIXME) : %s' % e)
@@ -2242,7 +2242,7 @@ class Runnable(FolderObj, models.Model):
 		log = get_logger()
 		self.__auto_json_dump(ret_val, self._test_file)
 		self.breeze_stat = JobStat.SUCCEED
-		log.info('%s%s : ' % self.short_id + ' SUCCESS !')
+		log.info('%s%s : ' % self.short_id_tuple + ' SUCCESS !')
 
 		self.trigger_run_success(ret_val)
 
@@ -2258,7 +2258,7 @@ class Runnable(FolderObj, models.Model):
 		log = get_logger()
 		# self.__auto_json_dump(ret_val, ## )
 		self.breeze_stat = JobStat.ABORTED
-		log.info('%s%s : ' % self.short_id + 'exit code %s, user aborted' % exit_code)
+		log.info('%s%s : ' % self.short_id_tuple + 'exit code %s, user aborted' % exit_code)
 		self.trigger_run_user_aborted(ret_val, exit_code)
 
 	# Clem 11/09/2015  # FIXME obsolete
@@ -2274,10 +2274,10 @@ class Runnable(FolderObj, models.Model):
 
 		if drmaa_waiting is not None:
 			if drmaa_waiting:
-				log.info('%s%s : ' % self.short_id + 'Also R process failed ! (%s)' % type)
+				log.info('%s%s : ' % self.short_id_tuple + 'Also R process failed ! (%s)' % type)
 				# TODO is R failure on 1st level wait
 			else:
-				log.info('%s%s : ' % self.short_id + 'Also R process failed OR user abort ! (%s)' % type)
+				log.info('%s%s : ' % self.short_id_tuple + 'Also R process failed OR user abort ! (%s)' % type)
 				return self._manage_run_aborted(ret_val, exit_code)
 				# TODO or 2nd level wait either R failure or user abort (for ex when job was aborted before it started)
 		self.breeze_stat = JobStat.FAILED
@@ -2339,7 +2339,7 @@ class Runnable(FolderObj, models.Model):
 
 		total = '%s%s%s' % (l1, ', and ' if l1 != '' and l2 != '' else '', l2)
 		if total != '':
-			get_logger().debug('%s%s : %s %s%%' % (self.short_id + (total, progress)))
+			get_logger().debug('%s%s : %s %s%%' % (self.short_id_tuple + (total, progress)))
 
 		self._stat_text = text
 
@@ -2370,7 +2370,7 @@ class Runnable(FolderObj, models.Model):
 			from datetime import timedelta
 			t_delta = timezone.now() - self.created
 			get_logger().debug(
-				'%s%s : sgeid has been empty for %s sec' % (self.short_id + (t_delta.seconds,)))
+				'%s%s : sgeid has been empty for %s sec' % (self.short_id_tuple + (t_delta.seconds,)))
 			assert isinstance(t_delta, timedelta) # code assist only
 			return t_delta > timedelta(seconds=settings.NO_SGEID_EXPIRY)
 		return False
@@ -2386,7 +2386,7 @@ class Runnable(FolderObj, models.Model):
 			import copy
 			import os
 			from django.core.files import base
-			get_logger().info('%s%s : resetting job status' % self.short_id)
+			get_logger().info('%s%s : resetting job status' % self.short_id_tuple)
 			new_name = unicode(self.name) + u'_re'
 			old_path = self.home_folder_full_path
 			with open(self._r_exec_path.path) as f:
@@ -2396,7 +2396,7 @@ class Runnable(FolderObj, models.Model):
 
 			content = "setwd('%s')\n" % self.home_folder_full_path[:-1] + ''.join(r_code[1:])
 			os.rename(old_path, self.home_folder_full_path)
-			get_logger().debug('%s%s : renamed to %s' % (self.short_id + (self.home_folder_full_path,)))
+			get_logger().debug('%s%s : renamed to %s' % (self.short_id_tuple + (self.home_folder_full_path,)))
 			self._rexec.save(self.file_name(self.R_FILE_NAME), base.ContentFile(content))
 			self._doc_ml.name = self.home_folder_full_path + os.path.basename(str(self._doc_ml.name))
 
@@ -2492,12 +2492,34 @@ class Runnable(FolderObj, models.Model):
 		return m.hexdigest()
 
 	@property
-	def short_id(self):
+	def short_id_tuple(self):
+		""" one letter : r or j followed by the instance id from db
+		i.e. r3569 j7823 ...
+
+		:return: a short version of this instance id
+		:rtype: (str, int)
+		"""
 		return self.instance_type[0], self.id
+
+	# clem 11/05/2016
+	@property
+	def short_id(self):
+		return '%s%s' % self.short_id_tuple
 
 	@property
 	def text_id(self):
-		return u'%s%s %s' % (self.short_id + (unicode(self.name),))
+		return u'%s%s %s' % (self.short_id_tuple + (unicode(self.name),))
+
+	# clem 11/05/2016
+	@property
+	def log(self):
+		return self.log_custom(1)
+
+	# clem 11/05/2016
+	def log_custom(self, level=0):
+		log_obj = logging.LoggerAdapter(get_logger(level=level + 1), dict())
+		log_obj.process = lambda msg, kwargs: ('%s : %s' % (self.short_id, msg), kwargs)
+		return log_obj
 
 	def __unicode__(self): # Python 3: def __str__(self):
 		return u'%s' % self.text_id
