@@ -1,4 +1,4 @@
-from utils import function_name, gen_file_from_template, get_logger
+from utils import function_name, gen_file_from_template, get_logger, logging
 from breeze.models import JobStat, Runnable, ComputeTarget
 import os
 import abc
@@ -30,9 +30,13 @@ class ComputeInterface:
 
 		self._missing_exception = self.storage_backend.MissingResException
 
-	@abc.abstractmethod
-	def _write_log(self, txt):
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+	# clem 11/05/2016
+	@property
+	def log(self):
+		log_obj = logging.LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
+		bridge = log_obj.process
+		log_obj.process = lambda msg, kwargs: bridge('<%s> %s' % (self._compute_target, str(msg)), kwargs)
+		return log_obj
 
 	@abc.abstractmethod
 	def send_job(self):
