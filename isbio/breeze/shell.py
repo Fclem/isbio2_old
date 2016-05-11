@@ -401,8 +401,6 @@ def build_report(report_data, request_data, report_property, sections):
 	target = ComputeTarget.objects.get(pk=request_data.POST.get('target'))
 	assert target.id in rt.target_id_list # TODO make a validator in the form section
 
-	print 'target is', request_data.POST.get('target')
-
 	# create initial instance so that we can use its db id
 	dbitem = Report(
 		_type=rt,
