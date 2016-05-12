@@ -1,7 +1,7 @@
 from compute_interface_module import * # has os, abc, function_name
 from docker_client import *
 from utils import password_from_file, is_from_cli, get_file_md5, get_free_port # , new_thread
-import copy
+a_lock = Lock()
 
 __version__ = '0.2'
 __author__ = 'clem'
@@ -22,7 +22,7 @@ class DockerInterface(ComputeInterface):
 	_label = ''
 	my_volume = DockerVolume('/home/breeze/data/', '/breeze')
 	my_run = None
-	container = None
+	_container = None
 	cat = DockerEventCategories
 
 	# DOCKER HUB RELATED CONF
@@ -81,7 +81,7 @@ class DockerInterface(ComputeInterface):
 		if not res:
 			self.log.error('FAILURE connecting to docker daemon, cannot proceed')
 			self._set_status(JobStat.FAILED)
-			self._runnable._manage_run_failed(1, 99)
+			self._runnable.manage_run_failed(1, 99)
 			raise DaemonNotConnected
 
 	# clem 10/05/2016
@@ -173,8 +173,16 @@ class DockerInterface(ComputeInterface):
 		log_obj.process = lambda msg, kwargs: bridge(self.label + ' ' + str(msg), kwargs)
 		return log_obj
 
+	# clem 12/05/2016
+	@property
+	def container(self):
+		if not self._container and self.client and self._runnable.sgeid:
+			self._container = self.client.get_container(self._runnable.sgeid)
+			self.log.debug('Found container %s' % self._container.name)
+		return self._container
+
 	def _run(self):
-		self.container = self.client.run(self.my_run)
+		self._container = self.client.run(self.my_run)
 		self.log.debug('Got %s' % repr(self.container))
 		return self.container
 
@@ -244,7 +252,7 @@ class DockerInterface(ComputeInterface):
 		else:
 			print 'failed'
 		self._set_status(JobStat.FAILED)
-		self._runnable._manage_run_failed(1, 88)
+		self._runnable.manage_run_failed(1, 88)
 		return False
 
 	# clem 10/05/2016
@@ -276,13 +284,13 @@ class DockerInterface(ComputeInterface):
 			# if e:
 			# 	self.result_storage.erase(self.run_id)
 			self._set_status(JobStat.SUCCEED)
-			self._runnable._manage_run_success(0)
+			self._runnable.manage_run_success(0)
 			# TODO extract in original path
 			return e
 		except self._missing_exception:
 			self.log.error('No result found for job %s' % self.run_id)
 			self._set_status(JobStat.FAILED)
-			self._runnable._manage_run_failed(1, 92)
+			self._runnable.manage_run_failed(1, 92)
 			raise
 
 	# clem 06/05/2016
@@ -303,7 +311,7 @@ class DockerInterface(ComputeInterface):
 				except Exception as e:
 					self.log.exception('Removing container failed : %s' % str(e))
 			self._set_status(JobStat.ABORTED)
-			self._runnable._manage_run_aborted(1, 95)
+			self._runnable.manage_run_aborted(1, 95)
 			return True
 		return False
 
@@ -328,7 +336,7 @@ class DockerInterface(ComputeInterface):
 		cont.delta_display))
 		if cont.status.ExitCode > 0:
 			self._set_status(JobStat.FAILED)
-			self._runnable._manage_run_failed(1, cont.status.ExitCode)
+			self._runnable.manage_run_failed(1, cont.status.ExitCode)
 			self._set_global_status(JobStat.FAILED)
 			self.log.warning('Failure (container will not be deleted) ! Run log :\n%s' % log)
 		else:
@@ -351,29 +359,30 @@ __target_list = dict()
 
 
 # clem 04/05/2016
-def initiator(compute_target, *args):
+def initiator(compute_target, *_):
 	assert isinstance(compute_target, ComputeTarget)
 	key = compute_target.runnable.id
-	if key not in __target_list.keys():
-		print 'DockerInterface %s not found in cache, creating a new one...' % str(key)
-		__target_list.update({key: DockerInterface(compute_target)})
-	return __target_list[key]
+	with a_lock:
+		if key not in __target_list.keys():
+			print 'DockerInterface %s not found in cache, creating a new one...' % str(key)
+			__target_list.update({key: DockerInterface(compute_target)})
+		return __target_list[key]
 
 
 # clem 15/03/2016
 class DockerIfTest(DockerInterface): # TEST CLASS
 	volumes = {
-		'test' : DockerVolume('/home/breeze/data/', '/breeze', 'rw'),
-		'final': DockerVolume('/home/breeze/data/', '/breeze', 'rw')
+		'test'	: DockerVolume('/home/breeze/data/', '/breeze', 'rw'),
+		'final'	: DockerVolume('/home/breeze/data/', '/breeze', 'rw')
 	}
 	runs = {
-		'op'   : DockerRun('fimm/r-light:op', './run.sh', volumes['test']),
-		'rtest': DockerRun('fimm/r-security-blanket:new', './run.sh', volumes['test']),
-		'flat' : DockerRun('fimm/r-light:flat', '/breeze/run.sh', volumes['test']),
-		'final': DockerRun('fimm/r-light:latest', '/run.sh', volumes['final']),
+		'op'	: DockerRun('fimm/r-light:op', './run.sh', volumes['test']),
+		'rtest'	: DockerRun('fimm/r-security-blanket:new', './run.sh', volumes['test']),
+		'flat'	: DockerRun('fimm/r-light:flat', '/breeze/run.sh', volumes['test']),
+		'final'	: DockerRun('fimm/r-light:latest', '/run.sh', volumes['final']),
 	}
 
-	def _attach_event_manager(self, run):
+	def _attach_event_manager(self, run=None):
 		if run and isinstance(run, DockerRun):
 			run.event_listener = self._event_manager_wrapper()
 		return run
@@ -383,8 +392,8 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 			self.runs[name] = self._attach_event_manager(run_object)
 		return True
 
-	def _run(self, run):
-		self.container = self.client.run(run)
+	def _run(self, run=None):
+		self._container = self.client.run(run)
 		self.log.debug('Got %s' % repr(self.container))
 		return self.container
 
@@ -403,6 +412,7 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 				self.log.debug('No run named "%s", running default one' % name)
 			self._run(run)
 
+	# noinspection PyTypeChecker
 	def self_test(self): # FIXME Obsolete
 		self.test(self.client.get_container, '12')
 		self.test(self.client.get_container, '153565748415')
