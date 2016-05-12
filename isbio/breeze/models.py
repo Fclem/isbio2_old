@@ -2127,7 +2127,7 @@ class Runnable(FolderObj, models.Model):
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				Exception) as e:
 			log.error('%s%s : ' % self.short_id_tuple + 'drmaa submit failed : %s' % e)
-			self._manage_run_failed(None, '')
+			self.manage_run_failed(None, '')
 			if s is not None:
 				s.exit()
 			raise e
@@ -2195,15 +2195,15 @@ class Runnable(FolderObj, models.Model):
 				log.info('%s%s : ' % self.short_id_tuple + 'sge job finished !')
 				if not self.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
 					get_logger().info('%s%s : ' % self.short_id_tuple + 'exit code %s, SGE success !' % exit_code)
-					self._manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
+					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
 				else: # FULL SUCCESS
-					self._manage_run_success(ret_val)
+					self.manage_run_success(ret_val)
 			else: # abnormal termination
 				if not aborted: # SGE FAILED
 					get_logger().info('%s%s : ' % self.short_id_tuple + 'exit code %s, SGE FAILED !' % exit_code)
-					self._manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
+					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
 				else: # USER ABORTED
-					self._manage_run_aborted(ret_val, exit_code)
+					self.manage_run_aborted(ret_val, exit_code)
 			self.save()
 			return exit_code
 		except Exception as e:
@@ -2216,7 +2216,8 @@ class Runnable(FolderObj, models.Model):
 
 	@staticmethod  # FIXME obsolete
 	def __auto_json_dump(ret_val, file_n):
-		""" Dumps JobInfo retval from drmaa to failed or succeed file
+		""" Dumps JobInfo ret_val from drmaa to failed or succeed file
+
 		:type ret_val: drmaa.JobInfo
 		:type file_n: str
 		"""
@@ -2232,7 +2233,7 @@ class Runnable(FolderObj, models.Model):
 				pass
 
 	# Clem 11/09/2015  # FIXME obsolete
-	def _manage_run_success(self, ret_val):
+	def manage_run_success(self, ret_val):
 		""" !!! DO NOT OVERRIDE !!!
 		instead do override 'trigger_run_success'
 
@@ -2248,13 +2249,14 @@ class Runnable(FolderObj, models.Model):
 		self.trigger_run_success(ret_val)
 
 	# Clem 11/09/2015  # FIXME obsolete
-	def _manage_run_aborted(self, ret_val, exit_code):
+	def manage_run_aborted(self, ret_val, exit_code):
 		""" !!! DO NOT OVERRIDE !!!
 		instead do override 'trigger_run_user_aborted'
 
 		Actions on Job abortion
 
 		:type ret_val: drmaa.JobInfo
+		:type exit_code: int
 		"""
 		log = get_logger()
 		# self.__auto_json_dump(ret_val, ## )
@@ -2263,12 +2265,15 @@ class Runnable(FolderObj, models.Model):
 		self.trigger_run_user_aborted(ret_val, exit_code)
 
 	# Clem 11/09/2015  # FIXME obsolete
-	def _manage_run_failed(self, ret_val, exit_code, drmaa_waiting=None, type=''):
+	def manage_run_failed(self, ret_val, exit_code, drmaa_waiting=None, type=''):
 		""" !!! DO NOT OVERRIDE !!!
 		instead do override 'trigger_run_failed'
 		Actions on Job Failure
 
-		:type ret_val: drmaa.JobInfo
+		:type ret_val: int
+		:type exit_code: int | str
+		:type drmaa_waiting: bool | None
+		:type type: str
 		"""
 		self.__auto_json_dump(ret_val, self._failed_file)
 		log = get_logger()
@@ -2279,7 +2284,7 @@ class Runnable(FolderObj, models.Model):
 				# TODO is R failure on 1st level wait
 			else:
 				log.info('%s%s : ' % self.short_id_tuple + 'Also R process failed OR user abort ! (%s)' % type)
-				return self._manage_run_aborted(ret_val, exit_code)
+				return self.manage_run_aborted(ret_val, exit_code)
 				# TODO or 2nd level wait either R failure or user abort (for ex when job was aborted before it started)
 		self.breeze_stat = JobStat.FAILED
 
@@ -2288,34 +2293,36 @@ class Runnable(FolderObj, models.Model):
 	# Clem 11/09/2015
 	# TODO @abc.abstractmethod ?
 	def trigger_run_success(self, ret_val):
-		"""
-		Trigger for subclass to override
+		""" Trigger for subclass to override
+
 		:type ret_val: drmaa.JobInfo
 		"""
 		pass
 
 	# TODO @abc.abstractmethod ?
 	def trigger_run_user_aborted(self, ret_val, exit_code):
-		"""
-		Trigger for subclass to override
+		""" Trigger for subclass to override
+
 		:type ret_val: drmaa.JobInfo
+		:type exit_code: int
 		"""
 		pass
 
 	# TODO @abc.abstractmethod ?
 	def trigger_run_failed(self, ret_val, exit_code):
-		"""
-		Trigger for subclass to override
+		""" Trigger for subclass to override
+
 		:type ret_val: drmaa.JobInfo
+		:type exit_code: int
 		"""
 		pass
 
 	def _set_status(self, status):
-		"""
-		Save a specific status state of the instance.
+		""" Save a specific status state of the instance.
 		Changes the progression % and saves the object
 		ONLY PLACE WHERE ONE SHOULD CHANGE _breeze_stat and _status
 		HAS NOT EFFECT if breeze_stat = DONE
+
 		:param status: a JobStat value
 		:type status: str
 
@@ -2388,7 +2395,7 @@ class Runnable(FolderObj, models.Model):
 			import os
 			from django.core.files import base
 			get_logger().info('%s%s : resetting job status' % self.short_id_tuple)
-			new_name = unicode(self.name) + u'_re'
+			new_name = str(self.name) + '_re'
 			old_path = self.home_folder_full_path
 			with open(self._r_exec_path.path) as f:
 				r_code = f.readlines()
@@ -2509,7 +2516,7 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def text_id(self):
-		return u'%s%s %s' % (self.short_id_tuple + (unicode(self.name),))
+		return '%s %s' % (self.short_id, self.name)
 
 	# clem 11/05/2016
 	@property
