@@ -361,10 +361,10 @@ __target_list = dict()
 # clem 04/05/2016
 def initiator(compute_target, *_):
 	assert isinstance(compute_target, ComputeTarget)
-	key = compute_target.runnable.id
+	key = compute_target.runnable.short_id
 	with a_lock:
 		if key not in __target_list.keys():
-			print 'DockerInterface %s not found in cache, creating a new one...' % str(key)
+			get_logger().debug('DockerInterface %s not found in instance cache, creating a new one...' % str(key))
 			__target_list.update({key: DockerInterface(compute_target)})
 		return __target_list[key]
 
