@@ -179,6 +179,10 @@ class DockerInterface(ComputeInterface):
 		if not self._container and self.client and self._runnable.sgeid:
 			self._container = self.client.get_container(self._runnable.sgeid)
 			self.log.debug('Found container %s' % self._container.name)
+			if self._container.is_running:
+				self._set_global_status(JobStat.RUNNING)
+			else:
+				self._set_global_status(JobStat.SUBMITTED)
 		return self._container
 
 	def _run(self):
