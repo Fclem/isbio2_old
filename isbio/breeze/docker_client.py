@@ -1,7 +1,7 @@
 from docker import Client as DockerApiClient
 from docker.errors import NotFound, APIError, NullResource
 from threading import Thread, Lock
-from utils import get_md5, advanced_pretty_print, Bcolors, new_thread, get_named_tuple
+from utilities import get_md5, advanced_pretty_print, Bcolors, new_thread, get_named_tuple, get_logger
 import curses
 import json
 import requests
@@ -1293,7 +1293,7 @@ class DockerClient:
 	# clem 06/05/2016
 	def stop(self, container, timeout=10):
 		try:
-			self.cli.stop(container, timeout)
+			self.cli.stop(str(container), timeout)
 			return True
 		except Exception as e:
 			self._exception_handler(e)
@@ -1306,7 +1306,7 @@ class DockerClient:
 	# clem 06/05/2016
 	def pause(self, container):
 		try:
-			self.cli.pause(container)
+			self.cli.pause(str(container))
 			return True
 		except Exception as e:
 			self._exception_handler(e)
@@ -1315,7 +1315,7 @@ class DockerClient:
 	# clem 06/05/2016
 	def unpause(self, container):
 		try:
-			self.cli.unpause(container)
+			self.cli.unpause(str(container))
 			return True
 		except Exception as e:
 			self._exception_handler(e)
@@ -1329,7 +1329,7 @@ class DockerClient:
 	# clem 06/05/2016
 	def kill(self, container, signal):
 		try:
-			self.cli.kill(container, signal)
+			self.cli.kill(str(container), signal)
 			return True
 		except Exception as e:
 			self._exception_handler(e)
@@ -1801,7 +1801,6 @@ def get_docker_client(daemon_url, repo=None, auto_connect=True):
 	key = ('%s%s' % ( daemon_url, repo)).__hash__()
 	with a_lock:
 		if key not in __client_list.keys():
-			print __client_list
-			print 'DockerClient %s not found in cache, creating a new one...' % str(key)
+			get_logger().debug('DockerClient %s not found in instance cache, creating a new one...' % str(key))
 			__client_list.update({ key: DockerClient(daemon_url, repo, auto_connect)})
 		return __client_list[key]
