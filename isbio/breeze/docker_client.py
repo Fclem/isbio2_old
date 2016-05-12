@@ -11,6 +11,8 @@ __version__ = '0.1'
 __author__ = 'clem'
 DOCKER_HUB_URL = 'https://index.docker.io'
 
+a_lock = Lock()
+
 
 # clem 07/04/2016
 class DaemonNotConnected(Exception):
@@ -1055,8 +1057,7 @@ class DockerClient:
 
 	# clem 17/03/2016
 	def __error_managed(func):
-		"""
-		Error management wrapper for _run and _start
+		""" Error management wrapper for _run and _start
 
 		:type func: function
 		:rtype: function
@@ -1160,7 +1161,7 @@ class DockerClient:
 		"""
 		return DockerContainer(self._inspect_container(container_desc), self)
 
-	# clem 18/09/2016
+	# clem 18/03/2016
 	def _update_container_data(self, container):
 		assert isinstance(container, DockerContainer)
 		container.__dict__.update(self._inspect_container(str(container)))
@@ -1298,6 +1299,10 @@ class DockerClient:
 			self._exception_handler(e)
 		return False
 
+	# clem 12/05/2016
+	def start(self, container):
+		self._start(container)
+
 	# clem 06/05/2016
 	def pause(self, container):
 		try:
@@ -1317,6 +1322,7 @@ class DockerClient:
 		return False
 
 	# clem 06/05/2016
+	# Alias of unpause
 	def resume(self, container):
 		self.unpause(container)
 
@@ -1793,8 +1799,9 @@ def get_docker_client(daemon_url, repo=None, auto_connect=True):
 	:rtype: DockerClient
 	"""
 	key = ('%s%s' % ( daemon_url, repo)).__hash__()
-	if key not in __client_list.keys():
-		print __client_list
-		print 'DockerClient %s not found in cache, creating a new one...' % str(key)
-		__client_list.update({ key: DockerClient(daemon_url, repo, auto_connect)})
-	return __client_list[key]
+	with a_lock:
+		if key not in __client_list.keys():
+			print __client_list
+			print 'DockerClient %s not found in cache, creating a new one...' % str(key)
+			__client_list.update({ key: DockerClient(daemon_url, repo, auto_connect)})
+		return __client_list[key]
