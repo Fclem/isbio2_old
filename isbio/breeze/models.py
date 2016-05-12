@@ -89,6 +89,7 @@ class JobStat(object):
 	SUCCEED = 'succeed'
 	SUBMITTED = 'submitted'
 	PREPARE_RUN = 'prep_run'
+	GETTING_RESULTS = 'get_results'
 	R_FAILED = JobState.R_FAILDED
 
 	__decode_status = {
@@ -110,6 +111,7 @@ class JobStat(object):
 		SCHEDULED: 'job is saved for later submission',
 		PREPARE_RUN: 'job is being prepared for submission',
 		SUBMITTED: 'job has been submitted, and should be running soon',
+		GETTING_RESULTS: 'job has completed, getting results',
 		RUN_WAIT: 'job is about to be submitted',
 		'': 'unknown/other'
 	}
@@ -143,6 +145,8 @@ class JobStat(object):
 			return 20
 		elif stat == JobStat.RUNNING:
 			return 55
+		elif stat == JobStat.GETTING_RESULTS:
+			return 85
 		elif stat in (JobStat.FAILED, JobStat.SUCCEED, JobStat.DONE):
 			return 100
 		else:
@@ -187,6 +191,8 @@ class JobStat(object):
 			self.status, self.breeze_stat = JobStat.SUCCEED, JobStat.DONE
 		elif status == JobStat.SCHEDULED:
 			self.status, self.breeze_stat = JobStat.SCHEDULED, JobStat.SCHEDULED
+		elif status == JobStat.GETTING_RESULTS:
+			self.breeze_stat = JobStat.GETTING_RESULTS
 		else:
 			self.status = status
 		self.stat_text = self.textual(status) # clear text status description
@@ -2360,7 +2366,8 @@ class Runnable(FolderObj, models.Model):
 		NO refresh on _status
 		:rtype: str
 		"""
-		return JobStat.textual(self._status, self)
+		# return JobStat.textual(self._status, self)
+		return JobStat.textual(self.breeze_stat, self)
 
 	@property  # FIXME obsolete
 	def is_sgeid_empty(self):
