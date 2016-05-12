@@ -144,11 +144,9 @@ def refresh_qstat(proc_item):
 				dbitem.log.warning('qstat InvalidJobException (%s)' % (e,))
 				end_tracking(proc_item)
 			# if the status has changed and is not consistent with one from the object
-			# noinspection PyUnresolvedReferences
-			if status is not None and status != dbitem.status and not dbitem.aborting:
-				# noinspection PyUnresolvedReferences
-				print 'status says', status, 'db._status says', dbitem.status
-				dbitem.breeze_stat = status
+			if status is not None and status != dbitem.breeze_stat and not dbitem.aborting:
+				dbitem.log.warning('status says %s db.breeze_stat says %s' % (status, dbitem.breeze_stat))
+				# dbitem.breeze_stat = status
 	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
 		dbitem.log.warning('SgeId timeout !')
 		end_tracking(proc_item)
