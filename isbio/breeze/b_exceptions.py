@@ -96,3 +96,10 @@ class NotDefined(BaseException):
 class ObjectNotFound(BaseException):
 	pass
 
+
+class FileNotFound(ObjectNotFound):
+	pass
+
+
+class ConfigFileNotFound(FileNotFound):
+	pass
