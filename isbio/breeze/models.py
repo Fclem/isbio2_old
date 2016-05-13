@@ -14,11 +14,9 @@ from django.conf import settings
 from django.db import models
 import system_check
 import importlib
-# import sys
-# from pandas.tslib import re_compile
-# from os import symlink
-# import os.path
-# from operator import isCallable
+
+if settings.HOST_NAME.startswith('breeze'):
+	import drmaa
 
 system_check.db_conn.inline_check()
 
@@ -30,6 +28,7 @@ CATEGORY_OPT = (
 )
 
 # TODO : move all the logic into objects here
+drmaa_lock = Lock()
 
 
 class JobState(drmaa.JobState):
@@ -103,7 +102,7 @@ class JobStat(object):
 		JobState.USER_SUSPENDED: 'job is user suspended',
 		JobState.DONE: 'job finished normally',
 		SUCCEED: 'job finished normally',
-		JobState.FAILED: 'job failed due to system error',
+		JobState.FAILED: 'job failed to start due to a system error',
 		JobState.R_FAILDED: 'job failed due to R script issue',
 		ABORTED: 'job has been aborted',
 		ABORT: 'job is being aborted...',
@@ -1136,7 +1135,10 @@ class ComputeTarget(FolderObj, models.Model):
 
 	CONFIG_EXEC_SYSTEM = 'system'
 	CONFIG_EXEC_VERSION = 'version'
-	CONFIG_EXEC_DATA = 'data'
+	CONFIG_EXEC_BIN = 'bin'
+	CONFIG_EXEC_FILE = 'file'
+	CONFIG_EXEC_ARGS = 'args'
+	CONFIG_EXEC_RUN = 'run'
 
 	@property
 	def folder_name(self):
@@ -1157,6 +1159,10 @@ class ComputeTarget(FolderObj, models.Model):
 
 	@property
 	def config(self):
+		""" The whole configuration object for this target
+
+		:rtype: ConfigParser.SafeConfigParser
+		"""
 		if not self.__config:
 			import ConfigParser
 
@@ -1171,31 +1177,51 @@ class ComputeTarget(FolderObj, models.Model):
 
 	@property
 	def target_type(self):
+		""" the type of target : local|remote
+
+		:rtype: list
+		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TYPE)
 
 	@property
 	def target_tunnel(self):
+		""" the name of the tunnel system to use (usually ssh), or 'no' if not using tunneling.
+		A config section with the same name must be present if the value is different from no
+
+		:rtype: str
+		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TUNNEL)
 
 	@property
 	def target_use_tunnel(self):
+		""" if this target uses a tunnel
+
+		:rtype: bool
+		"""
 		return self.target_tunnel != 'no'
 
 	@property
 	def target_engine(self):
+		""" the name of the engine to use, a config section with the same name MUST be present, along with a python module named [engine_name]_interface.py
+
+		:rtype: str
+		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
 
 	@property
 	def target_engine_conf(self):
-		"""
+		""" the whole configuration of the [engine_name] section (MUST be present)
 
-		:return:
 		:rtype: list
 		"""
 		return self.config.items(self.target_engine)
 
 	@property
 	def target_tunnel_conf(self):
+		""" the whole configuration of the [tunnel_name] section, if present (optional)
+
+		:rtype: list
+		"""
 		if self.target_use_tunnel:
 			return self.config.items(self.target_tunnel)
 		return list()
@@ -1203,36 +1229,103 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 04/05/2016
 	@property
 	def target_storage_engine(self):
+		""" the name of the storage engine, matching a python module
+
+		:rtype: str
+		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_STORAGE)
 
 	# clem 13/05/2016
 	@property
 	def target_exec(self):
+		""" the name of the config section to use to configure the execution
+
+		:rtype: str
+		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC)
 
 	# clem 13/05/2016
 	@property
 	def target_exec_conf(self):
+		""" the whole configuration of the exec section
+
+		:rtype: list
+		"""
 		return self.config.items(self.target_exec)
 
 	# clem 13/05/2016
 	@property
 	def exec_system(self):
+		""" the name of sub system to use to run the job (currently useless)
+
+		for example :
+		R
+		python
+
+		:rtype: str
+		"""
 		return self.config.get(self.target_exec, self.CONFIG_EXEC_SYSTEM)
 
 	# clem 13/05/2016
 	@property
 	def exec_version(self):
+		""" the supposed version of the used system, for information purposes
+
+		:rtype: str
+		"""
 		return self.config.get(self.target_exec, self.CONFIG_EXEC_VERSION)
 
 	# clem 13/05/2016
 	@property
-	def exec_data(self):
-		return self.config.get(self.target_exec, self.CONFIG_EXEC_DATA)
+	def exec_bin_path(self):
+		""" the path or name of the system to use to run the job,
+
+		for example if you are using R or python this would be the path of R or python binary.
+		if you are using docker, this would be the name of the container,
+		etc.
+
+		:rtype: str
+		"""
+		return self.config.get(self.target_exec, self.CONFIG_EXEC_BIN)
+
+	# clem 13/05/2016
+	@property
+	def exec_file(self):
+		""" the file name containing the source code to run as the job
+
+		example : script.r or job.py
+
+		:rtype: str
+		"""
+		return self.config.get(self.target_exec, self.CONFIG_EXEC_FILE)
+
+	# clem 13/05/2016
+	@property
+	def exec_args(self):
+		""" the arguments to be passed to the binary
+
+		example : CMD BATCH --no-save
+
+		:rtype: str
+		"""
+		return self.config.get(self.target_exec, self.CONFIG_EXEC_ARGS)
+
+	# clem 13/05/2016
+	@property
+	def exec_run(self):
+		""" the command string, including the file name to be passed to the binary (usually %(args)s %(file)s)
+
+		:rtype: str
+		"""
+		return self.config.get(self.target_exec, self.CONFIG_EXEC_RUN)
 
 	# clem 04/05/2016
 	@property
 	def tunnel_host(self):
+		""" the FQDN or ip address of the target to connect to using tunneling (if using tunneling, '' otherwise)
+
+		:rtype: str
+		"""
 		if self.target_use_tunnel:
 			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_HOST)
 		return ''
@@ -1240,6 +1333,10 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 04/05/2016
 	@property
 	def tunnel_user(self):
+		""" the username to use to connect to the tunneling target (if using tunneling, '' otherwise)
+
+		:rtype: str
+		"""
 		if self.target_use_tunnel:
 			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_USER)
 		return ''
@@ -1247,6 +1344,10 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 04/05/2016
 	@property
 	def tunnel_port(self):
+		""" the port number to use to connect to the tunneling target (if using tunneling, '' otherwise)
+
+		:rtype: str
+		"""
 		if self.target_use_tunnel:
 			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_PORT)
 		return ''
@@ -1254,6 +1355,10 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 04/05/2016
 	@property
 	def storage_module(self):
+		""" The python module used as the storage interface for this target
+
+		:rtype: module
+		"""
 		if not self._storage_module:
 			self._storage_module = importlib.import_module('breeze.%s' % self.target_storage_engine)
 		return self._storage_module
@@ -1261,6 +1366,13 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 04/05/2016
 	@property
 	def compute_module(self):
+		""" The python module containing an implementation of the compute interface for this target
+
+		this module must include an implementation of compute_interface_module.ComputeInterface,
+		and an initiator(ComputeTarget) function
+
+		:rtype: module
+		"""
 		if not self._compute_module:
 			mod_name = 'breeze.%s_interface' % self.target_engine
 			self._compute_module = importlib.import_module(mod_name)
@@ -1269,7 +1381,8 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 04/05/2016
 	@property
 	def compute_interface(self):
-		"""
+		""" The ComputeInterface object to use as the compute interface for this target
+
 		:rtype: breeze.compute_interface_module.ComputeInterface
 		"""
 		if not self.__compute_interface:
@@ -1279,7 +1392,8 @@ class ComputeTarget(FolderObj, models.Model):
 	# clem 06/05/2016
 	@property
 	def runnable(self):
-		"""
+		""" The client Runnable object using this target
+
 		:rtype: Runnable
 		"""
 		return self._runnable
@@ -1645,28 +1759,29 @@ class Runnable(FolderObj, models.Model):
 	# CONSTANTS
 	##
 	ALLOW_DOWNLOAD = True
-	BASE_FOLDER_NAME = '' # folder name
-	BASE_FOLDER_PATH = '' # absolute path to the container folder
-	FAILED_FN = settings.FAILED_FN 				# '.failed'
-	SUCCESS_FN = settings.SUCCESS_FN			# '.done'
-	SUB_DONE_FN = settings.R_DONE_FN			# '.sub_done'
-	SH_NAME = settings.GENERAL_SH_NAME			# 'run_job.sh'
-	FILE_MAKER_FN = settings.REPORTS_FM_FN		# 'transfer_to_fm.txt'
-	R_HOME = settings.R_HOME					# %project_folder%/R/lib64/R
-	INC_RUN_FN = settings.INCOMPLETE_RUN_FN		# '.INCOMPLETE_RUN'
+	BASE_FOLDER_NAME = '' 							# folder name
+	BASE_FOLDER_PATH = '' 							# absolute path to the container folder
+	FAILED_FN = settings.FAILED_FN 					# '.failed'
+	SUCCESS_FN = settings.SUCCESS_FN				# '.done'
+	SUB_DONE_FN = settings.R_DONE_FN				# '.sub_done'
+	SH_NAME = settings.GENERAL_SH_NAME				# 'run_job.sh'
+	FILE_MAKER_FN = settings.REPORTS_FM_FN			# 'transfer_to_fm.txt'
+	INC_RUN_FN = settings.INCOMPLETE_RUN_FN			# '.INCOMPLETE_RUN'
 	# output file name (without extension) for nozzle report. MIGHT not be enforced everywhere
 	REPORT_FILE_NAME = settings.NOZZLE_REPORT_FN	# 'report'
-	RQ_FIELDS = ['_name', '_author', '_type']
-	R_FILE_NAME_BASE = settings.R_FILE_NAME_BASE	# 'script'
-	R_FILE_NAME = settings.R_FILE_NAME				# R_FILE_NAME_BASE + '.r'
-	R_OUT_EXT = settings.R_OUT_EXT					# '.Rout'
-	R_OUT_FILE_NAME = R_FILE_NAME + R_OUT_EXT
-	R_FULL_PATH = settings.R_ENGINE_PATH			# 'R '
-	R_CMD = 'CMD BATCH --no-save'
+	# R_FILE_NAME_BASE = settings.R_FILE_NAME_BASE	# 'script'
+	# R_FILE_NAME = settings.R_FILE_NAME				# R_FILE_NAME_BASE + '.r' # FIXME : R specific
+	# R_OUT_EXT = settings.R_OUT_EXT					# '.Rout' # FIXME : R specific
+	# R_OUT_FILE_NAME = R_FILE_NAME + R_OUT_EXT # FIXME : R specific
+	# R_CMD = 'CMD BATCH --no-save' # FIXME : R specific
 	RQ_SPECIFICS = ['request_data', 'sections']
 	FAILED_TEXT = 'Execution halted'
+	get_arch_cmd = "`$EXEC_PATH --slave -e 'cat(R.Version()$platform)'`" # FIXME : R specific
+	get_version_cmd = '`$EXEC_PATH --slave -e \'cat(c(R.Version()$version.string, "(", R.Version()$nickname, ")"))\'`'
+	')"' # FIXME : R specific
 
-	HIDDEN_FILES = [R_FILE_NAME, R_OUT_FILE_NAME, SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ?
+	# R_FILE_NAME, R_OUT_FILE_NAME
+	HIDDEN_FILES = [ SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
 
 	objects = managers.WorkersManager() # Custom manage
@@ -2001,14 +2116,20 @@ class Runnable(FolderObj, models.Model):
 			'inc_run_fn'	: self.INC_RUN_FN,
 			'success_fn'	: self.SUCCESS_FN,
 			'done_fn'		: self.SUB_DONE_FN,
-			'file_name'		: self.R_FILE_NAME,
-			'out_file_name'	: self.R_OUT_FILE_NAME,
-			'full_path'		: self.compute_target.exec_data,
-			'cmd'			: self.R_CMD,
+			'file_name'		: self.compute_target.exec_file, # FIXME : R specific
+			'out_file_name'	: self.R_OUT_FILE_NAME, # FIXME : R specific
+			'full_path'		: self.compute_target.exec_bin_path,
+			'args'			: self.compute_target.exec_args,
+			'cmd'			: self.compute_target.exec_run,
 			'failed_txt'	: self.FAILED_TEXT,
 			'user'			: self._author,
 			'date'			: datetime.now(),
+			'tz'			: time.tzname[time.daylight],
 			'poke_url'		: self.poke_url,
+			'url'			: 'http://%s' % settings.FULL_HOST_NAME,
+			'target'		: str(self.compute_target),
+			'arch_cmd'		: self.get_arch_cmd, # FIXME : for specific
+			'version_cmd'	: self.get_version_cmd, # FIXME : for specific
 		}
 
 		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self._sh_file_path)
@@ -2081,6 +2202,7 @@ class Runnable(FolderObj, models.Model):
 		return self.compute_interface.send_job()
 
 	# FIXME LEGACY ONLY
+	@new_thread
 	def old_sge_run(self):
 		"""
 			Submits reports as an R-job to cluster with SGE;
@@ -2089,19 +2211,17 @@ class Runnable(FolderObj, models.Model):
 			TO BE RUN IN AN INDEPENDENT PROCESS
 		"""
 		import os
-		import django.db
 
 		drmaa = None
 		s = None
-		if settings.HOST_NAME.startswith('breeze'):
-			import drmaa
+
 
 		config = self._sh_file_path
 		log = get_logger('run_%s' % self.instance_type )
-		default_dir = os.getcwd() # Jobs specific ? or Report specific ?
+		# default_dir = os.getcwd() # Jobs specific ? or Report specific ?
 
 		try:
-			default_dir = os.getcwd()
+			# default_dir = os.getcwd()
 			os.chdir(self.home_folder_full_path)
 			if self.is_report and self.fm_flag: # Report specific
 				os.system(settings.JDBC_BRIDGE_PATH)
@@ -2113,45 +2233,42 @@ class Runnable(FolderObj, models.Model):
 			log.exception('%s%s : ' % self.short_id_tuple + 'pre-run error %s (process continues)' % e)
 
 		try:
-			s = drmaa.Session()
-			s.initialize()
+			with drmaa_lock:
+				with drmaa.Session() as s:
+					jt = s.createJobTemplate()
+					jt.workingDirectory = self.home_folder_full_path
+					jt.jobName = self.sge_job_name
+					jt.email = [str(self._author.email)]
+					if self.mailing != '':
+						jt.nativeSpecification = "-m " + self.mailing
+					if self.email is not None and self.email != '':
+						jt.email.append(str(self.email))
+					jt.blockEmail = False
 
-			jt = s.createJobTemplate()
-			jt.workingDirectory = self.home_folder_full_path
-			jt.jobName = self.sge_job_name
-			jt.email = [str(self._author.email)]
-			if self.mailing != '':
-				jt.nativeSpecification = "-m " + self.mailing
-			if self.email is not None and self.email != '':
-				jt.email.append(str(self.email))
-			jt.blockEmail = False
+					jt.remoteCommand = config
+					jt.joinFiles = True
+					# jt.outputPath = ':./out'
 
-			jt.remoteCommand = config
-			jt.joinFiles = True
-			# jt.outputPath = ':./out'
+					self.progress = 25
+					self.save()
+					import copy
+					if not self.aborting:
+						self.sgeid = copy.deepcopy(s.runJob(jt))
+						log.debug('%s%s : ' % self.short_id_tuple + 'returned sge_id "%s"' % self.sgeid)
+						self.breeze_stat = JobStat.SUBMITTED
+					# waiting for the job to end
+					self.waiter(s, True)
 
-			self.progress = 25
-			self.save()
-			import copy
-			if not self.aborting:
-				self.sgeid = copy.deepcopy(s.runJob(jt))
-				log.debug('%s%s : ' % self.short_id_tuple + 'returned sge_id "%s"' % self.sgeid)
-				self.breeze_stat = JobStat.SUBMITTED
-			# waiting for the job to end
-			self.waiter(s, True)
-
-			jt.delete()
-			s.exit()
-			os.chdir(default_dir)
+					jt.delete()
+					# os.chdir(default_dir)
 
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				Exception) as e:
 			log.error('%s%s : ' % self.short_id_tuple + 'drmaa submit failed : %s' % e)
-			self.manage_run_failed(None, '')
+			self.manage_run_failed(-1, '')
 			if s is not None:
 				s.exit()
 			raise e
-			return 1
 
 		log.debug('%s%s : ' % self.short_id_tuple + 'drmaa submit ended successfully !')
 		return 0
@@ -2161,6 +2278,7 @@ class Runnable(FolderObj, models.Model):
 		return self.compute_interface.busy_waiting(s, drmaa_waiting)
 
 	# FIXME LEGACY ONLY
+	@new_thread
 	def old_sge_waiter(self, s, drmaa_waiting=False):
 		"""
 		:param s:
@@ -2227,11 +2345,8 @@ class Runnable(FolderObj, models.Model):
 			self.save()
 			return exit_code
 		except Exception as e:
-			# FIXME this is SHITTY
 			log.error('%s%s : ' % self.short_id_tuple + ' while waiting : %s' % e)
-			# if e.message == 'code 24: no usage information was returned for the completed job' or self.aborting:
-			#	self.__manage_run_failed(None, exit_code)
-			#	log.info('%s%s : ' % self.short_id + ' FAIL CODE 24 (FIXME) : %s' % e)
+			raise e
 		return 1
 
 	@staticmethod  # FIXME obsolete
@@ -2261,11 +2376,9 @@ class Runnable(FolderObj, models.Model):
 
 		:type ret_val: drmaa.JobInfo
 		"""
-		log = get_logger()
 		self.__auto_json_dump(ret_val, self._test_file)
 		self.breeze_stat = JobStat.SUCCEED
-		log.info('%s%s : ' % self.short_id_tuple + ' SUCCESS !')
-
+		self.log.info('SUCCESS !')
 		self.trigger_run_success(ret_val)
 
 	# Clem 11/09/2015  # FIXME obsolete
@@ -2381,6 +2494,8 @@ class Runnable(FolderObj, models.Model):
 		:rtype: str
 		"""
 		# return JobStat.textual(self._status, self)
+		if self.breeze_stat == JobState.DONE:
+			return JobStat.textual(self._status, self)
 		return JobStat.textual(self.breeze_stat, self)
 
 	@property  # FIXME obsolete
@@ -2440,16 +2555,7 @@ class Runnable(FolderObj, models.Model):
 	###
 	# DJANGO RELATED FUNCTIONS
 	###
-	def all_required_are_filled(self, fail=False):
-		for each in self.RQ_FIELDS:
-			if each not in self.__dict__:
-				if fail:
-					raise AssertionError('You must assign every required fields of job before '
-						+ 'setting breeze_stat. (You forgot %s)\n Required fields are : %s' %
-						(each, self.RQ_FIELDS))
-				else:
-					return False
-		return True
+	# deleted all_required_are_filled on 13/05/2016 from azure / 7d62c2d for being deprecated
 
 	# TODO check if new item or not
 	def save(self, *args, **kwargs):
