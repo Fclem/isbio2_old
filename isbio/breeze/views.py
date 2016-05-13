@@ -2927,7 +2927,8 @@ def file_system_info(request):
 
 # clem on 08/10/2015
 @login_required(login_url='/')
-def view_log(request):
+def view_log(request, show_all=False, num=0):
+	DEFAULT_MAX = 250
 
 	def no_withe_space(txt):
 		return txt.replace('\t', '    ').replace(' ', '&nbsp;')
@@ -2958,8 +2959,17 @@ def view_log(request):
 					out.append(no_withe_space(l))
 	out.append(no_withe_space(settings.USUAL_LOG_FORMAT_DESCRIPTOR))
 	out.reverse()
+	showing = 'whole (ie. <strong>%s</strong>) log since rotation' % len(out)
+	if not show_all:
+		if not num > 0:
+			num = DEFAULT_MAX
+		if num >= len(out):
+			num = len(out)
+		out = out[0:num]
+		showing = 'last <strong>%s</strong> log entries' % num
 	return render_to_response('log.html', RequestContext(request, {
-		'log': out
+		'log': out,
+		'showing': showing
 	}))
 
 
@@ -3062,7 +3072,7 @@ def job_list(request):
 
 
 # clem 06/05/2016
-def job_url_hook(request, rid, md5, code=''):
+def job_url_hook(request, rid, md5, status='', code=0):
 	""" Endpoint of job feedback url.
 	Instead of polling local jobs for completion, they will reach out to this url, upon termination
 
@@ -3070,16 +3080,19 @@ def job_url_hook(request, rid, md5, code=''):
 	:type request: int | str
 	:param rid: id of the job
 	:type rid: int | str
-	:param md5: key identifying the job
+	:param md5: key identifying the job (a 32 chars md5 hash of the sh file for this job)
 	:type md5: str
-	:param code: code or string stating the exit status
-	:type code: int | str
+	:param status: string of the current status (starting | success | failed)
+	:type status: str
+	:param code: code of the exit status if not 0
+	:type code: int
 	:rtype: HttpResponse
 	"""
 	try:
 		a_report = Report.objects.f.get(pk=rid)
 		if get_file_md5(a_report.rexec.path) == md5:
-			print 'OKAY GOOD' # TODO do stuff
+			# print 'OKAY GOOD' # TODO do stuff
+			a_report.log.info('hook : %s (%s)' % (status, code))
 	except ObjectDoesNotExist:
 		pass
 	return HttpResponse('ok', mimetype='text/plain')

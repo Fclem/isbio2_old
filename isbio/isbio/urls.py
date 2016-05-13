@@ -29,6 +29,8 @@ else:
 		url(r'^status/fs_info/?$', views.file_system_info),
 		url(r'^status/fs_info/fix_file/(?P<fid>\d+)$', views.fix_file_acl),
 		url(r'^status/log/?$', views.view_log),
+		url(r'^status/log/all/?$', views.view_log, { 'show_all': True }),
+		url(r'^status/log/(?P<num>\d+)/?$', views.view_log),
 		url(r'^status/fs_ok/?$', views.check_file_system_coherent),
 		url(r'^status/qstat/?$', views.qstat_live),
 		url(r'^status_lp/qstat/(?P<md5_t>[a-z0-9_]{32})?$', views.qstat_lp),
@@ -107,7 +109,8 @@ else:
 		# new
 		url(r'^jobs/info_lp/(?P<jid>\d+)/(?P<md5_t>[a-z0-9_]{32})?$', views.update_jobs_lp, { 'item': 'script' }),
 		url(r'^reports/info_lp/(?P<jid>\d+)/(?P<md5_t>[a-z0-9_]{32})?$', views.update_jobs_lp, { 'item': 'report' }),
-		url(r'^hook/(?P<rid>\d+)/(?P<md5>[a-z0-9_]{32})/(?P<code>\w+)?$', views.job_url_hook),
+		url(r'^hook/(?P<rid>\d+)/(?P<md5>[a-z0-9_]{32})/(?P<status>\w+)?$', views.job_url_hook),
+		url(r'^hook/(?P<rid>\d+)/(?P<md5>[a-z0-9_]{32})/(?P<status>\w+)/(?P<code>\w+)?$', views.job_url_hook),
 		# url(r'^update-all-jobs/$', views.update_all_jobs), # DO NOT USE : TOOOOOOOO SLOW
 		url(r'^scripts/(?P<layout>[a-z]+)?$', views.scripts),
 		url(r'^scripts/delete/(?P<sid>\d+)$', views.delete_script),

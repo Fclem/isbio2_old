@@ -42,7 +42,7 @@
 			</div>
 		</div>
 		<div class="span11">
-			<h3>Breeze LOG : <small>(In reverse order)</small></h3>
+			<h3>Breeze LOG : <small>(In reverse order, showing the {{ showing|safe }})</small></h3>
 			<!--<ul> -->
 			{% for line in log %}
 				{% if line == '<hr>' %}
