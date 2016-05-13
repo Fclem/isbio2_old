@@ -57,8 +57,6 @@ class DockerInterface(ComputeInterface):
 
 		:type storage_backend: module
 		"""
-		assert isinstance(compute_target, ComputeTarget)
-
 		super(DockerInterface, self).__init__(compute_target, storage_backend)
 
 		self.SSH_HOST = compute_target.tunnel_host
@@ -158,6 +156,7 @@ class DockerInterface(ComputeInterface):
 	def _attach_event_manager(self):
 		if self.my_run and isinstance(self.my_run, DockerRun):
 			self.my_run.event_listener = self._event_manager_wrapper()
+			self.log.debug('Attached event listener')
 		return True
 
 	# clem 11/05/2016
@@ -336,6 +335,7 @@ class DockerInterface(ComputeInterface):
 		cont = self.container
 		log = str(cont.logs)
 		assert isinstance(cont, DockerContainer)
+		self._set_global_status(JobStat.GETTING_RESULTS)
 		self.log.info('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
 		cont.delta_display))
 		if cont.status.ExitCode > 0:
