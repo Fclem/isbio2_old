@@ -139,7 +139,7 @@ def refresh_qstat(proc_item):
 	if not dbitem.is_sgeid_empty:
 		if not dbitem.is_done:
 			try:
-				status = dbitem.compute_target.status()
+				status = dbitem.compute_interface.status()
 			except NoSuchJob as e:
 				dbitem.log.warning('qstat InvalidJobException (%s)' % (e,))
 				end_tracking(proc_item)
@@ -150,7 +150,7 @@ def refresh_qstat(proc_item):
 	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
 		dbitem.log.warning('SgeId timeout !')
 		end_tracking(proc_item)
-		dbitem.re_submit_to_cluster()
+		dbitem.re_submit()
 
 
 @with_drmaa

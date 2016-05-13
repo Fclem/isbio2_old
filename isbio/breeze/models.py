@@ -2404,12 +2404,12 @@ class Runnable(FolderObj, models.Model):
 			return t_delta > timedelta(seconds=settings.NO_SGEID_EXPIRY)
 		return False
 
-	# TODO FIXME broken
-	# ie : plein de merde
-	def re_submit_to_cluster(self, force=False, duplicate=True):
+	# TODO FIXME broken and disabled (WILL FAIL the job)
+	def re_submit(self, force=False, duplicate=True):
 		""" Reset the job status, so it can be run again
 		Use this, if it hadn't had an SGEid or the run was unexpectedly terminated
 		DO NOT WORK on SUCCEEDED JOB."""
+		self.breeze_stat = JobState.FAILED
 		if False: # not self.is_successful or force:
 			# TODO finish
 			import copy
