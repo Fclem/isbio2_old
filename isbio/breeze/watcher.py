@@ -138,7 +138,7 @@ def refresh_qstat(proc_item):
 	if not dbitem.is_sgeid_empty:
 		if not dbitem.is_done:
 			try:
-				status = dbitem.compute_interface.status()
+				status = dbitem.compute_if.status()
 			except NoSuchJob as e:
 				dbitem.log.warning('qstat InvalidJobException (%s)' % (e,))
 				end_tracking(proc_item)

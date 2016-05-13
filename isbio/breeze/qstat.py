@@ -223,11 +223,10 @@ class Qstat(object): # would need some proper error management if SGE is not set
 			tab = each.raw_out_tab
 			tab[2] = "<span title='%s'>%s</span>" % (each.full_name, each.name)
 			tab[3] = "<span title='%s'>%s</span>" % (each.full_user, each.user)
-			sup = ''
 			if each.runnable is None:
 				sup = ' &lt;ext&gt; '
 			else:
-				sup = ' &lt;%s%s&gt; ' % each.runnable.short_id_tuple
+				sup = ' &lt;%s&gt; ' % each.runnable.short_id
 			result += '<code>%s%s%s</code><br />' % (sup, '\t'.join(tab), sup)
 
 		if result == '':

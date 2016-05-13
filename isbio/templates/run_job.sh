@@ -14,7 +14,7 @@ FAILED_FN=$failed_fn
 INCOMPLETE_FN=$inc_run_fn
 SUCCESS_FN=$success_fn
 DONE_FN=$done_fn
-IN=$file_name
+IN=$in_file_name
 OUT=$out_file_name
 EXEC_PATH=$full_path
 EXEC_ARGS="$args"
@@ -23,9 +23,9 @@ RUN_LINE="$EXEC_PATH $EXEC_CMD"
 FAILED_TEXT="$failed_txt"
 POKE_URL="$poke_url"
 TARGET="$target"
-## END OF CONFIGURATION
 ARCH=$arch_cmd
 VERSION=$version_cmd
+## END OF CONFIGURATION
 OS=`cat /etc/system-release`
 KERNEL=`uname -mrs`
 echo 'host    : '`hostname`' @ '`hostname -i`

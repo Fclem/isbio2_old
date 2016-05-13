@@ -1,4 +1,3 @@
-import drmaa
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User # as DjangoUser
@@ -14,7 +13,9 @@ from django.conf import settings
 from django.db import models
 import system_check
 import importlib
-import abc
+import time
+import copy
+import os
 
 if settings.HOST_NAME.startswith('breeze'):
 	import drmaa
@@ -1101,8 +1102,9 @@ class ShinyReport(models.Model):
 
 
 # clem 13/05/2016
+# META_CLASS
 class ConfigObject(FolderObj):
-	__metaclass__ = abc.ABCMeta
+	# __metaclass__ = abc.ABCMeta
 	_not = "Class %s doesn't implement %s()"
 	BASE_FOLDER_NAME = settings.CONFIG_FN
 
@@ -1111,15 +1113,20 @@ class ConfigObject(FolderObj):
 
 	__config = None
 	# config_file = abc.abstractproperty(None, None)
+	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+		help_text="The config file for this exec resource")
+
 	CONFIG_GENERAL_SECTION = 'general'
 	CONFIG_LOCAL_ENV_SECTION = 'local_env'
 	CONFIG_REMOTE_ENV_SECTION = 'remote_env'
 
-	def __init__(self, *_):
-		super(ConfigObject, self).__init__()
-		self.set_local_env()
+	def __unicode__(self): # Python 3: def __str__(self):
+		return '%s (%s)' % (self.label, self.name)
 
-	@abc.abstractproperty
+	def __int__(self):
+		return self.id
+
+	# @abc.abstractproperty
 	def folder_name(self):
 		"""
 
@@ -1183,7 +1190,7 @@ class ConfigObject(FolderObj):
 	def _download_ignore(self, *args):
 		pass
 
-	class Meta:
+	class Meta(FolderObj.Meta):
 		abstract = True
 
 
@@ -1231,8 +1238,8 @@ class ExecConfig(ConfigObject, models.Model):
 		""" the name of sub system to use to run the job (currently useless)
 
 		for example :
-		R
-		python
+		R2
+		python3
 
 		:rtype: str
 		"""
@@ -1296,6 +1303,28 @@ class ExecConfig(ConfigObject, models.Model):
 		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_RUN)
 
+	# clem 14/05/2016
+	@property
+	def exec_arch_cmd(self):
+		""" a full command line to obtain the architecture against which the exec sub-system has been built for
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_ARCH_CMD)
+
+	# clem 14/05/2016
+	@property
+	def exec_version_cmd(self):
+		"""  a full command line to obtain the version of the exec sub-system
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_VERSION_CMD)
+
+	class Meta(ConfigObject.Meta):
+		abstract = False
+		db_table = 'breeze_execconfig'
+
 
 # clem 13/05/2016
 class EngineConfig(ConfigObject, models.Model):
@@ -1323,6 +1352,10 @@ class EngineConfig(ConfigObject, models.Model):
 	@property
 	def engine_config(self):
 		return self.config.items(self.CONFIG_GENERAL_SECTION)
+
+	class Meta(ConfigObject.Meta):
+		abstract = False
+		db_table = 'breeze_engineconfig'
 
 
 # 19/04/2016
@@ -1367,12 +1400,6 @@ class ComputeTarget(ConfigObject, models.Model):
 
 	def __init__(self, *args, **kwargs):
 		super(ComputeTarget, self).__init__(*args, **kwargs)
-
-	def __unicode__(self): # Python 3: def __str__(self):
-		return '%s (%s)' % (self.label, self.name)
-
-	def __int__(self):
-		return self.id
 
 	@property
 	def target_type(self):
@@ -1461,7 +1488,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 	# clem 13/05/2016
 	@property
-	def target_engine(self): # as override
+	def engine_obj(self): # as override
 		""" the __engine object related to this target, as defined in this config file
 
 		:rtype: EngineConfig
@@ -1485,7 +1512,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 	# clem 13/05/2016
 	@property
-	def target_exec(self): # as override
+	def exec_obj(self): # as override
 		""" the ExecConfig object related to this target, as defined in this config file
 
 		:rtype: ExecConfig
@@ -1561,7 +1588,7 @@ class ComputeTarget(ConfigObject, models.Model):
 		"""
 		return self._runnable
 
-	class Meta(FolderObj.Meta): # TODO check if inheritance is required here
+	class Meta(ConfigObject.Meta): # TODO check if inheritance is required here
 		abstract = False
 		db_table = 'breeze_computetarget'
 
@@ -1928,18 +1955,9 @@ class Runnable(FolderObj, models.Model):
 	INC_RUN_FN = settings.INCOMPLETE_RUN_FN			# '.INCOMPLETE_RUN'
 	# output file name (without extension) for nozzle report. MIGHT not be enforced everywhere
 	REPORT_FILE_NAME = settings.NOZZLE_REPORT_FN	# 'report'
-	# R_FILE_NAME_BASE = settings.R_FILE_NAME_BASE	# 'script'
-	# R_FILE_NAME = settings.R_FILE_NAME				# R_FILE_NAME_BASE + '.r' # FIXME : R specific
-	# R_OUT_EXT = settings.R_OUT_EXT					# '.Rout' # FIXME : R specific
-	# R_OUT_FILE_NAME = R_FILE_NAME + R_OUT_EXT # FIXME : R specific
-	# R_CMD = 'CMD BATCH --no-save' # FIXME : R specific
 	RQ_SPECIFICS = ['request_data', 'sections']
 	FAILED_TEXT = 'Execution halted'
-	get_arch_cmd = "`$EXEC_PATH --slave -e 'cat(R.Version()$platform)'`" # FIXME : R specific
-	get_version_cmd = '`$EXEC_PATH --slave -e \'cat(c(R.Version()$version.string, "(", R.Version()$nickname, ")"))\'`'
-	')"' # FIXME : R specific
 
-	# R_FILE_NAME, R_OUT_FILE_NAME
 	HIDDEN_FILES = [ SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
 
@@ -2055,11 +2073,11 @@ class Runnable(FolderObj, models.Model):
 	def html_path(self):
 		return '%s%s' % (self.home_folder_full_path, self.REPORT_FILE_NAME)
 
-	@property # UNUSED ?
+	@property # UNUSED ?  # FIXME obsolete
 	def _r_out_path(self):
 		return self._rout_file
 
-	@property # used by write_sh_file() # useless #Future ?
+	@property # used by write_sh_file() # useless #Future ?  # FIXME obsolete
 	def _r_exec_path(self):
 		return self._rexec
 
@@ -2076,7 +2094,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		return '%s%s' % (self.home_folder_full_path, self.SUCCESS_FN)
 
-	@property
+	@property  # FIXME obsolete
 	def _rout_file(self):
 		# return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
 		return '%s%s' % (self._rexec, self.R_OUT_EXT)
@@ -2102,7 +2120,8 @@ class Runnable(FolderObj, models.Model):
 	@property  # FIXME obsolete
 	def _sge_log_file(self):
 		"""
-		Return the name of the autogenerated debug/warning file from SGE
+		Return the name of the auto-generated debug/warning file from SGE
+
 		:rtype: str
 		"""
 		return '%s_%s.o%s' % (self._name.lower(), self.instance_of.__name__, self.sgeid)
@@ -2143,6 +2162,7 @@ class Runnable(FolderObj, models.Model):
 	@property # FIXME obsolete
 	def r_error(self):
 		""" Returns the last line of script.R which may contain an error message
+
 		:rtype: str
 		"""
 		out = ''
@@ -2150,7 +2170,7 @@ class Runnable(FolderObj, models.Model):
 			lines = open(self._rout_file).readlines()
 			i = len(lines)
 			size = i
-			for i in range(len(lines)-1, 0, -1):
+			for i in range(len(lines) - 1, 0, -1):
 				if lines[i].startswith('>'):
 					break
 			if i != size:
@@ -2166,6 +2186,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		return self.HIDDEN_FILES + [self._sge_log_file, '*~', '*.o%s' % self.sgeid] + self._shiny_files
 
+	# FIXME obsolete
 	def _download_ignore(self, cat=None):
 		"""
 		:type cat: str
@@ -2262,43 +2283,42 @@ class Runnable(FolderObj, models.Model):
 
 		:rtype: bool
 		"""
-		return self.compute_interface.abort()
+		return self.compute_if.abort()
 
 	def write_sh_file(self):
-		"""
-		Generate the SH file that will be executed on the compute target to configure and run the job
-		"""
-		import os
+		""" Generate the SH file that will be executed on the compute target to configure and run the job """
+		from os import chmod
 
 		conf_dict = {
 			'failed_fn'		: self.FAILED_FN,
 			'inc_run_fn'	: self.INC_RUN_FN,
 			'success_fn'	: self.SUCCESS_FN,
 			'done_fn'		: self.SUB_DONE_FN,
-			'file_name'		: self.compute_target.exec_file, # FIXME : R specific
-			'out_file_name'	: self.R_OUT_FILE_NAME, # FIXME : R specific
-			'full_path'		: self.compute_target.exec_bin_path,
-			'args'			: self.compute_target.exec_args,
-			'cmd'			: self.compute_target.exec_run,
+			'in_file_name'	: self.target_obj.exec_obj.exec_file_in,
+			'out_file_name'	: self.target_obj.exec_obj.exec_file_out,
+			'full_path'		: self.target_obj.exec_obj.exec_bin_path,
+			'args'			: self.target_obj.exec_obj.exec_args,
+			'cmd'			: self.target_obj.exec_obj.exec_run,
 			'failed_txt'	: self.FAILED_TEXT,
 			'user'			: self._author,
 			'date'			: datetime.now(),
 			'tz'			: time.tzname[time.daylight],
 			'poke_url'		: self.poke_url,
 			'url'			: 'http://%s' % settings.FULL_HOST_NAME,
-			'target'		: str(self.compute_target),
-			'arch_cmd'		: self.get_arch_cmd, # FIXME : for specific
-			'version_cmd'	: self.get_version_cmd, # FIXME : for specific
+			'target'		: str(self.target_obj),
+			'arch_cmd'		: self.target_obj.exec_obj.exec_arch_cmd,
+			'version_cmd'	: self.target_obj.exec_obj.exec_version_cmd,
 		}
 
 		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self._sh_file_path)
 
 		# config should be readable and executable but not writable, same for script.R
-		os.chmod(self._sh_file_path, ACL.RX_RX_)
-		os.chmod(self._r_exec_path.path, ACL.R_R_)
+		chmod(self._sh_file_path, ACL.RX_RX_)
+		chmod(self._r_exec_path.path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
 	# TODO @abc.abstractmethod ?
+	# FIXME obsolete
 	def generate_r_file(self, *args, **kwargs):
 		""" Place Holder for instance specific R files generation
 		THIS METHOD MUST BE overridden in subclasses
@@ -2321,7 +2341,6 @@ class Runnable(FolderObj, models.Model):
 		Call deferred_instance_specific()
 		and finally triggers self.save()
 		"""
-		import os
 		for each in self.RQ_SPECIFICS:
 			if each not in kwargs.keys():
 				raise InvalidArguments("'%s' should be provided as an argument of assemble()" % each)
@@ -2358,7 +2377,7 @@ class Runnable(FolderObj, models.Model):
 	# FIXME LEGACY INTERFACE ONLY
 	# clem 06/05/2016
 	def run(self):
-		return self.compute_interface.send_job()
+		return self.compute_if.send_job()
 
 	# FIXME LEGACY ONLY
 	@new_thread
@@ -2367,29 +2386,22 @@ class Runnable(FolderObj, models.Model):
 			Submits reports as an R-job to cluster with SGE;
 			This submission implements REPORTS concept in BREEZE
 			(For SCRIPTS submission see Jobs.run)
-			TO BE RUN IN AN INDEPENDENT PROCESS
 		"""
-		import os
+		from os import chdir, system
 
-		drmaa = None
 		s = None
-
-
 		config = self._sh_file_path
-		log = get_logger('run_%s' % self.instance_type )
-		# default_dir = os.getcwd() # Jobs specific ? or Report specific ?
 
 		try:
-			# default_dir = os.getcwd()
-			os.chdir(self.home_folder_full_path)
+			chdir(self.home_folder_full_path)
 			if self.is_report and self.fm_flag: # Report specific
-				os.system(settings.JDBC_BRIDGE_PATH)
+				system(settings.JDBC_BRIDGE_PATH) # TODO change that
 
 			# *MAY* prevent db from being dropped
 			# django.db.close_connection()
 			self.breeze_stat = JobStat.PREPARE_RUN
 		except Exception as e:
-			log.exception('%s%s : ' % self.short_id_tuple + 'pre-run error %s (process continues)' % e)
+			self.log.exception('pre-run error %s (process continues)' % e)
 
 		try:
 			with drmaa_lock:
@@ -2406,50 +2418,44 @@ class Runnable(FolderObj, models.Model):
 
 					jt.remoteCommand = config
 					jt.joinFiles = True
-					# jt.outputPath = ':./out'
 
 					self.progress = 25
 					self.save()
-					import copy
 					if not self.aborting:
 						self.sgeid = copy.deepcopy(s.runJob(jt))
-						log.debug('%s%s : ' % self.short_id_tuple + 'returned sge_id "%s"' % self.sgeid)
+						self.log.debug('returned sge_id "%s"' % self.sgeid)
 						self.breeze_stat = JobStat.SUBMITTED
 					# waiting for the job to end
 					self.waiter(s, True)
 
 					jt.delete()
-					# os.chdir(default_dir)
 
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
 				Exception) as e:
-			log.error('%s%s : ' % self.short_id_tuple + 'drmaa submit failed : %s' % e)
+			self.log.error('drmaa submit failed : %s' % e)
 			self.manage_run_failed(-1, '')
 			if s is not None:
 				s.exit()
 			raise e
 
-		log.debug('%s%s : ' % self.short_id_tuple + 'drmaa submit ended successfully !')
+		self.log.debug('drmaa submit ended successfully !')
 		return 0
 
 	# FIXME LEGACY INTERFACE ONLY
 	def waiter(self, s, drmaa_waiting=False):
-		return self.compute_interface.busy_waiting(s, drmaa_waiting)
+		return self.compute_if.busy_waiting(s, drmaa_waiting)
 
 	# FIXME LEGACY ONLY
 	@new_thread
 	def old_sge_waiter(self, s, drmaa_waiting=False):
 		"""
+
 		:param s:
 		:type s: drmaa.Session
 		:param drmaa_waiting:
 		:type drmaa_waiting: bool
 		:rtype: drmaa.JobInfo
 		"""
-		import drmaa
-		import copy
-		import time
-
 		exit_code = 42
 		aborted = False
 		log = get_logger()
@@ -2464,7 +2470,7 @@ class Runnable(FolderObj, models.Model):
 				try:
 					while True:
 						time.sleep(1)
-						self.compute_interface.status()
+						self.compute_if.status()
 						if self.aborting:
 							break
 				except NoSuchJob:
@@ -2489,26 +2495,25 @@ class Runnable(FolderObj, models.Model):
 			self.progress = 100
 			if exit_code == 0:  # normal termination
 				self.breeze_stat = JobStat.DONE
-				log.info('%s%s : ' % self.short_id_tuple + 'sge job finished !')
+				self.log.info('sge job finished !')
 				if not self.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
-					get_logger().info('%s%s : ' % self.short_id_tuple + 'exit code %s, SGE success !' % exit_code)
+					self.log.info('exit code %s, SGE success !' % exit_code)
 					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
 				else: # FULL SUCCESS
 					self.manage_run_success(ret_val)
 			else: # abnormal termination
 				if not aborted: # SGE FAILED
-					get_logger().info('%s%s : ' % self.short_id_tuple + 'exit code %s, SGE FAILED !' % exit_code)
+					self.log.info('exit code %s, SGE FAILED !' % exit_code)
 					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
 				else: # USER ABORTED
 					self.manage_run_aborted(ret_val, exit_code)
 			self.save()
 			return exit_code
 		except Exception as e:
-			log.error('%s%s : ' % self.short_id_tuple + ' while waiting : %s' % e)
+			self.log.error(' while waiting : %s' % e)
 			raise e
-		return 1
 
-	@staticmethod  # FIXME obsolete
+	@staticmethod  # FIXME obsolete design
 	def __auto_json_dump(ret_val, file_n):
 		""" Dumps JobInfo ret_val from drmaa to failed or succeed file
 
@@ -2526,7 +2531,7 @@ class Runnable(FolderObj, models.Model):
 			except Exception as e:
 				pass
 
-	# Clem 11/09/2015  # FIXME obsolete
+	# Clem 11/09/2015  # FIXME obsolete design
 	def manage_run_success(self, ret_val):
 		""" !!! DO NOT OVERRIDE !!!
 		instead do override 'trigger_run_success'
@@ -2540,7 +2545,7 @@ class Runnable(FolderObj, models.Model):
 		self.log.info('SUCCESS !')
 		self.trigger_run_success(ret_val)
 
-	# Clem 11/09/2015  # FIXME obsolete
+	# Clem 11/09/2015  # FIXME obsolete design
 	def manage_run_aborted(self, ret_val, exit_code):
 		""" !!! DO NOT OVERRIDE !!!
 		instead do override 'trigger_run_user_aborted'
@@ -2553,10 +2558,10 @@ class Runnable(FolderObj, models.Model):
 		log = get_logger()
 		# self.__auto_json_dump(ret_val, ## )
 		self.breeze_stat = JobStat.ABORTED
-		log.info('%s%s : ' % self.short_id_tuple + 'exit code %s, user aborted' % exit_code)
+		self.log.info('exit code %s, user aborted' % exit_code)
 		self.trigger_run_user_aborted(ret_val, exit_code)
 
-	# Clem 11/09/2015  # FIXME obsolete
+	# Clem 11/09/2015  # FIXME obsolete design
 	def manage_run_failed(self, ret_val, exit_code, drmaa_waiting=None, type=''):
 		""" !!! DO NOT OVERRIDE !!!
 		instead do override 'trigger_run_failed'
@@ -2572,10 +2577,10 @@ class Runnable(FolderObj, models.Model):
 
 		if drmaa_waiting is not None:
 			if drmaa_waiting:
-				log.info('%s%s : ' % self.short_id_tuple + 'Also R process failed ! (%s)' % type)
+				self.log.info('Also R process failed ! (%s)' % type)
 				# TODO is R failure on 1st level wait
 			else:
-				log.info('%s%s : ' % self.short_id_tuple + 'Also R process failed OR user abort ! (%s)' % type)
+				self.log.info('Also R process failed OR user abort ! (%s)' % type)
 				return self.manage_run_aborted(ret_val, exit_code)
 				# TODO or 2nd level wait either R failure or user abort (for ex when job was aborted before it started)
 		self.breeze_stat = JobStat.FAILED
@@ -2609,6 +2614,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		pass
 
+	# FIXME obsolete design
 	def _set_status(self, status):
 		""" Save a specific status state of the instance.
 		Changes the progression % and saves the object
@@ -2639,7 +2645,7 @@ class Runnable(FolderObj, models.Model):
 
 		total = '%s%s%s' % (l1, ', and ' if l1 != '' and l2 != '' else '', l2)
 		if total != '':
-			get_logger().debug('%s%s : %s %s%%' % (self.short_id_tuple + (total, progress)))
+			self.log.debug('%s %s%%' % (total, progress))
 
 		self._stat_text = text
 
@@ -2667,13 +2673,13 @@ class Runnable(FolderObj, models.Model):
 	@property  # FIXME obsolete
 	def is_sgeid_timeout(self):
 		""" Tells if the waiting time for the job to get an SGEid has expired
+
 		:rtype: bool
 		"""
 		if self.is_sgeid_empty:
 			from datetime import timedelta
 			t_delta = timezone.now() - self.created
-			get_logger().debug(
-				'%s%s : sgeid has been empty for %s sec' % (self.short_id_tuple + (t_delta.seconds,)))
+			self.log.debug('sgeid has been empty for %s sec' % t_delta.seconds)
 			assert isinstance(t_delta, timedelta) # code assist only
 			return t_delta > timedelta(seconds=settings.NO_SGEID_EXPIRY)
 		return False
@@ -2686,10 +2692,9 @@ class Runnable(FolderObj, models.Model):
 		self.breeze_stat = JobState.FAILED
 		if False: # not self.is_successful or force:
 			# TODO finish
-			import copy
-			import os
+
 			from django.core.files import base
-			get_logger().info('%s%s : resetting job status' % self.short_id_tuple)
+			self.log.info('resetting job status')
 			new_name = str(self.name) + '_re'
 			old_path = self.home_folder_full_path
 			with open(self._r_exec_path.path) as f:
@@ -2699,7 +2704,7 @@ class Runnable(FolderObj, models.Model):
 
 			content = "setwd('%s')\n" % self.home_folder_full_path[:-1] + ''.join(r_code[1:])
 			os.rename(old_path, self.home_folder_full_path)
-			get_logger().debug('%s%s : renamed to %s' % (self.short_id_tuple + (self.home_folder_full_path,)))
+			self.log.debug('renamed to %s' % self.home_folder_full_path)
 			self._rexec.save(self.file_name(self.R_FILE_NAME), base.ContentFile(content))
 			self._doc_ml.name = self.home_folder_full_path + os.path.basename(str(self._doc_ml.name))
 
@@ -2745,7 +2750,7 @@ class Runnable(FolderObj, models.Model):
 
 	# clem 13/05/2016
 	@property
-	def compute_target(self):
+	def target_obj(self):
 		if not self.__target:
 			if self.is_report and self.target:
 				assert isinstance(self.target, ComputeTarget)
@@ -2757,8 +2762,8 @@ class Runnable(FolderObj, models.Model):
 
 	# clem 06/05/2016
 	@property
-	def compute_interface(self):
-		return self.compute_target.compute_interface
+	def compute_if(self):
+		return self.target_obj.compute_interface
 
 	@property
 	def is_report(self):
