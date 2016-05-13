@@ -1988,7 +1988,7 @@ class Runnable(FolderObj, models.Model):
 
 		:rtype: bool
 		"""
-		return self.compute_target.abort()
+		return self.compute_interface.abort()
 
 	def write_sh_file(self):
 		"""
@@ -2003,7 +2003,7 @@ class Runnable(FolderObj, models.Model):
 			'done_fn'		: self.SUB_DONE_FN,
 			'file_name'		: self.R_FILE_NAME,
 			'out_file_name'	: self.R_OUT_FILE_NAME,
-			'full_path'		: self.__target.exec_data,
+			'full_path'		: self.compute_target.exec_data,
 			'cmd'			: self.R_CMD,
 			'failed_txt'	: self.FAILED_TEXT,
 			'user'			: self._author,
@@ -2078,7 +2078,7 @@ class Runnable(FolderObj, models.Model):
 	# FIXME LEGACY INTERFACE ONLY
 	# clem 06/05/2016
 	def run(self):
-		return self.compute_target.send_job()
+		return self.compute_interface.send_job()
 
 	# FIXME LEGACY ONLY
 	def old_sge_run(self):
@@ -2158,7 +2158,7 @@ class Runnable(FolderObj, models.Model):
 
 	# FIXME LEGACY INTERFACE ONLY
 	def waiter(self, s, drmaa_waiting=False):
-		return self.compute_target.busy_waiting(s, drmaa_waiting)
+		return self.compute_interface.busy_waiting(s, drmaa_waiting)
 
 	# FIXME LEGACY ONLY
 	def old_sge_waiter(self, s, drmaa_waiting=False):
@@ -2187,7 +2187,7 @@ class Runnable(FolderObj, models.Model):
 				try:
 					while True:
 						time.sleep(1)
-						self.compute_target.status()
+						self.compute_interface.status()
 						if self.aborting:
 							break
 				except NoSuchJob:
@@ -2478,7 +2478,7 @@ class Runnable(FolderObj, models.Model):
 			raise NotImplementedError("%s was not implemented in concrete class %s." % (
 			sys._getframe(1).f_code.co_name, self.__class__.__name__))
 
-	# clem 06/05/2016
+	# clem 13/05/2016
 	@property
 	def compute_target(self):
 		if not self.__target:
@@ -2488,7 +2488,12 @@ class Runnable(FolderObj, models.Model):
 			else:
 				self.__target = ComputeTarget.objects.get(pk=2)
 			self.__target._runnable = self
-		return self.__target.compute_interface
+		return self.__target
+
+	# clem 06/05/2016
+	@property
+	def compute_interface(self):
+		return self.compute_target.compute_interface
 
 	@property
 	def is_report(self):
