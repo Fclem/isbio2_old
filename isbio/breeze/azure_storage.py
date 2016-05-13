@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from remote_storage_module import * # import interface, already has os, sys and abc
+from blobl_storage_module import * # import interface, already has os, sys and abc
 from azure.common import AzureMissingResourceHttpError as MissingResException
 from azure.storage.blob import BlockBlobService
 
