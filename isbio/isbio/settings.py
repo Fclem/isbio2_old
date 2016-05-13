@@ -164,7 +164,7 @@ class BreezeSettings(Settings):
 	# Tempory folder for the application
 	# # TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
 	# Path to R installation
-	R_ENGINE_PATH = 'R '
+	# R_ENGINE_PATH = 'R '
 
 	# Absolute filesystem path to the directory that will hold user-uploaded files.
 	# Example: "/home/media/media.lawrence.com/media/"
@@ -435,6 +435,7 @@ class DevSettings(BreezeSettings):
 	DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
 	# STATIC_ROOT = SOURCE_ROOT + 'static/'
+
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
 	MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
@@ -556,7 +557,7 @@ class DevSettings(BreezeSettings):
 
 	FOLDERS_LST = [TEMPLATE_FOLDER, SHINY_REPORT_TEMPLATE_PATH, SHINY_REPORTS, SHINY_TAGS,
 		NOZZLE_TEMPLATE_FOLDER, SCRIPT_TEMPLATE_FOLDER, JOBS_PATH, REPORT_TYPE_PATH, REPORTS_PATH, RSCRIPTS_PATH, MEDIA_ROOT,
-		PROJECT_FHRB_PM_PATH, RORA_LIB, STATIC_ROOT]
+		PROJECT_FHRB_PM_PATH, RORA_LIB, STATIC_ROOT, COMPUTE_CONFIG_PATH]
 
 
 	##
