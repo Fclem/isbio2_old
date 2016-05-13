@@ -1,5 +1,5 @@
 import django.db
-from breeze.models import Report, Jobs, JobStat
+from breeze.models import Report, Jobs, JobStat, drmaa_lock
 import drmaa
 from utils import *
 from b_exceptions import *
@@ -34,10 +34,9 @@ def with_drmaa(func):
 	"""
 	def inner(*args, **kwargs):
 		global s
-		s = drmaa.Session()
-		s.initialize()
-		func(*args, **kwargs)
-		s.exit()
+		with drmaa_lock:
+			with drmaa.Session() as s:
+				func(*args, **kwargs)
 
 	return inner
 
@@ -145,7 +144,7 @@ def refresh_qstat(proc_item):
 				end_tracking(proc_item)
 			# if the status has changed and is not consistent with one from the object
 			if status is not None and status != dbitem.breeze_stat and not dbitem.aborting:
-				dbitem.log.warning('status says %s db.breeze_stat says %s' % (status, dbitem.breeze_stat))
+				dbitem.log.debug('status says %s db.breeze_stat says %s' % (status, dbitem.breeze_stat))
 				# dbitem.breeze_stat = status
 	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
 		dbitem.log.warning('SgeId timeout !')
@@ -164,6 +163,7 @@ def _reattach_the_job(dbitem):
 	try:
 		p = Thread(target=dbitem.waiter, args=(s, ))
 		p.start()
+		# dbitem.waiter(s)
 		proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
 		dbitem.log.debug('reattaching job.waiter in tID%s' % p.ident)
@@ -185,6 +185,7 @@ def _spawn_the_job(dbitem):
 		try:
 			p = Thread(target=dbitem.run)
 			p.start()
+			# dbitem.run()
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
 			dbitem.log.debug('spawning job.run in tID%s' % p.ident)
