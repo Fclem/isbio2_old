@@ -14,6 +14,7 @@ from django.conf import settings
 from django.db import models
 import system_check
 import importlib
+import abc
 
 if settings.HOST_NAME.startswith('breeze'):
 	import drmaa
@@ -1099,67 +1100,37 @@ class ShinyReport(models.Model):
 		return self.get_name
 
 
-# 19/04/2016
-class ComputeTarget(FolderObj, models.Model):
-	"""
-	Defines and describes every shared attributes/methods of computing resource abstract classes.
-	"""
-	name = models.CharField(max_length=32, blank=False, help_text="Name of this Compute resource target")
-	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
-
-	BASE_FOLDER_NAME = ''
+# clem 13/05/2016
+class ConfigObject(FolderObj):
+	__metaclass__ = abc.ABCMeta
+	_not = "Class %s doesn't implement %s()"
+	BASE_FOLDER_NAME = settings.CONFIG_FN
 
 	def file_name(self, filename):
-		return super(ComputeTarget, self).file_name(filename)
-
-	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
-		help_text="The config file for this target")
-	enabled = models.BooleanField(default=True, help_text="Uncheck to disable target")
+		return super(ConfigObject, self).file_name(filename)
 
 	__config = None
-	_storage_module = None
-	_compute_module = None
-	__compute_interface = None
-	_runnable = None
+	# config_file = abc.abstractproperty(None, None)
 	CONFIG_GENERAL_SECTION = 'general'
-	CONFIG_TYPE = 'type'
-	CONFIG_TUNNEL = 'tunnel'
-	CONFIG_ENGINE = 'engine'
-	CONFIG_STORAGE = 'storage'
-	CONFIG_EXEC = 'exec'
+	CONFIG_LOCAL_ENV_SECTION = 'local_env'
+	CONFIG_REMOTE_ENV_SECTION = 'remote_env'
 
-	CONFIG_TUNNEL_HOST = 'host'
-	CONFIG_TUNNEL_USER = 'user'
-	CONFIG_TUNNEL_PORT = 'port'
+	def __init__(self, *_):
+		super(ConfigObject, self).__init__()
+		self.set_local_env()
 
-	CONFIG_EXEC_SYSTEM = 'system'
-	CONFIG_EXEC_VERSION = 'version'
-	CONFIG_EXEC_BIN = 'bin'
-	CONFIG_EXEC_FILE = 'file'
-	CONFIG_EXEC_ARGS = 'args'
-	CONFIG_EXEC_RUN = 'run'
-
-	@property
+	@abc.abstractproperty
 	def folder_name(self):
 		"""
+
 		:return: the generated name of the folder to be used to store content of instance
 		:rtype: str
 		"""
-		return settings.COMPUTE_CONFIG_FN
-
-	def __init__(self, *args, **kwargs):
-		super(ComputeTarget, self).__init__(*args, **kwargs)
-
-	def __unicode__(self): # Python 3: def __str__(self):
-		return '%s (%s)' % (self.label, self.name)
-
-	def __int__(self):
-		return self.id
+		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
 	@property
 	def config(self):
-		""" The whole configuration object for this target
+		""" The whole configuration object for this ConfigObject
 
 		:rtype: ConfigParser.SafeConfigParser
 		"""
@@ -1175,6 +1146,234 @@ class ComputeTarget(FolderObj, models.Model):
 				raise ConfigFileNotFound(msg)
 		return self.__config
 
+	def set_local_env(self):
+		""" Apply local system environement config, also replaces value in Django settings """
+		import os
+		for (k, v) in self.local_env_config:
+			settings.__setattr__(k.upper(), v)
+			os.environ[k.upper()] = v
+		return True
+
+	@property
+	def local_env_config(self):
+		""" The whole local env section
+
+		:return: [(key, value), ]
+		:rtype: list[(str, str)]
+		"""
+		if self.config.has_section(self.CONFIG_LOCAL_ENV_SECTION):
+			return self.config.items(self.CONFIG_LOCAL_ENV_SECTION)
+		return list()
+
+	@property
+	def remote_env_config(self):
+		""" The whole remote env section
+
+		:return: [(key, value), ]
+		:rtype: list[(str, str)]
+		"""
+		if self.config.has_section(self.CONFIG_REMOTE_ENV_SECTION):
+			return self.config.items(self.CONFIG_REMOTE_ENV_SECTION)
+		return list()
+
+	def get(self, property_name):
+		return self.config.get(self.CONFIG_GENERAL_SECTION, property_name)
+
+	# clem 11/05/2016
+	def _download_ignore(self, *args):
+		pass
+
+	class Meta:
+		abstract = True
+
+
+# clem 13/05/2016
+class ExecConfig(ConfigObject, models.Model):
+	"""
+	Defines and describes every shared attributes/methods of exec resource abstract classes.
+	"""
+	name = models.CharField(max_length=32, blank=False, help_text="Name of this exec resource")
+	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
+	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+
+	def file_name(self, filename):
+		return super(ExecConfig, self).file_name(filename)
+
+	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+		help_text="The config file for this exec resource")
+	enabled = models.BooleanField(default=True, help_text="Un-check to disable target")
+
+	CONFIG_EXEC_SYSTEM = 'system'
+	CONFIG_EXEC_VERSION = 'version'
+	CONFIG_EXEC_BIN = 'bin'
+	CONFIG_EXEC_FILE_IN = 'file_in'
+	CONFIG_EXEC_FILE_OUT = 'file_out'
+	CONFIG_EXEC_ARGS = 'args'
+	CONFIG_EXEC_RUN = 'run'
+	CONFIG_EXEC_ARCH_CMD = 'arch_cmd'
+	CONFIG_EXEC_VERSION_CMD = 'version_cmd'
+
+	@property
+	def folder_name(self):
+		"""
+
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		return settings.EXEC_CONFIG_FN
+
+	@property
+	def exec_config(self):
+		return self.config.items(self.CONFIG_GENERAL_SECTION)
+
+	@property
+	def exec_system(self):
+		""" the name of sub system to use to run the job (currently useless)
+
+		for example :
+		R
+		python
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_SYSTEM)
+
+	@property
+	def exec_version(self):
+		""" the supposed version of the used system, for information purposes
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_VERSION)
+
+	@property
+	def exec_bin_path(self):
+		""" the path or name of the system to use to run the job,
+
+		for example if you are using R or python this would be the path of R or python binary.
+		if you are using docker, this would be the name of the container,
+		etc.
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_BIN)
+
+	@property
+	def exec_file_in(self):
+		""" the file name containing the source code to run as the job
+
+		example : script.r or job.py
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_FILE_IN)
+
+	@property
+	def exec_file_out(self):
+		""" the file name to which save the output (log)
+
+		example : script.r.Rout or job.py.log
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_FILE_OUT)
+
+	@property
+	def exec_args(self):
+		""" the arguments to be passed to the binary
+
+		example : CMD BATCH --no-save
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_ARGS)
+
+	@property
+	def exec_run(self):
+		""" the command string, including the file name to be passed to the binary (usually %(args)s %(file)s)
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_RUN)
+
+
+# clem 13/05/2016
+class EngineConfig(ConfigObject, models.Model):
+	""" Defines and describes every shared attributes/methods of exec resource abstract classes. """
+	name = models.CharField(max_length=32, blank=False, help_text="Name of this engine resource")
+	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
+	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+
+	def file_name(self, filename):
+		return super(EngineConfig, self).file_name(filename)
+
+	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+		help_text="The config file for this engine resource")
+	enabled = models.BooleanField(default=True, help_text="Un-check to disable target")
+
+	@property
+	def folder_name(self):
+		"""
+
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		return settings.ENGINE_CONFIG_FN
+
+	@property
+	def engine_config(self):
+		return self.config.items(self.CONFIG_GENERAL_SECTION)
+
+
+# 19/04/2016
+class ComputeTarget(ConfigObject, models.Model):
+	""" Defines and describes every shared attributes/methods of computing resource abstract classes.
+	"""
+	name = models.CharField(max_length=32, blank=False, help_text="Name of this Compute resource target")
+	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
+	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+
+	def file_name(self, filename):
+		return super(ComputeTarget, self).file_name(filename)
+
+	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+		help_text="The config file for this target")
+	enabled = models.BooleanField(default=True, help_text="Uncheck to disable target")
+
+	_storage_module = None
+	_compute_module = None
+	__compute_interface = None
+	__exec = None
+	__engine = None
+	_runnable = None
+	CONFIG_TYPE = 'type'
+	CONFIG_TUNNEL = 'tunnel'
+	CONFIG_ENGINE = 'engine'
+	CONFIG_STORAGE = 'storage'
+	CONFIG_EXEC = 'exec'
+
+	CONFIG_TUNNEL_HOST = 'host'
+	CONFIG_TUNNEL_USER = 'user'
+	CONFIG_TUNNEL_PORT = 'port'
+
+	@property
+	def folder_name(self):
+		"""
+
+		:return: the generated name of the folder to be used to store content of instance
+		:rtype: str
+		"""
+		return settings.TARGET_CONFIG_FN
+
+	def __init__(self, *args, **kwargs):
+		super(ComputeTarget, self).__init__(*args, **kwargs)
+
+	def __unicode__(self): # Python 3: def __str__(self):
+		return '%s (%s)' % (self.label, self.name)
+
+	def __int__(self):
+		return self.id
+
 	@property
 	def target_type(self):
 		""" the type of target : local|remote
@@ -1182,6 +1381,10 @@ class ComputeTarget(FolderObj, models.Model):
 		:rtype: list
 		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TYPE)
+
+	#
+	# TUNNEL CONFIG
+	#
 
 	@property
 	def target_tunnel(self):
@@ -1201,22 +1404,6 @@ class ComputeTarget(FolderObj, models.Model):
 		return self.target_tunnel != 'no'
 
 	@property
-	def target_engine(self):
-		""" the name of the engine to use, a config section with the same name MUST be present, along with a python module named [engine_name]_interface.py
-
-		:rtype: str
-		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
-
-	@property
-	def target_engine_conf(self):
-		""" the whole configuration of the [engine_name] section (MUST be present)
-
-		:rtype: list
-		"""
-		return self.config.items(self.target_engine)
-
-	@property
 	def target_tunnel_conf(self):
 		""" the whole configuration of the [tunnel_name] section, if present (optional)
 
@@ -1225,99 +1412,6 @@ class ComputeTarget(FolderObj, models.Model):
 		if self.target_use_tunnel:
 			return self.config.items(self.target_tunnel)
 		return list()
-
-	# clem 04/05/2016
-	@property
-	def target_storage_engine(self):
-		""" the name of the storage engine, matching a python module
-
-		:rtype: str
-		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_STORAGE)
-
-	# clem 13/05/2016
-	@property
-	def target_exec(self):
-		""" the name of the config section to use to configure the execution
-
-		:rtype: str
-		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC)
-
-	# clem 13/05/2016
-	@property
-	def target_exec_conf(self):
-		""" the whole configuration of the exec section
-
-		:rtype: list
-		"""
-		return self.config.items(self.target_exec)
-
-	# clem 13/05/2016
-	@property
-	def exec_system(self):
-		""" the name of sub system to use to run the job (currently useless)
-
-		for example :
-		R
-		python
-
-		:rtype: str
-		"""
-		return self.config.get(self.target_exec, self.CONFIG_EXEC_SYSTEM)
-
-	# clem 13/05/2016
-	@property
-	def exec_version(self):
-		""" the supposed version of the used system, for information purposes
-
-		:rtype: str
-		"""
-		return self.config.get(self.target_exec, self.CONFIG_EXEC_VERSION)
-
-	# clem 13/05/2016
-	@property
-	def exec_bin_path(self):
-		""" the path or name of the system to use to run the job,
-
-		for example if you are using R or python this would be the path of R or python binary.
-		if you are using docker, this would be the name of the container,
-		etc.
-
-		:rtype: str
-		"""
-		return self.config.get(self.target_exec, self.CONFIG_EXEC_BIN)
-
-	# clem 13/05/2016
-	@property
-	def exec_file(self):
-		""" the file name containing the source code to run as the job
-
-		example : script.r or job.py
-
-		:rtype: str
-		"""
-		return self.config.get(self.target_exec, self.CONFIG_EXEC_FILE)
-
-	# clem 13/05/2016
-	@property
-	def exec_args(self):
-		""" the arguments to be passed to the binary
-
-		example : CMD BATCH --no-save
-
-		:rtype: str
-		"""
-		return self.config.get(self.target_exec, self.CONFIG_EXEC_ARGS)
-
-	# clem 13/05/2016
-	@property
-	def exec_run(self):
-		""" the command string, including the file name to be passed to the binary (usually %(args)s %(file)s)
-
-		:rtype: str
-		"""
-		return self.config.get(self.target_exec, self.CONFIG_EXEC_RUN)
 
 	# clem 04/05/2016
 	@property
@@ -1352,6 +1446,71 @@ class ComputeTarget(FolderObj, models.Model):
 			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_PORT)
 		return ''
 
+	#
+	# ENGINE
+	#
+
+	@property
+	def target_engine_name(self):
+		""" the name of the engine to use, a config section with the same name MUST be present, along with a python
+		module named [engine_name]_interface.py
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
+
+	# clem 13/05/2016
+	@property
+	def target_engine(self): # as override
+		""" the __engine object related to this target, as defined in this config file
+
+		:rtype: EngineConfig
+		"""
+		if not self.__engine:
+			self.__engine = EngineConfig.objects.get(name=self.target_engine_name)
+		return self.__engine
+
+	#
+	# EXEC
+	#
+
+	# clem 13/05/2016
+	@property
+	def target_exec_name(self):
+		""" the name of the config section to use to configure the execution
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC)
+
+	# clem 13/05/2016
+	@property
+	def target_exec(self): # as override
+		""" the ExecConfig object related to this target, as defined in this config file
+
+		:rtype: ExecConfig
+		"""
+		if not self.__exec:
+			self.__exec = ExecConfig.objects.get(name=self.target_exec_name)
+		return self.__exec
+
+	#
+	# ACCESS TO MODULES / INTERFACES / RUNNABLE CLIENT OBJECT
+	#
+
+	#
+	# STORAGE
+	#
+
+	# clem 04/05/2016
+	@property
+	def target_storage_engine(self):
+		""" the name of the storage engine, matching a python module
+
+		:rtype: str
+		"""
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_STORAGE)
+
 	# clem 04/05/2016
 	@property
 	def storage_module(self):
@@ -1362,6 +1521,10 @@ class ComputeTarget(FolderObj, models.Model):
 		if not self._storage_module:
 			self._storage_module = importlib.import_module('breeze.%s' % self.target_storage_engine)
 		return self._storage_module
+
+	#
+	# COMPUTE (based on engine name)
+	#
 
 	# clem 04/05/2016
 	@property
@@ -1374,7 +1537,7 @@ class ComputeTarget(FolderObj, models.Model):
 		:rtype: module
 		"""
 		if not self._compute_module:
-			mod_name = 'breeze.%s_interface' % self.target_engine
+			mod_name = 'breeze.%s_interface' % self.target_engine_name
 			self._compute_module = importlib.import_module(mod_name)
 		return self._compute_module
 
@@ -1397,10 +1560,6 @@ class ComputeTarget(FolderObj, models.Model):
 		:rtype: Runnable
 		"""
 		return self._runnable
-
-	# clem 11/05/2016
-	def _download_ignore(self, *args):
-		pass
 
 	class Meta(FolderObj.Meta): # TODO check if inheritance is required here
 		abstract = False

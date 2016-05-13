@@ -18,5 +18,7 @@ admin.site.register(breeze_models.OffsiteUser)
 admin.site.register(breeze_models.ShinyReport )
 admin.site.register(breeze_models.ShinyTag)
 admin.site.register(breeze_models.ComputeTarget) # 19/04/2016
+admin.site.register(breeze_models.EngineConfig) # 13/05/2016
+admin.site.register(breeze_models.ExecConfig) # 13/05/2016
 
 
