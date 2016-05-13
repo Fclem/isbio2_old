@@ -6,7 +6,7 @@ from filesize import UnitSystem, file_size2human
 from os.path import isfile, isdir, islink, exists, getsize, join
 from os import symlink, access, listdir, R_OK, chmod
 from subprocess import call, Popen, PIPE
-from threading import Thread
+from threading import Thread, Lock
 
 
 logger = logging.getLogger(__name__)
