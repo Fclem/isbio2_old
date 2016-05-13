@@ -1128,10 +1128,15 @@ class ComputeTarget(FolderObj, models.Model):
 	CONFIG_TUNNEL = 'tunnel'
 	CONFIG_ENGINE = 'engine'
 	CONFIG_STORAGE = 'storage'
+	CONFIG_EXEC = 'exec'
 
 	CONFIG_TUNNEL_HOST = 'host'
 	CONFIG_TUNNEL_USER = 'user'
 	CONFIG_TUNNEL_PORT = 'port'
+
+	CONFIG_EXEC_SYSTEM = 'system'
+	CONFIG_EXEC_VERSION = 'version'
+	CONFIG_EXEC_DATA = 'data'
 
 	@property
 	def folder_name(self):
@@ -1150,26 +1155,8 @@ class ComputeTarget(FolderObj, models.Model):
 	def __int__(self):
 		return self.id
 
-	def conf_check(self):
-		""" Return whether this computing resource is properly configured """
-		return False
-
-	def online_check(self):
-		""" Return whether this computing resource is currently online (reachable+ready) """
-		return False
-
-	def job_status(self):
-		"""
-		Returns the job status as a JobState instance
-		:rtype: breeze.models.JobState
-		"""
-		return
-
-	def abort(self):
-		return False
-
 	@property
-	def target_config(self):
+	def config(self):
 		if not self.__config:
 			import ConfigParser
 
@@ -1177,16 +1164,18 @@ class ComputeTarget(FolderObj, models.Model):
 				self.__config = ConfigParser.SafeConfigParser()
 				self.__config.readfp(open(self.config_file.path))
 			else:
-				raise IOError('The file %s could not be found' % self.config_file.path)
+				msg = 'Config file %s not found' % self.config_file.path
+				get_logger().error(msg)
+				raise ConfigFileNotFound(msg)
 		return self.__config
 
 	@property
 	def target_type(self):
-		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TYPE)
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TYPE)
 
 	@property
 	def target_tunnel(self):
-		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TUNNEL)
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TUNNEL)
 
 	@property
 	def target_use_tunnel(self):
@@ -1194,7 +1183,7 @@ class ComputeTarget(FolderObj, models.Model):
 
 	@property
 	def target_engine(self):
-		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
 
 	@property
 	def target_engine_conf(self):
@@ -1203,38 +1192,63 @@ class ComputeTarget(FolderObj, models.Model):
 		:return:
 		:rtype: list
 		"""
-		return self.target_config.items(self.target_engine)
+		return self.config.items(self.target_engine)
 
 	@property
 	def target_tunnel_conf(self):
 		if self.target_use_tunnel:
-			return self.target_config.items(self.target_tunnel)
+			return self.config.items(self.target_tunnel)
 		return list()
 
 	# clem 04/05/2016
 	@property
 	def target_storage_engine(self):
-		return self.target_config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_STORAGE)
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_STORAGE)
+
+	# clem 13/05/2016
+	@property
+	def target_exec(self):
+		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC)
+
+	# clem 13/05/2016
+	@property
+	def target_exec_conf(self):
+		return self.config.items(self.target_exec)
+
+	# clem 13/05/2016
+	@property
+	def exec_system(self):
+		return self.config.get(self.target_exec, self.CONFIG_EXEC_SYSTEM)
+
+	# clem 13/05/2016
+	@property
+	def exec_version(self):
+		return self.config.get(self.target_exec, self.CONFIG_EXEC_VERSION)
+
+	# clem 13/05/2016
+	@property
+	def exec_data(self):
+		return self.config.get(self.target_exec, self.CONFIG_EXEC_DATA)
 
 	# clem 04/05/2016
 	@property
 	def tunnel_host(self):
 		if self.target_use_tunnel:
-			return self.target_config.get(self.target_tunnel, self.CONFIG_TUNNEL_HOST)
+			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_HOST)
 		return ''
 
 	# clem 04/05/2016
 	@property
 	def tunnel_user(self):
 		if self.target_use_tunnel:
-			return self.target_config.get(self.target_tunnel, self.CONFIG_TUNNEL_USER)
+			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_USER)
 		return ''
 
 	# clem 04/05/2016
 	@property
 	def tunnel_port(self):
 		if self.target_use_tunnel:
-			return self.target_config.get(self.target_tunnel, self.CONFIG_TUNNEL_PORT)
+			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_PORT)
 		return ''
 
 	# clem 04/05/2016
@@ -1989,7 +2003,7 @@ class Runnable(FolderObj, models.Model):
 			'done_fn'		: self.SUB_DONE_FN,
 			'file_name'		: self.R_FILE_NAME,
 			'out_file_name'	: self.R_OUT_FILE_NAME,
-			'full_path'		: self.R_FULL_PATH,
+			'full_path'		: self.__target.exec_data,
 			'cmd'			: self.R_CMD,
 			'failed_txt'	: self.FAILED_TEXT,
 			'user'			: self._author,
