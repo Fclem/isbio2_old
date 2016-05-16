@@ -1,4 +1,4 @@
-from utils import function_name, gen_file_from_template, get_logger, logging
+from utilities import *
 from breeze.models import JobStat, Runnable, ComputeTarget
 import os
 import abc
@@ -38,6 +38,16 @@ class ComputeInterface:
 		log_obj.process = lambda msg, kwargs: bridge('<%s> %s' % (self._compute_target, str(msg)), kwargs)
 		return log_obj
 
+	# clem 14/05/2016
+	@property
+	def target_obj(self):
+		"""
+
+		:return:
+		:rtype: ComputeTarget
+		"""
+		return self._compute_target
+
 	@abc.abstractmethod
 	def send_job(self):
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
@@ -76,9 +86,16 @@ class ComputeInterface:
 			tar.add(source_dir, arcname=os.path.basename(source_dir))
 		return True
 
+	# clem 16/05/2016
+	def __repr__(self):
+		return '<%s@%s>' % (self.__class__.__name__, hex(id(self)))
 
-# clem 04/05/2016
-def initiator(compute_target, *args): # TODO override in implementation
+
+# clem 04/05/2016 EXAMPLE function
+# TODO override in implementation
+def initiator(compute_target, *args):
+	# It is probably a good idea to cache the object you are going to create here.
+	# Also a good idea is to use module-wide Thread.Lock() to avoid cache-miss due to concurrency
 	assert isinstance(compute_target, ComputeTarget)
 	# Replace compute_target.storage_module with another module.
 	# Note : compute_target.storage_module is also the default
