@@ -1,6 +1,5 @@
-from compute_interface_module import * # has os, abc, function_name
+from compute_interface_module import * # has os, abc, JobStat, Runnable, ComputeTarget and utilities.*
 from docker_client import *
-from utils import password_from_file, is_from_cli, get_file_md5, get_free_port # , new_thread
 a_lock = Lock()
 
 __version__ = '0.2'
@@ -359,18 +358,25 @@ class DockerInterface(ComputeInterface):
 			self.get_results() #
 
 
-__target_list = dict()
+use_caching = True
+expire_after = 30 * 60 # 30 minutes
 
 
 # clem 04/05/2016
 def initiator(compute_target, *_):
 	assert isinstance(compute_target, ComputeTarget)
-	key = compute_target.runnable.short_id
+
+	def new_if():
+		return DockerInterface(compute_target)
+
 	with a_lock:
-		if key not in __target_list.keys():
-			get_logger().debug('DockerInterface %s not found in instance cache, creating a new one...' % str(key))
-			__target_list.update({key: DockerInterface(compute_target)})
-		return __target_list[key]
+		if use_caching:
+			key = '%s:%s' % ('DockerInterface', compute_target.runnable.short_id)
+			cached = ObjectCache.get(key)
+			if not cached:
+				ObjectCache.add(new_if(), key, expire_after)
+			return ObjectCache.get(key)
+		return new_if()
 
 
 # clem 15/03/2016
