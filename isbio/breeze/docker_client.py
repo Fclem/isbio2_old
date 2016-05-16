@@ -1,7 +1,7 @@
 from docker import Client as DockerApiClient
 from docker.errors import NotFound, APIError, NullResource
 from threading import Thread, Lock
-from utilities import get_md5, advanced_pretty_print, Bcolors, new_thread, get_named_tuple, get_logger
+from utilities import get_md5, advanced_pretty_print, Bcolors, new_thread, get_named_tuple, get_logger, ObjectCache
 import curses
 import json
 import requests
@@ -883,6 +883,10 @@ class DockerClient:
 	# clem 14/03/2016
 	def __exit__(self, *_):
 		self.__cleanup()
+
+	# clem 16/05/2016
+	def __repr__(self):
+		return '<%s@%s>' % (self.__class__.__name__, hex(id(self)))
 
 	# clem 31/03/2016
 	@property
@@ -1783,7 +1787,8 @@ class DockerClient:
 		advanced_pretty_print(self.images_tree)
 
 
-__client_list = dict()
+use_caching = True
+expire_after = 60 * 60 # 1 hour
 
 
 # clem 10/05/2016
@@ -1799,9 +1804,15 @@ def get_docker_client(daemon_url, repo=None, auto_connect=True):
 	:return: The client
 	:rtype: DockerClient
 	"""
-	key = ('%s%s' % ( daemon_url, repo)).__hash__()
+
+	def new_if():
+		return DockerClient(daemon_url, repo, auto_connect)
+
 	with a_lock:
-		if key not in __client_list.keys():
-			get_logger().debug('DockerClient %s not found in instance cache, creating a new one...' % str(key))
-			__client_list.update({ key: DockerClient(daemon_url, repo, auto_connect)})
-		return __client_list[key]
+		if use_caching:
+			key = 'DockerClient:%s' % hex(('%s%s' % (daemon_url, repo)).__hash__())
+			cached = ObjectCache.get(key)
+			if not cached:
+				ObjectCache.add(new_if(), key, expire_after)
+			return ObjectCache.get(key)
+		return new_if()
