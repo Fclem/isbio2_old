@@ -103,11 +103,3 @@ class FileNotFound(ObjectNotFound):
 
 class ConfigFileNotFound(FileNotFound):
 	pass
-
-
-class ExpiredCacheObject(RuntimeWarning):
-	pass
-
-
-class IdleExpiredCacheObject(ExpiredCacheObject):
-	pass
