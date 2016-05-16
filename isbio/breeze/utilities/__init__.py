@@ -27,169 +27,7 @@ class IdleExpiredCacheObject(ExpiredCacheObject):
 	pass
 
 
-# clem 16/05/2016
-class CachedObject:
-	__created = 0.
-	__last_access = 0.
-	access_counter = 0
-	__stored_object = None
-	__time_out = -1
-	__idle_time_out = -1
-
-	def __init__(self, an_object, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
-		""" This class is a caching mechanism to store an object, managing expiration, and idle expiration.
-		if no invalidate_after is provided, it will be assigned default_time_out (120 sec).
-		if no idle_expiry is provided, it will be disabled.
-
-		:param an_object: The object to store
-		:type an_object: object
-		:param invalidate_after: number of second after which the object will be deleted (0 to disable)
-		:type invalidate_after: int | float
-		:param idle_expiry: number of second since last access after which the object will be deleted (0 to disable)
-		:type idle_expiry: int | float
-		"""
-		self.__stored_object = an_object
-		self.__created = time.time()
-		self.__last_access = time.time()
-		self.__time_out = invalidate_after
-		self.__idle_time_out = idle_expiry
-
-	@property
-	def is_expired(self):
-		""" returns whether or not this object has expired
-
-		:rtype: bool
-		"""
-		if self.__time_out and self.age >= self.__time_out:
-			return True
-		return False
-
-	@property
-	def is_idle_time_out(self):
-		""" returns whether or not this object has exceeded its idle time-out
-
-		:rtype: bool
-		"""
-		if self.__idle_time_out and self.idle_time >= self.__idle_time_out:
-			return True
-		return False
-
-	def __accessed(self):
-		""" Updates the last access time of the object, and the access counter. Also manages expiration.
-
-		:raise: IdleExpiredCacheObject | ExpiredCacheObject
-		:rtype: None
-		"""
-		if self.is_expired or self.is_idle_time_out:
-			self.__stored_object = None
-			raise IdleExpiredCacheObject if self.is_idle_time_out else ExpiredCacheObject
-		self.__last_access = time.time()
-		self.access_counter += 1
-
-	def get_object(self):
-		""" Returns the stored object. will update the last access time, and thus reset the idle_time."""
-		self.__accessed()
-		return self.__stored_object
-
-	@property
-	def age(self):
-		""" return the number of seconds since this object was created
-
-		:rtype: float
-		"""
-		return time.time() - self.__created
-
-	@property
-	def idle_time(self):
-		""" return the number of seconds since this object was last accessed directly
-
-		:rtype: float
-		"""
-		return time.time() - self.__last_access
-
-	@property
-	def last_access(self):
-		""" return the time stamp (i.e. as time.time() ) of the last direct access to the stored object
-
-		:rtype: float
-		"""
-		return self.__last_access
-
-	@property
-	def object(self):
-		""" Returns the stored object. will update the last access time, and thus reset the idle_time alias
-			of get_object().
-
-		:raise: IdleExpiredCacheObject | ExpiredCacheObject
-		"""
-		return self.get_object()
-
-	def __str__(self):
-		return '<cached %s (idle %s sec / %s sec old)>' % (
-		repr(self.__stored_object), int(self.idle_time), int(self.age))
-
-	def __repr__(self):
-		return '<cached %s>' % repr(self.__stored_object)
-
-
-# clem 16/05/2016
-class ObjectCache:
-	_cache = dict()
-
-	@classmethod
-	def get_cached(cls, key, default=None):
-		""" Retrieves the CachedObject containing the object if it exists
-
-		:param key: the key to identify the object
-		:type key: Any
-		:param default: default object to return if object is not found in the cache
-		:type default: Any
-		:return: The corresponding CacheObject or None
-		:rtype: CachedObject | None
-		"""
-		return cls._cache.get(key, default)
-
-	@classmethod
-	def get(cls, key, default=None):
-		""" Retrieves the stored object if it exists
-
-		:param key: the key to identify the object
-		:type key: Any
-		:param default: default object to return if object is not found in the cache
-		:type default: Any
-		:return: The stored object or None
-		"""
-		cached = cls.get_cached(key, default)
-		if cached:
-			text = str(cached)
-			try:
-				return cached.object
-			except IdleExpiredCacheObject:
-				cls.expired(key, text, IdleExpiredCacheObject)
-			except ExpiredCacheObject:
-				cls.expired(key, text, ExpiredCacheObject)
-		return default
-
-	@classmethod
-	def expired(cls, key, text, exception):
-		del cls._cache[key]
-		get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception.__name__))
-
-	@classmethod
-	def add(cls, some_object, key, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
-		if not cls.get_cached(key):
-			cls._cache[key] = CachedObject(some_object, invalidate_after, idle_expiry)
-			get_logger().debug('Cache : added %s:%s' % (key, repr(cls.get_cached(key))))
-
-	@classmethod
-	def clear(cls):
-		""" Removes everything from the cache """
-		num = len(cls._cache)
-		cls._cache = dict()
-		get_logger().debug('Cache : cleared (%s objects removed)' % num)
-
-
-class ACL:
+class ACL(enumerate):
 	__R = 4
 	__RX = 5
 	__W = 6
@@ -211,7 +49,7 @@ class ACL:
 	RX_RX_ = 0550
 
 
-class Bcolors:
+class Bcolors(enumerate):
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
 	OKGREEN = '\033[92m'
@@ -880,3 +718,171 @@ def gen_file_from_template(template_path, sub_dict, output_path=None, safe=True)
 				pass
 		return True
 	return result
+
+
+# clem 16/05/2016
+class CachedObject:
+	__created = 0.
+	__last_access = 0.
+	access_counter = 0
+	__stored_object = None
+	__time_out = -1
+	__idle_time_out = -1
+
+	def __init__(self, an_object, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
+		""" This class is a caching mechanism to store an object, managing expiration, and idle expiration.
+		if no invalidate_after is provided, it will be assigned default_time_out (120 sec).
+		if no idle_expiry is provided, it will be disabled.
+
+		:param an_object: The object to store
+		:type an_object: object
+		:param invalidate_after: number of second after which the object will be deleted (0 to disable)
+		:type invalidate_after: int | float
+		:param idle_expiry: number of second since last access after which the object will be deleted (0 to disable)
+		:type idle_expiry: int | float
+		"""
+		self.__stored_object = an_object
+		self.__created = time.time()
+		self.__last_access = time.time()
+		self.__time_out = invalidate_after
+		self.__idle_time_out = idle_expiry
+
+	@property
+	def is_expired(self):
+		""" returns whether or not this object has expired
+
+		:rtype: bool
+		"""
+		if self.__time_out and self.age >= self.__time_out:
+			return True
+		return False
+
+	@property
+	def is_idle_time_out(self):
+		""" returns whether or not this object has exceeded its idle time-out
+
+		:rtype: bool
+		"""
+		if self.__idle_time_out and self.idle_time >= self.__idle_time_out:
+			return True
+		return False
+
+	def __accessed(self):
+		""" Updates the last access time of the object, and the access counter. Also manages expiration.
+
+		:raise: IdleExpiredCacheObject | ExpiredCacheObject
+		:rtype: None
+		"""
+		if self.is_expired or self.is_idle_time_out:
+			self.__stored_object = None
+			raise IdleExpiredCacheObject if self.is_idle_time_out else ExpiredCacheObject
+		self.__last_access = time.time()
+		self.access_counter += 1
+
+	def get_object(self):
+		""" Returns the stored object. will update the last access time, and thus reset the idle_time."""
+		self.__accessed()
+		return self.__stored_object
+
+	@property
+	def age(self):
+		""" return the number of seconds since this object was created
+
+		:rtype: float
+		"""
+		return time.time() - self.__created
+
+	@property
+	def idle_time(self):
+		""" return the number of seconds since this object was last accessed directly
+
+		:rtype: float
+		"""
+		return time.time() - self.__last_access
+
+	@property
+	def last_access(self):
+		""" return the time stamp (i.e. as time.time() ) of the last direct access to the stored object
+
+		:rtype: float
+		"""
+		return self.__last_access
+
+	@property
+	def object(self):
+		""" Returns the stored object. will update the last access time, and thus reset the idle_time alias
+			of get_object().
+
+		:raise: IdleExpiredCacheObject | ExpiredCacheObject
+		"""
+		return self.get_object()
+
+	def __str__(self):
+		return '<cached %s (idle %s sec / %s sec old)>' % (
+			repr(self.__stored_object), int(self.idle_time), int(self.age))
+
+	def __repr__(self):
+		return '<cached %s>' % repr(self.__stored_object)
+
+
+# clem 16/05/2016
+class ObjectCache:
+	_cache = dict()
+
+	@classmethod
+	def get_cached(cls, key, default=None):
+		""" Retrieves the CachedObject containing the object if it exists
+
+		:param key: the key to identify the object
+		:type key: Any
+		:param default: default object to return if object is not found in the cache
+		:type default: Any
+		:return: The corresponding CacheObject or None
+		:rtype: CachedObject | None
+		"""
+		return cls._cache.get(key, default)
+
+	@classmethod
+	def get(cls, key, default=None):
+		""" Retrieves the stored object if it exists
+
+		:param key: the key to identify the object
+		:type key: Any
+		:param default: default object to return if object is not found in the cache
+		:type default: Any
+		:return: The stored object or None
+		"""
+		cached = cls.get_cached(key, default)
+		if cached:
+			text = str(cached)
+			try:
+				return cached.object
+			except ExpiredCacheObject as e:
+				cls.expire(key, text, str(e.__class__.__name__))
+		return default
+
+	@classmethod
+	def expire(cls, key, text, exception_txt):
+		del cls._cache[key]
+		get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception_txt))
+
+	@classmethod
+	def add(cls, some_object, key, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
+		if not cls.get_cached(key):
+			cls._cache[key] = CachedObject(some_object, invalidate_after, idle_expiry)
+			get_logger().debug('Cache : added %s:%s' % (key, repr(cls.get_cached(key))))
+		cls.garbage_collection()
+
+	@classmethod
+	def clear(cls):
+		""" Removes everything from the cache """
+		num = len(cls._cache)
+		cls._cache = dict()
+		get_logger().debug('Cache : cleared (%s objects removed)' % num)
+
+	@classmethod
+	@new_thread
+	def garbage_collection(cls):
+		for k, v in cls._cache.iteritems():
+			if v.is_idle_time_out or v.is_expired:
+				cls.expire(k, str(v), 'ExpiredGarbageCollection')
