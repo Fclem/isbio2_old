@@ -1,8 +1,6 @@
-from compute_interface_module import * # has os, abc, function_name
+from compute_interface_module import * # has os, abc, JobStat, Runnable, ComputeTarget and utilities.*
 from qstat import *
 from django.conf import settings
-
-# from utils import password_from_file, is_from_cli, get_file_md5, get_free_port # , new_thread
 
 __version__ = '0.1'
 __author__ = 'clem'
@@ -31,7 +29,7 @@ class SGEInterface(ComputeInterface):
 		:return: success
 		:rtype: bool
 		"""
-		assert isinstance(self._compute_target, ComputeTarget)
+		assert isinstance(self.target_obj, ComputeTarget)
 		a_dict = {
 			'shell'	: self.DEFAULT_SHELL,
 			'h_vmem': self.DEFAULT_V_MEM,
@@ -48,8 +46,9 @@ class SGEInterface(ComputeInterface):
 		:return: if succeeded
 		:rtype: bool
 		"""
-		if self._compute_target:
-			for (k, v) in self._compute_target.target_engine_conf:
+		if self.target_obj:
+			tab = self.target_obj.local_env_config + self.target_obj.exec_obj.remote_env_config
+			for (k, v) in tab:
 				# print (k, v)
 				settings.__setattr__(k.upper(), v)
 				os.environ[k.upper()] = v
