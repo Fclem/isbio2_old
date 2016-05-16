@@ -4,14 +4,13 @@ from django.contrib.auth.models import User # as DjangoUser
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
-from breeze import managers, utils
-from breeze.b_exceptions import *
-from breeze.comp import Trans
+from breeze import managers, utils, system_check, b_exceptions, comp
+from b_exceptions import *
+from comp import Trans
 from utils import *
 from os.path import isfile # , isdir, islink, exists, getsize
 from django.conf import settings
 from django.db import models
-import system_check
 import importlib
 import time
 import copy
@@ -1146,6 +1145,7 @@ class ConfigObject(FolderObj):
 
 			if isfile(self.config_file.path):
 				self.__config = ConfigParser.SafeConfigParser()
+				logger.debug('opening %s for option parsing' % self.config_file.path)
 				self.__config.readfp(open(self.config_file.path))
 			else:
 				msg = 'Config file %s not found' % self.config_file.path
@@ -1371,7 +1371,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
 		help_text="The config file for this target")
-	enabled = models.BooleanField(default=True, help_text="Uncheck to disable target")
+	enabled = models.BooleanField(default=True, help_text="Un-check to disable target")
 
 	_storage_module = None
 	_compute_module = None
@@ -2096,8 +2096,7 @@ class Runnable(FolderObj, models.Model):
 
 	@property  # FIXME obsolete
 	def _rout_file(self):
-		# return '%s%s' % (self.home_folder_full_path, self.R_OUT_FILE_NAME)
-		return '%s%s' % (self._rexec, self.R_OUT_EXT)
+		return '%s%s' % (self._rexec, self.target_obj.exec_obj.exec_file_out)
 
 	@property
 	def _failed_file(self):
@@ -2434,8 +2433,8 @@ class Runnable(FolderObj, models.Model):
 				Exception) as e:
 			self.log.error('drmaa submit failed : %s' % e)
 			self.manage_run_failed(-1, '')
-			if s is not None:
-				s.exit()
+			# if s is not None:
+			#	s.exit()
 			raise e
 
 		self.log.debug('drmaa submit ended successfully !')
@@ -2752,11 +2751,20 @@ class Runnable(FolderObj, models.Model):
 	@property
 	def target_obj(self):
 		if not self.__target:
-			if self.is_report and self.target:
-				assert isinstance(self.target, ComputeTarget)
-				self.__target = self.target
+			key = '%s:%s' % (self.instance_type, self.short_id)
+			# module level caching
+			cached = ObjectCache.get(key)
+			if not cached:
+				# instance level caching
+				if self.is_report and self.target:
+					assert isinstance(self.target, ComputeTarget)
+					self.__target = self.target
+				else:
+					self.__target = ComputeTarget.objects.get(pk=2)
+				# module level caching
+				ObjectCache.add(self.__target, key)
 			else:
-				self.__target = ComputeTarget.objects.get(pk=2)
+				self.__target = cached
 			self.__target._runnable = self
 		return self.__target
 
@@ -3170,6 +3178,7 @@ class Report(Runnable):
 	def generate_r_file(self, *args, **kwargs):
 		"""
 		generate the Nozzle generator R file
+
 		:param sections: Rscripts list
 		:param request_data: HttpRequest
 		"""
@@ -3214,7 +3223,7 @@ class Report(Runnable):
 		# do the substitution
 		result = src.substitute(d)
 		# save r-file
-		self._rexec.save(self.R_FILE_NAME, base.ContentFile(result))
+		self._rexec.save(self.target_obj.exec_obj.exec_file_in, base.ContentFile(result))
 
 	# Clem 11/09/2015
 	def trigger_run_success(self, ret_val):
