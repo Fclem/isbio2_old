@@ -1153,10 +1153,12 @@ class ConfigObject(FolderObj):
 				raise ConfigFileNotFound(msg)
 		return self.__config
 
-	def set_local_env(self):
+	def set_local_env(self, items=None):
 		""" Apply local system environement config, also replaces value in Django settings """
 		import os
-		for (k, v) in self.local_env_config:
+		if not items:
+			items = self.local_env_config
+		for (k, v) in items:
 			settings.__setattr__(k.upper(), v)
 			os.environ[k.upper()] = v
 		return True
@@ -1183,8 +1185,10 @@ class ConfigObject(FolderObj):
 			return self.config.items(self.CONFIG_REMOTE_ENV_SECTION)
 		return list()
 
-	def get(self, property_name):
-		return self.config.get(self.CONFIG_GENERAL_SECTION, property_name)
+	def get(self, property_name, section=None):
+		if not section:
+			section = self.CONFIG_GENERAL_SECTION
+		return self.config.get(section, property_name)
 
 	# clem 11/05/2016
 	def _download_ignore(self, *args):
@@ -1485,6 +1489,11 @@ class ComputeTarget(ConfigObject, models.Model):
 		:rtype: str
 		"""
 		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
+
+	# clem 16/05/2016
+	@property
+	def engine_section(self):
+		return self.config.items(self.target_engine_name)
 
 	# clem 13/05/2016
 	@property
