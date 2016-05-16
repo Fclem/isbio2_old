@@ -7,11 +7,19 @@ __author__ = 'clem'
 __date__ = '06/05/2016'
 
 
+class ConfigNames(enumerate):
+	q_master = 'SGE_MASTER_HOST'
+	q_master_port = 'SGE_QMASTER_PORT'
+	exec_port = 'SGE_EXECD_PORT'
+	queue = 'SGE_QUEUE'
+	r_home = 'R_HOME'
+	shell = 'DEFAULT_SHELL'
+	engine_section = 'sge'
+
+
 # clem 06/05/2016
 class SGEInterface(ComputeInterface):
-	run_id = ''
-	client = None
-	_compute_target = None
+	# TODO : move that to the exec/engine config file
 	DEFAULT_SHELL = '/bin/bash'
 	DEFAULT_V_MEM = '15G'
 	DEFAULT_H_CPU = '999:00:00'
@@ -19,8 +27,6 @@ class SGEInterface(ComputeInterface):
 
 	def __init__(self, compute_target, storage_backend=None):
 		super(SGEInterface, self).__init__(compute_target, storage_backend)
-
-		self.apply_config()
 
 	# clem 09/05/2016
 	def write_config(self):
@@ -31,12 +37,13 @@ class SGEInterface(ComputeInterface):
 		"""
 		assert isinstance(self.target_obj, ComputeTarget)
 		a_dict = {
-			'shell'	: self.DEFAULT_SHELL,
+			'shell'	: self.target_obj.engine_obj.get(ConfigNames.shell),
 			'h_vmem': self.DEFAULT_V_MEM,
 			'h_cpu'	: self.DEFAULT_H_CPU,
 			'h_rt'	: self.DEFAULT_H_RT,
-			'queue'	: settings.SGE_QUEUE,
+			'queue'	: self.target_obj.get(ConfigNames.queue, ConfigNames.engine_section),
 		}
+		print a_dict
 		return gen_file_from_template(settings.SGE_REQUEST_TEMPLATE, a_dict, '~/%s' % settings.SGE_REQUEST_FN)
 
 	# clem 09/05/2016
@@ -47,11 +54,12 @@ class SGEInterface(ComputeInterface):
 		:rtype: bool
 		"""
 		if self.target_obj:
-			tab = self.target_obj.local_env_config + self.target_obj.exec_obj.remote_env_config
-			for (k, v) in tab:
-				# print (k, v)
-				settings.__setattr__(k.upper(), v)
-				os.environ[k.upper()] = v
+			self.target_obj.engine_obj.set_local_env()
+			self.target_obj.exec_obj.set_local_env()
+			self.target_obj.set_local_env()
+			self.target_obj.set_local_env(self.target_obj.engine_section)
+			self.target_obj.engine_obj.set_local_env()
+
 			return self.write_config()
 		return False
 
@@ -70,7 +78,7 @@ class SGEInterface(ComputeInterface):
 
 	def send_job(self): # TODO move it all here
 		# TODO fully switch to qsub, to get finally totally rid of DRMAA F*****G SHIT
-		if self.apply_config:
+		if self.apply_config():
 			self._runnable.old_sge_run()
 			return True
 		return False
