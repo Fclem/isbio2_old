@@ -14,6 +14,7 @@ from threading import Thread, Lock
 
 
 logger = logging.getLogger(__name__)
+GENERAL_CACHE_TIME_OUT = 5 * 60 # 5 minutes
 
 
 # clem 16/05/2016
@@ -34,9 +35,8 @@ class CachedObject:
 	__stored_object = None
 	__time_out = -1
 	__idle_time_out = -1
-	default_time_out = 120
 
-	def __init__(self, an_object, invalidate_after=default_time_out, idle_expiry=0):
+	def __init__(self, an_object, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
 		""" This class is a caching mechanism to store an object, managing expiration, and idle expiration.
 		if no invalidate_after is provided, it will be assigned default_time_out (120 sec).
 		if no idle_expiry is provided, it will be disabled.
@@ -135,7 +135,6 @@ class CachedObject:
 # clem 16/05/2016
 class ObjectCache:
 	_cache = dict()
-	general_time_out = 120 # 2 minutes
 
 	@classmethod
 	def get_cached(cls, key, default=None):
@@ -173,14 +172,21 @@ class ObjectCache:
 
 	@classmethod
 	def expired(cls, key, text, exception):
-		get_logger().debug('object %s:%s removed from cache : %s' % (key, text, exception.__name__))
 		del cls._cache[key]
+		get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception.__name__))
 
 	@classmethod
-	def add(cls, some_object, key, invalidate_after=general_time_out, idle_expiry=0):
+	def add(cls, some_object, key, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
 		if not cls.get_cached(key):
 			cls._cache[key] = CachedObject(some_object, invalidate_after, idle_expiry)
-			get_logger().debug('added %s:%s to object cache' % (key, repr(cls.get_cached(key))))
+			get_logger().debug('Cache : added %s:%s' % (key, repr(cls.get_cached(key))))
+
+	@classmethod
+	def clear(cls):
+		""" Removes everything from the cache """
+		num = len(cls._cache)
+		cls._cache = dict()
+		get_logger().debug('Cache : cleared (%s objects removed)' % num)
 
 
 class ACL:
