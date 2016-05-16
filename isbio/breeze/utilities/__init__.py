@@ -830,3 +830,47 @@ def get_free_port():
 	sock = socket()
 	sock.bind(('', 0))
 	return sock.getsockname()[1]
+
+
+# clem 06/05/2016, moved here on 16/05/2016
+def gen_file_from_template(template_path, sub_dict, output_path=None, safe=True):
+	"""
+	generate a content from a template
+
+	:param template_path: the path of the template file to use
+		(c.f. https://docs.python.org/2.7/library/string.html#string.Template )
+	:type template_path: str or unicode
+	:param sub_dict: the substitution dictionary to use. Keys are used to match the $-var in the template
+	:type sub_dict: dict
+	:param output_path: the full path (including file name) where to save the output to. If None, then the
+		result is returned
+	:type output_path: basestring or None
+	:param safe: If True, the sub-engine will not raise error for non-matched $-keys
+	:type safe: bool
+	:return: Either a success flag is output_path was provided, or the result of the replacement if successful,
+	or False
+	:rtype: bool or basestring
+	"""
+	from os.path import exists, expanduser
+	assert isinstance(template_path, (str, unicode))
+	assert exists(template_path)
+	assert output_path is None or isinstance(output_path, (str, unicode))
+	assert isinstance(sub_dict, dict)
+
+	from string import Template
+
+	# load the template
+	with open(template_path) as template_fd:
+		src = Template(template_fd.read())
+
+	# do the substitution
+	result = src.safe_substitute(sub_dict) if safe else src.substitute(sub_dict)
+
+	if output_path:
+		output_path = expanduser(output_path)
+		with open(output_path, 'w') as output_fd:
+			# writes the result to the output file
+			while output_fd.write(result):
+				pass
+		return True
+	return result
