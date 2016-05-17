@@ -30,6 +30,7 @@ CATEGORY_OPT = (
 
 # TODO : move all the logic into objects here
 drmaa_lock = Lock()
+sge_lock = Lock()
 
 
 class JobState(drmaa.JobState):
@@ -1109,11 +1110,12 @@ class ConfigObject(FolderObj):
 		return super(ConfigObject, self).file_name(filename)
 
 	__config = None
+	use_cache = True
 	# config_file = abc.abstractproperty(None, None)
 	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
 		help_text="The config file for this exec resource")
 
-	CONFIG_GENERAL_SECTION = 'general'
+	CONFIG_GENERAL_SECTION = 'DEFAULT'
 	CONFIG_LOCAL_ENV_SECTION = 'local_env'
 	CONFIG_REMOTE_ENV_SECTION = 'remote_env'
 
@@ -1132,22 +1134,42 @@ class ConfigObject(FolderObj):
 		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
 
+	# clem 17/05/2016
+	@property
+	def log(self):
+		if hasattr(self, 'runnable'):
+			return self.runnable.log
+		elif hasattr(self, '_runnable'):
+			return self._runnable.log
+		else:
+			return get_logger()
+
 	@property
 	def config(self):
 		""" The whole configuration object for this ConfigObject
 
 		:rtype: ConfigParser.SafeConfigParser
 		"""
-		if not self.__config:
+		if not self.__config: # instance level caching
 			import ConfigParser
-
 			if isfile(self.config_file.path):
-				self.__config = ConfigParser.SafeConfigParser()
-				logger.debug('opening %s for option parsing' % self.config_file.path)
-				self.__config.readfp(open(self.config_file.path))
+				key = 'ConfigObject:%s' % str(self)
+				# module level caching
+				if self.use_cache:
+					cached = ObjectCache.get(key)
+				if not self.use_cache or not cached:
+					# instance level caching
+					self.__config = ConfigParser.SafeConfigParser()
+					self.__config.readfp(open(self.config_file.path))
+					self.log.debug('Config : parsed %s / %s ' % (os.path.basename(self.config_file.path), self.__class__.__name__))
+					if self.use_cache:
+						# module level caching
+						ObjectCache.add(self.__config, key)
+				else:
+					self.__config = cached
 			else:
 				msg = 'Config file %s not found' % self.config_file.path
-				get_logger().error(msg)
+				self.log.error(msg)
 				raise ConfigFileNotFound(msg)
 		return self.__config
 
@@ -1492,11 +1514,12 @@ class ComputeTarget(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		from ConfigParser import NoSectionError
+		from ConfigParser import NoSectionError, NoOptionError
 		try:
 			return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
-		except NoSectionError as e:
+		except (NoSectionError, AttributeError, NoOptionError, Exception) as e:
 			self._runnable.log.error('%s in %s' % (str(e), self.config_file.path))
+			raise e
 
 	# clem 16/05/2016
 	@property
@@ -1563,7 +1586,11 @@ class ComputeTarget(ConfigObject, models.Model):
 		:rtype: module
 		"""
 		if not self._storage_module:
-			self._storage_module = importlib.import_module('breeze.%s' % self.target_storage_engine)
+			try:
+				self._storage_module = importlib.import_module('breeze.%s' % self.target_storage_engine)
+			except ImportError as e:
+				self.log.error(str(e))
+				raise e
 		return self._storage_module
 
 	#
@@ -1581,8 +1608,12 @@ class ComputeTarget(ConfigObject, models.Model):
 		:rtype: module
 		"""
 		if not self._compute_module:
-			mod_name = 'breeze.%s_interface' % self.target_engine_name
-			self._compute_module = importlib.import_module(mod_name)
+			try:
+				mod_name = 'breeze.%s_interface' % self.target_engine_name
+				self._compute_module = importlib.import_module(mod_name)
+			except ImportError as e:
+				self.log.error(str(e))
+				raise e
 		return self._compute_module
 
 	# clem 04/05/2016
@@ -2230,7 +2261,7 @@ class Runnable(FolderObj, models.Model):
 		# if self._breeze_stat == JobStat.DONE:
 		# 	return True
 		# return isfile(self._test_file)
-		return self._breeze_stat == JobStat.DONE or isfile(self._test_file)
+		return self._breeze_stat == JobStat.DONE # or isfile(self._test_file)
 
 	@property  # FIXME obsolete
 	def is_sge_successful(self):
@@ -2664,7 +2695,7 @@ class Runnable(FolderObj, models.Model):
 		:rtype: str
 		"""
 		# return JobStat.textual(self._status, self)
-		if self.breeze_stat == JobState.DONE:
+		if self.breeze_stat == JobState.DONE or self.breeze_stat == JobState.RUNNING:
 			return JobStat.textual(self._status, self)
 		return JobStat.textual(self.breeze_stat, self)
 
@@ -2761,8 +2792,7 @@ class Runnable(FolderObj, models.Model):
 		:return:
 		:rtype: ComputeTarget
 		"""
-
-		if not self.__target:
+		if not self.__target: # instance level caching
 			key = '%s:%s' % (self.instance_type, self.short_id)
 			# module level caching
 			cached = ObjectCache.get(key)
