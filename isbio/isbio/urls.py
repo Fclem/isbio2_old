@@ -134,6 +134,7 @@ else:
 		url(r'^get/(?P<ftype>[a-z]+)-(?P<fname>[^/-]+)$', views.send_file),
 		url(r'^builder/?$', views.builder),
 		url(r'^resources/?$', views.resources),
+		url(r'^invalidate/??$', views.invalidate_cache),
 		url(r'^resources/scripts/(?P<page>\d+)?$', views.manage_scripts),
 		url(r'^resources/scripts/all/(?P<page>\d+)?$', views.manage_scripts, { 'view_all': True }),
 		url(r'^resources/scripts/(all/)?script-editor/(?P<sid>\d+)(?P<tab>-[a-z_]+)?$', views.script_editor),
