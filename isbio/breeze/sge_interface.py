@@ -1,6 +1,5 @@
 from compute_interface_module import * # has os, abc, JobStat, Runnable, ComputeTarget and utilities.*
 from breeze.b_exceptions import NoSuchJob, SGEError # , InvalidArgument
-from breeze.models import JOB_PS
 import StringIO
 
 
@@ -71,7 +70,7 @@ class SGEInterface(ComputeInterface):
 	# clem 06/05/2016
 	@property
 	def _sge_obj(self): # TODO move it all here ( or not )
-		return Qstat(self._runnable).job_info()
+		return Qstat(self).job_info()
 
 	# clem 06/05/2016
 	def status(self): # TODO move it all here
@@ -251,8 +250,9 @@ class SgeJob(object):
 		:return: the SgeJob state as a JobStat parameter
 		:rtype: str
 		"""
-		if self._state in JOB_PS:
-			return JOB_PS[self._state]
+		jps = self.runnable.compute_if.js.job_ps
+		if self._state in jps:
+			return jps[self._state]
 		else:
 			return str(self._state)
 

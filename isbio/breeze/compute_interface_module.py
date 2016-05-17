@@ -30,6 +30,11 @@ class ComputeInterface:
 
 		self._missing_exception = self.storage_backend.MissingResException
 
+	# clem 17/05/2016
+	@property
+	def js(self):
+		return JobStat
+
 	# clem 11/05/2016
 	@property
 	def log(self):
@@ -93,7 +98,7 @@ class ComputeInterface:
 
 # clem 04/05/2016 EXAMPLE function
 # TODO override in implementation
-def initiator(compute_target, *args):
+def initiator(compute_target, *_):
 	# It is probably a good idea to cache the object you are going to create here.
 	# Also a good idea is to use module-wide Thread.Lock() to avoid cache-miss due to concurrency
 	assert isinstance(compute_target, ComputeTarget)
