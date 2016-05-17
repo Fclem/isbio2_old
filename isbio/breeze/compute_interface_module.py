@@ -53,6 +53,20 @@ class ComputeInterface:
 		"""
 		return self._compute_target
 
+	# clem 17/05/2016
+	@property # writing shortcut
+	def engine_obj(self):
+		if self.target_obj and self.target_obj.engine_obj:
+			return self.target_obj.engine_obj
+		return None
+
+	# clem 17/05/2016
+	@property  # writing shortcut
+	def execut_obj(self):
+		if self.target_obj and self.target_obj.exec_obj:
+			return self.target_obj.exec_obj
+		return None
+
 	@abc.abstractmethod
 	def send_job(self):
 		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))

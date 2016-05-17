@@ -111,20 +111,6 @@ class SGEInterface(ComputeInterface):
 		pass
 
 	# clem 17/05/2016
-	@property # writing shortcut
-	def engine_obj(self):
-		if self.target_obj and self.target_obj.engine_obj:
-			return self.target_obj.engine_obj
-		return None
-
-	# clem 17/05/2016
-	@property  # writing shortcut
-	def execut_obj(self):
-		if self.target_obj and self.target_obj.exec_obj:
-			return self.target_obj.exec_obj
-		return None
-
-	# clem 17/05/2016
 	@property  # writing shortcut
 	def config_qstat_bin_path(self):
 		if self.engine_obj:
@@ -291,6 +277,7 @@ class SgeJob(object):
 			[str(self.id), self.name, self.user, self.state, self.start_d, self.start_t, self.queue, self.slot])
 
 
+# TODO : Split this object in two : one general and one runnable / config related
 # clem on 25/08/2015
 class Qstat(object): # would need some proper error management if SGE is not set up properly
 	runnable = None
