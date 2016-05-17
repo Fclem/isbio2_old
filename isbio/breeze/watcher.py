@@ -161,14 +161,15 @@ def _reattach_the_job(dbitem):
 	"""
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 	try:
-		p = Thread(target=dbitem.waiter, args=(s, ))
-		p.start()
-		# dbitem.waiter(s)
-		proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
+		if not dbitem.is_done:
+			p = Thread(target=dbitem.waiter, args=(s, ))
+			p.start()
+			# dbitem.waiter(s)
+			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
 
-		dbitem.log.debug('reattaching job.waiter in tID%s' % p.ident)
-		if statsd:
-			statsd.increment('python.breeze.running_jobs')
+			dbitem.log.debug('reattaching job.waiter in tID%s' % p.ident)
+			if statsd:
+				statsd.increment('python.breeze.running_jobs')
 	except Exception as e:
 		dbitem.log.exception('unhandled exception : %s' % e)
 		return False
