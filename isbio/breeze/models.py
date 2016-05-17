@@ -44,29 +44,6 @@ class JobState(drmaa.JobState):
 		pass
 
 
-JOB_PS = {
-	'': JobState.UNDETERMINED,
-	'r': JobState.RUNNING,
-	't': JobState.TRANSFERRING,
-	'p': JobState.PENDING,
-	'qw': JobState.QUEUED_ACTIVE,
-	'Eqw': JobState.ERROR_Q_WAIT,
-
-	'h': JobState.ON_HOLD,
-	'ho': JobState.SYSTEM_ON_HOLD,
-	'hs': JobState.SYSTEM_ON_HOLD,
-	'hd': JobState.SYSTEM_ON_HOLD,
-	'hu': JobState.USER_ON_HOLD,
-	'hus': JobState.USER_SYSTEM_ON_HOLD,
-
-	's': JobState.SUSPENDED,
-	'ss': JobState.SYSTEM_SUSPENDED,
-	'su': JobState.USER_SUSPENDED,
-	'us': JobState.USER_SUSPENDED,
-	'sus': JobState.USER_SYSTEM_SUSPENDED,
-}
-
-
 # 30/06/2015 & 10/07/2015
 class JobStat(object):
 	"""
@@ -115,56 +92,73 @@ class JobStat(object):
 		RUN_WAIT: 'job is about to be submitted',
 		'': 'unknown/other'
 	}
+	job_ps = {
+		''   : JobState.UNDETERMINED,
+		'r'  : JobState.RUNNING,
+		't'  : JobState.TRANSFERRING,
+		'p'  : JobState.PENDING,
+		'qw' : JobState.QUEUED_ACTIVE,
+		'Eqw': JobState.ERROR_Q_WAIT,
 
-	@staticmethod
-	def _progress_level(stat):
-		"""
-		Return the progression value associated with a specific status
+		'h'  : JobState.ON_HOLD,
+		'ho' : JobState.SYSTEM_ON_HOLD,
+		'hs' : JobState.SYSTEM_ON_HOLD,
+		'hd' : JobState.SYSTEM_ON_HOLD,
+		'hu' : JobState.USER_ON_HOLD,
+		'hus': JobState.USER_SYSTEM_ON_HOLD,
+
+		's'  : JobState.SUSPENDED,
+		'ss' : JobState.SYSTEM_SUSPENDED,
+		'su' : JobState.USER_SUSPENDED,
+		'us' : JobState.USER_SUSPENDED,
+		'sus': JobState.USER_SYSTEM_SUSPENDED,
+	}
+
+	@classmethod
+	def _progress_level(cls, stat):
+		""" Return the progression value associated with a specific status
+
 		:param stat:
 		:type stat: str or Exception
 		:return: progress value
 		:rtype: int
 		"""
-		# if isinstance(stat,
-		# 			(drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException)):
-		# 	return 67
-		# elif stat is Exception:
+
 		if stat is Exception:
 			return 66
-		elif stat == JobStat.SCHEDULED:
+		elif stat == cls.SCHEDULED:
 			return 2
-		elif stat == JobStat.INIT:
+		elif stat == cls.INIT:
 			return 4
-		elif stat == JobStat.RUN_WAIT:
+		elif stat == cls.RUN_WAIT:
 			return 8
-		elif stat in JobStat.PREPARE_RUN:
+		elif stat in cls.PREPARE_RUN:
 			return 15
-		elif stat == JobStat.QUEUED_ACTIVE:
+		elif stat == cls.QUEUED_ACTIVE:
 			return 30
-		elif stat == JobStat.SUBMITTED:
+		elif stat == cls.SUBMITTED:
 			return 20
-		elif stat == JobStat.RUNNING:
+		elif stat == cls.RUNNING:
 			return 55
-		elif stat == JobStat.GETTING_RESULTS:
+		elif stat == cls.GETTING_RESULTS:
 			return 85
-		elif stat in (JobStat.FAILED, JobStat.SUCCEED, JobStat.DONE):
+		elif stat in (cls.FAILED, cls.SUCCEED, cls.DONE):
 			return 100
 		else:
-			# return self.progress
 			return None
 
 	def status_logic(self):
 		return self.status_logic_arg(self._init_stat)
 
 	def status_logic_arg(self, status):
-		"""
-		Return relevant the relevant status, breeze_stat, progress and text display of current status code
+		""" Return relevant the relevant status, breeze_stat, progress and text display of current status code
+
 		:param status: a JobStat constant
 		:type status: str
 		:return: status, breeze_stat, progress, textual(status)
 		:rtype: str, str, int, str
 		"""
-		progress = self._progress_level(status) # progression %
+		progress = JobStat._progress_level(status) # progression %
 		if status == JobStat.ABORTED:
 			self.status, self.breeze_stat = JobStat.ABORTED, JobStat.DONE
 		elif status == JobStat.ABORT:
@@ -195,7 +189,7 @@ class JobStat(object):
 			self.breeze_stat = JobStat.GETTING_RESULTS
 		else:
 			self.status = status
-		self.stat_text = self.textual(status) # clear text status description
+		self.stat_text = JobStat.textual(status) # clear text status description
 
 		return self.status, self.breeze_stat, progress, self.stat_text
 
@@ -210,25 +204,29 @@ class JobStat(object):
 		else:
 			raise InvalidArgument
 
-	@staticmethod
-	def textual(stat, obj=None):
-		"""
-		Return string representation of current status
+	@classmethod
+	def textual(cls, stat, obj=None):
+		""" Return string representation of current status
+		
 		:param stat: current status
 		:type stat: str
+		:param obj: runnable
+		:type obj: Runnable
 		:return: string representation of current status
 		:rtype: str
 		"""
-		if stat == JobStat.FAILED:
+		if stat == cls.FAILED:
 			if isinstance(obj, Runnable) and obj.is_r_failure:
-				stat = JobStat.R_FAILED
-		if stat in JobStat.__decode_status:
-			return JobStat.__decode_status[stat]
+				stat = cls.R_FAILED
+		if stat in cls.__decode_status:
+			return cls.__decode_status[stat]
 		else:
 			return 'unknown status'
 
 	def __str__(self):
 		return self.stat_text
+
+JOB_PS = JobStat.job_ps
 
 
 class FolderObj(object):
@@ -1153,12 +1151,18 @@ class ConfigObject(FolderObj):
 				raise ConfigFileNotFound(msg)
 		return self.__config
 
-	def set_local_env(self, items=None):
-		""" Apply local system environement config, also replaces value in Django settings """
-		import os
-		if not items:
-			items = self.local_env_config
-		for (k, v) in items:
+	def set_local_env(self, sup_items=list()):
+		""" Apply local system environement config, also replaces value in Django settings
+
+		:param sup_items: optional supplementary items (like in config.items, i.e. a section)
+		:type sup_items: list|None
+		:return: if success
+		:rtype: bool
+		"""
+		if not sup_items:
+			sup_items = list()
+		sup_items += self.local_env_config
+		for (k, v) in sup_items:
 			settings.__setattr__(k.upper(), v)
 			os.environ[k.upper()] = v
 		return True
@@ -1488,7 +1492,11 @@ class ComputeTarget(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
+		from ConfigParser import NoSectionError
+		try:
+			return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
+		except NoSectionError as e:
+			self._runnable.log.error('%s in %s' % (str(e), self.config_file.path))
 
 	# clem 16/05/2016
 	@property
@@ -2009,32 +2017,18 @@ class Runnable(FolderObj, models.Model):
 
 	# SPECIFICS
 	# clem 17/09/2015
-	def find_sge_instance(self, sgeid):
+	# @staticmethod # TODO Change to @classmethod not to use class names
+	@classmethod
+	def find_sge_instance(cls, sgeid):
 		""" Return a runnable instance from an sge_id
 
 		:param sgeid: an sgeid from qstat
 		:type sgeid: str | int
 		:rtype: Runnable
 		"""
-		if sgeid == self.sgeid:
-			return self
-		return Runnable.find_sge_instance(sgeid) # TODO change
-
-	@staticmethod # TODO Change to @classmethod not to use class names
-	def find_sge_instance(sgeid):
-		"""
-		Return a runnable instance from an sge_id
-		:param sgeid: an sgeid from qstat
-		:type sgeid: str | int
-		:rtype: Runnable
-		"""
 		result = None
 		try:
-			result = Report.objects.get(sgeid=sgeid)
-		except ObjectDoesNotExist:
-			pass
-		try:
-			result = Jobs.objects.get(sgeid=sgeid)
+			result = cls.objects.get(sgeid=sgeid)
 		except ObjectDoesNotExist:
 			pass
 		return result
@@ -2105,7 +2099,8 @@ class Runnable(FolderObj, models.Model):
 
 	@property  # FIXME obsolete
 	def _rout_file(self):
-		return '%s%s' % (self._rexec, self.target_obj.exec_obj.exec_file_out)
+		# return '%s%s' % (self._rexec, self.target_obj.exec_obj.exec_file_out)
+		return '%s%s' % (self.home_folder_full_path, self.target_obj.exec_obj.exec_file_out)
 
 	@property
 	def _failed_file(self):
@@ -2467,13 +2462,15 @@ class Runnable(FolderObj, models.Model):
 		exit_code = 42
 		aborted = False
 		log = get_logger()
-		if self.is_sgeid_empty:
+		if self.is_sgeid_empty or self.is_done:
 			return
 		sge_id = copy.deepcopy(self.sgeid) # uselees
 		try:
 			ret_val = None
 			if drmaa_waiting:
-				ret_val = s.wait(sge_id, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+				with drmaa_lock:
+					with drmaa.Session() as s:
+						ret_val = s.wait(sge_id, drmaa.Session.TIMEOUT_WAIT_FOREVER)
 			else:
 				try:
 					while True:
@@ -2759,6 +2756,12 @@ class Runnable(FolderObj, models.Model):
 	# clem 13/05/2016
 	@property
 	def target_obj(self):
+		"""
+
+		:return:
+		:rtype: ComputeTarget
+		"""
+
 		if not self.__target:
 			key = '%s:%s' % (self.instance_type, self.short_id)
 			# module level caching
@@ -2776,6 +2779,11 @@ class Runnable(FolderObj, models.Model):
 				self.__target = cached
 			self.__target._runnable = self
 		return self.__target
+
+	# clem 17/05/2016
+	@property
+	def compute_module(self):
+		return self.target_obj.compute_module
 
 	# clem 06/05/2016
 	@property
