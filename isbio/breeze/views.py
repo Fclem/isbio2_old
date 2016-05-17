@@ -3099,3 +3099,12 @@ def job_url_hook(request, rid, md5, status='', code=0):
 	except ObjectDoesNotExist:
 		pass
 	return HttpResponse('ok', mimetype='text/plain')
+
+
+# clem 17/05/2016
+@login_required(login_url='/')
+def invalidate_cache(request):
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+	ObjectCache.clear()
+	return HttpResponse('ok', mimetype='text/plain')
