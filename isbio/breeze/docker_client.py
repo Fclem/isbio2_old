@@ -1055,7 +1055,7 @@ class DockerClient:
 		if not isinstance(run.image, DockerImage) and image_name not in self.images_by_repo_tag:
 			# image not found, let's try to pull it
 			img = run.link_image(self)
-			self._log('Unable to find image \'%s\' locally' % image_name)
+			self._log('Unable to find image \'%s\' locally, let\'s try pulling it...' % image_name)
 			return self.pull(img.repo_and_name, img.tag)
 		return True
 
@@ -1442,6 +1442,7 @@ class DockerClient:
 			gen = self.cli.pull(image_name, tag, stream=do_stream)
 			if do_stream:
 				return printer(gen)
+			return True
 		except KeyboardInterrupt as e:
 			self._exception_handler(e)
 		except Exception as e:
