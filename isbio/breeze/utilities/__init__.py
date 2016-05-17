@@ -826,8 +826,9 @@ class CachedObject:
 
 
 # clem 16/05/2016
-class ObjectCache:
+class ObjectCache(object):
 	_cache = dict()
+	data_mutex = Lock()
 
 	@classmethod
 	def get_cached(cls, key, default=None):
@@ -840,7 +841,9 @@ class ObjectCache:
 		:return: The corresponding CacheObject or None
 		:rtype: CachedObject | None
 		"""
-		return cls._cache.get(key, default)
+		with cls.data_mutex:
+			val = cls._cache.get(key, default)
+		return val
 
 	@classmethod
 	def get(cls, key, default=None):
@@ -863,26 +866,30 @@ class ObjectCache:
 
 	@classmethod
 	def expire(cls, key, text, exception_txt):
-		del cls._cache[key]
+		with cls.data_mutex:
+			del cls._cache[key]
 		get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception_txt))
 
 	@classmethod
 	def add(cls, some_object, key, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
 		if not cls.get_cached(key):
-			cls._cache[key] = CachedObject(some_object, invalidate_after, idle_expiry)
+			with cls.data_mutex:
+				cls._cache[key] = CachedObject(some_object, invalidate_after, idle_expiry)
 			get_logger().debug('Cache : added %s:%s' % (key, repr(cls.get_cached(key))))
 		cls.garbage_collection()
 
 	@classmethod
 	def clear(cls):
 		""" Removes everything from the cache """
-		num = len(cls._cache)
-		cls._cache = dict()
+		with cls.data_mutex:
+			num = len(cls._cache)
+			cls._cache = dict()
 		get_logger().debug('Cache : cleared (%s objects removed)' % num)
 
 	@classmethod
 	@new_thread
 	def garbage_collection(cls):
-		for k, v in cls._cache.iteritems():
-			if v.is_idle_time_out or v.is_expired:
-				cls.expire(k, str(v), 'ExpiredGarbageCollection')
+		with cls.data_mutex:
+			for k, v in cls._cache.iteritems():
+				if v.is_idle_time_out or v.is_expired:
+					cls.expire(k, str(v), 'ExpiredGarbageCollection')
