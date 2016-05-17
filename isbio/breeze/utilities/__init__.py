@@ -865,6 +865,7 @@ class ObjectCache(object):
 		return default
 
 	@classmethod
+	@new_thread
 	def expire(cls, key, text, exception_txt):
 		with cls.data_mutex:
 			del cls._cache[key]
