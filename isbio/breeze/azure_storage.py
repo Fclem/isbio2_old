@@ -156,7 +156,7 @@ class AzureStorage(StorageModule):
 		raise MissingResException('Not found %s / %s' % (container, blob_name), 404)
 
 	# clem 21/04/2016
-	def erase(self, blob_name, container=None, verbose=True):
+	def erase(self, blob_name, container=None, verbose=True, no_fail=False):
 		""" Delete the specified blob in self.container or in the specified container if said blob exists
 
 		:param blob_name: Name of the blob to delete from Azure storage
@@ -165,6 +165,8 @@ class AzureStorage(StorageModule):
 		:type container: str or None
 		:param verbose: Print actions (default to True)
 		:type verbose: bool or None
+		:param no_fail: suppress raising an exception if the named blob does not exists
+		:type no_fail: bool or None (default to False)
 		:return: success?
 		:rtype: bool
 		:raise: azure.common.AzureMissingResourceHttpError
@@ -176,7 +178,9 @@ class AzureStorage(StorageModule):
 				self._print_call('delete_blob', (container, blob_name))
 			self.blob_service.delete_blob(container, blob_name)
 			return True
-		raise MissingResException('Not found %s / %s' % (container, blob_name), 404)
+		if not no_fail:
+			raise MissingResException('Not found %s / %s' % (container, blob_name), 404)
+		return False
 
 
 # clem 29/04/2016

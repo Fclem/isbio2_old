@@ -211,7 +211,7 @@ class StorageModule:
 			container = MNGT_CONTAINER
 		blob_name = blob_name.replace('.pyc', '.py')
 		file_name = file_name.replace('.pyc', '.py')
-		self.erase(blob_name, container)
+		self.erase(blob_name, container, no_fail=True)
 		return self.upload(blob_name, file_name, container)
 
 	# clem 20/04/2016
@@ -327,7 +327,7 @@ class StorageModule:
 
 	# clem 28/04/201
 	@abc.abstractmethod
-	def erase(self, blob_name, container=None, verbose=True):
+	def erase(self, blob_name, container=None, verbose=True, no_fail=False):
 		""" Delete the specified blob in self.container or in the specified container if said blob exists
 
 		:param blob_name: Name of the blob to delete from * storage
