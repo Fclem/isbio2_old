@@ -321,7 +321,8 @@ def jobs(request, state="", error_msg="", page=1):
 		show_tab = "show_curr"
 		state = 'current'
 
-	from qstat import Qstat
+	# from qstat import Qstat
+	from sge_interface import Qstat
 
 	return render_to_response('jobs.html', RequestContext(request, {
 		str(tab): 'active',
@@ -336,7 +337,8 @@ def jobs(request, state="", error_msg="", page=1):
 		'page': page,
 		'db_access': db_access,
 		'error_message': error_msg,
-		'queue_is_full': Qstat().is_queue_full,
+		# 'queue_is_full': Qstat().is_queue_full,
+		'queue_is_full': True,
 		'current_nb': merged_active.__len__()
 	}))
 
@@ -2856,8 +2858,10 @@ def qstat_live(request):
 	:return: json
 	:rtype: HttpResponse
 	"""
-	from qstat import Qstat
-	return HttpResponse(Qstat().html, mimetype='text/html')
+	from sge_interface import Qstat
+	# return HttpResponse(Qstat().html, mimetype='text/html')
+	# TODO : fix
+	return HttpResponse('', mimetype='text/html')
 
 
 # Clem 22/09/2015
@@ -2869,9 +2873,10 @@ def qstat_json(request):
 	:return: json
 	:rtype: HttpResponse
 	"""
-	from qstat import Qstat
-	obj = Qstat()
-	return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': obj.html }), mimetype='application/json')
+	from sge_interface import Qstat
+	# obj = Qstat()
+	# return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': obj.html }), mimetype='application/json')
+	return HttpResponse(simplejson.dumps({ 'md5': '', 'html': '' }), mimetype='application/json')
 
 
 # Clem 22/09/2015
@@ -2888,22 +2893,20 @@ def qstat_lp(request, md5_t=None):
 	:rtype: HttpResponse
 	"""
 	# FIXME : CPU consumption really too high
-	return aux.fail_with404(HttpRequest(), 'DISABLED')
-	if md5_t is None:
+	if False:
+		if md5_t is None:
+			return qstat_json(request)
+		from time import sleep
+		refresh_time = 0.5
+		last_sig = md5_t
+		i = 0
+		while last_sig == q.md5:
+			i += refresh_time
+			if i > settings.LONG_POLL_TIME_OUT_REFRESH:
+				break
+			sleep(refresh_time)
 		return qstat_json(request)
-
-	from qstat import Qstat, SgeJob
-	from time import sleep
-	refresh_time = 0.5
-	q = Qstat()
-	last_sig = md5_t
-	i = 0
-	while last_sig == q.md5:
-		i += refresh_time
-		if i > settings.LONG_POLL_TIME_OUT_REFRESH:
-			break
-		sleep(refresh_time)
-	return qstat_json(request)
+	return aux.fail_with404(HttpRequest(), 'DISABLED')
 
 
 # clem on 21/08/2015
