@@ -144,8 +144,8 @@ def refresh_qstat(proc_item):
 				end_tracking(proc_item)
 			# if the status has changed and is not consistent with one from the object
 			if status is not None and status != dbitem.breeze_stat and not dbitem.aborting:
-				dbitem.log.debug('status says %s db.breeze_stat says %s' % (status, dbitem.breeze_stat))
-				# dbitem.breeze_stat = status
+				# dbitem.log.debug('status says %s db.breeze_stat says %s' % (status, dbitem.breeze_stat))
+				dbitem.breeze_stat = status
 	elif dbitem.is_sgeid_timeout: # and not dbitem.is_done:
 		dbitem.log.warning('SgeId timeout !')
 		end_tracking(proc_item)
