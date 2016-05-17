@@ -41,25 +41,26 @@ def restart():
 
 
 def update_server_routine():
-	from b_exceptions import SGEError
-	from qstat import Qstat
-	try:
-		server_info = Qstat().queue_stat
+	from sge_interface import Qstat, SGEError
+	if False:
+		try:
+			server_info = object() # Qstat().queue_stat
 
-		if server_info.total == server_info.cdsuE:
-			server = 'bad'
-		elif int(server_info.avail) == 0:
-			server = 'full'
-		elif int(server_info.avail) <= 3:
-			server = 'busy'
-		elif float(server_info.cqload) > 30:
-			server = 'busy'
-		else:
-			server = 'idle'
+			if server_info.total == server_info.cdsuE:
+				server = 'bad'
+			elif int(server_info.avail) == 0:
+				server = 'full'
+			elif int(server_info.avail) <= 3:
+				server = 'busy'
+			elif float(server_info.cqload) > 30:
+				server = 'busy'
+			else:
+				server = 'idle'
 
-		return server, server_info.__dict__
-	except AttributeError, SGEError:
-		return 'bad', dict()
+			return server, server_info.__dict__
+		except AttributeError, SGEError:
+			pass
+	return 'bad', dict()
 
 
 ###
