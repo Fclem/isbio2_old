@@ -36,7 +36,7 @@ echo 'dir     : '`pwd`
 echo 'target  : '$TARGET
 echo 'exec    : '$RUN_LINE
 echo 'version : '$VERSION
-echo 
+echo
 # removing possibly existing files generated from a previous run
 rm *~ $OUT $FAILED_FN $INCOMPLETE_FN $SUCCESS_FN $DONE_FN > /dev/null 2>&1
 wget -qO- $POKE_URL'starting' > /dev/null
