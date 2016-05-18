@@ -349,10 +349,10 @@ class DevSettings(BreezeSettings):
 	# os.environ['SGE_ROOT'] = '/opt/gridengine'
 	# os.environ['QSTAT_BIN'] = os.environ['SGE_ROOT']+'/bin/'+sge_arch+'/qstat'
 	# Q_BIN = '/usr/bin/'
-	Q_BIN = os.environ['Q_BIN']
+	Q_BIN = os.environ.get('Q_BIN', '')
 	QSTAT_BIN = '%sqstat' % Q_BIN
 	QDEL_BIN = '%sqdel' % Q_BIN
-	SGE_QUEUE_NAME = os.environ['SGE_QUEUE']
+	SGE_QUEUE_NAME = os.environ.get('SGE_QUEUE', '')
 	# os.environ['QSTAT_BIN'] = QSTAT_BIN
 	# os.environ['SGE_ARCH'] = 'UNSUPPORTED-lx3.2.0-40-generic-amd64'
 	# os.environ['LD_LIBRARY_PATH'] = os.environ['SGE_ROOT'] + '/lib/' + os.environ['SGE_ARCH']

@@ -20,6 +20,9 @@ check_file_dt = ''
 check_file_state = ''
 
 
+CHECK_FILE = settings.SOURCE_ROOT + 'breeze'
+
+
 # experimental site-disabling
 # clem 14/09/2015
 def modification_date(filename, formatted=False):
@@ -33,12 +36,12 @@ def creation_date(filename, formatted=False):
 
 
 def get_state():
-	return open('./breeze').read().lower().replace('\n', '').replace('\r', '').replace('\f', '').replace(' ', '')
+	return open(CHECK_FILE).read().lower().replace('\n', '').replace('\r', '').replace('\f', '').replace(' ', '')
 
 
 def update_state():
 	global check_file_dt, check_file_state
-	check_file_dt = modification_date('./breeze')
+	check_file_dt = modification_date(CHECK_FILE)
 	check_file_state = get_state()
 
 
@@ -59,7 +62,7 @@ def reload_urlconf(urlconf=None):
 
 def check_state():
 	global check_file_dt, check_file_state
-	if modification_date('./breeze') != check_file_dt:
+	if modification_date(CHECK_FILE) != check_file_dt:
 		new_state = get_state()
 		old_state = check_file_state
 		update_state()
