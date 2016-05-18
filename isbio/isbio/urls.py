@@ -83,6 +83,11 @@ else:
 		url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
 		# Shiny page out
 		# sub-level access control wrapper (in)
+		# FIXME : syntax issue with one of the following 4 patterns, causing error on prod
+		# url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
+		# url(r'^shiny/apps/((?P<path>[^/]+)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
+		# url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
+		# url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
 		url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
 		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),

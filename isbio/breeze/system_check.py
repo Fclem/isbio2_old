@@ -800,6 +800,29 @@ def check_cas(request):
 	return False
 
 
+# clem 18/05/2015
+def check_urls():
+	""" Check if the url file has no malformed url patterns
+
+	:rtype: bool
+	"""
+	def show_urls(url_list, depth=0):
+		""" code from https://code.activestate.com/recipes/576974-show-all-url-patterns-in-django/ """
+		for entry in url_list:
+			_ = entry.regex.pattern
+			if hasattr(entry, 'url_patterns'):
+				show_urls(entry.url_patterns, depth + 1)
+
+	try:
+		from isbio.urls import urlpatterns
+		show_urls(urlpatterns)
+		return True
+	except Exception as e:
+		pass
+
+	return False
+
+
 # clem 09/09/2015
 def ui_checker_proxy(obj):
 	"""	Run a self-test based on requested URL
@@ -861,6 +884,8 @@ good_bad = ('Good', 'BAD')
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
+	SysCheckUnit(check_urls, 'urls', 'URL file', 'URL FILE\t\t', RunType.boot_time, ex=UrlFileHasMalformedPatterns,
+		mandatory=True),
 	# # SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
 	SysCheckUnit(save_file_index, 'fs_ok', '', 'saving file index...\t', RunType.boot_time, 25000,
 				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount, db_conn,

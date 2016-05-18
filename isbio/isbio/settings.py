@@ -351,15 +351,9 @@ class DevSettings(BreezeSettings):
 
 	import_env()
 
-	# Q_BIN = '/usr/bin/'
-	# Q_BIN = os.environ.get('Q_BIN', '')
 	Q_BIN = ''
-	# QSTAT_BIN = '%sqstat' % Q_BIN
 	QSTAT_BIN = ''
-	# QDEL_BIN = '%sqdel' % Q_BIN
 	QDEL_BIN = ''
-	# SGE_QUEUE_NAME = os.environ.get('SGE_QUEUE', '')
-	# SGE_QUEUE_NAME = ''
 	SGE_QUEUE = ''
 	os.environ['MAIL'] = '/var/mail/dbychkov'
 

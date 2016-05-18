@@ -93,7 +93,7 @@ class JobKeeper:
 		except Exception as e:
 			self.log.fatal('UNABLE TO START WATCHER : %s' % e)
 
-	def process_request(self, request):
+	def process_request(self, _):
 		if not JobKeeper.p.is_alive():
 			# JobKeeper.p.terminate()
 			JobKeeper.p = Thread(target=runner)
@@ -106,7 +106,7 @@ class BreezeAwake:
 		update_state()
 
 	@staticmethod
-	def process_request(request):
+	def process_request(_):
 		check_state()
 
 if settings.ENABLE_DATADOG:
@@ -120,18 +120,18 @@ if settings.ENABLE_DATADOG:
 			statsd.event('Breeze reload', '', 'info', hostname=settings.HOST_NAME)
 
 		@staticmethod
-		def process_request(request):
+		def process_request(_):
 			statsd.increment('python.breeze.request')
 
 		@staticmethod
-		def process_view(request, view_func, view_args, view_kwargs):
+		def process_view(request, view_func, *_):
 			statsd.increment('python.breeze.page.views')
 			statsd.increment('python.breeze.page.view.' + str(view_func.__name__))
 			if request.user:
 				statsd.increment('python.breeze.page.auth_views')
 
 		@staticmethod
-		def process_exception(exception, e):
+		def process_exception(_, e):
 			statsd.event('Python Exception', str(e), 'warning', hostname=settings.HOST_NAME)
 			statsd.increment('python.breeze.exception')
 
@@ -143,11 +143,11 @@ class CheckUserProfile(object):
 			return views.home(request)
 
 
-class RemoteFW:
+class RemoteFW(object):
 	@staticmethod
 	def process_request(request):
 		print type(request), request
 
 
-class Empty:
+class Empty(object):
 	pass
