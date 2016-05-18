@@ -6,422 +6,451 @@
 
 {% block extra_head %}
 
-  <link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
-  <link rel="stylesheet" type="text/css" href="/static/css/bootstrap-wysihtml5-0.0.2.css">
+	<link href="/static/css/bootstrapSwitch.css" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="/static/css/bootstrap-wysihtml5-0.0.2.css">
 
-  <script src="/static/js/bootstrapSwitch.js"></script>
-  <script src="/static/js/wysihtml5-0.3.0_rc2.min.js"></script>
-  <script src="/static/js/bootstrap-wysihtml5-0.0.2.min.js"></script>
+	<script src="/static/js/bootstrapSwitch.js"></script>
+	<script src="/static/js/wysihtml5-0.3.0_rc2.min.js"></script>
+	<script src="/static/js/bootstrap-wysihtml5-0.0.2.min.js"></script>
 
-  <script src="/static/js/codemirror.js"></script>
-  <link rel="stylesheet" href="/static/css/codemirror.css">
-  <link rel="stylesheet" href="/static/css/r-theme.css">
-  <script src="/static/js/r.js"></script>
+	<script src="/static/js/codemirror.js"></script>
+	<link rel="stylesheet" href="/static/css/codemirror.css">
+	<link rel="stylesheet" href="/static/css/r-theme.css">
+	<script src="/static/js/r.js"></script>
 
-  <!-- <script type="text/javascript" src="/static/js/fb.js"></script> -->
+	<!-- <script type="text/javascript" src="/static/js/fb.js"></script> -->
 
-<style>
-      body {
-        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
-        padding-bottom: 10px;
-      }
-      #components{
-        min-height: 600px;
-      }
-      #target{
-        min-height: 200px;
-        border: 1px solid #ccc;
-        padding: 5px;
-      }
-      #target .component{
-        border: 1px solid #fff;
-      }
-      #temp{
-        width: 500px;
-        background: gray;
-        border: 1px dotted #ccc;
-        border-radius: 10px;
-      }
+	<style>
+		body {
+			padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+			padding-bottom: 10px;
+		}
 
-      .popover-content form {
-        margin: 0 auto;
-        width: 213px;
-      }
-      .popover-content form .btn{
-        margin-right: 10px
-      }
-      #source{
-        min-height: 500px;
-      }
+		#components {
+			min-height: 600px;
+		}
 
-</style>
+		#target {
+			min-height: 200px;
+			border: 1px solid #ccc;
+			padding: 5px;
+		}
+
+		#target .component {
+			border: 1px solid #fff;
+		}
+
+		#temp {
+			width: 500px;
+			background: gray;
+			border: 1px dotted #ccc;
+			border-radius: 10px;
+		}
+
+		.popover-content form {
+			margin: 0 auto;
+			width: 213px;
+		}
+
+		.popover-content form .btn {
+			margin-right: 10px
+		}
+
+		#source {
+			min-height: 500px;
+		}
+
+	</style>
 {% endblock %}
 
 {% block content %}
-  <div class="row-fluid">
-    <div class="span10 offset1">
-      <ul class="breadcrumb pull-left" style="background-color: transparent;">
-        <li><a href="/resources/">Manage Resources</a> <span class="divider">/</span></li>
-        <li><a href="/resources/scripts/">Manage Scripts</a> <span class="divider">/</span></li>
-        <li class="active"> {{ script.name }} </li>
-      </ul>
-    </div>
-  </div>
+	<div class="row-fluid">
+		<div class="span10 offset1">
+			<ul class="breadcrumb pull-left" style="background-color: transparent;">
+				<li><a href="/resources/">Manage Resources</a> <span class="divider">/</span></li>
+				<li><a href="/resources/scripts/">Manage Scripts</a> <span class="divider">/</span></li>
+				<li class="active"> {{ script.name }} </li>
+			</ul>
+		</div>
+	</div>
 
-  <div class="row-fluid">
-    <div class="span10 offset1">
-      <h2>
-        {{ script.name }} {% if script.draft %} :: ( draft ) {% endif %}
-        <img style="border: 1px solid black;" {% if script.logo %} src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="100" height="100" class="img-rounded pull-right">
-      </h2>
-    </div>
-  </div>
+	<div class="row-fluid">
+		<div class="span10 offset1">
+			<h2>
+				{{ script.name }} {% if script.draft %} :: ( draft ) {% endif %}
+				<img style="border: 1px solid black;" {% if script.logo %} src="/media/{{ script.logo }}" {% else %}
+				     src="/static/logos/rlogo.jpg" {% endif %} width="100" height="100" class="img-rounded pull-right">
+			</h2>
+		</div>
+	</div>
 
-  <div class="row-fluid">
-    <div class="span10 offset1">
-      <div class="tabbable tabs-left">
-        <!-- TABS' HEADER -->
-        <ul class="nav nav-tabs">
-          <li class="{{ general_tab }}"><a href="#general" data-toggle="tab"><strong> General </strong></a></li>
-          <li class="{{ descript_tab }}"><a href="#description" data-toggle="tab"><strong> Description </strong></a></li>
-          <li class="{{ attribut_tab }}"><a href="#attributes" data-toggle="tab"><strong> Attributes </strong></a></li>
-          <li class="{{ fbuilder_tab }}"><a href="#builder" data-toggle="tab"><strong> Form Builder </strong></a></li>
-          <li class="{{ sources_tab }}"><a href="#sources" id="source-tab" data-toggle="tab"><strong> Sources
-          </strong></a></li>
-          <li class="{{ logos_tab }}"><a href="#logos" data-toggle="tab"><strong> Logos </strong></a></li>
-        </ul>
+	<div class="row-fluid">
+		<div class="span10 offset1">
+			<div class="tabbable tabs-left">
+				<!-- TABS' HEADER -->
+				<ul class="nav nav-tabs">
+					<li class="{{ general_tab }}"><a href="#general" data-toggle="tab"><strong> General </strong></a>
+					</li>
+					<li class="{{ descript_tab }}"><a href="#description"
+					                                  data-toggle="tab"><strong> Description </strong></a></li>
+					<li class="{{ attribut_tab }}"><a href="#attributes" data-toggle="tab"><strong> Attributes </strong></a>
+					</li>
+					<li class="{{ fbuilder_tab }}"><a href="#builder" data-toggle="tab"><strong> Form Builder </strong></a>
+					</li>
+					<li class="{{ sources_tab }}"><a href="#sources" id="source-tab" data-toggle="tab"><strong> Sources
+					</strong></a></li>
+					<li class="{{ logos_tab }}"><a href="#logos" data-toggle="tab"><strong> Logos </strong></a></li>
+				</ul>
 
-        <!-- TABS' CONTENT -->
-        <div class="tab-content offset1" style="margin-top: 35px">
-          <!-- General =================== -->
-          <div class="tab-pane {{ general_tab }}" id="general">
-            <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
-              {% csrf_token %}
-              <input type="hidden" name="form_name" value="general">
-              {{ basic_form|as_bootstrap }}
-              <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
-            </form>
-          </div>
-          <!-- Description =================== -->
-          <div class="tab-pane" id="description">
-            <div>
-            <div class="alert alert-info fade in" id="description_alert" style="display:none;">
-              <button type="button" class="close" data-dismiss="alert">&times;</button>
-              <strong> Done! </strong> Script Description has been saved.
-            </div>
-          </div>
-            <form id="description_form" class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
-              {% csrf_token %}
-              <input type="hidden" name="form_name" value="description">
-              <div class="control-group">
-                <div class="controls">
-                  <textarea id="description_field" class="input-xxlarge" rows="11" name="description_field" > </textarea>
-                </div>
-              </div>
-              <button id="update_descr_button" class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
-            </form>
-          </div>
-          <!-- Attributes =================== -->
-          <div class="tab-pane {{ attribut_tab }}" id="attributes">
-            <form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
-              {% csrf_token %}
-              <input type="hidden" name="form_name" value="attributes">
+				<!-- TABS' CONTENT -->
+				<div class="tab-content offset1" style="margin-top: 35px">
+					<!-- General =================== -->
+					<div class="tab-pane {{ general_tab }}" id="general">
+						<form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}"
+						      method="post">
+							{% csrf_token %}
+							<input type="hidden" name="form_name" value="general">
+							{{ basic_form|as_bootstrap }}
+							<button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
+						</form>
+					</div>
+					<!-- Description =================== -->
+					<div class="tab-pane" id="description">
+						<div>
+							<div class="alert alert-info fade in" id="description_alert" style="display:none;">
+								<button type="button" class="close" data-dismiss="alert">&times;</button>
+								<strong> Done! </strong> Script Description has been saved.
+							</div>
+						</div>
+						<form id="description_form" class="form-horizontal"
+						      action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
+							{% csrf_token %}
+							<input type="hidden" name="form_name" value="description">
+							<div class="control-group">
+								<div class="controls">
+									<textarea id="description_field" class="input-xxlarge" rows="11"
+									          name="description_field"> </textarea>
+								</div>
+							</div>
+							<button id="update_descr_button" class="btn btn-primary pull-right" type="submit">
+								<strong>Update</strong></button>
+						</form>
+					</div>
+					<!-- Attributes =================== -->
+					<div class="tab-pane {{ attribut_tab }}" id="attributes">
+						<form class="form-horizontal" action="/resources/scripts/script-editor/update/{{ script.id }}"
+						      method="post">
+							{% csrf_token %}
+							<input type="hidden" name="form_name" value="attributes">
 
-              <div class="control-group">
-                <label class="control-label" for="id_ID">ID</label>
-                <div class="controls"><input id="id_ID" class="input-mini" type="text" value="&nbsp;{{ script.id }}" disabled></div>
-              </div>
-              <div class="control-group">
-                <label class="control-label" for="id_DATE">Modified</label>
-                <div class="controls"><input id="id_DATE" class="input-medium" type="text" value="&nbsp;{{ script.creation_date }}" disabled></div>
-              </div>
+							<div class="control-group">
+								<label class="control-label" for="id_ID">ID</label>
+								<div class="controls"><input id="id_ID" class="input-mini" type="text"
+								                             value="&nbsp;{{ script.id }}" disabled></div>
+							</div>
+							<div class="control-group">
+								<label class="control-label" for="id_DATE">Modified</label>
+								<div class="controls"><input id="id_DATE" class="input-medium" type="text"
+								                             value="&nbsp;{{ script.creation_date }}" disabled></div>
+							</div>
 
-              {{ attr_form|as_bootstrap }}
+							{{ attr_form|as_bootstrap }}
 
-              <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
-            </form>
-          </div>
-          <!-- Builder =================== -->
-          <div class="tab-pane" id="builder">
-            <div id="form_update_alert" class="" style="visibility: hidden">
-              <a class="close" onclick="$('#form_update_alert').css('visibility', 'hidden');">×</a>
-              <p id='form_alert_text'></p>
-            </div>
-            {% include "uibuilder.html" %}
-          </div>
-          <!-- Sources =================== -->
-          <div class="tab-pane" id="sources">
-            <form class="form-horizontal tab_form" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
-              {% csrf_token %}
-              <input type="hidden" name="form_name" value="source_files">
-              <input id="source_file_id" type="hidden" name="source_file" value="">
-              <div class="btn-group">
-                <a id="dropDown_header" class="btn btn-inverse" href="#"><i class="icon-white icon-pencil"></i>&nbsp;Edit:</a>
-                <button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span class="caret"></span></button>
-                <ul class="dropdown-menu">
-                  <li align="right"><a class="get_code_btn" data-param="Header" href="#">Header <i class="icon-file"></i></a></li>
-                  <li align="right"><a class="get_code_btn" data-param="Main" href="#">Main <i class="icon-file"></i></a></li>
-                </ul>
-              </div>
-              <input id="save_code_btn" class="btn btn-primary pull-right input-medium" disabled="" type="submit" value="Save"/>
-              <BR>&nbsp;<BR>
+							<button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
+						</form>
+					</div>
+					<!-- Builder =================== -->
+					<div class="tab-pane" id="builder">
+						<div id="form_update_alert" class="" style="visibility: hidden">
+							<a class="close" onclick="$('#form_update_alert').css('visibility', 'hidden');">×</a>
+							<p id='form_alert_text'></p>
+						</div>
+						{% include "uibuilder.html" %}
+					</div>
+					<!-- Sources =================== -->
+					<div class="tab-pane" id="sources">
+						<form class="form-horizontal tab_form"
+						      action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
+							{% csrf_token %}
+							<input type="hidden" name="form_name" value="source_files">
+							<input id="source_file_id" type="hidden" name="source_file" value="">
+							<div class="btn-group">
+								<a id="dropDown_header" class="btn btn-inverse" href="#"><i
+								  class="icon-white icon-pencil"></i>&nbsp;Edit:</a>
+								<button class="btn dropdown-toggle btn-inverse" data-toggle="dropdown"><span
+								  class="caret"></span></button>
+								<ul class="dropdown-menu">
+									<li align="right"><a class="get_code_btn" data-param="Header" href="#">Header <i
+									  class="icon-file"></i></a></li>
+									<li align="right"><a class="get_code_btn" data-param="Main" href="#">Main <i
+									  class="icon-file"></i></a></li>
+								</ul>
+							</div>
+							<input id="save_code_btn" class="btn btn-primary pull-right input-medium" disabled=""
+							       type="submit" value="Save"/>
+							<BR>&nbsp;<BR>
 
-              <textarea id="r_editor_textar" name="mirrorEditor" style="visibility: hidden;"> </textarea>
-            </form>
-          </div>
-          <!-- Logos =================== -->
-          <div class="tab-pane {{ logos_tab }}" id="logos">
-            <form class="form-inline offset1" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post" enctype="multipart/form-data">
-              {% csrf_token %}
-              <input type="hidden" name="form_name" value="logos">
-              <p>Appers in Details / Apperars in Script List</p>
-              <div class="control-group">
-                <label class="control-label" for="id_ID"></label>
-                <img style="border: 1px solid black;" {% if script.logo %} src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="100" height="100" class="img-rounded">
-                <img style="border: 1px solid black; margin-left: 35px;" {% if script.logo %} src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %} width="55" height="55" class="img-rounded">
-              </div>
-              {{ logo_form|as_bootstrap }}
-              <button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
-            </form>
-          </div>
-        </div>
-      <!-- END of TABS' CONTENT -->
+							<textarea id="r_editor_textar" name="mirrorEditor" style="visibility: hidden;"> </textarea>
+						</form>
+					</div>
+					<!-- Logos =================== -->
+					<div class="tab-pane {{ logos_tab }}" id="logos">
+						<form class="form-inline offset1"
+						      action="/resources/scripts/script-editor/update/{{ script.id }}" method="post"
+						      enctype="multipart/form-data">
+							{% csrf_token %}
+							<input type="hidden" name="form_name" value="logos">
+							<p>Appers in Details / Apperars in Script List</p>
+							<div class="control-group">
+								<label class="control-label" for="id_ID"></label>
+								<img style="border: 1px solid black;" {% if script.logo %}
+								     src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %}
+								     width="100" height="100" class="img-rounded">
+								<img style="border: 1px solid black; margin-left: 35px;" {% if script.logo %}
+								     src="/media/{{ script.logo }}" {% else %} src="/static/logos/rlogo.jpg" {% endif %}
+								     width="55" height="55" class="img-rounded">
+							</div>
+							{{ logo_form|as_bootstrap }}
+							<button class="btn btn-primary pull-right" type="submit"><strong>Update</strong></button>
+						</form>
+					</div>
+				</div>
+				<!-- END of TABS' CONTENT -->
 
-      </div>
-    </div>
-  </div>
+			</div>
+		</div>
+	</div>
 
-  <div id="Apply" class="modal fade" role="dialog"  aria-hidden="true" style="background: url('/static/nail.png');"></div>
+	<div id="Apply" class="modal fade" role="dialog" aria-hidden="true"
+	     style="background: url('/static/nail.png');"></div>
 
 
-<script>
-$(document).ready(function() {
-	var addRTbtn = '<a id="id_addRTbtn" href="#" data-toggle="modal" class="apply btn btn-small btn-inverse"\
+	<script type="text/javascript">
+		$(document).ready(function () {
+			var addRTbtn = '<a id="id_addRTbtn" href="#" data-toggle="modal" class="apply btn btn-small btn-inverse"\
 	data-target="#Apply"  data-param="/new-rtype/">\
 		<i class="icon-plus icon-white"></i>\
 	</a>';
-	$('#id_report_type').parent().append(addRTbtn);
-	modalConnect();
-	if (!$('#id_istag').attr('checked')){
-		$('#id_report_type').attr("disabled", "disabled");
-		$('#id_addRTbtn').addClass("disabled").removeClass('apply');
-	}
+			$('#id_report_type').parent().append(addRTbtn);
+			modalConnect();
+			if (!$('#id_istag').attr('checked')) {
+				$('#id_report_type').attr("disabled", "disabled");
+				$('#id_addRTbtn').addClass("disabled").removeClass('apply');
+			}
 
-	$('#id_istag').change(function(){
-		if ($('#id_istag').attr('checked')){
-			$('#id_report_type').removeAttr('disabled');
-			$('#id_addRTbtn').removeClass('disabled').addClass('apply');
-		} else{
-			$('#id_report_type').attr('disabled', 'disabled');
-			$('#id_addRTbtn').addClass('disabled').removeClass('apply');
-		}
-	});
-
-	// INIT
-	// $('#fileInput').customFileInput({ });
-	var genSourceExport;
-	$.getScript("/static/js/fb.js", function(data, textStatus, jqxhr){
-		// this trick is to export functions from fb.js
-		genSourceExport = genSource;
-	});
-
-	var mirrorEditor = CodeMirror.fromTextArea(document.getElementById('r_editor_textar'), {
-		mode: 'text/x-rsrc',
-		theme: 'cobalt',
-		lineNumbers: true,
-		matchBrackets: true,
-		indentUnit: 2,
-		undoDepth: 10,
-	});
-
-	// activates save button when content is changed
-	mirrorEditor.on("change", function(){ $('#save_code_btn').removeAttr('disabled') });
-
-
-	// Get Description
-	$('.alert .close').live("click", function(e) {
-		$(this).parent().hide();
-	});
-
-	function showAlert() {
-		$(".alert").addClass("in");
-		$("#description_alert").show();
-	}
-
-	function closeAlert() {
-		$("#description_alert").hide();
-	}
-
-	var  myhtmlEditor = $('#description_field').wysihtml5({
-		"color": true,
-		"html": true,
-		"image": true
-	});
-	$.getJSON('/resources/scripts/script-editor/get-content/description-{{ script.id }}', function(data) {
-		myhtmlEditor.data("wysihtml5").editor.setValue(data.description);
-	});
-
-	// Update Description
-	$('#description_form').submit(function(ev){
-		ev.preventDefault(); // prevent default submission
-		$.ajax({
-			type: $(this).attr('method'),
-			url: $(this).attr('action'),
-			data: $(this).serialize(),
-			success: function(response){
-				if (response == "False") alert("Description can not be saved!");
-				else {
-					showAlert();
-					window.setTimeout(closeAlert, 2000);
+			$('#id_istag').change(function () {
+				if ($('#id_istag').attr('checked')) {
+					$('#id_report_type').removeAttr('disabled');
+					$('#id_addRTbtn').removeClass('disabled').addClass('apply');
+				} else {
+					$('#id_report_type').attr('disabled', 'disabled');
+					$('#id_addRTbtn').addClass('disabled').removeClass('apply');
 				}
-			}
-		});
-	});
-
-	// Obtain Form Composition - get from XML on the server
-	$.ajax({
-		type: "GET",
-		url: "/resources/scripts/script-editor/get-form/{{ script.id }}",
-		dataType: "text",
-		success: function(builderHTML){
-			if (builderHTML != "False") {
-				var formHTML = builderHTML.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-				$("#target").html(formHTML);
-				$("#target .component").popover({trigger: "manual", html: true, placement: "right"});
-				$(".popover").remove();
-				genSourceExport();
-			}
-		}
-	});
-
-	// Update Form Composition - send XML code to server
-	$('.xml_form').submit(function(ev){
-	ev.preventDefault(); // prevent default submission
-	$.ajax({
-		type: $(this).attr('method'),
-		url: $(this).attr('action'),
-		data: $(this).serialize(),
-		success: function(response){
-		if (response == "False") {
-				$('#form_alert_text').text('Can not be updated!');
-				$('#form_update_alert').attr('class', 'alert-error').css('visibility', 'visible');
-			}
-			else {
-				$('#form_alert_text').text('Updated!');
-				$('#form_update_alert').attr('class', 'alert-info').css('visibility', 'visible');
-			}
-		}
-		});
-	});
-
-	// obtain HEAD or MAIN file source code - ajax
-	$('.get_code_btn').click(function () {
-		var par = $(this).data("param");
-		if (par == '' || (par != 'Header' && par != 'Main')) {
-			par = 'Header';
-		}
-		$('#dropDown_header').text(" " + par);
-		$('#dropDown_header').prepend('<i class="icon-white icon-pencil">&nbsp;');
-		$('#source_file_id').attr("value", par); // say which file we edit
-		$.ajax({
-			type    : "GET",
-			url     : "/resources/scripts/script-editor/get-code/{{ script.id }}/" + par,
-			dataType: "text",
-			success : function (content) {
-				mirrorEditor.setValue(content);
-				$('#save_code_btn').attr('disabled', ''); // SAVE button disabled after code upload
-			}
-		});
-	});
-
-	// save changes in HEAD or MAIN source
-	$('.tab_form').submit(function(ev){
-		ev.preventDefault(); // prevent default submition
-		$('r_editor_textar').val(mirrorEditor.getValue()); // copy content from mirror to texar
-		$.ajax({
-			type: $(this).attr('method'),
-			url: $(this).attr('action'),
-			data: $(this).serialize(),
-			success: function(response){
-				if (response == "False") alert("File can not be saved!");
-				else $('#save_code_btn').attr('disabled', ''); // SAVE button disabled after saving
-			}
-		});
-	});
-
-	$('#source-tab').click(function () {
-		// init source form
-		var par = $('#source_file_id')[0].value.trim();
-		if(par == ''){ // for it to happend only once (on unset input)
-			$('.get_code_btn').click();
-		}
-	});
-
-
-});
-</script>
-<script type="text/javascript">
-	function submitItemModalFormBind(url){
-		$('#form_modal_apply').submit(function(ev){
-			ev.preventDefault(); // prevent navigation
-			var formData = new FormData($('#form_modal_apply')[0]);
-			$.ajax({
-				type: "POST",
-				url: url,
-				enctype: 'multipart/form-data',
-				data: formData,
-				success:function(response, textStatus, jqXHR){
-					var form = $("#form_modal_apply_div", response);
-					console.log(form);
-					//form is returned if it is not valid. update modal with returned form
-					//change this "if" to check for a specific return code which should be set in the view
-					if (form.html()) {
-						//update modal div
-						$('#form_modal_apply_div').html(form);
-						$("#Apply").modal('show');
-					}
-					//form is not returned if form submission succeeded
-					else{
-						//update the entire document with the response received since we received a entire success
-						// page and we want to reload the entire page
-						$("#Apply").modal('hide');
-						window.location.replace("/resources/scripts/script-editor/{{ script.id }}-attribut_tab");
-					}
-				},
-				error: function (request, status, error) {
-					//implement proper error handling
-					console.log("failure");
-					console.log(request.responseText);
-				},
-				cache: false,
-				contentType: false,
-				processData: false
 			});
-			return false;
-		});
-		}
-	function modalConnect(){
-		//unbind the click event. If not done we will end up with multiple click event bindings, since binding is
-		// done after each ajax call.
-		$(".apply").unbind('click');
-		//bind the click event
-		$(".apply").click(function(ev) {
-			ev.preventDefault(); // prevent navigation
-			console.log("here");
-			var par = $(this).data("param");
-			$.get(par.toString(), function(results){
-				//update the dom with the received form
-				$('#Apply').html(results);
 
-				$("#Apply").modal('show');
-				$(document).ready(function () {
-					//bind the form to an ajax call. ajax call will be set to the received update url
-					submitItemModalFormBind(par.toString());
+			// INIT
+			// $('#fileInput').customFileInput({ });
+			var genSourceExport;
+			$.getScript("/static/js/fb.js", function (data, textStatus, jqxhr) {
+				// this trick is to export functions from fb.js
+				genSourceExport = genSource;
+			});
+
+			var mirrorEditor = CodeMirror.fromTextArea(document.getElementById('r_editor_textar'), {
+				mode         : 'text/x-rsrc',
+				theme        : 'cobalt',
+				lineNumbers  : true,
+				matchBrackets: true,
+				indentUnit   : 2,
+				undoDepth    : 10,
+			});
+
+			// activates save button when content is changed
+			mirrorEditor.on("change", function () { $('#save_code_btn').removeAttr('disabled') });
+
+
+			// Get Description
+			$('.alert .close').live("click", function (e) {
+				$(this).parent().hide();
+			});
+
+			function showAlert() {
+				$(".alert").addClass("in");
+				$("#description_alert").show();
+			}
+
+			function closeAlert() {
+				$("#description_alert").hide();
+			}
+
+			var myhtmlEditor = $('#description_field').wysihtml5({
+				"color": true,
+				"html" : true,
+				"image": true
+			});
+			$.getJSON('/resources/scripts/script-editor/get-content/description-{{ script.id }}', function (data) {
+				myhtmlEditor.data("wysihtml5").editor.setValue(data.description);
+			});
+
+			// Update Description
+			$('#description_form').submit(function (ev) {
+				ev.preventDefault(); // prevent default submission
+				$.ajax({
+					type   : $(this).attr('method'),
+					url    : $(this).attr('action'),
+					data   : $(this).serialize(),
+					success: function (response) {
+						if (response == "False") alert("Description can not be saved!");
+						else {
+							showAlert();
+							window.setTimeout(closeAlert, 2000);
+						}
+					}
 				});
-			}, "html");
-			return false; // prevent the click propagation
-		})
-	}
-</script>
+			});
+
+			// Obtain Form Composition - get from XML on the server
+			$.ajax({
+				type    : "GET",
+				url     : "/resources/scripts/script-editor/get-form/{{ script.id }}",
+				dataType: "text",
+				success : function (builderHTML) {
+					if (builderHTML != "False") {
+						var formHTML = builderHTML.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+						$("#target").html(formHTML);
+						$("#target .component").popover({trigger: "manual", html: true, placement: "right"});
+						$(".popover").remove();
+						genSourceExport();
+					}
+				}
+			});
+
+			// Update Form Composition - send XML code to server
+			$('.xml_form').submit(function (ev) {
+				ev.preventDefault(); // prevent default submission
+				$.ajax({
+					type   : $(this).attr('method'),
+					url    : $(this).attr('action'),
+					data   : $(this).serialize(),
+					success: function (response) {
+						if (response == "False") {
+							$('#form_alert_text').text('Can not be updated!');
+							$('#form_update_alert').attr('class', 'alert-error').css('visibility', 'visible');
+						}
+						else {
+							$('#form_alert_text').text('Updated!');
+							$('#form_update_alert').attr('class', 'alert-info').css('visibility', 'visible');
+						}
+					}
+				});
+			});
+
+			// obtain HEAD or MAIN file source code - ajax
+			$('.get_code_btn').click(function () {
+				var par = $(this).data("param");
+				if (par == '' || (par != 'Header' && par != 'Main')) {
+					par = 'Header';
+				}
+				$('#dropDown_header').text(" " + par);
+				$('#dropDown_header').prepend('<i class="icon-white icon-pencil">&nbsp;');
+				$('#source_file_id').attr("value", par); // say which file we edit
+				$.ajax({
+					type    : "GET",
+					url     : "/resources/scripts/script-editor/get-code/{{ script.id }}/" + par,
+					dataType: "text",
+					success : function (content) {
+						mirrorEditor.setValue(content);
+						$('#save_code_btn').attr('disabled', ''); // SAVE button disabled after code upload
+					}
+				});
+			});
+
+			// save changes in HEAD or MAIN source
+			$('.tab_form').submit(function (ev) {
+				ev.preventDefault(); // prevent default submission
+				$('r_editor_textar').val(mirrorEditor.getValue()); // copy content from mirror to texar
+				$.ajax({
+					type   : $(this).attr('method'),
+					url    : $(this).attr('action'),
+					data   : $(this).serialize(),
+					success: function (response) {
+						if (response == "False") alert("File can not be saved!");
+						else $('#save_code_btn').attr('disabled', ''); // SAVE button disabled after saving
+					}
+				});
+			});
+
+			$('#source-tab').click(function () {
+				// init source form
+				var par = $('#source_file_id')[0].value.trim();
+				if (par == '') { // for it to happen only once (on unset input)
+					$('.get_code_btn').click();
+				}
+			});
+		});
+	</script>
+	<script type="text/javascript">
+		function submitItemModalFormBind(url) {
+			$('#form_modal_apply').submit(function (ev) {
+				ev.preventDefault(); // prevent navigation
+				var formData = new FormData($('#form_modal_apply')[0]);
+				$.ajax({
+					type       : "POST",
+					url        : url,
+					enctype    : 'multipart/form-data',
+					data       : formData,
+					success    : function (response, textStatus, jqXHR) {
+						var form = $("#form_modal_apply_div", response);
+						console.log(form);
+						//form is returned if it is not valid. update modal with returned form
+						//change this "if" to check for a specific return code which should be set in the view
+						if (form.html()) {
+							//update modal div
+							$('#form_modal_apply_div').html(form);
+							$("#Apply").modal('show');
+						}
+						//form is not returned if form submission succeeded
+						else {
+							//update the entire document with the response received since we received a entire success
+							// page and we want to reload the entire page
+							$("#Apply").modal('hide');
+							window.location.replace("/resources/scripts/script-editor/{{ script.id }}-attribut_tab");
+						}
+					},
+					error      : function (request, status, error) {
+						//implement proper error handling
+						console.log("failure");
+						console.log(request.responseText);
+					},
+					cache      : false,
+					contentType: false,
+					processData: false
+				});
+				return false;
+			});
+		}
+		function modalConnect() {
+			//unbind the click event. If not done we will end up with multiple click event bindings, since binding is
+			// done after each ajax call.
+			$(".apply").unbind('click');
+			//bind the click event
+			$(".apply").click(function (ev) {
+				ev.preventDefault(); // prevent navigation
+				console.log("here");
+				var par = $(this).data("param");
+				$.get(par.toString(), function (results) {
+					//update the dom with the received form
+					$('#Apply').html(results);
+
+					$("#Apply").modal('show');
+					$(document).ready(function () {
+						//bind the form to an ajax call. ajax call will be set to the received update url
+						submitItemModalFormBind(par.toString());
+					});
+				}, "html");
+				return false; // prevent the click propagation
+			})
+		}
+	</script>
 
 {% endblock %}
