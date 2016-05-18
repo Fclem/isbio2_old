@@ -86,7 +86,8 @@
           <li class="{{ descript_tab }}"><a href="#description" data-toggle="tab"><strong> Description </strong></a></li>
           <li class="{{ attribut_tab }}"><a href="#attributes" data-toggle="tab"><strong> Attributes </strong></a></li>
           <li class="{{ fbuilder_tab }}"><a href="#builder" data-toggle="tab"><strong> Form Builder </strong></a></li>
-          <li class="{{ sources_tab }}"><a href="#sources" data-toggle="tab"><strong> Sources </strong></a></li>
+          <li class="{{ sources_tab }}"><a href="#sources" id="source-tab" data-toggle="tab"><strong> Sources
+          </strong></a></li>
           <li class="{{ logos_tab }}"><a href="#logos" data-toggle="tab"><strong> Logos </strong></a></li>
         </ul>
 
@@ -153,7 +154,6 @@
             <form class="form-horizontal tab_form" action="/resources/scripts/script-editor/update/{{ script.id }}" method="post">
               {% csrf_token %}
               <input type="hidden" name="form_name" value="source_files">
-
               <input id="source_file_id" type="hidden" name="source_file" value="">
               <div class="btn-group">
                 <a id="dropDown_header" class="btn btn-inverse" href="#"><i class="icon-white icon-pencil"></i>&nbsp;Edit:</a>
@@ -196,220 +196,232 @@
 
 <script>
 $(document).ready(function() {
-  var addRTbtn = '<a id="id_addRTbtn" href="#" data-toggle="modal" class="apply btn btn-small btn-inverse" data-target="#Apply"  data-param="/new-rtype/">\
-                    <i class="icon-plus icon-white"></i>\
-                  </a>'
-  $('#id_report_type').parent().append(addRTbtn);
-  modalConnect();
-  if (!$('#id_istag').attr('checked')){
-    $('#id_report_type').attr("disabled", "disabled");
-    $('#id_addRTbtn').addClass("disabled").removeClass('apply');
-  }
+	var addRTbtn = '<a id="id_addRTbtn" href="#" data-toggle="modal" class="apply btn btn-small btn-inverse"\
+	data-target="#Apply"  data-param="/new-rtype/">\
+		<i class="icon-plus icon-white"></i>\
+	</a>';
+	$('#id_report_type').parent().append(addRTbtn);
+	modalConnect();
+	if (!$('#id_istag').attr('checked')){
+		$('#id_report_type').attr("disabled", "disabled");
+		$('#id_addRTbtn').addClass("disabled").removeClass('apply');
+	}
 
-  $('#id_istag').change(function(){
-    if ($('#id_istag').attr('checked')){
-      $('#id_report_type').removeAttr('disabled');
-      $('#id_addRTbtn').removeClass('disabled').addClass('apply');
-    } else{
-      $('#id_report_type').attr('disabled', 'disabled');
-      $('#id_addRTbtn').addClass('disabled').removeClass('apply');
-    }
-  });
+	$('#id_istag').change(function(){
+		if ($('#id_istag').attr('checked')){
+			$('#id_report_type').removeAttr('disabled');
+			$('#id_addRTbtn').removeClass('disabled').addClass('apply');
+		} else{
+			$('#id_report_type').attr('disabled', 'disabled');
+			$('#id_addRTbtn').addClass('disabled').removeClass('apply');
+		}
+	});
 
-  // INIT
-  // $('#fileInput').customFileInput({ });
-  var genSourceExport;
-  $.getScript("/static/js/fb.js", function(data, textStatus, jqxhr){
-    // this trick is to export functions from fb.js
-    genSourceExport = genSource;
-  });
+	// INIT
+	// $('#fileInput').customFileInput({ });
+	var genSourceExport;
+	$.getScript("/static/js/fb.js", function(data, textStatus, jqxhr){
+		// this trick is to export functions from fb.js
+		genSourceExport = genSource;
+	});
 
-  var mirrorEditor = CodeMirror.fromTextArea(document.getElementById('r_editor_textar'), {
-    mode: 'text/x-rsrc',
-    theme: 'cobalt',
-    lineNumbers: true,
-    matchBrackets: true,
-    indentUnit: 2,
-    undoDepth: 10,
-  });
+	var mirrorEditor = CodeMirror.fromTextArea(document.getElementById('r_editor_textar'), {
+		mode: 'text/x-rsrc',
+		theme: 'cobalt',
+		lineNumbers: true,
+		matchBrackets: true,
+		indentUnit: 2,
+		undoDepth: 10,
+	});
 
-  // activates save button when content is changed
-  mirrorEditor.on("change", function(){ $('#save_code_btn').removeAttr('disabled') });
+	// activates save button when content is changed
+	mirrorEditor.on("change", function(){ $('#save_code_btn').removeAttr('disabled') });
 
 
-  // Get Description
-  $('.alert .close').live("click", function(e) {
-    $(this).parent().hide();
-  });
+	// Get Description
+	$('.alert .close').live("click", function(e) {
+		$(this).parent().hide();
+	});
 
-  function showAlert() {
-      $(".alert").addClass("in");
-      $("#description_alert").show();
-  }
+	function showAlert() {
+		$(".alert").addClass("in");
+		$("#description_alert").show();
+	}
 
-  function closeAlert() {
-      $("#description_alert").hide();
-  }
+	function closeAlert() {
+		$("#description_alert").hide();
+	}
 
-  var  myhtmlEditor = $('#description_field').wysihtml5({
-      "color": true,
-      "html": true,
-      "image": true
-    });
-  $.getJSON('/resources/scripts/script-editor/get-content/description-{{ script.id }}', function(data) {
-    myhtmlEditor.data("wysihtml5").editor.setValue(data.description);
-  });
+	var  myhtmlEditor = $('#description_field').wysihtml5({
+		"color": true,
+		"html": true,
+		"image": true
+	});
+	$.getJSON('/resources/scripts/script-editor/get-content/description-{{ script.id }}', function(data) {
+		myhtmlEditor.data("wysihtml5").editor.setValue(data.description);
+	});
 
-  // Update Description
-  $('#description_form').submit(function(ev){
-    ev.preventDefault(); // prevent default submition
-    $.ajax({
-      type: $(this).attr('method'),
-      url: $(this).attr('action'),
-      data: $(this).serialize(),
-      success: function(response){
-        if (response == "False") alert("Description can not be saved!");
-        else {
-          showAlert();
-          window.setTimeout(closeAlert, 2000);
-        }
+	// Update Description
+	$('#description_form').submit(function(ev){
+		ev.preventDefault(); // prevent default submission
+		$.ajax({
+			type: $(this).attr('method'),
+			url: $(this).attr('action'),
+			data: $(this).serialize(),
+			success: function(response){
+				if (response == "False") alert("Description can not be saved!");
+				else {
+					showAlert();
+					window.setTimeout(closeAlert, 2000);
+				}
+			}
+		});
+	});
 
-      }
-    });
-  });
+	// Obtain Form Composition - get from XML on the server
+	$.ajax({
+		type: "GET",
+		url: "/resources/scripts/script-editor/get-form/{{ script.id }}",
+		dataType: "text",
+		success: function(builderHTML){
+			if (builderHTML != "False") {
+				var formHTML = builderHTML.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+				$("#target").html(formHTML);
+				$("#target .component").popover({trigger: "manual", html: true, placement: "right"});
+				$(".popover").remove();
+				genSourceExport();
+			}
+		}
+	});
 
-  // Obtain Form Composition - get from XML on the server
-  $.ajax({
-    type: "GET",
-    url: "/resources/scripts/script-editor/get-form/{{ script.id }}",
-    dataType: "text",
-    success: function(builderHTML){
-      if (builderHTML != "False") {
-        var formHTML = builderHTML.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-        $("#target").html(formHTML);
-        $("#target .component").popover({trigger: "manual", html: true, placement: "right"});
-        $(".popover").remove();
-        genSourceExport();
-      }
-    }
-  });
+	// Update Form Composition - send XML code to server
+	$('.xml_form').submit(function(ev){
+	ev.preventDefault(); // prevent default submission
+	$.ajax({
+		type: $(this).attr('method'),
+		url: $(this).attr('action'),
+		data: $(this).serialize(),
+		success: function(response){
+		if (response == "False") {
+				$('#form_alert_text').text('Can not be updated!');
+				$('#form_update_alert').attr('class', 'alert-error').css('visibility', 'visible');
+			}
+			else {
+				$('#form_alert_text').text('Updated!');
+				$('#form_update_alert').attr('class', 'alert-info').css('visibility', 'visible');
+			}
+		}
+		});
+	});
 
-  // Update Form Composition - send XML code to server
-  $('.xml_form').submit(function(ev){
-    ev.preventDefault(); // prevent default submition
-    $.ajax({
-      type: $(this).attr('method'),
-      url: $(this).attr('action'),
-      data: $(this).serialize(),
-      success: function(response){
-        if (response == "False") {
-          $('#form_alert_text').text('Can not be updated!');
-          $('#form_update_alert').attr('class', 'alert-error').css('visibility', 'visible');
-        }
-        else {
-          $('#form_alert_text').text('Updated!');
-          $('#form_update_alert').attr('class', 'alert-info').css('visibility', 'visible');
-        }
-      }
-    });
-  });
+	// obtain HEAD or MAIN file source code - ajax
+	$('.get_code_btn').click(function () {
+		var par = $(this).data("param");
+		if (par == '' || (par != 'Header' && par != 'Main')) {
+			par = 'Header';
+		}
+		$('#dropDown_header').text(" " + par);
+		$('#dropDown_header').prepend('<i class="icon-white icon-pencil">&nbsp;');
+		$('#source_file_id').attr("value", par); // say which file we edit
+		$.ajax({
+			type    : "GET",
+			url     : "/resources/scripts/script-editor/get-code/{{ script.id }}/" + par,
+			dataType: "text",
+			success : function (content) {
+				mirrorEditor.setValue(content);
+				$('#save_code_btn').attr('disabled', ''); // SAVE button disabled after code upload
+			}
+		});
+	});
 
-  // obtain HEAD or MAIN file source code - ajax
-  $('.get_code_btn').click(function(){
-    var par = $(this).data("param");
-    $('#dropDown_header').text(" "+par)
-    $('#dropDown_header').prepend('<i class="icon-white icon-pencil">&nbsp;')
-    $('#source_file_id').attr("value", par) // say which file we edit
-    $.ajax({
-      type: "GET",
-      url: "/resources/scripts/script-editor/get-code/{{ script.id }}/"+par,
-      dataType: "text",
-      success: function(content){
-        mirrorEditor.setValue(content);
-        $('#save_code_btn').attr('disabled', ''); // SAVE button disabled after code upload
-      }
-    });
-  });
+	// save changes in HEAD or MAIN source
+	$('.tab_form').submit(function(ev){
+		ev.preventDefault(); // prevent default submition
+		$('r_editor_textar').val(mirrorEditor.getValue()); // copy content from mirror to texar
+		$.ajax({
+			type: $(this).attr('method'),
+			url: $(this).attr('action'),
+			data: $(this).serialize(),
+			success: function(response){
+				if (response == "False") alert("File can not be saved!");
+				else $('#save_code_btn').attr('disabled', ''); // SAVE button disabled after saving
+			}
+		});
+	});
 
-  // save changes in HEAD or MAIN source
-  $('.tab_form').submit(function(ev){
-    ev.preventDefault(); // prevent default submition
-    $('r_editor_textar').val(mirrorEditor.getValue()); // copy content from mirror to texar
-    $.ajax({
-      type: $(this).attr('method'),
-      url: $(this).attr('action'),
-      data: $(this).serialize(),
-      success: function(response){
-        if (response == "False") alert("File can not be saved!");
-        else $('#save_code_btn').attr('disabled', ''); // SAVE button disabled after saving
-      }
-    });
-  });
+	$('#source-tab').click(function () {
+		// init source form
+		var par = $('#source_file_id')[0].value.trim();
+		if(par == ''){ // for it to happend only once (on unset input)
+			$('.get_code_btn').click();
+		}
+	});
+
 
 });
 </script>
 <script type="text/javascript">
-function submitItemModalFormBind(url){
-         $('#form_modal_apply').submit(function(ev){
-             ev.preventDefault(); // prevent navigation
-             var formData = new FormData($('#form_modal_apply')[0]);
-             $.ajax({
-                type: "POST",
-                url: url,
-                enctype: 'multipart/form-data',
-                data: formData,
-                success:function(response, textStatus, jqXHR){
-                     var form = $("#form_modal_apply_div", response);
-                     console.log(form)
-                     //form is returned if it is not valid. update modal with returned form
-                     //change this "if" to check for a specific return code which should be set in the view
-                     if (form.html()) {
-                        //update modal div
-                         $('#form_modal_apply_div').html(form);
-                         $("#Apply").modal('show');
-                      }
-                      //form is not returned if form submission succeeded
-                      else{
-                        //update the entire document with the response received since we received a entire success page and we want to reload the entire page
-                        $("#Apply").modal('hide');
-                        window.location.replace("/resources/scripts/script-editor/{{ script.id }}-attribut_tab");
-                       }
-                },
-                error: function (request, status, error) {
-                            //implement proper error handling
-                            console.log("failure");
-                            console.log(request.responseText);
-                    },
-                cache: false,
-                contentType: false,
-                processData: false
-                    });
-                    return false;
-                });
-              }
-function modalConnect()
-        {
-            //unbind the click event. If not done we will end up with multiple click event bindings, since binding is done after each ajax call.
-            $(".apply").unbind('click');
-            //bind the click event
-            $(".apply").click(function(ev) {
-                ev.preventDefault(); // prevent navigation
-                console.log("here")
-                var par = $(this).data("param");
-                $.get(par.toString(), function(results){
-                  //update the dom with the received form
-                  $('#Apply').html(results);
+	function submitItemModalFormBind(url){
+		$('#form_modal_apply').submit(function(ev){
+			ev.preventDefault(); // prevent navigation
+			var formData = new FormData($('#form_modal_apply')[0]);
+			$.ajax({
+				type: "POST",
+				url: url,
+				enctype: 'multipart/form-data',
+				data: formData,
+				success:function(response, textStatus, jqXHR){
+					var form = $("#form_modal_apply_div", response);
+					console.log(form);
+					//form is returned if it is not valid. update modal with returned form
+					//change this "if" to check for a specific return code which should be set in the view
+					if (form.html()) {
+						//update modal div
+						$('#form_modal_apply_div').html(form);
+						$("#Apply").modal('show');
+					}
+					//form is not returned if form submission succeeded
+					else{
+						//update the entire document with the response received since we received a entire success
+						// page and we want to reload the entire page
+						$("#Apply").modal('hide');
+						window.location.replace("/resources/scripts/script-editor/{{ script.id }}-attribut_tab");
+					}
+				},
+				error: function (request, status, error) {
+					//implement proper error handling
+					console.log("failure");
+					console.log(request.responseText);
+				},
+				cache: false,
+				contentType: false,
+				processData: false
+			});
+			return false;
+		});
+		}
+	function modalConnect(){
+		//unbind the click event. If not done we will end up with multiple click event bindings, since binding is
+		// done after each ajax call.
+		$(".apply").unbind('click');
+		//bind the click event
+		$(".apply").click(function(ev) {
+			ev.preventDefault(); // prevent navigation
+			console.log("here");
+			var par = $(this).data("param");
+			$.get(par.toString(), function(results){
+				//update the dom with the received form
+				$('#Apply').html(results);
 
-                  $("#Apply").modal('show');
-                  $(document).ready(function () {
-                     //bind the form to an ajax call. ajax call will be set to the received update url
-                     submitItemModalFormBind(par.toString());
-                  });
-
-                }, "html");
-                return false; // prevent the click propagation
-            })
-        }
+				$("#Apply").modal('show');
+				$(document).ready(function () {
+					//bind the form to an ajax call. ajax call will be set to the received update url
+					submitItemModalFormBind(par.toString());
+				});
+			}, "html");
+			return false; // prevent the click propagation
+		})
+	}
 </script>
 
 {% endblock %}
