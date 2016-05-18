@@ -9,15 +9,15 @@ import mimetypes
 import logging
 from django import http
 from django.template.defaultfilters import slugify
-from django.http import HttpResponse # , Http404
+from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
+from django.http import Http404, HttpResponse
 from django.template import loader
 from django.template.context import RequestContext
 from django.conf import settings
+from breeze.models import Report, Jobs, DataSet
 import sys
 import utils
 
-# from breeze.models import Report, Jobs, DataSet
-# from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 # import time
 # from subprocess import Popen, PIPE #, call
 # from django.utils import timezone
@@ -472,12 +472,10 @@ def fail_with404(request, error_msg=None):
 	"""
 	custom 404 method that enable 404 template even in debug mode (discriminate from real 404),
 	Raise no exception so call it with return
-	Will log a warning message
-
 	:param request: Django request object
 	:type request: http.HttpRequest
 	:param error_msg: The message to display on the 404 page
-	:type error_msg: str|list
+	:type error_msg: str
 	:return: custom 404 page
 	:rtype: http.HttpResponseNotFound
 	"""
@@ -666,3 +664,53 @@ def image_embedding(path_to_file, cached_path=None):
 		f2.write(str(soup))
 
 	return str(soup)
+
+
+def taito_run_server(instance, user):
+	"""
+		:rtype: RunServer
+	"""
+	# path = '/home/clem/mnt/csc-taito/homeappl/home/clement/'
+	assert isinstance(instance, Report) or isinstance(instance, Jobs)
+	local_mount = settings.TMP_CSC_TAITO_MOUNT # '/mnt/csc-taito/'
+	target_mounted_prefix = settings.TMP_CSC_TAITO_REMOTE_CHROOT # '/homeappl/home/clement/'
+	# report_path = settings.TMP_CSC_TAITO_REPORT_PATH # 'breeze/'
+	report_path = utils.norm_proj_p(settings.MEDIA_ROOT) # '/projects/breeze-dev/db/reports/'
+	added = [
+		('%scfiere/csc_taito_dyn_lib_load_and_install.R' % utils.norm_proj_p(settings.SPECIAL_CODE_FOLDER),
+		'dynamic library loading and installer by clem 19-20/10/2015'),
+	]
+	return RunServer(local_mount, target_mounted_prefix, report_path, instance, 'csc_taito', added, user, False)
+
+
+def test_tree(report):
+	from breeze.models import User
+	# a = Report.objects.get(pk=3628)
+	try:
+		a = report
+		assert isinstance(a, Report)
+
+		a._run_server = taito_run_server(a, User.objects.get(pk=65))
+
+		with a._run_server as b:
+			# b._generate_source_tree(a.r_exec_path.path, verbose=True)
+			b.parse_all()
+
+		return b
+	except (ObjectDoesNotExist, AssertionError):
+		return None
+	#
+	# a._run_server.copy_dependencies(a._rexec.path)
+
+
+def get_tree(rid):
+	try:
+		a = Report.objects.get(pk=rid)
+		assert isinstance(a, Report)
+		b = test_tree(a)
+		assert isinstance(b, RunServer)
+
+		return b._generate_source_tree(str(a.r_exec_path)), b
+
+	except (ObjectDoesNotExist, AssertionError):
+		return None

@@ -1,5 +1,7 @@
 from django.conf import settings
 from datetime import datetime
+from multipledispatch import dispatch # enables method overloading
+from breeze.b_exceptions import *
 from utilities import *
 
 # 01/04/2016 : Moved all non-Django related code to utilities package
@@ -15,10 +17,14 @@ def console_print_sub(text, date_f=None):
 
 
 # 10/03/2015 Clem / ShinyProxy
-def date_t(date_f=None):
+def date_t(date_f=None, time_stamp=None):
 	if date_f is None:
 		date_f = settings.USUAL_DATE_FORMAT
-	return str(datetime.now().strftime(date_f))
+	if not time_stamp:
+		date = datetime.now()
+	else:
+		date = datetime.fromtimestamp(time_stamp)
+	return str(date.strftime(date_f))
 
 
 def safe_rm(path, ignore_errors=False):
@@ -109,3 +115,41 @@ def fix_file_acl_interface(fid):
 				return set_file_acl(path)
 
 	return False
+
+# TODO : Review and move
+@dispatch(basestring)
+def file_mod_time(path):
+	from os.path import getmtime # , join
+
+	return getmtime(path)
+
+
+@dispatch(basestring, basestring)
+def file_mod_time(dirName, fname):
+	from os.path import join
+
+	return file_mod_time(join(dirName, fname))
+
+
+def norm_proj_p(path, repl=''):
+	"""
+	:type path: str
+	:type repl: str
+	:rtype: str
+	"""
+	return path.replace(settings.PROJECT_FOLDER_PREFIX, repl)
+
+
+def get_r_package(name=''):
+	# TEST function for R lib retrieval
+	from cran_old import CranArchiveDownloader
+	if name:
+		cran = CranArchiveDownloader(name)
+		if cran.find() and cran.download():
+			return cran.extract_to()
+	return False
+
+
+
+
+

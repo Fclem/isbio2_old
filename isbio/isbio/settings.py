@@ -386,28 +386,35 @@ class DevSettings(BreezeSettings):
 	SU_ACCESS_OVERRIDE = True
 
 	# contains everything else (including breeze generated content) than the breeze web source code and static files
-	PROJECT_FOLDER = '/fs/projects/'
-	# PROJECT_FOLDER = '/projects/'
-	BREEZE_FOLDER = 'breeze' + ('-dev' if DEV_MODE else '') + '/'
+	PROJECT_FOLDER_NAME = 'projects'
+	PROJECT_FOLDER_PREFIX = '/fs'
+	PROJECT_FOLDER = '%s/%s/' % (PROJECT_FOLDER_PREFIX, PROJECT_FOLDER_NAME)
+	# BREEZE_FOLDER = 'breeze-dev/' if DEV_MODE else 'breeze/'
+	BREEZE_PROD_FOLDER = 'breeze'
+	BREEZE_DEV_FOLDER = '%s-dev' % BREEZE_PROD_FOLDER
+	# BREEZE_FOLDER = 'breeze' + ('-dev' if DEV_MODE else '') + '/'
+	BREEZE_FOLDER = '%s/' % BREEZE_DEV_FOLDER if DEV_MODE else BREEZE_PROD_FOLDER
 	if HOST_NAME.endswith('ph'):
-		BREEZE_FOLDER = 'breeze_new/'
+		BREEZE_FOLDER = '%s_new/' % BREEZE_PROD_FOLDER
 		DEBUG = False
 		VERBOSE = False
 		SQL_DUMP = False
 		PHARMA_MODE = True
 
 	PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
-	PROD_PATH = PROJECT_FOLDER + 'breeze/'
+	if not os.path.isdir(PROJECT_PATH):
+		PROJECT_FOLDER = '/%s/' % PROJECT_FOLDER_NAME
+	PROD_PATH = '%s%s/' % (PROJECT_FOLDER, BREEZE_PROD_FOLDER)
 	# R_HOME = "/projects/breeze/R/lib64/R"
-	R_HOME = "%sR/lib64/R" % PROD_PATH
-	R_ENGINE_SUB_PATH = 'R/bin/R ' # NOTE THERE IS A SPACE AT THIS END OF THIS VAR
-	R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
+	# R_HOME = "%sR/lib64/R" % PROD_PATH
+	# R_ENGINE_SUB_PATH = 'R/bin/R ' # NOTE THERE IS A SPACE AT THIS END OF THIS VAR
+	# R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
 	if not os.path.isfile( R_ENGINE_PATH.strip()):
-		PROJECT_FOLDER = '/projects/'
+		PROJECT_FOLDER = '/%s/' % PROJECT_FOLDER_NAME
 		PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
-		R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
+		# R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
 
-	PROJECT_FHRB_PM_PATH = '/projects/fhrb_pm/'
+	PROJECT_FHRB_PM_PATH = '/%s/fhrb_pm/' % PROJECT_FOLDER_NAME
 	JDBC_BRIDGE_PATH = PROJECT_FHRB_PM_PATH + 'bin/start-jdbc-bridge' # Every other path has a trailing /
 
 	# root of the Breeze django project folder, includes 'venv', 'static' folder copy, isbio, logs
@@ -428,19 +435,15 @@ class DevSettings(BreezeSettings):
 	UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 	DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
 	STATIC_ROOT = SOURCE_ROOT + 'static/'
-	# STATIC_ROOT = SOURCE_ROOT + 'static/'
-
 	TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
 	MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 	NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
-	# GENERAL_SH_NAME = 'sgeconfig.sh'
 	GENERAL_SH_NAME = 'run_job.sh'
 	SGE_REQUEST_FN = '.sge_request'
 	INCOMPLETE_RUN_FN = '.INCOMPLETE_RUN'
 	FAILED_FN = '.failed'
 	SUCCESS_FN = '.done'
 	R_DONE_FN = '.sub_done'
-	# SGE_QUEUE_NAME = 'breeze.q'
 	# SGE_QUEUE_NAME = 'breeze.q' # monitoring only
 	DOCKER_HUB_PASS_FILE = SOURCE_ROOT + 'docker_repo'
 	AZURE_PASS_FILE = SOURCE_ROOT + 'azure_pwd'
@@ -600,6 +603,7 @@ class DevSettings(BreezeSettings):
 
 	TMP_CSC_TAITO_MOUNT = '/mnt/csc-taito/'
 	TMP_CSC_TAITO_REPORT_PATH = 'breeze/'
+	TMP_CSC_TAITO_REMOTE_CHROOT = '/homeappl/home/clement/'
 
 	# mail config
 	EMAIL_HOST = 'smtp.gmail.com'
@@ -612,6 +616,7 @@ class DevSettings(BreezeSettings):
 	#
 	# END OF CONFIG
 	# RUN-MODE SPECIFICS FOLLOWING
+
 	# ** NO CONFIGURATION CONST BEYOND THIS POINT **
 	#
 
@@ -771,3 +776,7 @@ else:
 		print Bcolors.bold('RUNNING WITH PHARMA')
 	logging.info('Settings loaded. Running %s on %s' % (DevSettings.RUN_MODE, DevSettings.FULL_HOST_NAME))
 	logging.info(git_stat)
+
+def proj_path(breeze_folder=DevSettings.BREEZE_FOLDER):
+	return DevSettings.PROJECT_FOLDER + breeze_folder
+

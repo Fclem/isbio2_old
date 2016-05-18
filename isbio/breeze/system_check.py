@@ -42,6 +42,7 @@ class CheckerList(list):
 	@property
 	def still_running(self):
 		""" list of still active SysCheckUnit
+
 		:rtype: list
 		"""
 		new = list()
@@ -67,6 +68,7 @@ class CheckerList(list):
 	def boot_tests(self):
 		"""
 		list of test that are to be run at boot
+
 		:rtype: list
 		"""
 		result = list()
@@ -96,6 +98,7 @@ class CheckerList(list):
 		"""
 		wait for all process in the list to complette
 		New version, replaces the 08/09/2015 one, better use of OOP
+
 		:type wait_for_all: bool
 		"""
 		offset = len(PRE_BOOT_CHECK_LIST)
@@ -253,6 +256,7 @@ class SysCheckUnit(Process):
 		Runs checker function in a separate process for
 			_ concurrency and speed (from console)
 			_ process isolation, and main thread segfault avoidance (from UI)
+
 		:type from_ui: bool
 		"""
 		super(SysCheckUnit, self).__init__(target=self.split_runner, args=(from_ui,))
@@ -270,9 +274,9 @@ class SysCheckUnit(Process):
 
 	# clem 08/09/2015
 	def split_runner(self, from_ui=False):
-		"""
-		Checker function runner.
+		""" Checker function runner.
 		Call the function, display console message and exception if appropriate
+
 		:type from_ui: bool
 		"""
 		res = False
@@ -387,8 +391,8 @@ def gen_test_report(the_user, gen_number=10, job_duration=30, time_break=1):
 
 # clem on 21/08/2015
 def generate_file_index(root_dir, exclude=list(), start_id=0):
-	"""
-	Generate a dict with md5 checksums of every files within rootDir
+	""" Generate a dict with md5 checksums of every files within rootDir
+
 	:param root_dir: path to scan
 	:type root_dir: str
 	:param exclude: list of folder within rootDir to exclude
@@ -426,9 +430,9 @@ def generate_file_index(root_dir, exclude=list(), start_id=0):
 
 # clem on 21/08/2015
 def save_file_index():
-	"""
-	Save the FS signature in file settings.FS_SIG_FILE
+	""" Save the FS signature in file settings.FS_SIG_FILE
 	and a file system checksum index json object in file settings.FS_LIST_FILE
+
 	:return: True
 	:rtype: bool
 	"""
@@ -446,8 +450,8 @@ def save_file_index():
 
 # clem on 21/08/2015
 def file_system_check(verbose=False):
-	"""
-	Generate MD5 for files of every folders listed under settings.FOLDERS_TO_CHECK
+	""" Generate MD5 for files of every folders listed under settings.FOLDERS_TO_CHECK
+
 	:param verbose: display info
 	:type verbose: bool
 	:return: file system signature, file system index dict
@@ -481,8 +485,8 @@ def saved_fs_sig():
 
 # clem on 21/08/2015
 def check_is_file_system_unchanged():
-	"""
-	Check if the FS (as listed in settings.FOLDERS_TO_CHECK) remains unchanged
+	""" Check if the FS (as listed in settings.FOLDERS_TO_CHECK) remains unchanged
+
 	:rtype: bool
 	"""
 	if file_system_check()[0] == saved_fs_sig():
@@ -500,8 +504,8 @@ def check_is_file_system_unchanged():
 # clem 25/08/2015
 @logger_timer
 def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
-	"""
-	Return flag_changed, flag_invalid, files_state, folders_state
+	""" Return flag_changed, flag_invalid, files_state, folders_state
+
 	:type fix_file_perm: bool
 	:return: flag_changed, flag_invalid, files_state, folders_state
 	:rtype:
@@ -603,8 +607,8 @@ def deep_fs_check(fix_file_perm=False): # TODO optimize (too slow)
 
 # clem on 20/08/2015
 def check_rora():
-	"""
-	Check if RORA db host is online and RORA db connection is successful
+	""" Check if RORA db host is online and RORA db connection is successful
+
 	:rtype: bool
 	"""
 	try:
@@ -635,8 +639,8 @@ def check_rora_response():
 
 # clem on 20/08/2015
 def check_dotm():
-	"""
-	Check if Dotmatix db host is online and Dotmatix db connection is successful
+	""" Check if Dotmatix db host is online and Dotmatix db connection is successful
+
 	:rtype: bool
 	"""
 	# return status_button(rora.test_dotm_connect())
@@ -648,8 +652,8 @@ def check_dotm():
 
 # clem on 21/08/2015
 def check_file_server():
-	"""
-	Check if file server host is online
+	""" Check if file server host is online
+
 	:rtype: bool
 	"""
 	return utils.is_host_online(settings.FILE_SERVER_IP, 2)
@@ -670,8 +674,8 @@ def check_db_connection():
 
 # clem on 21/08/2015
 def check_file_system_mounted():
-	"""
-	Check if file server host is online, and project folder is mounted
+	""" Check if file server host is online, and project folder is mounted
+
 	:rtype: bool
 	"""
 	from utils import exists
@@ -680,8 +684,8 @@ def check_file_system_mounted():
 
 # clem on 20/08/2015
 def check_shiny(request):
-	"""
-	Check if Shiny server is responding
+	""" Check if Shiny server is responding
+
 	:type request:
 	:rtype: bool
 	"""
@@ -697,8 +701,8 @@ def check_shiny(request):
 
 # clem on 22/09/2015
 def check_csc_shiny(request):
-	"""
-	Check if CSC Shiny server is responding
+	""" Check if CSC Shiny server is responding
+
 	:type request:
 	:rtype: bool
 	"""
@@ -716,8 +720,8 @@ def check_csc_shiny(request):
 
 # clem on 23/09/2015
 def check_csc_mount():
-	"""
-	Check if remote Shiny is mounted as part of the FS
+	""" Check if remote Shiny is mounted as part of the FS
+
 	:rtype: bool
 	"""
 	from os import path
@@ -731,8 +735,8 @@ def check_csc_mount():
 
 # clem on 20/10/2015
 def check_csc_taito_mount():
-	"""
-	Check if remote Shiny is mounted as part of the FS
+	""" Check if remote Shiny is mounted as part of the FS
+
 	:rtype: bool
 	"""
 	from os import path
@@ -753,8 +757,8 @@ def check_watcher():
 
 # clem on 20/08/2015
 def check_sge():
-	"""
-	Check if SGE queue master server host is online, and drmaa can initiate a valid session
+	""" Check if SGE queue master server host is online, and drmaa can initiate a valid session
+
 	:rtype: bool
 	"""
 	if utils.is_host_online(settings.SGE_MASTER_IP, 2):
@@ -765,15 +769,14 @@ def check_sge():
 			s.exit()
 			return True
 		except Exception as e:
-			# pass
 			raise e
 	return False
 
 
 # clem on 09/12/2015
 def check_sge_c():
-	"""
-	Check if SGE has a non empty env configuration.
+	""" Check if SGE has a non empty env configuration.
+
 	:rtype: bool
 	"""
 	if settings.Q_BIN != '' and settings.SGE_QUEUE_NAME != '':
@@ -784,8 +787,8 @@ def check_sge_c():
 
 # clem 08/09/2015
 def check_cas(request):
-	"""
-	Check if CAS server is responding
+	""" Check if CAS server is responding
+
 	:type request:
 	:rtype: bool
 	"""
@@ -825,7 +828,8 @@ def check_urls():
 
 # clem 09/09/2015
 def ui_checker_proxy(obj):
-	"""	Run a self-test based on requested URL
+	"""	Run a self-test based on requested URL1
+
 	:param obj: SysCheckUnit object
 	:type obj: SysCheckUnit | str
 	:return: is test successful
@@ -847,8 +851,8 @@ def ui_checker_proxy(obj):
 
 # clem 29/02/2016
 def ui_get_object(what):
-	"""
-	Get the SysCheckUnit object from its id, or return error 404 if not found
+	""" Get the SysCheckUnit object from its id, or return error 404 if not found
+
 	:param what: url of the system test (the id)
 	:type what: str
 	:return: SysCheckUnit or False
@@ -870,7 +874,7 @@ def long_poll_waiter():
 
 
 # TODO FIXME runtime fs_check slow and memory leak ?
-fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'Project server', 'FILE SYSTEM\t\t ', RunType.runtime,
+fs_mount = SysCheckUnit(check_file_system_mounted, 'fs_mount', 'File server', 'FILE SYSTEM\t\t ', RunType.runtime,
 						ex=FileSystemNotMounted, mandatory=True)
 db_conn = SysCheckUnit(check_db_connection, 'db_conn', 'Mysql DB', 'MYSQL DB\t\t ', RunType.pre_boot_time,
 						ex=MysqlDbUnreachable, mandatory=True)
