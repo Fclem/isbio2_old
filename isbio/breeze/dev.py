@@ -9,6 +9,10 @@ azure = None
 targets = None
 
 
+def init():
+	pass
+
+
 def same(a, b):
 	return a is b or '%s != %s' % (hex(id(a)), hex(id(b)))
 
@@ -91,7 +95,7 @@ class HelloWorld(cmd.Cmd):
 
 def base():
 	global csc, azure, targets
-	from breeze.models import ComputeTarget
+	from models import ComputeTarget
 	targets = ComputeTarget.objects.all()
 	azure = targets[2]
 	csc = targets[3]
