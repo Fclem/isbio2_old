@@ -884,7 +884,7 @@ good_bad = ('Good', 'BAD')
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
-	SysCheckUnit(check_urls, 'urls', 'URL file', 'URL FILE', RunType.boot_time, ex=UrlFileHasMalformedPatterns,
+	SysCheckUnit(check_urls, 'urls', 'URL file', 'URL FILE\t\t', RunType.boot_time, ex=UrlFileHasMalformedPatterns,
 		mandatory=True),
 	# # SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
 	SysCheckUnit(save_file_index, 'fs_ok', '', 'saving file index...\t', RunType.boot_time, 25000,
@@ -894,8 +894,7 @@ CHECK_LIST = [
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
 	SysCheckUnit(check_rora_response, 'rora_ok', 'RORA data', 'RORA DATA\t\t', RunType.both, ex=RORAFailure,
 				ui_text=good_bad),
-	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured,
-				mandatory=False),
+	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured),
 	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),
