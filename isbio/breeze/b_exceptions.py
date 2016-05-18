@@ -10,6 +10,10 @@ class SystemCheckFailed(RuntimeWarning):
 	pass
 
 
+class UrlFileHasMalformedPatterns(SystemCheckFailed):
+	pass
+
+
 class FileSystemNotMounted(SystemCheckFailed):
 	pass
 
