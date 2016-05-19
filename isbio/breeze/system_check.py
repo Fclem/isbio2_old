@@ -136,7 +136,7 @@ class CheckerList(list):
 
 
 # clem 08/09/2015
-class RunType:
+class RunType(enumerate):
 	@staticmethod
 	def pre_boot_time():
 		pass
@@ -163,37 +163,37 @@ class SysCheckUnit(Process):
 	""" Describe a self executable unit of system test, includes all the process management part """
 	RAISE_EXCEPTION = True
 
-	def __init__(self, funct, url, legend, msg, type, t_out=0, arg=None, supl=None, ex=SystemCheckFailed,
+	def __init__(self, function, url, legend, msg, a_type, t_out=0, arg=None, run_after=None, ex=SystemCheckFailed,
 				mandatory=False, long_poll=False, ui_text=('Online', 'Offline')):
 		"""
 		init Arguments :
-		funct: the function to run to asses test result
+		function: the function to run to asses test result
 		url: id of test, and url part to access it
 		legend: title to display on WebUI
 		msg: title to display on Console
 		type: type of this test
 		t_out: timeout to set test as failed
-		arg: arguments to funct
-		supl: a function to run after this test
+		arg: arguments to function
+		run_after: a function to run after this test
 		ex: an exception to eventually raise on check failure
 		mandatory: is this test success is required to system consistent boot
 
-		:param funct: the function to run to asses test result
-		:type funct: callable
+		:param function: the function to run to asses test result
+		:type function: callable
 		:param url: id of test, and url part to access it
 		:type url: str
 		:param legend: title to display on WebUI
 		:type legend: str
 		:param msg: title to display on Console
 		:type msg: str
-		:param type: type of this test
-		:type type: RunType.property
+		:param a_type: type of this test
+		:type a_type: RunType.property
 		:param t_out: timeout to set test as failed
 		:type t_out: int
 		:param arg: arguments to funct
 		:type arg:
-		:param supl: a function to run after this test
-		:type supl: callable
+		:param run_after: a function to run after this test
+		:type run_after: callable
 		:param ex: an exception to eventually raise on check failure
 		:type ex: Exception
 		:param mandatory: is this test success is required to system consistent boot
@@ -201,20 +201,20 @@ class SysCheckUnit(Process):
 		:param ui_text: optional text to be shown in UI, default is ('Online', 'Offline')
 		:type ui_text: (str, str)
 		"""
-		if type is RunType.runtime or callable(funct):
-			self.checker_function = funct
+		if a_type is RunType.runtime or callable(function):
+			self.checker_function = function
 			self.url = url
 			self.legend = legend
 			self._msg = msg
 			self.t_out = int(t_out)
 			self.arg = arg
-			self.type = type
-			self.supl = supl
+			self.type = a_type
+			self.run_after = run_after
 			self.mandatory = mandatory
 			self.ex = ex
 			self.lp = long_poll
 			self.ui_text = ui_text
-			# self._process = Process
+			super(SysCheckUnit, self).__init__()
 		else:
 			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
 
@@ -303,8 +303,8 @@ class SysCheckUnit(Process):
 
 		if not from_ui:
 			print self.msg,
-			if self.supl is not None and callable(self.supl):
-				sup = self.supl()
+			if self.run_after is not None and callable(self.run_after):
+				sup = self.run_after()
 			print OK if res else BAD if self.mandatory else WARN, sup, sup2
 
 		if not res:
@@ -820,7 +820,7 @@ def check_urls():
 		from isbio.urls import urlpatterns
 		show_urls(urlpatterns)
 		return True
-	except Exception as e:
+	except Exception:
 		pass
 
 	return False
@@ -888,17 +888,17 @@ good_bad = ('Good', 'BAD')
 # Collection of system checks that is used to run all the test automatically, and display run-time status
 CHECK_LIST = [
 	SysCheckUnit(long_poll_waiter, 'breeze', 'Breeze HTTP', '', RunType.runtime, long_poll=True),
-	SysCheckUnit(check_urls, 'urls', 'URL file', 'URL FILE\t\t', RunType.boot_time, ex=UrlFileHasMalformedPatterns,
+	SysCheckUnit(check_urls, 'urls', 'URL config', 'URL CONFIG\t\t', RunType.boot_time, ex=UrlFileHasMalformedPatterns,
 		mandatory=True),
 	# # SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
 	SysCheckUnit(save_file_index, 'fs_ok', '', 'saving file index...\t', RunType.boot_time, 25000,
-				supl=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount, db_conn,
+				run_after=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount, db_conn,
 	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
 	SysCheckUnit(check_rora_response, 'rora_ok', 'RORA data', 'RORA DATA\t\t', RunType.both, ex=RORAFailure,
 				ui_text=good_bad),
-	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.boot_time, ex=SGEImproperlyConfigured),
+	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.disabled, ex=SGEImproperlyConfigured), # boot_time
 	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
 				mandatory=True),
 	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),
