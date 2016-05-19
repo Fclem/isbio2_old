@@ -20,71 +20,70 @@ ENABLE_REMOTE_FW = False
 # TODO : redesign
 
 
-class Bcolors:
+class Bcolors(enumerate):
 	HEADER = '\033[95m'
-	OKBLUE = '\033[94m'
-	OKGREEN = '\033[92m'
+	OK_BLUE = '\033[94m'
+	OK_GREEN = '\033[92m'
 	WARNING = '\033[93m'
 	FAIL = '\033[91m'
-	ENDC = '\033[0m'
+	END_C = '\033[0m'
 	BOLD = '\033[1m'
 	UNDERLINE = '\033[4m'
 
 	@staticmethod
 	def ok_blue(text):
-		return Bcolors.OKBLUE + text + Bcolors.ENDC
+		return Bcolors.OK_BLUE + text + Bcolors.END_C
 
 	@staticmethod
 	def ok_green(text):
-		return Bcolors.OKGREEN + text + Bcolors.ENDC
+		return Bcolors.OK_GREEN + text + Bcolors.END_C
 
 	@staticmethod
 	def fail(text):
-		return Bcolors.FAIL + text + Bcolors.ENDC
+		return Bcolors.FAIL + text + Bcolors.END_C
 
 	@staticmethod
 	def warning(text):
-		return Bcolors.WARNING + text + Bcolors.ENDC
+		return Bcolors.WARNING + text + Bcolors.END_C
 
 	@staticmethod
 	def header(text):
-		return Bcolors.HEADER + text + Bcolors.ENDC
+		return Bcolors.HEADER + text + Bcolors.END_C
 
 	@staticmethod
 	def bold(text):
-		return Bcolors.BOLD + text + Bcolors.ENDC
+		return Bcolors.BOLD + text + Bcolors.END_C
 
 	@staticmethod
 	def underlined(text):
-		return Bcolors.UNDERLINE + text + Bcolors.ENDC
+		return Bcolors.UNDERLINE + text + Bcolors.END_C
 
 
-def recur(nb, funct, args):
+def recur(nb, function, args):
 	while nb > 0:
-		args = funct(args)
+		args = function(args)
 		nb -= 1
 	return args
 
 
 # TODO make a generator
-def getkey(path=''):
+def get_key(path=''):
 	try:
 		with open(path + 'secret') as f:
 			return f.read()
-	except Exception as e:
+	except Exception:
 		pass
 	return None
 
 
-def recur_rec(nb, funct, args):
+def recur_rec(nb, function, args):
 	if nb > 0:
-		return recur_rec(nb - 1, funct, funct(args))
+		return recur_rec(nb - 1, function, function(args))
 	return args
 
 
 # dynamically change the environement
 def import_env():
-	# os.system('. ~/.sge_profile')
 	import subprocess as sp
 	import json
 	source = 'source ~/.sge_profile'
@@ -99,6 +98,7 @@ MAINTENANCE = False
 USUAL_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 USUAL_LOG_FORMAT = \
 	'%(asctime)s,%(msecs)03d  P%(process)05d %(levelname)-8s %(lineno)04d:%(module)-20s %(funcName)-25s %(message)s'
+USUAL_LOG_LEN_BEFORE_MESSAGE = 93
 USUAL_LOG_FORMAT_DESCRIPTOR =\
 	'DATE       TIME,milisec  PID   LEVEL     LINE:MODULE               FUNCTION                  MESSAGE'
 DB_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -118,7 +118,6 @@ class BreezeSettings(Settings):
 
 	ADMINS = (
 		('Clement FIERE', 'clement.fiere@helsinki.fi'),
-		# ('Dmitrii Bychkov', 'piter.dmitry@gmail.com'),
 	)
 
 	MANAGERS = ADMINS
@@ -160,17 +159,6 @@ class BreezeSettings(Settings):
 	# If you set this to False, Django will not use timezone-aware datetimes.
 	USE_TZ = True
 
-	# !CUSTOM!
-	# Tempory folder for the application
-	# # TEMP_FOLDER = '/home/comrade/Projects/fimm/tmp/'
-	# Path to R installation
-	# R_ENGINE_PATH = 'R '
-
-	# Absolute filesystem path to the directory that will hold user-uploaded files.
-	# Example: "/home/media/media.lawrence.com/media/"
-	# #MEDIA_ROOT = '/home/comrade/Projects/fimm/db/'
-	# #RORA_LIB = '/home/comrade/Projects/fimm/roralib/'
-
 	# URL that handles the media served from MEDIA_ROOT. Make sure to use a
 	# trailing slash.
 	# Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
@@ -188,7 +176,7 @@ class BreezeSettings(Settings):
 
 	# Additional locations of static files
 	STATICFILES_DIRS = (
-		#"/home/comrade/Projects/fimm/isbio/breeze/",
+		# "/home/comrade/Projects/fimm/isbio/breeze/",
 		# Put strings here, like "/home/html/static" or "C:/www/django/static".
 		# Always use forward slashes, even on Windows.
 		# Don't forget to use absolute paths, not relative paths.
@@ -203,13 +191,12 @@ class BreezeSettings(Settings):
 	)
 
 	# Make this unique, and don't share it with anybody.
-	SECRET_KEY = str(getkey())
+	SECRET_KEY = str(get_key())
 
-	# List of callables that know how to import templates from various sources.
+	# List of callable that know how to import templates from various sources.
 	TEMPLATE_LOADERS = (
 		'django.template.loaders.filesystem.Loader',
 		'django.template.loaders.app_directories.Loader',
-		#     'django.template.loaders.eggs.Loader',
 	)
 
 	MIDDLEWARE_CLASSES = (
@@ -226,9 +213,6 @@ class BreezeSettings(Settings):
 		'breeze.middlewares.DataDog' if ENABLE_DATADOG else 'breeze.middlewares.Empty',
 		'breeze.middlewares.RemoteFW' if ENABLE_REMOTE_FW else 'breeze.middlewares.Empty',
 		'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
-		# 'breeze.middleware.Log',
-		# Uncomment the next line for simple clickjacking protection:
-		# 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 	)
 	# from django_cas.backends import CASBackend
 	AUTHENTICATION_BACKENDS = (
@@ -344,7 +328,7 @@ class DevSettings(BreezeSettings):
 	APPEND_SLASH = True
 
 	ADMINS = (
-	('Clement FIERE', 'clement.fiere@helsinki.fi'),
+		('Clement FIERE', 'clement.fiere@helsinki.fi'),
 	)
 
 	MANAGERS = ADMINS
@@ -366,9 +350,9 @@ class DevSettings(BreezeSettings):
 			'HOST': '/var/run/mysqld/mysqld.sock',  # Set to empty string for localhost. Not used with sqlite3.
 			'PORT': '3306',  # Set to empty string for default. Not used with sqlite3.
 			'OPTIONS': {
-
-				"init_command": "SET default_storage_engine=INNODB; SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", }
-				# "init_command": "SET transaction isolation level READ COMMITTED", }
+				"init_command": "SET default_storage_engine=INNODB; SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED",
+			}
+			# "init_command": "SET transaction isolation level READ COMMITTED", }
 		}
 	}
 
@@ -382,7 +366,7 @@ class DevSettings(BreezeSettings):
 	MODE_PROD = RUN_MODE == 'prod'
 	PHARMA_MODE = False
 
-	# Super User on breeze can Access all datas
+	# Super User on breeze can Access all data
 	SU_ACCESS_OVERRIDE = True
 
 	# contains everything else (including breeze generated content) than the breeze web source code and static files
@@ -405,14 +389,12 @@ class DevSettings(BreezeSettings):
 	if not os.path.isdir(PROJECT_PATH):
 		PROJECT_FOLDER = '/%s/' % PROJECT_FOLDER_NAME
 	PROD_PATH = '%s%s/' % (PROJECT_FOLDER, BREEZE_PROD_FOLDER)
-	# R_HOME = "/projects/breeze/R/lib64/R"
-	# R_HOME = "%sR/lib64/R" % PROD_PATH
-	# R_ENGINE_SUB_PATH = 'R/bin/R ' # NOTE THERE IS A SPACE AT THIS END OF THIS VAR
-	# R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
+	R_ENGINE_SUB_PATH = 'R/bin/R ' # FIXME LEGACY ONLY
+	R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
 	if not os.path.isfile( R_ENGINE_PATH.strip()):
 		PROJECT_FOLDER = '/%s/' % PROJECT_FOLDER_NAME
 		PROJECT_PATH = PROJECT_FOLDER + BREEZE_FOLDER
-		# R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH
+		R_ENGINE_PATH = PROD_PATH + R_ENGINE_SUB_PATH # FIXME Legacy
 
 	PROJECT_FHRB_PM_PATH = '/%s/fhrb_pm/' % PROJECT_FOLDER_NAME
 	JDBC_BRIDGE_PATH = PROJECT_FHRB_PM_PATH + 'bin/start-jdbc-bridge' # Every other path has a trailing /
@@ -568,7 +550,6 @@ class DevSettings(BreezeSettings):
 		NOZZLE_TEMPLATE_FOLDER, SCRIPT_TEMPLATE_FOLDER, JOBS_PATH, REPORT_TYPE_PATH, REPORTS_PATH, RSCRIPTS_PATH, MEDIA_ROOT,
 		PROJECT_FHRB_PM_PATH, RORA_LIB, STATIC_ROOT, TARGET_CONFIG_PATH, EXEC_CONFIG_PATH, ENGINE_CONFIG_PATH]
 
-
 	##
 	# System Autocheck config
 	##
@@ -643,8 +624,8 @@ class DevSettings(BreezeSettings):
 				},
 				'request_format': {
 					'format': '%(remote_addr)s %(username)s "%(request_method)s '
-							'%(path_info)s %(server_protocol)s" %(http_user_agent)s '
-							'%(message)s %(asctime)s',
+					'%(path_info)s %(server_protocol)s" %(http_user_agent)s '
+					'%(message)s %(asctime)s',
 				},
 			},
 			'filters': {
@@ -717,7 +698,6 @@ class DevSettings(BreezeSettings):
 	else:
 		VERBOSE = False
 
-
 	try:
 		import rollbar
 		BASE_DIR = SOURCE_ROOT
@@ -742,7 +722,7 @@ class DevSettings(BreezeSettings):
 		SHINY_LIBS_BREEZE_URL = SHINY_LOCAL_LIBS_BREEZE_URL
 
 if not BreezeSettings.SECRET_KEY:
-	SECRET_KEY = getkey(DevSettings.SOURCE_ROOT)
+	SECRET_KEY = get_key(DevSettings.SOURCE_ROOT)
 	BreezeSettings.SECRET_KEY = SECRET_KEY
 
 
@@ -777,6 +757,6 @@ else:
 	logging.info('Settings loaded. Running %s on %s' % (DevSettings.RUN_MODE, DevSettings.FULL_HOST_NAME))
 	logging.info(git_stat)
 
-def proj_path(breeze_folder=DevSettings.BREEZE_FOLDER):
-	return DevSettings.PROJECT_FOLDER + breeze_folder
 
+def project_folder_path(breeze_folder=DevSettings.BREEZE_FOLDER):
+	return DevSettings.PROJECT_FOLDER + breeze_folder
