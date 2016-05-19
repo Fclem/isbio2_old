@@ -1,13 +1,14 @@
 from docker import Client as DockerApiClient
 from docker.errors import NotFound, APIError, NullResource
 from threading import Thread, Lock
-from utilities import get_md5, advanced_pretty_print, Bcolors, new_thread, get_named_tuple, get_logger, ObjectCache
+from utilities import get_md5, advanced_pretty_print, TermColoring, new_thread, get_named_tuple, ObjectCache,\
+	this_function_caller_name
 import curses
 import json
 import requests
 import time
 
-__version__ = '0.1'
+__version__ = '0.1.1'
 __author__ = 'clem'
 DOCKER_HUB_URL = 'https://index.docker.io'
 
@@ -305,7 +306,7 @@ class DockerContainer:
 	def start(self, client=None):
 		assert isinstance(client, DockerClient) or isinstance(self.__client, DockerClient)
 		the_client = client or self.__client
-		the_client._start(self)
+		the_client.start(self)
 
 	# clem 06/05/2016
 	def pause(self, client=None):
@@ -549,8 +550,8 @@ class DockerEvent:
 
 	# FIXME : very slow
 	def get_container(self, no_update=False):
-		if not no_update and (not self._container or not self._container.name): # if not a container or container has
-		#  no name, refresh
+		if not no_update and (not self._container or not self._container.name):
+			# if not a container or container has no name, refresh
 			if self.Type == 'container':
 				try:
 					return self._attach_container(self.res_id)
@@ -818,8 +819,7 @@ class TermStreamer:
 			for value in a_dict.itervalues():
 				i += 1
 				self.stdscr.addstr(i, 0, str(value).ljust(80))
-		except error as e:
-			# print 'err: %s' % e
+		except error:
 			pass
 		self.stdscr.refresh()
 
@@ -865,8 +865,6 @@ class DockerClient:
 	# clem 14/03/2016
 	def __cleanup(self):
 		if self.__watcher:
-			# self._force_log('Closing docker cli...')
-			# self.cli.close()
 			if self.__watcher:
 				self._force_log('clearing watcher')
 				del self.__watcher # GC
@@ -909,9 +907,8 @@ class DockerClient:
 
 	# clem 17/03/2016
 	def _exception_handler(self, e, msg='', force_log=False, force_raise=False):
-		import sys
 		msg = '%s:%s' % (type(e), str(e)) if not msg else str(msg)
-		msg = Bcolors.warning('ERR in %s: %s' % (sys._getframe(1).f_code.co_name, msg))
+		msg = TermColoring.warning('ERR in %s: %s' % (this_function_caller_name(), msg))
 		self._force_log(msg) if force_log else self._log(msg)
 		self._auto_raise(e, force_raise)
 
@@ -947,7 +944,7 @@ class DockerClient:
 	# clem 10/03/2016
 	def _force_log(self, obj, sup_text=''):
 		if type(obj) is str:
-			obj = Bcolors.bold(obj)
+			obj = TermColoring.bold(obj)
 		self._log(obj, True, sup_text)
 
 	# clem 16/03/2016
@@ -978,7 +975,7 @@ class DockerClient:
 			if auto_login:
 				self.login()
 		except requests.exceptions.ConnectionError as e:
-			self._force_log(Bcolors.fail('FATAL: Connection to docker daemon failed'))
+			self._force_log(TermColoring.fail('FATAL: Connection to docker daemon failed'))
 			self._raw_cli = None
 			self._exception_handler(e)
 
@@ -998,29 +995,7 @@ class DockerClient:
 				raise CannotConnectToDaemon
 		return self.__connection_state
 
-	# clem 09/03/2016
-	@property
-	def __pp_cli(myself):
-		"""
-		A wrapper for self.raw_cli instance, that applies pretty_print on output of any command passed to docker client
-		:rtype: Client
-		"""
-		# originally from http://stackoverflow.com/a/2704528/5094389
-		class Prettyfy(object):
-			def __getattribute__(self, name):
-				attr = myself._raw_cli.__getattribute__(name)
-				if hasattr(attr, '__call__'):
-					def new_func(*args, **kwargs):
-						result = attr(*args, **kwargs)
-						if type(result) == dict:
-							advanced_pretty_print(result)
-						return result
-
-					return new_func
-				else:
-					return attr
-
-		return Prettyfy()
+	# __pp_cli removed on 19/05/2016 from azure_test / commit 3ae8f9d
 
 	# clem 01/04/2016
 	@classmethod
@@ -1045,6 +1020,7 @@ class DockerClient:
 		"""
 		check if image exists locally, and pull it if not
 		Return True if image exists, or pulled successfully, False otherwise
+
 		@params:
 			run  - Required  : current iteration (DockerRun)
 		@return: True if image exists, or pulled successfully, False otherwise
@@ -1140,17 +1116,15 @@ class DockerClient:
 
 	# clem 17/03/2016
 	def _inspect_container(self, container_desc):
-		"""
-		Get all the refreshed raw information about the container
+		""" Get all the refreshed raw information about the container
+
 		:type container_desc: basestring
 		:rtype: str
 		"""
 		try:
 			return self.cli.inspect_container(container_desc)
 		except (NotFound, APIError) as e:
-			import sys
-			# print 'plop'
-			if sys._getframe(1).f_code.co_name != '_update_container_data':
+			if this_function_caller_name() != self._update_container_data.im_func.__name__:
 				self._exception_handler(e)
 		except Exception as e:
 			self._exception_handler(e)
@@ -1158,8 +1132,8 @@ class DockerClient:
 
 	# clem 17/03/2016
 	def _make_container(self, container_desc):
-		"""
-		Return a new DockerContainer object, from a container_id
+		""" Return a new DockerContainer object, from a container_id
+
 		:type container_desc: basestring
 		:rtype: DockerContainer
 		"""
@@ -1176,6 +1150,7 @@ class DockerClient:
 		"""
 		Check if container in cache, if so return its object update with self._inspect_container,
 		if not it is created self.make_container and store it in the dict
+
 		:type container_desc: basestring
 		:rtype: DockerContainer
 		"""
@@ -1207,25 +1182,16 @@ class DockerClient:
 		:rtype: DockerApiClient
 		"""
 		if self.__connected: # system wide check for active connection
-			if self.DEV:
-				return self.__pp_cli
-			else:
-				return self._raw_cli
+			return self._raw_cli
 		else:
-			# self._log('ERR: Cannot use cli as Docker daemon is not connected')
 			self._auto_raise(DaemonNotConnected('Cannot use cli as Docker daemon is not connected'), True)
-
-	# clem 09/03/2016
-	@property # FIXME LEGACY DEV CODE
-	def pretty_cli(self):
-		return self.__pp_cli
 
 	# run_default removed 18/03/2016 from commit bc9d5d3
 
 	# clem 09/03/2016
 	def img_run(self, img_name_tag, command, volume_list=list()):
-		"""
-		TBD
+		""" TBD
+
 		:type img_name_tag: str
 		:type command: str
 		:type volume_list: DockerVolume|list
@@ -1235,8 +1201,8 @@ class DockerClient:
 
 	# clem 14/03/2016
 	def get_container(self, container_id=None):
-		"""
-		Refresh the cached container list, and return the cached container
+		""" Refresh the cached container list, and return the cached container
+
 		:type container_id: str
 		:rtype: DockerContainer
 		"""
@@ -1251,6 +1217,7 @@ class DockerClient:
 		"""
 		Get the cached image, and if not found try to refresh the cache for this entry only
 		image_descriptor can be either the id, or the full name as repo/image:tag
+
 		:type image_descriptor: str | DockerImage | None
 		:rtype: DockerImage | None
 		"""
@@ -1282,8 +1249,8 @@ class DockerClient:
 			self.rmi([res_id], force=force)
 
 	# clem 31/03/2016
-	def show_info(self):
-		print self.info()
+	# def show_info(self):
+	# 	print self.info()
 
 	#
 	# DOCKER CLIENT MAPPINGS
@@ -1340,8 +1307,8 @@ class DockerClient:
 
 	# clem 18/03/2016
 	def run(self, run_obj):
-		"""
-		Run interface
+		""" Run interface
+
 		:type run_obj: DockerRun
 		:rtype: DockerContainer
 		"""
@@ -1365,8 +1332,8 @@ class DockerClient:
 
 	# clem 17/03/2016
 	def rm(self, container_list, v=False, link=False, force=False):
-		"""
-		Removes a list of containers, designated by name or Id
+		""" Removes a list of containers, designated by name or Id
+
 		:type container_list: list | DockerContainer | basestring
 		:type v: bool
 		:type link: bool
@@ -1388,8 +1355,8 @@ class DockerClient:
 
 	# clem 16/03/2016
 	def rmi(self, image_list, force=False):
-		"""
-		Removes a list of images, designated by tag or Id
+		""" Removes a list of images, designated by tag or Id
+
 		:type image_list: list | basestring
 		:type force: bool
 		:rtype: None
@@ -1406,7 +1373,7 @@ class DockerClient:
 		return None
 
 	# clem 16/03/2016
-	def pull(self, image_name, tag='', force_print=False):
+	def pull(self, image_name, tag=''):
 		def printer(generator):
 			a_dict = dict()
 			count = 0
@@ -1416,10 +1383,10 @@ class DockerClient:
 						obj = self._json_parse(line)
 						if 'status' in obj:
 							status = ''
-							prog = obj.get('progressDetail', None)
-							if prog and 'current' in prog and 'total' in prog:
+							progress = obj.get('progressDetail', None)
+							if progress and 'current' in progress and 'total' in progress:
 								txt = '%s: %s' % (obj['id'], obj['status'])
-								status = TermStreamer.ProgressObj(txt, float(prog['current']), float(prog['total']))
+								status = TermStreamer.ProgressObj(txt, float(progress['current']), float(progress['total']))
 							elif 'id' in obj:
 								status = '%s: %s' % (obj['id'], obj['status'])
 							a_dict.update({ obj.get('id', count): status })
@@ -1513,8 +1480,8 @@ class DockerClient:
 
 	# clem 16/03/2016
 	def _del_res(self, a_dict, res_id):
-		"""
-		Delete res_id from a_dict with error handling
+		""" Delete res_id from a_dict with error handling
+
 		:type a_dict: dict
 		:type res_id: basestring
 		:rtype: None
@@ -1592,6 +1559,7 @@ class DockerClient:
 		"""
 		Blocking procedure to receive events
 		MUST RUN IN A SEPARATE THREAD
+
 		:rtype: None
 		"""
 		try:
@@ -1617,7 +1585,7 @@ class DockerClient:
 
 	# clem 10/03/2016
 	@property
-	def containers_by_id(self, all=False):
+	def containers_by_id(self, show_all=False):
 		"""
 		a dictionary of DockerContainer objects indexed by Id
 		internally containers lists is stored in a dict indexed with containers' Ids.
@@ -1626,11 +1594,12 @@ class DockerClient:
 		DockerContainer objects stores an internal md5 of its dictionary so that a modified container (invariant Id)
 			will be updated
 		similar to images_by_id()
-		:type all: bool
+
+		:type show_all: bool
 		:rtype: dict(DockerContainer.Id: DockerContainer)
 		"""
 		try:
-			containers = self.cli.containers(all=all)
+			containers = self.cli.containers(all=show_all)
 			for e in containers: # retrieve, updates, or create the container object
 				self._get_container(e.get('Id'))
 			return self._container_dict_by_id
@@ -1643,8 +1612,8 @@ class DockerClient:
 
 	# clem 17/03/2016
 	def _get_containers_list(self, container_ids):
-		"""
-		extracts all DockerContainer objects from containers_by_id to return a list of them
+		""" extracts all DockerContainer objects from containers_by_id to return a list of them
+
 		:type container_ids: dict
 		:rtype: list(DockerContainer.Id: DockerContainer, )
 		"""
@@ -1657,8 +1626,8 @@ class DockerClient:
 	# clem 10/03/2016
 	@property
 	def containers_list(self):
-		"""
-		extracts all DockerContainer objects from containers_by_id to return a list of them
+		""" extracts all DockerContainer objects from containers_by_id to return a list of them
+
 		:rtype: list(DockerContainer.Id: DockerContainer, )
 		"""
 		return self._get_containers_list(self.containers_by_id)
@@ -1669,6 +1638,7 @@ class DockerClient:
 		a dictionary of DockerContainer objects indexed by Name[0]
 		similar to ps_by_id, except here the DockerContainer objects are referenced by their first Names
 		DockerContainer object are referenced from the other dict and thus not modified nor copied.
+
 		:type container_ids: dict
 		:rtype: dict(DockerContainer.Name: DockerContainer)
 		"""
@@ -1685,10 +1655,10 @@ class DockerClient:
 		a dictionary of DockerContainer objects indexed by Name[0]
 		similar to ps_by_id, except here the DockerContainer objects are referenced by their first Names
 		DockerContainer object are referenced from the other dict and thus not modified nor copied.
+
 		:rtype: dict(DockerContainer.Name: DockerContainer)
 		"""
 		return self._get_containers_by_name(self.containers_by_id)
-
 
 	#
 	# IMAGES DATA OBJECT MANAGEMENT AND INTERFACE
@@ -1705,6 +1675,7 @@ class DockerClient:
 		DockerImage objects stores an internal md5 of its dictionary so that a modified image (invariant Id) will be
 			updated
 		similar to ps_by_id()
+
 		:rtype: dict(DockerImage.Id: DockerImage)
 		"""
 		try:
@@ -1720,8 +1691,8 @@ class DockerClient:
 
 	# clem 17/03/2016
 	def _get_image_list(self, image_ids):
-		"""
-		extracts all DockerImage objects from images_by_id to return a list of them
+		""" extracts all DockerImage objects from images_by_id to return a list of them
+
 		:type image_ids: dict
 		:rtype: list(DockerImage.Id: DockerImage, )
 		"""
@@ -1734,8 +1705,8 @@ class DockerClient:
 	# clem 09/03/2016
 	@property
 	def images_list(self):
-		"""
-		extracts all DockerImage objects from images_by_id to return a list of them
+		""" extracts all DockerImage objects from images_by_id to return a list of them
+
 		:rtype: list(DockerImage.Id: DockerImage, )
 		"""
 		return self._get_image_list(self.images_by_id)
@@ -1746,6 +1717,7 @@ class DockerClient:
 		a dictionary of DockerImage objects indexed by RepoTag[0]
 		similar to images_by_id, except here the DockerImage objects are referenced by their first RepoTag
 		DockerImage object are referenced from the other dict and thus not modified nor copied.
+
 		:type image_ids: dict
 		:rtype: dict(DockerImage.tag: DockerImage)
 		"""
@@ -1763,6 +1735,7 @@ class DockerClient:
 		a dictionary of DockerImage objects indexed by RepoTag[0]
 		similar to images_by_id, except here the DockerImage objects are referenced by their first RepoTag
 		DockerImage object are referenced from the other dict and thus not modified nor copied.
+
 		:rtype: dict(DockerImage.tag: DockerImage)
 		"""
 		return self._get_images_by_repo_tag(self.images_by_id)
@@ -1770,16 +1743,16 @@ class DockerClient:
 	# clem 09/03/2016
 	@property
 	def images_tree(self):
-		imgs = self.images_by_repo_tag
+		images = self.images_by_repo_tag
 		self.__image_tree = dict()
-		for name, img in imgs.iteritems():
+		for name, img in images.iteritems():
 			assert isinstance(img, DockerImage)
 			if img.repo_name not in self.__image_tree:
 				self.__image_tree[img.repo_name] = dict()
 			repo = self.__image_tree[img.repo_name]
 			if img.repo_name not in repo:
 				repo[img.name] = dict()
-			repo[img.name][img.tag] = imgs[name]
+			repo[img.name][img.tag] = images[name]
 
 		return self.__image_tree
 
