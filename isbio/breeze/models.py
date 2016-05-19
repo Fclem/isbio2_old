@@ -4,8 +4,7 @@ from django.contrib.auth.models import User # as DjangoUser
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
-from breeze import managers, utils, system_check, b_exceptions, comp
-from b_exceptions import *
+from breeze import managers, utils, system_check, comp
 from comp import Trans
 from utils import *
 from os.path import isfile # , isdir, islink, exists, getsize
@@ -238,17 +237,17 @@ class FolderObj(object):
 
 	@property # interface (To define)
 	def folder_name(self):
-		"""
-		Should implement a property generating the name of the folder to store the instance
+		""" Should implement a property generating the name of the folder to store the instance
+
 		:return: the generated name of the folder to be used to store content of instance
 		:rtype: str
 		"""
-		raise self.not_imp()
+		raise not_imp(self)
 
 	@property
 	def home_folder_rel(self):
-		"""
-		Returns the relative path to this object folder
+		""" Returns the relative path to this object folder
+
 		:return: the relative path to this object folder
 		:rtype: str
 		"""
@@ -260,8 +259,8 @@ class FolderObj(object):
 
 	@property
 	def home_folder_full_path(self):
-		"""
-		Returns the absolute path to this object folder
+		""" Returns the absolute path to this object folder
+
 		:return: the absolute path to this object folder
 		:rtype: str
 		"""
@@ -280,8 +279,8 @@ class FolderObj(object):
 
 	@staticmethod
 	def file_n_slug(file_name):
-		"""
-		Slugify filenames, saving the . if exists, and leading path
+		""" Slugify file names, saving the . if exists, and leading path
+
 		:type file_name: str
 		:rtype: str
 		"""
@@ -297,28 +296,26 @@ class FolderObj(object):
 		return '%s%s' % (Path(dir_n), f_name)
 
 	def file_name(self, filename):
-		"""
-		Special property
+		""" Special property
+
 		:return: the generated name of the folder to be used to store content of instance
 		:rtype: str
 		"""
 		return self.home_folder_full_path + self.file_n_slug(filename)
-		# return self._home_folder_rel + self.file_n_slug(filename)
 
 	def grant_write_access(self):
+		""" Make the home folder writable for group
 		"""
-		Make the home folder writable for group
-		"""
-		import os
-		import stat
+		# import os
+		# import stat
 		# open home's folder for others
 		# st = os.stat(self.home_folder_full_path)
 		# os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
-		pass
+		return
 
 	def add_file(self, f):
-		"""
-		write a file object at a specific location and return the slugified name
+		""" write a file object at a specific location and return the slugified name
+
 		:type f: file
 		:rtype: str
 		"""
@@ -348,10 +345,11 @@ class FolderObj(object):
 			_ files to include only,
 			_ files to exclude,
 			_ name to add to the downloadable zip file name
+
 		:return: exclude_list, filer_list, name
 		:rtype: list, list, str
 		"""
-		raise self.not_imp()
+		raise not_imp(self)
 
 	# clem 02/10/2015
 	# TODO : download with no subdirs
@@ -366,6 +364,8 @@ class FolderObj(object):
 			_ the size of the generated file
 
 		Return : Tuple(wrapper, file_name, file_size)
+
+
 		:type cat : str
 		:type auto_cache : bool
 		:return: wrapper of zip object, file name, file size
@@ -432,17 +432,9 @@ class FolderObj(object):
 
 		return wrapper, arch_name, size
 
-	def not_imp(self):
-		if self.__class__ == Runnable.__class__:
-			raise NotImplementedError("Class % doesn't implement %s, because it's an abstract/interface class." % (
-				self.__class__.__name__, sys._getframe(1).f_code.co_name))
-		else:
-			raise NotImplementedError("%s was not implemented in concrete class %s." % (
-				sys._getframe(1).f_code.co_name, self.__class__.__name__))
-
 	def delete(self, using=None):
 		safe_rm(self.home_folder_full_path)
-		super(FolderObj, self).delete(using=using)
+		# super(FolderObj, self).delete(using=using)
 		return True
 
 	class Meta:
@@ -498,7 +490,7 @@ class Group(models.Model):
 	author = ForeignKey(User)
 	team = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='group_content')
 
-	def delete(self):
+	def delete(self, _=None):
 		self.team.clear()
 
 	def __unicode__(self):
@@ -1132,7 +1124,7 @@ class ConfigObject(FolderObj):
 		:return: the generated name of the folder to be used to store content of instance
 		:rtype: str
 		"""
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 17/05/2016
 	@property
@@ -1795,7 +1787,7 @@ class ScriptCategories(models.Model):
 		db_table = 'breeze_script_categories'
 
 
-class User_Date(models.Model):
+class UserDate(models.Model):
 	user = ForeignKey(User)
 	install_date = models.DateField(auto_now_add=True)
 	
@@ -1829,7 +1821,7 @@ class Rscripts(FolderObj, models.Model):
 	# report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
 	access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name="users")
 	# install date info
-	install_date = models.ManyToManyField(User_Date, blank=True, null=True, default=None, related_name="installdate")
+	install_date = models.ManyToManyField(UserDate, blank=True, null=True, default=None, related_name="installdate")
 	
 	def file_name(self, filename): # TODO check this
 		# TODO check for FolderObj fitness
@@ -2733,7 +2725,7 @@ class Runnable(FolderObj, models.Model):
 		""" Place Holder for instance specific R files generation
 		THIS METHOD MUST BE overridden in subclasses
 		"""
-		raise self.not_imp()
+		raise not_imp(self)
 
 	# INTERFACE for extending assembling process
 	# TODO @abc.abstractmethod ?
@@ -2743,7 +2735,7 @@ class Runnable(FolderObj, models.Model):
 		N.B. : you CANNOT use m2m relations before this point
 		THIS METHOD MUST BE overridden in subclasses
 		"""
-		raise self.not_imp()
+		raise not_imp(self)
 
 	def assemble(self, *args, **kwargs):
 		"""
@@ -3148,14 +3140,6 @@ class Runnable(FolderObj, models.Model):
 	###
 	# SPECIAL PROPERTIES FOR INTERFACE INSTANCE
 	###
-	# FIXME obsolete
-	def not_imp(self):
-		if self.__class__ == Runnable.__class__:
-			raise NotImplementedError("Class % doesn't implement %s, because it's an abstract/interface class." % (
-				self.__class__.__name__, sys._getframe(1).f_code.co_name))
-		else:
-			raise NotImplementedError("%s was not implemented in concrete class %s." % (
-			sys._getframe(1).f_code.co_name, self.__class__.__name__))
 
 	# clem 13/05/2016
 	@property
