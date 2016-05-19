@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.conf.urls import patterns, include, url
+
 from breeze.middlewares import is_on
+
 if not is_on():
 	from down import views
 
@@ -14,6 +16,9 @@ else:
 
 	from django_cas.views import login as django_cas_login
 	from django_cas.views import logout as django_cas_logout
+
+	email_pattern = r'\b[\w.\'-]+@(?:(?:[^_+,!@#$%^&*();\/\\|<>"\'\n -][-\w]+[^_+,!@#$%^&*();\/\\|<>"\' ' \
+		r'\n-]|\w+)\.)+\w{2,63}\b'
 
 	urlpatterns = patterns('',
 		url(r'^user_list$', views.user_list),
@@ -75,7 +80,7 @@ else:
 		url(r'^reports/send/(?P<rid>\d+)$', views.send_report),
 		url(r'^off_user/add/?$', views.add_offsite_user_dialog),
 		url(r'^off_user/add/(?P<rid>\d*)$', views.add_offsite_user_dialog),
-		url(r'^off_user/add/form/(?P<email>[\b[\w.-]+@[\w.-]+.\w{2,4}\b]*)$', views.add_offsite_user),
+		url(r'^off_user/add/form/(?P<email>' + email_pattern + ')$', views.add_offsite_user),
 		url(r'^off_user/add/form/?$', views.add_offsite_user),
 		url(r'^off_user/edit/(?P<uid>\d*)$', views.edit_offsite_user),
 		url(r'^off_user/del/(?P<uid>\d*)$', views.delete_off_site_user),
@@ -158,12 +163,12 @@ else:
 		url(r'^media/scripts/(?P<path>[^.]*(\.(jpg|jpeg|gif|png)))?$', 'django.views.static.serve',
 			{'document_root': settings.MEDIA_ROOT + 'scripts/'}),
 		url(r'^media/pipelines/(?P<path>[^.]*(\.(pdf)))$', 'django.views.static.serve',
-					 {'document_root': settings.MEDIA_ROOT + 'pipelines/'}),
+			{'document_root': settings.MEDIA_ROOT + 'pipelines/'}),
 		url(r'^media/mould/(?P<path>.*)$', 'django.views.static.serve',
 			{'document_root': settings.MEDIA_ROOT + 'mould/'}),
 
 		# url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
-		#			 {'document_root': settings.MEDIA_ROOT}),
+		# 			{'document_root': settings.MEDIA_ROOT}),
 		# Examples:
 		# url(r'^$', 'isbio.views.home', name='home'),
 		# url(r'^isbio/', include('isbio.foo.urls')),
@@ -179,7 +184,7 @@ else:
 		urlpatterns += patterns('django.contrib.staticfiles.views',
 			url(r'^closed$', 'serve', { 'document_root': settings.DJANGO_ROOT + '/index.html', }),
 			url(r'^static/(?P<path>.*)$', 'serve'),
-			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to, {'target_url': 'http://127.0.0.1:3838/sample-apps/', })  # testing
+			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to, {'target_url': 'http://127.0.0.1:3838/sample-apps/', }) # testing
 		)
 
 	urlpatterns += staticfiles_urlpatterns()
