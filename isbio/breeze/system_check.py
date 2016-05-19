@@ -1,21 +1,12 @@
 from breeze import utils
-from utils import Bcolors
-from utils import logger_timer
+from utils import TermColoring, logger_timer
 from django.conf import settings
 from breeze.b_exceptions import *
 from django.http import HttpRequest
 from collections import OrderedDict
 
-# from django.contrib.auth.models import User
-# from _ctypes_test import func
-# import breeze.auxiliary as aux
-
-
 DEBUG = True
 SKIP_SYSTEM_CHECK = False
-# FAIL_ON_CRITICAL_MISSING = True
-# RAISE_EXCEPTION = False
-# ONLY_WAIT_FOR_CRITICAL = True # if checker should also wait for non-critical
 
 if DEBUG:
 	# quick fix to solve PyCharm Django console environment issue
@@ -23,9 +14,9 @@ if DEBUG:
 else:
 	from multiprocessing import Process
 
-OK = '[' + Bcolors.ok_green('OK') + ']'
-BAD = '[' + Bcolors.fail('NO') + ']'
-WARN = '[' + Bcolors.warning('NO') + ']'
+OK = '[' + TermColoring.ok_green('OK') + ']'
+BAD = '[' + TermColoring.fail('NO') + ']'
+WARN = '[' + TermColoring.warning('NO') + ']'
 
 
 # clem 25/09/2015
@@ -94,7 +85,7 @@ class CheckerList(list):
 			if each.s_check():
 				self.append(each)
 
-	def rendezvous(self, wait_for_all=not ONLY_WAIT_FOR_CRITICAL): # Rendez-vous for processes
+	def rendezvous(self, wait_for_all=not ONLY_WAIT_FOR_CRITICAL): # Rendezvous for processes
 		"""
 		wait for all process in the list to complette
 		New version, replaces the 08/09/2015 one, better use of OOP
@@ -109,26 +100,23 @@ class CheckerList(list):
 				each.block()
 				self._results[each.url] = each.exitcode == 0
 				if self.FAIL_ON_CRITICAL_MISSING and each.exitcode != 0 and each.mandatory:
-					print Bcolors.fail('BREEZE INIT FAILED ( %s )' % repr(each.ex()))
-					# raise each.ex()
-					import sys
-					sys.exit(2)
+					print TermColoring.fail('BREEZE INIT FAILED ( %s )' % repr(each.ex()))
+					from sys import exit
+					exit(2)
 				each.terminate()
 				self.remove(each)
 
-		# print self._results
 		for each in self:
 			self._results[each.url] = each.exitcode == 0
 
 		success_text = 'successful : %s/%s' % (len(self.succeeded) + offset, len(self.boot_tests) + offset)
 
 		if not self.any_running:
-			print Bcolors.ok_green('System is up and running, All checks done ! (%s)' % success_text)
+			print TermColoring.ok_green('System is up and running, All checks done ! (%s)' % success_text)
 		else:
-			print Bcolors.ok_green('System is up and running, %s, ') % success_text + \
-				Bcolors.warning('but %s (non critical) check%s %s still running %s') % \
-				(self.running_count, 's' if self.running_count > 1 else '', self.article,
-				self.still_running)
+			print TermColoring.ok_green('System is up and running, %s, ') % success_text + \
+				TermColoring.warning('but %s (non critical) check%s %s still running %s') % \
+				(self.running_count, 's' if self.running_count > 1 else '', self.article, self.still_running)
 
 
 # Manage checks process for rendezvous
@@ -216,7 +204,7 @@ class SysCheckUnit(Process):
 			self.ui_text = ui_text
 			super(SysCheckUnit, self).__init__()
 		else:
-			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
+			raise InvalidArgument(TermColoring.fail('Argument function must be a callable object'))
 
 	def s_check(self):
 		if (self.type is RunType.boot_time or self.type is RunType.both) and callable(self.checker_function):
@@ -290,16 +278,16 @@ class SysCheckUnit(Process):
 				self.ex = e
 				pass
 		else:
-			raise InvalidArgument(Bcolors.fail('Argument function must be a callable object'))
+			raise InvalidArgument(TermColoring.fail('Argument function must be a callable object'))
 
 		sup = ''
 		sup2 = ''
 
 		if not res:
 			if self.mandatory:
-				sup2 = Bcolors.warning('required and critical !')
+				sup2 = TermColoring.warning('required and critical !')
 			else:
-				sup2 = Bcolors.warning('NOT critical')
+				sup2 = TermColoring.warning('NOT critical')
 
 		if not from_ui:
 			print self.msg,
@@ -318,7 +306,7 @@ class SysCheckUnit(Process):
 
 	@property
 	def msg(self):
-		return Bcolors.ok_blue(self._msg)
+		return TermColoring.ok_blue(self._msg)
 
 	# clem 25/09/2015
 	def __repr__(self):
@@ -339,14 +327,14 @@ def run_system_test():
 	from breeze.middlewares import is_on
 	global SKIP_SYSTEM_CHECK
 	if not SKIP_SYSTEM_CHECK and is_on():
-		print Bcolors.ok_blue('Running Breeze system integrity checks ......')
+		print TermColoring.ok_blue('Running Breeze system integrity checks ......')
 		for pre_check in PRE_BOOT_CHECK_LIST:
 			pre_check.inline_check()
 		checking_list = CheckerList(CHECK_LIST)
 		checking_list.check_list()
 		checking_list.rendezvous()
 	else:
-		print Bcolors.ok_blue('Skipping Breeze system integrity checks ......')
+		print TermColoring.ok_blue('Skipping Breeze system integrity checks ......')
 
 ##
 # Special file system snapshot and checking systems

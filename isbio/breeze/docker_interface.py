@@ -461,7 +461,7 @@ class DockerIfTest(DockerInterface): # TEST CLASS
 		if not is_from_cli():
 			assert name in self.runs.keys()
 		if not name:
-			self_name = function_name()
+			self_name = this_function_name()
 			print 'Available run :'
 			advanced_pretty_print(self.runs)
 			print 'usage:\t%s(RUN_NAME)\ni.e.\t%s(\'%s\')' % (self_name, self_name, self.runs.items()[0][0])

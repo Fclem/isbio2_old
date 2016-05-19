@@ -911,3 +911,42 @@ def file_mod_time(dir_name, fname):
 	from os.path import join
 
 	return file_mod_time(join(dir_name, fname))
+
+
+# moved from settings on 19/05/2016
+def recur(nb, function, args):
+	while nb > 0:
+		args = function(args)
+		nb -= 1
+	return args
+
+
+# moved from settings on 19/05/2016
+# TODO make a generator
+def get_key(path=''):
+	try:
+		with open(path + 'secret') as f:
+			return f.read()
+	except Exception:
+		pass
+	return None
+
+
+# moved from settings on 19/05/2016
+def recur_rec(nb, function, args):
+	if nb > 0:
+		return recur_rec(nb - 1, function, function(args))
+	return args
+
+
+# moved from settings on 19/05/2016
+def import_env():
+	""" dynamically change the environement """
+	import subprocess as sp
+	import json
+	import os
+	source = 'source ~/.sge_profile'
+	dump = 'python -c "import os, json;print json.dumps(dict(os.environ))"'
+	pipe = sp.Popen(['/bin/bash', '-c', '%s && %s' % (source, dump)], stdout=sp.PIPE)
+	env = json.loads(pipe.stdout.read())
+	os.environ = env

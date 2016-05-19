@@ -6,7 +6,7 @@ import datetime
 import sys
 from breeze.models import UserProfile
 from breeze import views
-from breeze.utils import Bcolors
+from breeze.utils import TermColoring
 from django.conf import settings
 
 if settings.DEBUG:
@@ -58,7 +58,7 @@ def is_on():
 
 
 def reload_urlconf(urlconf=None):
-	print Bcolors.warning('State changed') + ', ' + Bcolors.ok_blue('Reloading urls...')
+	print TermColoring.warning('State changed') + ', ' + TermColoring.ok_blue('Reloading urls...')
 	if urlconf is None:
 		urlconf = settings.ROOT_URLCONF
 	if urlconf in sys.modules:

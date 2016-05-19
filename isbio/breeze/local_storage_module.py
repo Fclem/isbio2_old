@@ -1,4 +1,4 @@
-from utils import Bcolors
+from utils import TermColoring
 import os
 import abc
 from b_exceptions import ObjectNotFound as MissingResException
@@ -41,6 +41,5 @@ class StorageModule:
 		if isinstance(args, basestring):
 			args = [args]
 		for each in args:
-			arg_list += "'%s', " % Bcolors.warning(each)
-		print Bcolors.bold(fun_name) + "(%s)" % arg_list[:-2]
-
+			arg_list += "'%s', " % TermColoring.warning(each)
+		print TermColoring.bold(fun_name) + "(%s)" % arg_list[:-2]

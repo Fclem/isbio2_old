@@ -5,7 +5,7 @@ import os
 import socket
 import time
 from datetime import datetime
-from breeze.utilities import git_get_status, git_get_branch
+from breeze.utilities import git_get_status, git_get_branch, TermColoring, recur, recur_rec, get_key, import_env
 
 ENABLE_DATADOG = True
 try:
@@ -18,79 +18,6 @@ except Exception:
 ENABLE_REMOTE_FW = False
 
 # TODO : redesign
-
-
-class Bcolors(enumerate):
-	HEADER = '\033[95m'
-	OK_BLUE = '\033[94m'
-	OK_GREEN = '\033[92m'
-	WARNING = '\033[93m'
-	FAIL = '\033[91m'
-	END_C = '\033[0m'
-	BOLD = '\033[1m'
-	UNDERLINE = '\033[4m'
-
-	@staticmethod
-	def ok_blue(text):
-		return Bcolors.OK_BLUE + text + Bcolors.END_C
-
-	@staticmethod
-	def ok_green(text):
-		return Bcolors.OK_GREEN + text + Bcolors.END_C
-
-	@staticmethod
-	def fail(text):
-		return Bcolors.FAIL + text + Bcolors.END_C
-
-	@staticmethod
-	def warning(text):
-		return Bcolors.WARNING + text + Bcolors.END_C
-
-	@staticmethod
-	def header(text):
-		return Bcolors.HEADER + text + Bcolors.END_C
-
-	@staticmethod
-	def bold(text):
-		return Bcolors.BOLD + text + Bcolors.END_C
-
-	@staticmethod
-	def underlined(text):
-		return Bcolors.UNDERLINE + text + Bcolors.END_C
-
-
-def recur(nb, function, args):
-	while nb > 0:
-		args = function(args)
-		nb -= 1
-	return args
-
-
-# TODO make a generator
-def get_key(path=''):
-	try:
-		with open(path + 'secret') as f:
-			return f.read()
-	except Exception:
-		pass
-	return None
-
-
-def recur_rec(nb, function, args):
-	if nb > 0:
-		return recur_rec(nb - 1, function, function(args))
-	return args
-
-
-# dynamically change the environement
-def import_env():
-	import subprocess as sp
-	import json
-	source = 'source ~/.sge_profile'
-	dump = 'python -c "import os, json;print json.dumps(dict(os.environ))"'
-	pipe = sp.Popen(['/bin/bash', '-c', '%s && %s' % (source, dump)], stdout=sp.PIPE)
-	env = json.loads(pipe.stdout.read())
-	os.environ = env
 
 PID = os.getpid()
 
@@ -748,12 +675,12 @@ else:
 	print 'project home : ' + DevSettings.PROJECT_PATH
 	logging.debug('project home : ' + DevSettings.PROJECT_PATH)
 	print 'Logging on %s\nSettings loaded. Running branch %s, mode %s on %s' % \
-		(Bcolors.bold(LOG_PATH), Bcolors.ok_blue(git_get_branch()), Bcolors.ok_blue(Bcolors.bold(DevSettings.RUN_MODE)),
-		Bcolors.ok_blue(DevSettings.FULL_HOST_NAME))
+		(TermColoring.bold(LOG_PATH), TermColoring.ok_blue(git_get_branch()), TermColoring.ok_blue(
+			TermColoring.bold(DevSettings.RUN_MODE)), TermColoring.ok_blue(DevSettings.FULL_HOST_NAME))
 	git_stat = git_get_status()
 	print git_stat
 	if DevSettings.PHARMA_MODE:
-		print Bcolors.bold('RUNNING WITH PHARMA')
+		print TermColoring.bold('RUNNING WITH PHARMA')
 	logging.info('Settings loaded. Running %s on %s' % (DevSettings.RUN_MODE, DevSettings.FULL_HOST_NAME))
 	logging.info(git_stat)
 

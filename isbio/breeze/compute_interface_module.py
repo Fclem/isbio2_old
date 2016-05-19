@@ -69,31 +69,31 @@ class ComputeInterface:
 
 	@abc.abstractmethod
 	def send_job(self):
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	@abc.abstractmethod
 	def get_results(self, output_filename=None):
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def abort(self):
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def status(self):
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def busy_waiting(self, *args):
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def job_is_done(self):
-		raise NotImplementedError(self._not % (self.__class__.__name__, function_name()))
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	def _get_storage(self, container=None):
 		return self.storage_backend.back_end_initiator(container)
