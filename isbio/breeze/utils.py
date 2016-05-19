@@ -1,10 +1,11 @@
 from django.conf import settings
 from datetime import datetime
-from multipledispatch import dispatch # enables method overloading
-from breeze.b_exceptions import *
-from utilities import *
+from breeze.b_exceptions import * # DO NOT DELETE : used in sub-modules
+from utilities import * # import all the non Breeze / Django related utilities
 
 # 01/04/2016 : Moved all non-Django related code to utilities package
+# THIS MODULE SHOULD ONLY BE USED FOR DJANGO / BREEZE RELATED CODE, THAT EITHER USE THE DB, OR IMPORTS
+# OTHER MODULES FROM BREEZE / DJANGO
 
 
 # 25/06/2015 Clem
@@ -32,19 +33,21 @@ def safe_rm(path, ignore_errors=False):
 	Delete a folder recursively
 	Provide a smart shutil.rmtree wrapper with system folder protection
 	Avoid mistake caused by malformed auto generated paths
+
 	:param path: folder to delete
 	:type path: str
 	:type ignore_errors: bool
 	:return:
 	:rtype: bool
 	"""
-	import os
-	import shutil
+	from os import listdir
+	from os.path import isdir
+	from shutil import rmtree
 	if path not in settings.FOLDERS_LST:
-		if os.path.isdir(path):
-			log_txt = 'rmtree %s had %s object(s)' % (path, len(os.listdir(path)))
+		if isdir(path):
+			log_txt = 'rmtree %s had %s object(s)' % (path, len(listdir(path)))
 			get_logger().debug(log_txt)
-			shutil.rmtree(path, ignore_errors)
+			rmtree(path, ignore_errors)
 			return True
 		else:
 			log_txt = 'not a folder : %s' % path
@@ -69,10 +72,10 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 	:type ignore: callable
 	:rtype: bool
 	"""
-	import os
+	from os.path import isdir
 	if destination not in settings.FOLDERS_LST:
-		if os.path.isdir(source):
-			if os.path.isdir(destination):
+		if isdir(source):
+			if isdir(destination):
 				log_txt = 'copytree, destination folder %s exists, proceed' % destination
 				get_logger().warning(log_txt)
 			custom_copytree(source, destination, symlinks, ignore)
@@ -97,11 +100,11 @@ def saved_fs_state():
 
 # clem 09/10/2015
 def fix_file_acl_interface(fid):
-	""" Resolves the file designed by <i>fid</i> (for safety) and fix it's access permisions
+	""" Resolves the file designed by <i>fid</i> (for safety) and fix it's access permissions
+
 	:type fid: int
 	:rtype: bool
 	"""
-	# from os.path import join
 	saved_state = saved_fs_state()
 
 	if type(fid) != int:
@@ -116,20 +119,6 @@ def fix_file_acl_interface(fid):
 
 	return False
 
-# TODO : Review and move
-@dispatch(basestring)
-def file_mod_time(path):
-	from os.path import getmtime # , join
-
-	return getmtime(path)
-
-
-@dispatch(basestring, basestring)
-def file_mod_time(dirName, fname):
-	from os.path import join
-
-	return file_mod_time(join(dirName, fname))
-
 
 def norm_proj_p(path, repl=''):
 	"""
@@ -140,6 +129,7 @@ def norm_proj_p(path, repl=''):
 	return path.replace(settings.PROJECT_FOLDER_PREFIX, repl)
 
 
+# TODO : test and integrate
 def get_r_package(name=''):
 	# TEST function for R lib retrieval
 	from cran_old import CranArchiveDownloader
@@ -150,6 +140,7 @@ def get_r_package(name=''):
 	return False
 
 
-
-
-
+# moved here on 19/05/2016
+def not_imp(self): # writing shortcut for abstract classes
+	raise NotImplementedError("%s was not implemented in concrete class %s." % (
+		this_function_caller_name(), self.__class__.__name__))

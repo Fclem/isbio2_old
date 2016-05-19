@@ -1,10 +1,11 @@
 import logging
-import sys
 import hashlib
 import time
+from sys import stdout, _getframe as get_frame
+from multipledispatch import dispatch # enables method overloading
 from filesize import UnitSystem, file_size2human
 from os.path import isfile, isdir, islink, exists, getsize, join
-from os import symlink, access, listdir, R_OK, chmod
+from os import symlink, readlink, listdir, makedirs, access, R_OK, chmod
 from subprocess import call, Popen, PIPE
 from threading import Thread, Lock
 
@@ -49,49 +50,49 @@ class ACL(enumerate):
 	RX_RX_ = 0550
 
 
-class Bcolors(enumerate):
+class TermColoring(enumerate):
 	HEADER = '\033[95m'
-	OKBLUE = '\033[94m'
-	OKGREEN = '\033[92m'
+	OK_BLUE = '\033[94m'
+	OK_GREEN = '\033[92m'
 	WARNING = '\033[93m'
 	FAIL = '\033[91m'
-	ENDC = '\033[0m'
+	END_C = '\033[0m'
 	BOLD = '\033[1m'
 	UNDERLINE = '\033[4m'
 
-	@staticmethod
-	def ok_blue(text):
-		return Bcolors.OKBLUE + text + Bcolors.ENDC
+	@classmethod
+	def ok_blue(cls, text):
+		return cls.OK_BLUE + text + cls.END_C
 
-	@staticmethod
-	def ok_green(text):
-		return Bcolors.OKGREEN + text + Bcolors.ENDC
+	@classmethod
+	def ok_green(cls, text):
+		return cls.OK_GREEN + text + cls.END_C
 
-	@staticmethod
-	def fail(text):
-		return Bcolors.FAIL + text + Bcolors.ENDC
+	@classmethod
+	def fail(cls, text):
+		return cls.FAIL + text + cls.END_C
 
-	@staticmethod
-	def warning(text):
-		return Bcolors.WARNING + text + Bcolors.ENDC
+	@classmethod
+	def warning(cls, text):
+		return cls.WARNING + text + cls.END_C
 
-	@staticmethod
-	def header(text):
-		return Bcolors.HEADER + text + Bcolors.ENDC
+	@classmethod
+	def header(cls, text):
+		return cls.HEADER + text + cls.END_C
 
-	@staticmethod
-	def bold(text):
-		return Bcolors.BOLD + text + Bcolors.ENDC
+	@classmethod
+	def bold(cls, text):
+		return cls.BOLD + text + cls.END_C
 
-	@staticmethod
-	def underlined(text):
-		return Bcolors.UNDERLINE + text + Bcolors.ENDC
+	@classmethod
+	def underlined(cls, text):
+		return cls.UNDERLINE + text + cls.END_C
 
 
 # clem on 20/08/2015
 def is_host_online(host, deadline=5):
-	"""
-	Check if given host is online (whether it respond to ping)
+	""" Check if given host is online (whether it respond to ping)
+
 	:param host: the IP address to test
 	:type host: str
 	:param deadline: the maximum time to wait in second (text format)
@@ -104,8 +105,8 @@ def is_host_online(host, deadline=5):
 
 # clem on 21/08/2015
 def get_md5(content):
-	"""
-	Return md5 checksum of content argument
+	""" Return md5 checksum of content argument
+
 	:type content: list|str
 	:rtype: str
 	"""
@@ -120,26 +121,25 @@ def get_md5(content):
 
 # clem on 21/08/2015
 def get_file_md5(file_path):
-	"""
-	Return md5 checksum of file
+	""" Return md5 checksum of file
+
 	:param file_path: location of the file
 	:type file_path: str
 	:rtype: str
 	"""
-	content = list()
 	try:
 		fd = open(file_path, "rb")
 		content = fd.readlines()
 		fd.close()
+		return get_md5(content)
 	except IOError:
 		return ''
 
-	return get_md5(content)
 
-
-def get_logger(name=None, level=1):
+def get_logger(name=None, level=0):
 	if name is None:
-		name = sys._getframe(level).f_code.co_name
+		# name = sys._getframe(level + 1).f_code.co_name
+		name = this_function_name(level)
 	log_obj = logger.getChild(name)
 	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
 	return log_obj
@@ -151,8 +151,8 @@ class Path(object):
 	SEP = os.path.sep
 
 	def __init__(self, path_str):
-		"""
-		Path object always return the path string with a trailing slash ( / ) for folders
+		""" Path object always return the path string with a trailing slash ( / ) for folders
+
 		:param path_str: the path to use
 		:type path_str: str
 		"""
@@ -245,41 +245,40 @@ class Path(object):
 
 
 def custom_copytree(src, dst, symlinks=False, ignore=None, verbose=True, sub=False):
-	import os
 	from shutil import copy2, Error, copystat, WindowsError
 
 	if not sub and verbose:
 		print 'copy %s => %s' % (src, dst)
 	files_count, folders_count = 0, 0
 
-	names = os.listdir(src)
+	names = listdir(src)
 	if ignore is not None:
 		ignored_names = ignore(src, names)
 	else:
 		ignored_names = set()
 
 	def dot():
-		sys.stdout.write('.')
-		sys.stdout.flush()
+		stdout.write('.')
+		stdout.flush()
 
-	os.makedirs(dst)
+	makedirs(dst)
 	errors = []
 	for name in names:
 		if name in ignored_names:
 			continue
-		src_name = os.path.join(src, name)
-		dst_name = os.path.join(dst, name)
+		src_name = join(src, name)
+		dst_name = join(dst, name)
 		try:
-			if symlinks and os.path.islink(src_name):
-				linkto = os.readlink(src_name)
-				os.symlink(linkto, dst_name)
+			if symlinks and islink(src_name):
+				linkto = readlink(src_name)
+				symlink(linkto, dst_name)
 				if verbose:
-					if os.path.isdir(linkto):
+					if isdir(linkto):
 						folders_count += 1
-					elif os.path.isfile(linkto):
+					elif isfile(linkto):
 						files_count += 1
 					dot()
-			elif os.path.isdir(src_name):
+			elif isdir(src_name):
 				c1, c2 = custom_copytree(src_name, dst_name, symlinks, ignore, verbose=verbose, sub=True)
 				files_count += c1
 				folders_count += c2 + 1
@@ -316,8 +315,8 @@ def is_non_empty_file(file_path):
 
 
 def remove_file_safe(fname):
-	"""
-	Remove a file or link if it exists
+	""" Remove a file or link if it exists
+
 	:param fname: the path of the file/link to delete
 	:type fname: str
 	:return: True or False
@@ -327,8 +326,8 @@ def remove_file_safe(fname):
 
 
 def auto_symlink(target, holder):
-	"""
-	Make a soft-link and overwrite any previously existing file (be careful !) or link with the same name
+	""" Make a soft-link and overwrite any previously existing file (be careful !) or link with the same name
+
 	:param target: target path of the link
 	:type target: str
 	:param holder: path of the link holder
@@ -350,7 +349,7 @@ class Timer(object):
 		return self
 
 	# There are other arguments to __exit__ but we don't care here
-	def __exit__(self, *args, **kwargs):
+	def __exit__(self, *_):
 		self.function_timer()
 
 	def start(self):
@@ -373,6 +372,7 @@ class LoggerTimer(Timer):
 		print msg
 
 	def __init__(self, prefix=None, func=None):
+		super(LoggerTimer, self).__init__() # not sure about that, TODO check
 		# Use func if not None else the default one
 		self.f = func or LoggerTimer.default_logger
 		# Format the prefix if not None or empty, else use empty string
@@ -395,9 +395,9 @@ class LoggerTimer(Timer):
 
 
 # clem 29/09/2015 writing shortcut
-def logger_timer(funct):
+def logger_timer(function):
 	a = LoggerTimer(func=get_logger('timing').debug)
-	return a(funct)
+	return a(function)
 
 
 def get_folder_size(folder):
@@ -474,7 +474,7 @@ def do_reboot():
 	return True
 
 
-# gitgit TODO rewrite, as a class maybe ?
+# TODO rewrite, as a class maybe ?
 # clem 09/03/2016 contains code from from http://stackoverflow.com/a/3229493/5094389
 def advanced_pretty_print(d, indent=0, open_obj=False, get_output=False):
 	""" Prints a tree from a nested dict
@@ -584,13 +584,13 @@ def password_from_file(path):
 
 
 # clem 08/04/2016
-def function_name(delta=0):
-	return sys._getframe(1 + delta).f_code.co_name
+def this_function_name(delta=0):
+	return this_function_caller_name(delta)
 
 
 # clem 08/04/2016
-def caller_function_name(delta=0):
-	return sys._getframe(2 + delta).f_code.co_name
+def this_function_caller_name(delta=0):
+	return get_frame(2 + delta).f_code.co_name
 
 
 # clem 08/04/2016
@@ -598,7 +598,7 @@ def is_from_cli():
 	""" Tells if the caller was called from command line or not
 	:rtype: bool
 	"""
-	return caller_function_name(1) == '<module>'
+	return this_function_caller_name(1) == '<module>'
 
 
 # clem 08/04/2016
@@ -894,3 +894,20 @@ class ObjectCache(object):
 			for k, v in cls._cache.iteritems():
 				if v.is_idle_time_out or v.is_expired:
 					cls.expire(k, str(v), 'ExpiredGarbageCollection')
+
+
+# moved here on 19/05/2016
+# TODO : Review
+@dispatch(basestring)
+def file_mod_time(path):
+	from os.path import getmtime # , join
+
+	return getmtime(path)
+
+
+# moved here on 19/05/2016
+@dispatch(basestring, basestring)
+def file_mod_time(dir_name, fname):
+	from os.path import join
+
+	return file_mod_time(join(dir_name, fname))
