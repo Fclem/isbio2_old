@@ -1,5 +1,5 @@
 from utilities import *
-from breeze.models import JobStat, Runnable, ComputeTarget
+from breeze.models import JobStat, Runnable, ComputeTarget, RunServer
 import os
 import abc
 
@@ -67,6 +67,11 @@ class ComputeInterface:
 			return self.target_obj.exec_obj
 		return None
 
+	# clem 23/05/2016
+	@abc.abstractmethod
+	def assemble_job(self):
+		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
+
 	@abc.abstractmethod
 	def send_job(self):
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
@@ -100,6 +105,15 @@ class ComputeInterface:
 
 	# clem 20/04/2016
 	def make_tarfile(self, output_filename, source_dir):
+		""" makes a tar.bz2 archive from a path, and stores it in
+
+		:param output_filename: the name/path of the resulting archive
+		:type output_filename: basestring
+		:param source_dir: the path of the source folder
+		:type source_dir: basestring
+		:return: if success
+		:rtype: bool
+		"""
 		import tarfile
 		with tarfile.open(output_filename, "w:bz2") as tar:
 			tar.add(source_dir, arcname=os.path.basename(source_dir))

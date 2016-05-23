@@ -80,6 +80,10 @@ class SGEInterface(ComputeInterface):
 	def _write_log(self, txt):
 		self.log.debug(txt)
 
+	# clem 23/05/2016
+	def assemble_job(self):
+		pass
+
 	def send_job(self): # TODO move it all here
 		# TODO fully switch to qsub, to get finally totally rid of DRMAA F*****G SHIT
 		if self.apply_config():
