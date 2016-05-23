@@ -261,7 +261,11 @@ def custom_copytree(src, dst, symlinks=False, ignore=None, verbose=True, sub=Fal
 		stdout.write('.')
 		stdout.flush()
 
-	makedirs(dst)
+	try:
+		makedirs(dst)
+	except OSError:
+		pass
+
 	errors = []
 	for name in names:
 		if name in ignored_names:
