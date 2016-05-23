@@ -2238,7 +2238,7 @@ class RunServer:
 		import os
 		d = utils.date_t()
 		# source
-		the_path = str(self._run_inst.r_exec_path)
+		the_path = str(self._run_inst._r_exec_path)
 		# destination
 		# print (self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
 		new_path = '%s%s%s%s' % \
@@ -2266,6 +2266,7 @@ class RunServer:
 			_ several reference to the same file,
 			_ sourced file referencing a previously source file
 			_ sourced loop/nesting
+
 		:type file_parser_obj: FileParser
 		:rtype: bool
 		"""
@@ -2481,7 +2482,10 @@ class Runnable(FolderObj, models.Model):
 
 	@property # used by write_sh_file() # useless #Future ?  # FIXME obsolete
 	def _r_exec_path(self):
-		return self._rexec
+		if not str(self._rexec).startswith(self.home_folder_full_path): # Quick fix for old style project path
+			self._rexec = '%s%s' % (self.home_folder_full_path, os.path.basename(str(self._rexec)))
+			self.save()
+		return self._rexec.path
 
 	@property # UNUSED ?
 	def _html_full_path(self):
@@ -2716,7 +2720,7 @@ class Runnable(FolderObj, models.Model):
 
 		# config should be readable and executable but not writable, same for script.R
 		chmod(self._sh_file_path, ACL.RX_RX_)
-		chmod(self._r_exec_path.path, ACL.R_R_)
+		chmod(self._r_exec_path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
 	# TODO @abc.abstractmethod ?
@@ -3098,7 +3102,7 @@ class Runnable(FolderObj, models.Model):
 			self.log.info('resetting job status')
 			new_name = str(self.name) + '_re'
 			old_path = self.home_folder_full_path
-			with open(self._r_exec_path.path) as f:
+			with open(self._r_exec_path) as f:
 				r_code = f.readlines()
 
 			self.name = new_name

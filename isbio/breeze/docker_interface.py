@@ -2,7 +2,7 @@ from compute_interface_module import * # has os, abc, self.js, Runnable, Compute
 from docker_client import *
 a_lock = Lock()
 
-__version__ = '0.2'
+__version__ = '0.3'
 __author__ = 'clem'
 __date__ = '15/03/2016'
 
@@ -31,7 +31,7 @@ class DockerInterface(ComputeInterface):
 	NORMAL_ENDING = ['Running R script... done !', 'Success !', 'done']
 
 	LINE3 = '\x1b[34mCreating archive /root/out.tar.xz'
-	LINE2 = '\x1b[1mcreate_blob_from_path\x1b[0m(' # FIXME NOT ABSTRACT
+	LINE2 = '\x1b[1m''create_blob_from_path\x1b[0m(' # FIXME NOT ABSTRACT
 	LINES = dict([(-3, LINE3), (-2, LINE2)])
 
 	_status = ''

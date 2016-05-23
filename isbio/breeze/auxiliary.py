@@ -14,7 +14,7 @@ from django.http import Http404, HttpResponse
 from django.template import loader
 from django.template.context import RequestContext
 from django.conf import settings
-from breeze.models import Report, Jobs, DataSet
+from breeze.models import Report, Jobs, DataSet, RunServer
 import sys
 import utils
 
@@ -35,9 +35,6 @@ logger = logging.getLogger(__name__)
 def restart():
 	python = sys.executable
 	os.execl(python, python, *sys.argv)
-	# time.sleep(2)
-	# os._exit(0)
-	# exit()
 
 
 def update_server_routine():
@@ -66,10 +63,6 @@ def update_server_routine():
 ###
 # ## TODO	How about moving those shits to Models ?
 ###
-
-
-def update_last_active(user):
-	pass
 
 
 def clean_up_dt_id(lst):
@@ -231,9 +224,9 @@ def normalize_query(query_string,
 
 
 def get_query(query_string, search_fields, exact=True):
-	''' Returns a query, that is a combination of Q objects. That combination
+	""" Returns a query, that is a combination of Q objects. That combination
 		aims to search keywords within a model by testing the given search fields.
-	'''
+	"""
 	from breeze.managers import Q
 	query = None  # Query to search for every search term
 	terms = normalize_query(query_string) if query_string else []
@@ -244,7 +237,7 @@ def get_query(query_string, search_fields, exact=True):
 			if or_query is None:
 				or_query = q
 			else:
-				or_query = or_query | q
+				or_query |= q
 		if query is None:
 			query = or_query
 		else:
@@ -253,10 +246,10 @@ def get_query(query_string, search_fields, exact=True):
 
 
 def extract_users(groups, users):
-	''' Produce a unique list of users from 2 lists.
+	""" Produce a unique list of users from 2 lists.
 		Merge users from each group and set of individual users
 		and extracts a union of those people.
-	'''
+	"""
 	people = list()
 
 	#  Process Groups
@@ -278,7 +271,7 @@ def extract_users(groups, users):
 # TODO get rid of that
 def merge_job_history(jobs, reports, user=None):
 	""" Merge reports and jobs in a unified object (list)
-		So that repors and jobs can be processed similatly on the client side
+		So that reports and jobs can be processed similarly on the client side
 	"""
 	merged = list()
 	pool = list(jobs) + list(reports)
@@ -288,7 +281,7 @@ def merge_job_history(jobs, reports, user=None):
 	for item in pool:
 		assert isinstance(item, Runnable)
 		el = dict()
-		# automatize this part
+		# TODO automatize this part
 		if item.is_job:
 			el['instance'] = 'script'
 			el['id'] = item.id
@@ -348,9 +341,7 @@ def merge_job_history(jobs, reports, user=None):
 
 
 def merge_job_lst(item1, item2):
-	''' Merge reports with reports or jobs with jobs in a unified object (list)
-	'''
-	merged = list()
+	""" Merge reports with reports or jobs with jobs in a unified object (list) """
 	merged = list() + list(item1) + list(item2)
 
 	# sort list according to creation date and time
@@ -366,8 +357,8 @@ def merge_job_lst(item1, item2):
 
 # 02/06/2015 Clem
 def view_range(page_index, entries_nb, total):
-	"""
-	Calculate and return a dict with the number of the first and last elements in the current view of the paginator
+	""" Calculate and return a dict with the number of the first and last elements in the current view of the paginator
+
 	:param page_index: number of the current page in the paginator (1 to x)
 	:type page_index: int
 	:param entries_nb: number of elements to be disaplayed in the view
@@ -382,8 +373,8 @@ def view_range(page_index, entries_nb, total):
 
 # 28/04/2015 Clem
 def make_http_query(request):
-	"""
-	serialize GET or POST data from a query into a dict string
+	""" serialize GET or POST data from a query into a dict string
+
 	:param request: Django Http request object
 	:type request: http.HttpRequest
 	:return: QueryString
@@ -472,6 +463,7 @@ def fail_with404(request, error_msg=None):
 	"""
 	custom 404 method that enable 404 template even in debug mode (discriminate from real 404),
 	Raise no exception so call it with return
+
 	:param request: Django request object
 	:type request: http.HttpRequest
 	:param error_msg: The message to display on the 404 page
@@ -710,7 +702,7 @@ def get_tree(rid):
 		b = test_tree(a)
 		assert isinstance(b, RunServer)
 
-		return b._generate_source_tree(str(a.r_exec_path)), b
+		return b._generate_source_tree(str(a._r_exec_path)), b
 
 	except (ObjectDoesNotExist, AssertionError):
 		return None
