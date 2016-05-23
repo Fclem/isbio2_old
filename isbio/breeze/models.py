@@ -66,6 +66,7 @@ class JobStat(object):
 	SUCCEED = 'succeed'
 	SUBMITTED = 'submitted'
 	PREPARE_RUN = 'prep_run'
+	PREPARE_SUBMIT = 'prep_submit' # TODO
 	GETTING_RESULTS = 'get_results'
 	R_FAILED = JobState.R_FAILDED
 
@@ -87,6 +88,7 @@ class JobStat(object):
 		INIT: 'job instance is being generated...',
 		SCHEDULED: 'job is saved for later submission',
 		PREPARE_RUN: 'job is being prepared for submission',
+		PREPARE_SUBMIT: 'job is being prepared for submission', # TODO finish
 		SUBMITTED: 'job has been submitted, and should be running soon',
 		GETTING_RESULTS: 'job has completed, getting results',
 		RUN_WAIT: 'job is about to be submitted',
@@ -264,7 +266,10 @@ class FolderObj(object):
 		:return: the absolute path to this object folder
 		:rtype: str
 		"""
-		return '%s%s' % (settings.MEDIA_ROOT, self.home_folder_rel)
+		out = '%s%s' % (settings.MEDIA_ROOT, self.home_folder_rel)
+		if not isdir(out):
+			os.makedirs(out)
+		return out
 
 	@property
 	def base_folder(self):
@@ -347,7 +352,7 @@ class FolderObj(object):
 			_ name to add to the downloadable zip file name
 
 		:return: exclude_list, filer_list, name
-		:rtype: list, list, str
+		:rtype: (list, list, str)
 		"""
 		raise not_imp(self)
 
@@ -434,7 +439,7 @@ class FolderObj(object):
 
 	def delete(self, using=None):
 		safe_rm(self.home_folder_full_path)
-		# super(FolderObj, self).delete(using=using)
+		super(FolderObj, self).delete(using=using)
 		return True
 
 	class Meta:
@@ -1097,6 +1102,7 @@ class ConfigObject(FolderObj):
 	# __metaclass__ = abc.ABCMeta
 	_not = "Class %s doesn't implement %s()"
 	BASE_FOLDER_NAME = settings.CONFIG_FN
+	ALLOW_DOWNLOAD = False
 
 	def file_name(self, filename):
 		return super(ConfigObject, self).file_name(filename)
@@ -1984,6 +1990,31 @@ class UserProfile(models.Model):
 # NEW distributed POC
 #
 
+# clem 23/05/2016
+class SwapObject(FolderObj):
+	_not = "Class %s doesn't implement %s()"
+	BASE_FOLDER_NAME = settings.SWAP_FN
+	ALLOW_DOWNLOAD = False
+
+	runnable = None
+
+	def __init__(self, runnable):
+		assert isinstance(runnable, Runnable)
+		self.runnable = runnable
+
+	def file_name(self, filename):
+		return super(SwapObject, self).file_name(filename)
+
+	@property
+	def folder_name(self):
+		return self.runnable.short_id
+
+	def _download_ignore(self, _=None):
+		return list(), list(), str()
+
+	class Meta(FolderObj.Meta):
+		abstract = False
+
 
 class SrcObj:
 	def __init__(self, base_string):
@@ -2024,7 +2055,7 @@ class SrcObj:
 		return self.str
 
 
-# clem 20/10/2015 distributed POC +01/02/2016
+# clem 20/10/2015 distributed POC +01/02/2016 # FIXME (unicode)
 class FileParser(SrcObj):
 	def __init__(self, file_n, dest, verbose=False):
 		self.file_n = file_n
@@ -2048,7 +2079,14 @@ class FileParser(SrcObj):
 
 	# clem 02/02/2016
 	def _write(self, a, b):
-		self.new_content = '%s\n%s' % (a, b)
+		try:
+			if type(a) == unicode:
+				a = unicode.decode(a, errors='ignore')
+			if type(b) == unicode:
+				b = unicode.decode(a, errors='ignore')
+			self.new_content = '%s\n%s' % (a, b)
+		except UnicodeDecodeError as e: # FIXME
+			get_logger().exception('while parsing %s : %s' % (self.file_n, str(e)))
 
 	def add_on_top(self, content):
 		self._write(content, self.new_content)
@@ -2154,8 +2192,9 @@ class Pattern:
 
 # clem 20/10/2015 distributed POC +01/02/2016
 class RunServer:
-	_fs_path = str
-	_reports_path = str
+	storage_path = str()
+	_reports_path = str()
+	_swap_object = None
 
 	project_prefix = settings.PROJECT_FOLDER_PREFIX
 	# lookup only sourced files inside PROJECT_FOLDER
@@ -2168,16 +2207,25 @@ class RunServer:
 	ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(\/%s\/(?:(?!\2).)*)\2)' % project_fold_name) # 01/02/2016
 	FILE_NAME_PATTERN = Pattern('file', r'(?:<-)(?:(?: |\t)*("|\')([\w\-\. ]+)\1)') # 03/02/2016
 
-	def __init__(self, fs_path, remote_chroot, reports_path, instance, target_name, add_source, user, local=True):
-		self._fs_path = fs_path # local mount of remote fs
-		self._local = local # local or remote server
-		self._remote_chroot = remote_chroot # remote abs path of relative storage mounted in fs_path
-		self._reports_path = reports_path # path of report folder storage in remote relative local path
-		self.target_name = target_name # name of this server
-		self._add_source = add_source # list of files to add as source in script.R (special environment specs, etc)
-		self._user = user # User object of user requesting
-		assert isinstance(instance, Runnable)
-		self._run_inst = instance # instance or Runnable using this RunServer instance
+	added = [
+		('%scfiere/csc_taito_dyn_lib_load_and_install.R' % utils.norm_proj_p(settings.SPECIAL_CODE_FOLDER),
+		'dynamic library loading and installer by clem 19-20/10/2015'),
+	]
+
+	def __init__(self, run_instance):
+		assert isinstance(run_instance, Runnable)
+		self._run_inst = run_instance # instance or Runnable using this RunServer instance
+		self._swap_object = SwapObject(self._run_inst)
+		self.storage_path = self._swap_object.home_folder_full_path # local destination
+		self._local = False # local or remote server
+		self._remote_chroot = '/root/' # remote abs path of relative storage mounted in fs_path # FIXME
+		# self._reports_path = reports_path # path of report folder storage in remote relative local path
+		self._reports_path = utils.norm_proj_p(settings.MEDIA_ROOT) # path of report folder storage in remote relative
+		# local path
+		self._add_source = self.added # list of files to add as source in script.R (special environment
+		# specs, etc)
+		self.target_name = self._run_inst.target_obj.name # name of this server
+		self._user = self._run_inst.author # User object of user requesting
 		self.count = dict()
 		self.count['lib'] = 0
 		self.count['load'] = 0
@@ -2185,7 +2233,11 @@ class RunServer:
 		self._parsed = dict()
 		self._rev = dict()
 
-	# obsolete but useful for testing
+	# 23/05/2016
+	def generate_source_tree(self):
+		return self._generate_source_tree(self._run_inst.source_file_path)
+
+	# DEPRECATED but useful for testing
 	def _generate_source_tree(self, file_n, pf='', verbose=False):
 		""" list the dependencies of a R file ("source()" calls)
 		returns <b>tree</b>, <b>flat</b>, _
@@ -2203,10 +2255,8 @@ class RunServer:
 		"""
 		import re
 
-		the_path = SrcObj(file_n) # or self._rexec.path
-		# the_path =
-
-		with open(the_path.path) as script:
+		a_source_object = SrcObj(file_n) # or self._rexec.path
+		with open(a_source_object.path) as script:
 			tree = dict()
 			flat = list()
 			result = dict()
@@ -2214,37 +2264,35 @@ class RunServer:
 			pattern = r'source\(\s*("([^"]+)"|\'([^\']+)\')\s*\)'
 			match = re.findall(str(pattern), script.read(), re.DOTALL)
 			if verbose:
-				print pf + str(the_path), ' X ', len(match)
+				print pf + str(a_source_object.path), ' X ', len(match)
 			for el in match:
-				# line = el[1] or el[2]
 				line = SrcObj(el[0])
 				sub_tree, total, sub_list = self._generate_source_tree(line.path, pf=pf + '\t', verbose=verbose)
-
 				tree[line.path] = sub_tree
-
 				flat.append(line.path)
-				# flat += sub_list
 				if total:
 					result.update(total)
-			result[the_path.path] = flat
+			result[a_source_object.path] = flat
 
-		return { the_path.path: tree }, result, flat
+		return { a_source_object.path: tree }, result, flat
 
 	# clem 01/02/2016
 	def stats(self):
-		print "done ! lib/load/abs : ", self.count['lib'], self.count['load'], self.count['abs']
+		self._run_inst.log.debug('assembling completed : lib/load/abs : %s / %s / %s' % (
+			self.count['lib'], self.count['load'], self.count['abs']))
+		# print "done ! lib/load/abs : ", self.count['lib'], self.count['load'], self.count['abs']
 
 	def parse_all(self):
 		import os
 		d = utils.date_t()
 		# source
-		the_path = str(self._run_inst._r_exec_path)
+		the_path = str(self._run_inst.source_file_path)
 		# destination
-		# print (self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
 		new_path = '%s%s%s%s' % \
-			(self._fs_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
+			(self.storage_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
 		# parser
 		the_file_p = FileParser(the_path, new_path)
+		print "main FileParser(%s, %s)" % (the_path, new_path)
 		# add some source that may help with specific env / Renv / cluster / etc
 		if type(self._add_source) is list and self._add_source != list():
 			added = ''
@@ -2257,6 +2305,7 @@ class RunServer:
 		the_file_p.parse(self.LOAD_PATTERN, self._parser_main_recur_call_back) # saving here is not necessary nor sufficient
 		# done
 		self.stats()
+		return True
 
 	# clem 02/02/2016
 	def already_parsed(self, file_parser_obj):
@@ -2280,8 +2329,9 @@ class RunServer:
 		for el in match:
 			# deals with the found sub-file (it's a load so it should be a R file)
 			line = SrcObj(el[0])
-			new_path = '%s%s' % (self._fs_path, line.path)
+			new_path = '%s%s' % (self.storage_path, line.path)
 			sub_file_p = FileParser(line.path, new_path)
+			print 'sub FileParser(%s, %s)' % (line.path, new_path)
 
 			self.count['load'] += 1
 			# local sourcing
@@ -2326,7 +2376,8 @@ class RunServer:
 		assert isinstance(file_obj, FileParser)
 		for el in match:
 			self.count['lib'] += 1
-			line = el[0]; lib_name = el[2]
+			line = el[0]
+			lib_name = el[2]
 			replacement = "load_lib('%s') # Originally : %s" % (lib_name, line)
 			file_obj.replace(line, replacement)
 
@@ -2338,7 +2389,7 @@ class RunServer:
 			# change the path to a relative one for the target server
 			file_obj.replace(line, line.new)
 			# remote location on a local mount
-			new_path = '%s%s' % (self._fs_path, line.path)
+			new_path = '%s%s' % (self.storage_path, line.path)
 			new_file = FileParser(line.path, new_path)
 			ext = new_file.ext.lower()
 			if new_file.load() and ext and ext != 'r': # existing file
@@ -2480,8 +2531,8 @@ class Runnable(FolderObj, models.Model):
 	def _r_out_path(self):
 		return self._rout_file
 
-	@property # used by write_sh_file() # useless #Future ?  # FIXME obsolete
-	def _r_exec_path(self):
+	@property
+	def source_file_path(self):
 		if not str(self._rexec).startswith(self.home_folder_full_path): # Quick fix for old style project path
 			self._rexec = '%s%s' % (self.home_folder_full_path, os.path.basename(str(self._rexec)))
 			self.save()
@@ -2495,7 +2546,8 @@ class Runnable(FolderObj, models.Model):
 	def _test_file(self):
 		"""
 		full path of the job competition verification file
-		used to store the retval value, that has timings and perf related datas
+		used to store the retval value, that has timings and perf related data
+
 		:rtype: str
 		"""
 		return '%s%s' % (self.home_folder_full_path, self.SUCCESS_FN)
@@ -2720,7 +2772,7 @@ class Runnable(FolderObj, models.Model):
 
 		# config should be readable and executable but not writable, same for script.R
 		chmod(self._sh_file_path, ACL.RX_RX_)
-		chmod(self._r_exec_path, ACL.R_R_)
+		chmod(self.source_file_path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
 	# TODO @abc.abstractmethod ?
@@ -2770,6 +2822,8 @@ class Runnable(FolderObj, models.Model):
 		self.write_sh_file()
 
 		self.save()
+		# Triggers target specific code
+		self.compute_if.assemble_job()
 
 	def submit_to_cluster(self):
 		if not self.aborting:
@@ -3102,7 +3156,7 @@ class Runnable(FolderObj, models.Model):
 			self.log.info('resetting job status')
 			new_name = str(self.name) + '_re'
 			old_path = self.home_folder_full_path
-			with open(self._r_exec_path) as f:
+			with open(self.source_file_path) as f:
 				r_code = f.readlines()
 
 			self.name = new_name

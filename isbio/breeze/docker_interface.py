@@ -1,5 +1,6 @@
 from compute_interface_module import * # has os, abc, self.js, Runnable, ComputeTarget and utilities.*
 from docker_client import *
+from django.conf import settings
 a_lock = Lock()
 
 __version__ = '0.3'
@@ -14,6 +15,7 @@ class DockerInterface(ComputeInterface):
 	__docker_storage = None
 	_data_storage = None
 	_jobs_storage = None
+	_run_server = None
 	run_id = '' # stores the md5 of the sent archive ie. the job id
 	proc = None
 	client = None
@@ -44,6 +46,7 @@ class DockerInterface(ComputeInterface):
 	CONFIG_DAEMON_URL = 'daemon_url'
 	CONFIG_CONTAINER = 'container'
 	CONFIG_CMD = 'cmd'
+	job_file_archive_name = 'temp.tar.bz2'
 
 	def __init__(self, compute_target, storage_backend=None):
 		"""
@@ -273,34 +276,135 @@ class DockerInterface(ComputeInterface):
 			self.__docker_storage = self._get_storage(self.storage_backend.management_container())
 		return self.__docker_storage
 
-	def send_job(self):
-		self._set_global_status(self.js.PREPARE_RUN)
-		# FIXME : still on test design (using a pre-assembled report job)
-		job_folder = None
-		output_filename = None
-		if not job_folder:
-			job_folder = '/projects/breeze-dev/db/testing/in/'
-		if not output_filename:
-			output_filename = '/projects/breeze-dev/db/testing/temp.tar.bz2'
+	def _remove_sup(self, path):
+		return path.replace(settings.PROJECT_FOLDER_PREFIX, '')
 
-		# real implementation
-		if self.make_tarfile(output_filename, job_folder):
-			self._docker_storage.upload_self() # update the cloud version of azure_storage.py
-			self.run_id = get_file_md5(output_filename)
-			b = self._job_storage.upload(self.run_id, output_filename)
-			if b:
-				os.remove(output_filename)
-				self.my_run = DockerRun(self.config_container, self.config_cmd % self.run_id, self.my_volume)
-				# self.my_run = my_run
-				self._attach_event_manager()
-				if self._run():
-					self._runnable.sgeid = self.container.short_id
-					self._set_global_status(self.js.SUBMITTED)
-					return True
-		else:
-			self.log.exception('Tar failed')
+	# clem 23/05/2016
+	def assemble_job(self):
+		""" extra assembly for the job to run into a container :
+			_ parse the source file, to change the paths
+			_ to grab the dependencies and parse them
+			_ create the kick-start sh file
+			_ make an archive of it all
+
+		:return: if success
+		:rtype: bool
+		"""
+		self._set_global_status(self.js.PREPARE_RUN)
+		if self._assemble_source_tree():
+			if self._copy_source_folder() and self._gen_kick_start_file():
+				return self.make_tarfile(self.assembly_archive_path, self.assembly_folder_path)
+
+		self.log.exception('Job super-assembly failed')
 		self._set_status(self.js.FAILED)
-		self._runnable.manage_run_failed(1, 88)
+		self._runnable.manage_run_failed(1, 89)
+		return False
+
+	# clem 23/05/2016
+	def _copy_source_folder(self):
+		ignore_list = [self.execut_obj.exec_file_in]
+
+		def remote_ignore(_, names):
+			"""
+			:type names: str
+			:rtype: list
+
+			Return a list of files to ignores amongst names
+			"""
+			import fnmatch
+			out = list()
+			for each in names:
+				if each[:-1] == '~':
+					out.append(each)
+				else:
+					for ignore in ignore_list:
+						if fnmatch.fnmatch(each, ignore):
+							out.append(each)
+							break
+			return out
+
+		return custom_copytree(self.runnable_path, self.assembly_folder_path + self.relative_runnable_path,
+			ignore=remote_ignore)
+
+	# clem 23/05/2016
+	@property
+	def _sh_file_path(self):
+		return self.assembly_folder_path + settings.DOCKER_SH_NAME
+
+	# clem 23/05/2016
+	def _gen_kick_start_file(self):
+		conf_dict = {
+			'job_full_path'	: self.relative_runnable_path,
+			'run_job_sh'	: settings.GENERAL_SH_NAME,
+		}
+
+		res = gen_file_from_template(settings.DOCKER_BOOTSTRAP_SH_TEMPLATE, conf_dict, self._sh_file_path)
+		chmod(self._sh_file_path, ACL.RX_RX_)
+
+		return res
+
+	# TODO find a better way of doing that
+	# clem 23/05/2016
+	def _assemble_source_tree(self):
+		# self.log.debug('parsing and assembling job for remote run')
+		self._run_server = RunServer(self._runnable)
+		return self._run_server.parse_all()
+
+	# clem 23/05/2016
+	def _has_run_server(self):
+		if not self._run_server:
+			raise Exception # TODO change
+
+	@property
+	# clem 23/05/2016
+	def assembly_folder_path(self):
+		self._has_run_server()
+		return self._run_server.storage_path
+
+	@property
+	# clem 23/05/2016
+	def runnable_path(self): # writing shortcut
+		return self._runnable.home_folder_full_path
+
+	@property
+	# clem 23/05/2016
+	def relative_runnable_path(self): # writing shortcut
+		return self._remove_sup(self.runnable_path)
+
+	@property
+	# clem 23/05/2016
+	def assembly_archive_path(self):
+		return '%s%s' % (self.assembly_folder_path, self.job_file_archive_name)
+
+	# clem 23/05/2016
+	def _upload_assembly(self):
+		""" Uploads the assembly folder as an archive to the storage backend
+
+		"""
+		if self._run_server:
+			self._docker_storage.upload_self() # update the cloud version of azure_storage.py
+			self.run_id = get_file_md5(self.assembly_archive_path) # use the archive hash as an id for storage
+			return self._job_storage.upload(self.run_id, self.assembly_archive_path)
+		self.log.exception('No run_server')
+		return False
+
+	def send_job(self):
+		self._set_global_status(self.js.PREPARE_RUN) # TODO change
+		if self._upload_assembly():
+			# os.remove(self.assembly_archive_path)
+			self.my_run = DockerRun(self.config_container, self.config_cmd % self.run_id, self.my_volume)
+			self._attach_event_manager()
+			if self._run():
+				self._runnable.sgeid = self.container.short_id
+				self._set_global_status(self.js.SUBMITTED)
+				return True
+			else:
+				error = [87, 'container kickoff failed']
+		else:
+			error = [88, 'assembly upload failed']
+		self.log.exception(error[1])
+		self._set_status(self.js.FAILED)
+		self._runnable.manage_run_failed(1, error[0])
 		return False
 
 	# clem 10/05/2016
@@ -322,15 +426,15 @@ class DockerInterface(ComputeInterface):
 		self._set_status(status)
 		self._runnable.breeze_stat = status
 
-	# clem 21/04/2016
+	# clem 21/04/2016 # TODO
 	def get_results(self, output_filename=None):
 		if not output_filename:
 			output_filename = '/projects/breeze-dev/db/testing/results_%s.tar.xz' % self.run_id
 		try:
 			e = self._result_storage.download(self.run_id, output_filename)
 
-			# if e:
-			# 	self.result_storage.erase(self.run_id)
+			if e:
+				self._result_storage.erase(self.run_id, no_fail=True)
 			self._set_status(self.js.SUCCEED)
 			self._runnable.manage_run_success(0)
 			# TODO extract in original path

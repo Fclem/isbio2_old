@@ -38,7 +38,7 @@ then
 	rm ${OUT_FILE_PATH} > /dev/null 2>&1
 	echo -ne ${BLUE}'Creating archive '${OUT_FILE_PATH}' ...'${END_C} && echo 'done'
 	tar Jcf ${OUT_FILE_PATH} .
-	$AZURE_PY' save'
+	$AZURE_PY save
 	echo 'done'
 fi
 exit ${EX}
