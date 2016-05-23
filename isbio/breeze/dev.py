@@ -1,5 +1,4 @@
-# from .utils import advanced_pretty_print as pp
-from utils import pp
+from utils import *
 import cmd
 import os
 import atexit
@@ -113,6 +112,33 @@ def cmd_line():
 
 def kill_self():
 	__cleanup__()
+
+
+def test_tree(report):
+	from models import Report, RunServer, ObjectDoesNotExist
+	try:
+		a = report
+		assert isinstance(a, Report)
+		with RunServer(a) as b:
+			b.parse_all()
+
+		return b
+	except (ObjectDoesNotExist, AssertionError):
+		return None
+
+
+def get_tree(rid):
+	from models import Report, RunServer, ObjectDoesNotExist
+	try:
+		a = Report.objects.get(pk=rid)
+		assert isinstance(a, Report)
+		b = test_tree(a)
+		assert isinstance(b, RunServer)
+
+		return b.generate_source_tree(), b
+
+	except (ObjectDoesNotExist, AssertionError):
+		return None
 
 
 # clem 07/04/2016
