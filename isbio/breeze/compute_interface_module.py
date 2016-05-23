@@ -119,6 +119,22 @@ class ComputeInterface:
 			tar.add(source_dir, arcname=os.path.basename(source_dir))
 		return True
 
+	# clem 23/05/2016 # TODO
+	def extract_tarfile(self, input_filename, destination_dir):
+		""" extract an tar.* to a destination folder
+
+		:param input_filename: the name/path of the source archive
+		:type input_filename: basestring
+		:param destination_dir: the path of the destination folder
+		:type destination_dir: basestring
+		:return: if success
+		:rtype: bool
+		"""
+		import tarfile
+		# with tarfile.open(output_filename, "w:bz2") as tar:
+		# 	tar.add(source_dir, arcname=os.path.basename(source_dir))
+		return True
+
 	# clem 16/05/2016
 	def __repr__(self):
 		return '<%s@%s>' % (self.__class__.__name__, hex(id(self)))

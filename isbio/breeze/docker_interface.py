@@ -429,7 +429,7 @@ class DockerInterface(ComputeInterface):
 	# clem 21/04/2016 # TODO
 	def get_results(self, output_filename=None):
 		if not output_filename:
-			output_filename = '/projects/breeze-dev/db/testing/results_%s.tar.xz' % self.run_id
+			output_filename = '%s%s_results.tar.xz' % (settings.SWAP_PATH, self._runnable.short_id)
 		try:
 			e = self._result_storage.download(self.run_id, output_filename)
 
