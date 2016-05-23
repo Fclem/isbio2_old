@@ -2955,6 +2955,7 @@ def view_log(request):
 	out.append(no_withe_space(settings.USUAL_LOG_FORMAT_DESCRIPTOR))
 	out.reverse()
 	return render_to_response('log.html', RequestContext(request, {
+		'resources_status': 'active',
 		'log': out
 	}))
 
