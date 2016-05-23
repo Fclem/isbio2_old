@@ -8,16 +8,16 @@
 # NEXT_SH		$HOME'/run.sh'			the path of this file once extracted into the container
 # AZURE_PY		$RES_FOLDER'/'$AZURE_STORAGE_FN	full path of the azure-storage python interface
 # JOB_ID						the ID of the job, the only data passed on to the container (usually the md5 of the job archive)
-# HOME			/root				home folder of the container. This is where all operations will happend
-# HOSTNAME						the hostname of the container. usually the 12 fisrt char of the docker-container id
+# HOME			/root				home folder of the container. This is where all operations will happen
+# HOSTNAME						the hostname of the container. usually the 12 first char of the docker-container id
 # JAVA_HOME		/usr/java/jdk1.8.0_72/		the path to java in the container
 # R_LIBS_USER 		/usr/lib/R/site-library t	the path to R in the container
 # USER			root				current linux user inside the container. will ALWAYS be root
 ## BREEZE AUTO configuration
 ABS_PATH=$job_full_path
-## END OF BREEZE_CONFIG
-export JOB_FOLDER=${HOME}${ABS_PATH}  # this is Breeze implementation specific and MUST be changed
 export NEXT_SH=./'$run_job_sh'
+## END OF BREEZE_CONFIG
+export JOB_FOLDER=${HOME}${ABS_PATH}
 export OUT_FILE_PATH=${HOME}'/'${OUT_FILE}
 
 END_C='\033[39m'
@@ -28,6 +28,7 @@ echo -e ${BLUE}'cd '${JOB_FOLDER}''${END_C}
 cd ${JOB_FOLDER}
 # bootstrap
 echo -e ${BLUE}'Running '${NEXT_SH}' ...'${END_C}
+chmod ug+rx ${NEXT_SH}
 ${NEXT_SH}
 EX=$?
 if [ $EX -eq 0 ];
@@ -37,7 +38,7 @@ then
 	rm ${OUT_FILE_PATH} > /dev/null 2>&1
 	echo -ne ${BLUE}'Creating archive '${OUT_FILE_PATH}' ...'${END_C} && echo 'done'
 	tar Jcf ${OUT_FILE_PATH} .
-	${AZURE_PY}' save'
+	$AZURE_PY' save'
 	echo 'done'
 fi
 exit ${EX}
