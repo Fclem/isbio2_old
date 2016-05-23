@@ -107,7 +107,7 @@ class AzureStorage(StorageModule):
 		:param verbose: Print actions (default to True)
 		:type verbose: bool or None
 		:return: object corresponding to the created blob
-		:rtype: Blob
+		:rtype: azure.storage.blob.models.Blob
 		:raise: IOError or FileNotFoundError
 		"""
 		if not container:
