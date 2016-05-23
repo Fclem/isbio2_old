@@ -434,7 +434,7 @@ class FolderObj(object):
 
 	def delete(self, using=None):
 		safe_rm(self.home_folder_full_path)
-		super(FolderObj, self).delete(using=using)
+		# super(FolderObj, self).delete(using=using)
 		return True
 
 	class Meta:
