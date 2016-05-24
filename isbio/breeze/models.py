@@ -2527,7 +2527,7 @@ class Runnable(FolderObj, models.Model):
 
 	@property # UNUSED ?  # FIXME obsolete
 	def _r_out_path(self):
-		return self._rout_file
+		return self.exec_out_file_path
 
 	@property
 	def source_file_path(self):
@@ -2551,12 +2551,12 @@ class Runnable(FolderObj, models.Model):
 		return '%s%s' % (self.home_folder_full_path, self.SUCCESS_FN)
 
 	@property  # FIXME obsolete
-	def _rout_file(self):
+	def exec_out_file_path(self):
 		# return '%s%s' % (self._rexec, self.target_obj.exec_obj.exec_file_out)
 		return '%s%s' % (self.home_folder_full_path, self.target_obj.exec_obj.exec_file_out)
 
 	@property
-	def _failed_file(self):
+	def failed_file_path(self):
 		"""
 		full path of the job failure verification file
 		used to store the retval value, that has timings and perf related datas
@@ -2565,7 +2565,7 @@ class Runnable(FolderObj, models.Model):
 		return '%s%s' % (self.home_folder_full_path, self.FAILED_FN)
 
 	@property
-	def _incomplete_file(self):
+	def incomplete_file_path(self):
 		"""
 		full path of the job incomplete run verification file
 		exist only if job was interrupted, or aborted
@@ -2623,7 +2623,7 @@ class Runnable(FolderObj, models.Model):
 		"""
 		out = ''
 		if self.is_r_failure:
-			lines = open(self._rout_file).readlines()
+			lines = open(self.exec_out_file_path).readlines()
 			i = len(lines)
 			size = i
 			for i in range(len(lines) - 1, 0, -1):
@@ -2712,16 +2712,16 @@ class Runnable(FolderObj, models.Model):
 		"""Tells if the job R job completed successfully
 		:rtype: bool
 		"""
-		return self.is_done and not isfile(self._failed_file) and not isfile(self._incomplete_file) and \
-			isfile(self._rout_file)
+		return self.is_done and not isfile(self.failed_file_path) and not isfile(self.incomplete_file_path) and \
+			   isfile(self.exec_out_file_path)
 
 	@property # FIXME obsolete
 	def is_r_failure(self):
 		"""Tells if the job R job has failed (not equal to the oposite of is_r_successful)
 		:rtype: bool
 		"""
-		return self.is_done and isfile(self._failed_file) and not isfile(self._incomplete_file) and \
-			isfile(self._rout_file)
+		return self.is_done and isfile(self.failed_file_path) and not isfile(self.incomplete_file_path) and \
+			   isfile(self.exec_out_file_path)
 
 	@property
 	def aborting(self):
@@ -3029,7 +3029,7 @@ class Runnable(FolderObj, models.Model):
 		:type drmaa_waiting: bool | None
 		:type type: str
 		"""
-		self.__auto_json_dump(ret_val, self._failed_file)
+		self.__auto_json_dump(ret_val, self.failed_file_path)
 		log = get_logger()
 
 		if drmaa_waiting is not None:
@@ -3166,8 +3166,8 @@ class Runnable(FolderObj, models.Model):
 			self._doc_ml.name = self.home_folder_full_path + os.path.basename(str(self._doc_ml.name))
 
 			utils.remove_file_safe(self._test_file)
-			utils.remove_file_safe(self._failed_file)
-			utils.remove_file_safe(self._incomplete_file)
+			utils.remove_file_safe(self.failed_file_path)
+			utils.remove_file_safe(self.incomplete_file_path)
 			utils.remove_file_safe(self._sh_file_path)
 			self.save()
 			self.write_sh_file()
