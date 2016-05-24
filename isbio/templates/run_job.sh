@@ -26,44 +26,50 @@ TARGET="$target"
 ARCH=$arch_cmd
 VERSION=$version_cmd
 ## END OF CONFIGURATION
-OS=`cat /etc/system-release`
-KERNEL=`uname -mrs`
+RELEASE='/etc/os-release'
+if [ -f "$RELEASE" ];
+then
+	source ${RELEASE}
+else
+	PRETTY_NAME='N/A'
+fi
+# Info messages
 echo 'host    : '`hostname`' @ '`hostname -i`
-echo 'os      : '$OS
-echo 'kernel  : '$KERNEL
-echo 'arch    : '$ARCH
+echo 'os      : '${PRETTY_NAME}
+echo 'kernel  : '`uname -mrs`
+echo 'arch    : '${ARCH}
 echo 'dir     : '`pwd`
-echo 'target  : '$TARGET
-echo 'exec    : '$RUN_LINE
-echo 'version : '$VERSION
+echo 'target  : '${TARGET}
+echo 'exec    : '${RUN_LINE}
+echo 'version : '${VERSION}
 echo
 # removing possibly existing files generated from a previous run
-rm *~ $OUT $FAILED_FN $INCOMPLETE_FN $SUCCESS_FN $DONE_FN > /dev/null 2>&1
-wget -qO- $POKE_URL'starting' > /dev/null
+rm *~ ${OUT} ${FAILED_FN} ${INCOMPLETE_FN} ${SUCCESS_FN} ${DONE_FN} > /dev/null 2>&1
+wget -qO- ${POKE_URL}'starting' > /dev/null
 echo `date`
-echo -n 'Running '$IN'...'
+echo -n 'Running '${IN}'...'
 # Running the job
-touch ./$INCOMPLETE_FN && `$RUN_LINE`
+touch ./${INCOMPLETE_FN} && `${RUN_LINE}`
 CODE=$?
 echo ' done !'
-if [ $CODE -eq 0 ]; 
+if [ ${CODE} -eq 0 ];
 then
-	touch ./$SUCCESS_FN
+	touch ./${SUCCESS_FN}
 fi
 echo `date`
 # Removes incomplete run file flag
-rm ./$INCOMPLETE_FN > /dev/null 2>&1
-CMD=`tail -n1<./$OUT`
+rm ./${INCOMPLETE_FN} > /dev/null 2>&1
+CMD=`tail -n1<./${OUT}`
 # check the last line of the Rout file for possible job internal failure
 if [ "$CMD" = "$FAILED_TEXT" ] || [ ! -f "$DONE_FN" ]; 
 then
-	touch ./$FAILED_FN
-	cat $OUT
+	touch ./${FAILED_FN}
+	# cat ${OUT}
 	echo 'Failure !'
-	wget -qO- $POKE_URL'failed/'$CODE > /dev/null
-	exit $CODE
+	wget -qO- ${POKE_URL}'failed/'${CODE} > /dev/null
+	exit ${CODE}
 else
-	wget -qO- $POKE_URL'success' > /dev/null
+	wget -qO- ${POKE_URL}'success' > /dev/null
 	echo 'Success !'
 fi
 # removes any possible temp file (we don't want them to be part of the resulting folder)
