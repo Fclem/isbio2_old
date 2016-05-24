@@ -1,9 +1,12 @@
 from compute_interface_module import * # has os, abc, self.js, Runnable, ComputeTarget and utilities.*
 from docker_client import *
 from django.conf import settings
+from utils import safe_rm
+from blob_storage_module import StorageModule
+from breeze.models import RunServer
 a_lock = Lock()
 
-__version__ = '0.3'
+__version__ = '0.4'
 __author__ = 'clem'
 __date__ = '15/03/2016'
 
@@ -56,7 +59,7 @@ class DockerInterface(ComputeInterface):
 		super(DockerInterface, self).__init__(compute_target, storage_backend)
 		# TODO fully integrate !optional! tunneling
 		self._status = self.js.INIT
-		self.config_local_port = self.get_a_port()
+		self.config_local_port = self._get_a_port()
 		self.config_local_bind_address = (self.config_daemon_ip, self.config_local_port)
 		self._label = self.config_tunnel_host[0:2]
 
@@ -73,6 +76,23 @@ class DockerInterface(ComputeInterface):
 			self._set_status(self.js.FAILED)
 			self._runnable.manage_run_failed(1, 99)
 			raise DaemonNotConnected
+
+	# clem 11/05/2016
+	@property
+	def label(self):
+		return '<docker%s%s>' % ('_' + self._label, '' if self.client else ' ?')
+
+	# clem 11/05/2016
+	@property
+	def log(self):
+		log_obj = logging.LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
+		bridge = log_obj.process
+		log_obj.process = lambda msg, kwargs: bridge(self.label + ' ' + str(msg), kwargs)
+		return log_obj
+
+	##########################
+	#  CONFIG FILE SPECIFIC  #
+	##########################
 
 	# clem 17/06/2016
 	@property
@@ -129,8 +149,12 @@ class DockerInterface(ComputeInterface):
 	def docker_repo(self):
 		return DockerRepo(self.config_hub_login, self.docker_hub_pwd, email=self.config_hub_email)
 
+	#########################
+	#  CONNECTION SPECIFIC  #
+	#########################
+
 	# clem 10/05/2016
-	def get_a_port(self):
+	def _get_a_port(self):
 		""" Give the port number of an existing ssh tunnel, or return a free port if no (or more than 1) tunnel exists
 
 		:return: a TCP port number
@@ -192,8 +216,24 @@ class DockerInterface(ComputeInterface):
 			while stat is None:
 				stat = self.ssh_tunnel.poll()
 			print 'bg PID :', self.ssh_tunnel.pid
+			return True
 		else:
 			raise AttributeError('Cannot establish ssh tunnel since no ssh_host provided during init')
+
+	# clem 29/04/2016
+	@property
+	def _ssh_cmd_list(self):
+		return self.__ssh_cmd_list(self.config_local_port)
+
+	# clem 17/05/2016
+	def __ssh_cmd_list(self, local_port):
+		assert isinstance(self.config_tunnel_host, basestring)
+		return self.SSH_CMD_BASE + ['%s:%s:%s' % (local_port, self.config_daemon_ip, self.config_daemon_port)] + \
+			[self.config_tunnel_host]
+
+	#####################
+	#  DOCKER SPECIFIC  #
+	#####################
 
 	def _attach_event_manager(self):
 		if self.my_run and isinstance(self.my_run, DockerRun):
@@ -201,29 +241,23 @@ class DockerInterface(ComputeInterface):
 			self.log.debug('Attached event listener')
 		return True
 
-	# clem 11/05/2016
-	@property
-	def label(self):
-		return '<docker%s%s>' % ('_' + self._label, '' if self.client else ' ?')
-
-	# clem 11/05/2016
-	@property
-	def log(self):
-		log_obj = logging.LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
-		bridge = log_obj.process
-		log_obj.process = lambda msg, kwargs: bridge(self.label + ' ' + str(msg), kwargs)
-		return log_obj
-
 	# clem 12/05/2016
 	@property
 	def container(self):
 		if not self._container and self.client and self._runnable.sgeid:
 			self._container = self.client.get_container(self._runnable.sgeid)
-			self.log.debug('Found container %s' % self._container.name)
-			if self._container.is_running:
-				self._set_global_status(self.js.RUNNING)
+			if self._container.name:
+				self.log.debug('Found container %s' % self._container.name)
+				try:
+					if self._container.is_running:
+						self._set_global_status(self.js.RUNNING)
+					else:
+						self._set_global_status(self.js.SUBMITTED)
+				except AttributeError:
+					print self._container.status
+					pass
 			else:
-				self._set_global_status(self.js.SUBMITTED)
+				self.log.warning('Container not found !')
 		return self._container
 
 	def _run(self):
@@ -243,21 +277,18 @@ class DockerInterface(ComputeInterface):
 
 		return my_event_manager
 
-	# clem 17/05/2016
-	def __ssh_cmd_list(self, local_port):
-		assert isinstance(self.config_tunnel_host, basestring)
-		return self.SSH_CMD_BASE + \
-			['%s:%s:%s' % (local_port, self.config_daemon_ip, self.config_daemon_port)] + \
-			[self.config_tunnel_host]
-
-	# clem 29/04/2016
-	@property
-	def _ssh_cmd_list(self):
-		return self.__ssh_cmd_list(self.config_local_port)
+	#######################
+	#  STORAGE INTERFACE  #
+	#######################
 
 	# clem 20/04/2016
 	@property
 	def _job_storage(self):
+		""" The storage backend to use to store the jobs-to-run archives
+
+		:return: an implementation of
+		:rtype: StorageModule
+		"""
 		if not self._jobs_storage:
 			self._jobs_storage = self._get_storage(self.storage_backend.jobs_container())
 		return self._jobs_storage
@@ -265,6 +296,11 @@ class DockerInterface(ComputeInterface):
 	# clem 21/04/2016
 	@property
 	def _result_storage(self):
+		""" The storage backend to use to store the results archives
+
+		:return: an implementation of
+		:rtype: StorageModule
+		"""
 		if not self._data_storage:
 			self._data_storage = self._get_storage(self.storage_backend.data_container())
 		return self._data_storage
@@ -272,36 +308,96 @@ class DockerInterface(ComputeInterface):
 	# clem 21/04/2016
 	@property
 	def _docker_storage(self):
+		""" The storage backend to use to store the storage backend files
+
+		:return: an implementation of
+		:rtype: StorageModule
+		"""
 		if not self.__docker_storage:
 			self.__docker_storage = self._get_storage(self.storage_backend.management_container())
 		return self.__docker_storage
 
+	#######################
+	#  ASSEMBLY SPECIFIC  #
+	#######################
+
+	@property
+	# clem 23/05/2016
+	def assembly_folder_path(self):
+		""" The absolute path to the assembly folder, that is used to hold the temp files until they get archived
+
+		:return: the path
+		:rtype: str
+		"""
+		return self.run_server.storage_path
+
+	@property
+	# clem 23/05/2016
+	def runnable_path(self): # writing shortcut
+		""" The absolute path to the report folder
+
+		:return: the path
+		:rtype: str
+		"""
+		return self._runnable.home_folder_full_path
+
+	@property
+	# clem 23/05/2016
+	def relative_runnable_path(self): # writing shortcut
+		""" The old-style pseudo-absolute path to the report folder
+
+		:return: the path
+		:rtype: str
+		"""
+		return self._remove_sup(self.runnable_path)
+
+	@property
+	# clem 23/05/2016
+	def assembly_archive_path(self):
+		""" Return the absolute path to the archive of the assembly (archive that hold all the job code and data)
+
+		:return: the path
+		:rtype: str
+		"""
+		return '%s%s_job.tar.bz2' % (settings.SWAP_PATH, self._runnable.short_id)
+
+	@property
+	# clem 24/05/2016
+	def results_archive_path(self):
+		""" The absolute path to the archive holding the whole results of the job
+
+		:return: the path
+		:rtype: str
+		"""
+		return '%s%s_results.tar.bz2' % (settings.SWAP_PATH, self._runnable.short_id)
+
+	# clem 23/05/2016
+	@property
+	def _sh_file_path(self):
+		""" The absolute path to this specific in-between sh file (called by the container, calling the job sh)
+
+		:return: the path
+		:rtype: str
+		"""
+		return self.assembly_folder_path + settings.DOCKER_SH_NAME
+
 	def _remove_sup(self, path):
+		""" removes the PROJECT_FOLDER_PREFIX from the path
+
+		:param path: the path to handle
+		:type path: str
+		:return: the resulting path
+		:rtype: str
+		"""
 		return path.replace(settings.PROJECT_FOLDER_PREFIX, '')
 
 	# clem 23/05/2016
-	def assemble_job(self):
-		""" extra assembly for the job to run into a container :
-			_ parse the source file, to change the paths
-			_ to grab the dependencies and parse them
-			_ create the kick-start sh file
-			_ make an archive of it all
+	def _copy_source_folder(self):
+		""" Copy all the source data from the report folder, to the assembly one
 
-		:return: if success
+		:return: is success
 		:rtype: bool
 		"""
-		self._set_global_status(self.js.PREPARE_RUN)
-		if self._assemble_source_tree():
-			if self._copy_source_folder() and self._gen_kick_start_file():
-				return self.make_tarfile(self.assembly_archive_path, self.assembly_folder_path)
-
-		self.log.exception('Job super-assembly failed')
-		self._set_status(self.js.FAILED)
-		self._runnable.manage_run_failed(1, 89)
-		return False
-
-	# clem 23/05/2016
-	def _copy_source_folder(self):
 		ignore_list = [self.execut_obj.exec_file_in]
 
 		def remote_ignore(_, names):
@@ -327,12 +423,14 @@ class DockerInterface(ComputeInterface):
 			ignore=remote_ignore)
 
 	# clem 23/05/2016
-	@property
-	def _sh_file_path(self):
-		return self.assembly_folder_path + settings.DOCKER_SH_NAME
-
-	# clem 23/05/2016
 	def _gen_kick_start_file(self):
+		""" Generate the sh file which will be triggered by the container, and which shall triggers the job sh
+
+		The main purpose of this file is to hold the path and file name of this next sh to be run
+
+		:return: is success
+		:rtype: bool
+		"""
 		conf_dict = {
 			'job_full_path'	: self.relative_runnable_path,
 			'run_job_sh'	: settings.GENERAL_SH_NAME,
@@ -346,65 +444,40 @@ class DockerInterface(ComputeInterface):
 	# TODO find a better way of doing that
 	# clem 23/05/2016
 	def _assemble_source_tree(self):
-		# self.log.debug('parsing and assembling job for remote run')
-		self._run_server = RunServer(self._runnable)
-		return self._run_server.parse_all()
+		""" Trigger the 'compilation' of the source tree from the run-server
 
-	# clem 23/05/2016
-	def _has_run_server(self):
+		Parse the source file, to grab all the dependencies, etc (check out RunServer for more info)
+
+		:return: is success
+		:rtype: bool
+		"""
+		return self.run_server.parse_all()
+
+	# clem 24/05/2016
+	@property
+	def run_server(self):
+		""" Return, and get if empty, the run-server of this instance
+
+		:return: the run_server of this instance
+		:rtype: RunServer
+		"""
 		if not self._run_server:
-			raise Exception # TODO change
-
-	@property
-	# clem 23/05/2016
-	def assembly_folder_path(self):
-		self._has_run_server()
-		return self._run_server.storage_path
-
-	@property
-	# clem 23/05/2016
-	def runnable_path(self): # writing shortcut
-		return self._runnable.home_folder_full_path
-
-	@property
-	# clem 23/05/2016
-	def relative_runnable_path(self): # writing shortcut
-		return self._remove_sup(self.runnable_path)
-
-	@property
-	# clem 23/05/2016
-	def assembly_archive_path(self):
-		return '%s%s' % (self.assembly_folder_path, self.job_file_archive_name)
+			self._run_server = RunServer(self._runnable)
+		assert isinstance(self._run_server, RunServer)
+		return self._run_server
 
 	# clem 23/05/2016
 	def _upload_assembly(self):
 		""" Uploads the assembly folder as an archive to the storage backend
 
+		:return: is success
+		:rtype: bool
 		"""
-		if self._run_server:
-			self._docker_storage.upload_self() # update the cloud version of azure_storage.py
-			self.run_id = get_file_md5(self.assembly_archive_path) # use the archive hash as an id for storage
-			return self._job_storage.upload(self.run_id, self.assembly_archive_path)
-		self.log.exception('No run_server')
-		return False
-
-	def send_job(self):
-		self._set_global_status(self.js.PREPARE_RUN) # TODO change
-		if self._upload_assembly():
-			# os.remove(self.assembly_archive_path)
-			self.my_run = DockerRun(self.config_container, self.config_cmd % self.run_id, self.my_volume)
-			self._attach_event_manager()
-			if self._run():
-				self._runnable.sgeid = self.container.short_id
-				self._set_global_status(self.js.SUBMITTED)
-				return True
-			else:
-				error = [87, 'container kickoff failed']
-		else:
-			error = [88, 'assembly upload failed']
-		self.log.exception(error[1])
-		self._set_status(self.js.FAILED)
-		self._runnable.manage_run_failed(1, error[0])
+		self._docker_storage.upload_self() # update the cloud version of azure_storage.py
+		self.run_id = get_file_md5(self.assembly_archive_path) # use the archive hash as an id for storage
+		if self._job_storage.upload(self.run_id, self.assembly_archive_path):
+			remove_file_safe(self.assembly_archive_path)
+			return True
 		return False
 
 	# clem 10/05/2016
@@ -426,24 +499,82 @@ class DockerInterface(ComputeInterface):
 		self._set_status(status)
 		self._runnable.breeze_stat = status
 
-	# clem 21/04/2016 # TODO
-	def get_results(self, output_filename=None):
-		if not output_filename:
-			output_filename = '%s%s_results.tar.xz' % (settings.SWAP_PATH, self._runnable.short_id)
-		try:
-			e = self._result_storage.download(self.run_id, output_filename)
+	# clem 24/05/2016
+	def _clear_report_folder(self):
+		""" Empty the report dir, before extracting the result archive there
 
-			if e:
+		:return: is success
+		:rtype: bool
+		"""
+		for each in listdir(self.runnable_path):
+			remove_file_safe(self.runnable_path + each)
+		return True
+
+	#####################
+	#  CLASS INTERFACE  #
+	#####################
+
+	# clem 23/05/2016
+	def assemble_job(self):
+		""" extra assembly for the job to run into a container :
+			_ parse the source file, to change the paths
+			_ to grab the dependencies and parse them
+			_ create the kick-start sh file
+			_ make an archive of it all
+
+		:return: if success
+		:rtype: bool
+		"""
+		self._set_global_status(self.js.PREPARE_RUN)
+		# copy all the original data from report folder
+		# create the virtual source tree and create the kick-start sh file
+		if self._copy_source_folder() and self._assemble_source_tree() and self._gen_kick_start_file():
+			if self.make_tarfile(self.assembly_archive_path, self.assembly_folder_path):
+				safe_rm(self.assembly_folder_path) # delete the temp folder used to create the archive
+				return True
+
+		self.log.exception('Job super-assembly failed')
+		self._set_status(self.js.FAILED)
+		self._runnable.manage_run_failed(1, 89)
+		return False
+
+	def send_job(self):
+
+		self._set_global_status(self.js.PREPARE_RUN) # TODO change
+		if self._upload_assembly():
+			# os.remove(self.assembly_archive_path)
+			self.my_run = DockerRun(self.config_container, self.config_cmd % self.run_id, self.my_volume)
+			self._attach_event_manager()
+			if self._run():
+				self._runnable.sgeid = self.container.short_id
+				self._set_global_status(self.js.SUBMITTED)
+				return True
+			else:
+				error = [87, 'container kickoff failed']
+		else:
+			error = [88, 'assembly upload failed']
+		self.log.exception(error[1])
+		self._set_status(self.js.FAILED)
+		self._runnable.manage_run_failed(1, error[0])
+		return False
+
+	# clem 21/04/2016
+	def get_results(self):
+		try:
+			if self._result_storage.download(self.run_id, self.results_archive_path):
 				self._result_storage.erase(self.run_id, no_fail=True)
-			self._set_status(self.js.SUCCEED)
-			self._runnable.manage_run_success(0)
-			# TODO extract in original path
-			return e
+				self._clear_report_folder()
+				if self.extract_tarfile(self.results_archive_path, self.runnable_path):
+					remove_file_safe(self.results_archive_path)
+				return True
 		except self._missing_exception:
 			self.log.error('No result found for job %s' % self.run_id)
 			self._set_status(self.js.FAILED)
 			self._runnable.manage_run_failed(1, 92)
 			raise
+		self._set_status(self.js.FAILED)
+		self._runnable.manage_run_failed(1, 91)
+		return False
 
 	# clem 06/05/2016
 	def abort(self):
@@ -478,8 +609,8 @@ class DockerInterface(ComputeInterface):
 			time.sleep(1)
 		return True
 
-	# clem 06/05/2016
-	def status(self): # TODO
+	# clem 06/05/2016 # TODO
+	def status(self):
 		return self._status
 
 	# clem 06/05/2016
@@ -494,9 +625,9 @@ class DockerInterface(ComputeInterface):
 			self._set_status(self.js.FAILED)
 			self._runnable.manage_run_failed(1, cont.status.ExitCode)
 			self._set_global_status(self.js.FAILED)
-			self.log.warning('Failure (container will not be deleted) ! Run log :\n%s' % log)
+			self.log.warning('Failure ! (container will not be deleted) Run log :\n%s' % log)
 		else:
-			self.log.info('Success !')
+			self.log.info('Run completed !')
 			# filter the end of the log to match it to a specific pattern, to ensure no unexpected event
 			# happened # TODO update
 			the_end = log.split('\n')[-6:-1] # copy the last 5 lines
@@ -508,7 +639,14 @@ class DockerInterface(ComputeInterface):
 								'##########################' % log)
 			if self.auto_remove:
 				cont.remove_container()
-			self.get_results() #
+			if self.get_results():
+				# TODO access success of the RUN
+				self._set_status(self.js.SUCCEED)
+				self._runnable.manage_run_success(0)
+				return True
+		self._set_status(self.js.FAILED)
+		self._runnable.manage_run_failed(0, 999)
+		return False
 
 
 use_caching = True
