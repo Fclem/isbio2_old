@@ -4,7 +4,7 @@ import time
 from sys import stdout, _getframe as get_frame
 from multipledispatch import dispatch # enables method overloading
 from filesize import UnitSystem, file_size2human
-from os.path import isfile, isdir, islink, exists, getsize, join
+from os.path import isfile, isdir, islink, exists, getsize, join, basename
 from os import symlink, readlink, listdir, makedirs, access, R_OK, chmod
 from subprocess import call, Popen, PIPE
 from threading import Thread, Lock
@@ -206,6 +206,7 @@ class Path(object):
 		try:
 			if isfile(self.path_str) or islink(self.path_str):
 				get_logger().info("removing %s" % self.path_str)
+				set_file_acl(self.path_str, ACL.RW_RW_, True)
 				remove(self.path_str)
 				return True
 		except OSError:
@@ -954,3 +955,55 @@ def import_env():
 	pipe = sp.Popen(['/bin/bash', '-c', '%s && %s' % (source, dump)], stdout=sp.PIPE)
 	env = json.loads(pipe.stdout.read())
 	os.environ = env
+
+
+# clem 20/04/2016 moved from compute_interface_module on 24/05/2016
+def make_tarfile(output_filename, source_dir, do_raise=True):
+	""" makes a tar.bz2 archive from source_dir, and stores it in output_filename
+
+	:param output_filename: the name/path of the resulting archive
+	:type output_filename: basestring
+	:param source_dir: the path of the source folder
+	:type source_dir: basestring
+	:param do_raise: indicate wether to raise the error (in case of),
+		if not it will be logged instead
+	:type do_raise: bool
+	:return: if success
+	:rtype: bool
+	"""
+	try:
+		import tarfile
+		with tarfile.open(output_filename, 'w:bz2') as tar:
+			tar.add(source_dir, arcname=basename(source_dir))
+		return True
+	except Exception as e:
+		if do_raise:
+			raise
+		get_logger().exception('Error creating %s : %s' % (output_filename, str(e)))
+	return False
+
+
+# clem 23/05/2016  moved from compute_interface_module on 24/05/2016
+def extract_tarfile(input_filename, destination_dir, do_raise=True):
+	""" extract an tar.* to a destination folder
+
+	:param input_filename: the name/path of the source archive
+	:type input_filename: basestring
+	:param destination_dir: the path of the destination folder
+	:type destination_dir: basestring
+	:param do_raise: indicate wether to raise the error (in case of),
+		if not it will be logged instead
+	:type do_raise: bool
+	:return: if success
+	:rtype: bool
+	"""
+	try:
+		import tarfile
+		with tarfile.open(input_filename, 'r:*') as tar:
+			tar.extractall(destination_dir)
+		return True
+	except Exception as e:
+		if do_raise:
+			raise
+		get_logger().log.exception('Error creating %s : %s' % (input_filename, str(e)))
+	return False
