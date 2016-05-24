@@ -2223,6 +2223,12 @@ def standalone_shiny_in_wrapper(request, path=None, sub=None):
 	return aux.proxy_to(request, path + '/' + sub, settings.SHINY_LOCAL_STANDALONE_BREEZE_URL)
 
 
+@csrf_exempt
+def standalone_pub_shiny_fw(request):
+	from django.shortcuts import redirect
+	return redirect(settings.SHINY_PUB_REDIRECT)
+
+
 # Wrapper for ShinyApp accessed from inside (login + user access to said report)
 # Proxy access manager
 @csrf_exempt

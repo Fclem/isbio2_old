@@ -457,6 +457,7 @@ class DevSettings(BreezeSettings):
 
 	# LEGACY ONLY (single Shiny old system)
 	SHINY_MODE = 'local'
+	SHINY_PUB_REDIRECT = 'http://breeze-dev.giu.fi:8080/'
 
 	SHINY_HEADER_FILE_NAME = 'header.R'
 	SHINY_LOADER_FILE_NAME = 'loader.R'
