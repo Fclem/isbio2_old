@@ -29,16 +29,16 @@ cd ${JOB_FOLDER}
 # bootstrap
 echo -e ${BLUE}'Running '${NEXT_SH}' ...'${END_C}
 chmod ug+rx ${NEXT_SH}
-${NEXT_SH}
+${NEXT_SH} > ${NEXT_SH}.log 2>&1
 EX=$?
-if [ $EX -eq 0 ];
+if [ ${EX} -eq 0 ];
 then
 	# chown -R 1001:1001 *
 	# preventive delete (suppressing errors)
 	rm ${OUT_FILE_PATH} > /dev/null 2>&1
 	echo -ne ${BLUE}'Creating archive '${OUT_FILE_PATH}' ...'${END_C} && echo 'done'
-	tar Jcf ${OUT_FILE_PATH} .
-	$AZURE_PY save
+	tar jcf ${OUT_FILE_PATH} .
+	${AZURE_PY} save
 	echo 'done'
 fi
 exit ${EX}
