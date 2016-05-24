@@ -1,6 +1,5 @@
 from utilities import *
-from breeze.models import JobStat, Runnable, ComputeTarget, RunServer
-import os
+from breeze.models import JobStat, Runnable, ComputeTarget
 import abc
 
 __version__ = '0.1'
@@ -70,34 +69,73 @@ class ComputeInterface:
 	# clem 23/05/2016
 	@abc.abstractmethod
 	def assemble_job(self):
+		""" This function should implement whatever assembling of the source / files / dependencies are necessary
+		for the job to be ready for submission and run
+
+		It is advised to return a bool indicating success or failure
+		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	@abc.abstractmethod
 	def send_job(self):
+		""" This function should implement the submission and triggering of the job's run
+
+		It is advised to return a bool indicating success or failure
+		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	@abc.abstractmethod
 	def get_results(self):
+		""" This function should implement the transfer and extraction of the results files from the storage backend
+		to the local report folder in Breeze tree structure
+
+		It is advised to return a bool indicating success or failure
+		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def abort(self):
+		""" This function should implement the abortion of the job
+
+		It is advised to return a bool indicating success or failure
+		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def status(self):
+		""" This function should implement a status interface for the job.
+
+		:rtype: str
+		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def busy_waiting(self, *args):
+		""" This function should implement an active busy waiting system, that waits until job competition.
+
+		This method will be run on another Thread, so you do not need to worry about blocking execution.
+		However it is advised to use time.sleep() with increments of 1 second, to reduce CPU usage of the server.
+		Also you are not required to use busy waiting, and can simply return True early on, this will not affect the
+		job status, and implement instead a event driven status system.
+
+		It is advised to return a bool indicating success or failure
+		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
 	@abc.abstractmethod
 	def job_is_done(self):
+		""" This function should implement the necessary action to take upon job completion.
+
+		It will not be called from Breeze, it is for you to trigger it.
+		This function should also access the final status of the job, and call the appropriated method from runnable
+		Runnable.manage_run_*()
+
+		It is advised to return a bool indicating success or failure
+		"""
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	def _get_storage(self, container=None):
@@ -105,7 +143,7 @@ class ComputeInterface:
 
 	# clem 20/04/2016
 	def make_tarfile(self, output_filename, source_dir):
-		""" makes a tar.bz2 archive from a path, and stores it in
+		""" makes a tar.bz2 archive from source_dir, and stores it in output_filename
 
 		:param output_filename: the name/path of the resulting archive
 		:type output_filename: basestring
@@ -115,15 +153,12 @@ class ComputeInterface:
 		:rtype: bool
 		"""
 		try:
-			import tarfile
-			with tarfile.open(output_filename, 'w:bz2') as tar:
-				tar.add(source_dir, arcname=os.path.basename(source_dir))
-			return True
+			return make_tarfile(output_filename, source_dir)
 		except Exception as e:
 			self.log.exception('Error creating %s : %s' % (output_filename, str(e)))
 		return False
 
-	# clem 23/05/2016 # TODO
+	# clem 23/05/2016
 	def extract_tarfile(self, input_filename, destination_dir):
 		""" extract an tar.* to a destination folder
 
@@ -135,12 +170,9 @@ class ComputeInterface:
 		:rtype: bool
 		"""
 		try:
-			import tarfile
-			with tarfile.open(input_filename, 'r:*') as tar:
-				tar.extractall(destination_dir)
-			return True
+			return extract_tarfile(input_filename, destination_dir)
 		except Exception as e:
-			self.log.exception('Error creating %s : %s' % (input_filename, str(e)))
+			self.log.exception('Error extracting %s : %s' % (input_filename, str(e)))
 		return False
 
 	# clem 16/05/2016
