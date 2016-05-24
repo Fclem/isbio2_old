@@ -51,6 +51,7 @@ class DockerInterface(ComputeInterface):
 	CONFIG_CONTAINER = 'container'
 	CONFIG_CMD = 'cmd'
 	job_file_archive_name = 'temp.tar.bz2'
+	container_log_file_name = 'container.log'
 
 	def __init__(self, compute_target, storage_backend=None):
 		"""
@@ -278,6 +279,17 @@ class DockerInterface(ComputeInterface):
 
 		return my_event_manager
 
+	# clem 24/03/2016
+	@property
+	def container_log_path(self):
+		return self.runnable_path + self.container_log_file_name
+
+	def _save_container_log(self):
+		cont = self.container
+		with open(self.container_log_path, 'w') as fo:
+			fo.write(str(cont.logs))
+		return True
+
 	#######################
 	#  STORAGE INTERFACE  #
 	#######################
@@ -381,6 +393,16 @@ class DockerInterface(ComputeInterface):
 		:rtype: str
 		"""
 		return self.assembly_folder_path + settings.DOCKER_SH_NAME
+
+	# clem 24/05/2016
+	@property
+	def _sh_log_file_path(self):
+		""" The absolute path to the log file resulting of the execution of the job's sh file
+
+		:return: the path
+		:rtype: str
+		"""
+		return self.runnable_path + settings.DOCKER_SH_NAME + '.log'
 
 	def _remove_sup(self, path):
 		""" removes the PROJECT_FOLDER_PREFIX from the path
@@ -511,6 +533,25 @@ class DockerInterface(ComputeInterface):
 			remove_file_safe(self.runnable_path + each)
 		return True
 
+	# clem 24/05/2016
+	@property
+	def job_has_failed(self):
+		return isfile(self._runnable.failed_file_path) or isfile(self._runnable.incomplete_file_path)\
+			or not isfile(self._runnable.exec_out_file_path) or not isfile(self._sh_log_file_path)
+
+	# clem 24/05/2016  # TODO re-write
+	def _check_container_logs(self):
+		""" filter the end of the log to match it to a specific pattern, to ensure no unexpected event happened """
+		cont = self.container
+		log = str(cont.logs)
+		the_end = log.split('\n')[-6:-1] # copy the last 5 lines
+		for (k, v) in self.LINES.iteritems():
+			if the_end[k].startswith(v):
+				del the_end[k]
+		if the_end != self.NORMAL_ENDING:
+			self.log.warning('The container log contains unexpected output, check it at : %s' % self.container_log_path)
+		return True
+
 	#####################
 	#  CLASS INTERFACE  #
 	#####################
@@ -563,7 +604,6 @@ class DockerInterface(ComputeInterface):
 		try:
 			if self._result_storage.download(self.run_id, self.results_archive_path):
 				self._result_storage.erase(self.run_id, no_fail=True)
-				self._clear_report_folder()
 				if self.extract_tarfile(self.results_archive_path, self.runnable_path):
 					remove_file_safe(self.results_archive_path)
 				return True
@@ -609,15 +649,17 @@ class DockerInterface(ComputeInterface):
 			time.sleep(1)
 		return True
 
-	# clem 06/05/2016 # TODO
+	# clem 06/05/2016 # TODO imporve
 	def status(self):
 		return self._status
 
-	# clem 06/05/2016 # TODO finish (status assessment)
+	# clem 06/05/2016 # TODO improve (status assessment)
 	def job_is_done(self):
 		cont = self.container
 		log = str(cont.logs)
 		assert isinstance(cont, DockerContainer)
+		self._clear_report_folder()
+		self._save_container_log()
 		self._set_global_status(self.js.GETTING_RESULTS)
 		self.log.info('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
 		cont.delta_display))
@@ -628,22 +670,15 @@ class DockerInterface(ComputeInterface):
 			self.log.warning('Failure ! (container will not be deleted) Run log :\n%s' % log)
 		else:
 			self.log.info('Run completed !')
-			# filter the end of the log to match it to a specific pattern, to ensure no unexpected event
-			# happened # TODO update
-			the_end = log.split('\n')[-6:-1] # copy the last 5 lines
-			for (k, v) in self.LINES.iteritems():
-				if the_end[k].startswith(v):
-					del the_end[k]
-			if the_end != self.NORMAL_ENDING:
-				self.log.warning('It seems there was some errors, run log :\n%s\nEND OF RUN LOGS !! '
-								'##########################' % log)
+			self._check_container_logs()
 			if self.auto_remove:
 				cont.remove_container()
 			if self.get_results():
-				# TODO asses success of the RUN
-				self._set_status(self.js.SUCCEED)
-				self._runnable.manage_run_success(0)
-				return True
+				if not self.job_has_failed:
+					# TODO assess or improve the quality of this assessment system
+					self._set_status(self.js.SUCCEED)
+					self._runnable.manage_run_success(0)
+					return True
 		self._set_status(self.js.FAILED)
 		self._runnable.manage_run_failed(0, 999)
 		return False
@@ -669,60 +704,4 @@ def initiator(compute_target, *_):
 			return ObjectCache.get(key)
 		return new_if()
 
-
-# clem 15/03/2016
-class DockerIfTest(DockerInterface): # TEST CLASS
-	volumes = {
-		'test'	: DockerVolume('/home/breeze/data/', '/breeze', 'rw'),
-		'final'	: DockerVolume('/home/breeze/data/', '/breeze', 'rw')
-	}
-	runs = {
-		'op'	: DockerRun('fimm/r-light:op', './run.sh', volumes['test']),
-		'rtest'	: DockerRun('fimm/r-security-blanket:new', './run.sh', volumes['test']),
-		'flat'	: DockerRun('fimm/r-light:flat', '/breeze/run.sh', volumes['test']),
-		'final'	: DockerRun('fimm/r-light:latest', '/run.sh', volumes['final']),
-	}
-
-	def _attach_event_manager(self, run=None):
-		if run and isinstance(run, DockerRun):
-			run.event_listener = self._event_manager_wrapper()
-		return run
-
-	def _attach_all_event_manager(self):
-		for name, run_object in self.runs.iteritems():
-			self.runs[name] = self._attach_event_manager(run_object)
-		return True
-
-	def _run(self, run=None):
-		self._container = self.client.run(run)
-		self.log.debug('Got %s' % repr(self.container))
-		return self.container
-
-	# clem 06/04/2016
-	def custom_run(self, name=''):
-		if not is_from_cli():
-			assert name in self.runs.keys()
-		if not name:
-			self_name = this_function_name()
-			print 'Available run :'
-			advanced_pretty_print(self.runs)
-			print 'usage:\t%s(RUN_NAME)\ni.e.\t%s(\'%s\')' % (self_name, self_name, self.runs.items()[0][0])
-		else:
-			run = self.runs.get(name, None)
-			if not run:
-				self.log.debug('No run named "%s", running default one' % name)
-			self._run(run)
-
-	# noinspection PyTypeChecker
-	def self_test(self): # FIXME Obsolete
-		self.test(self.client.get_container, '12')
-		self.test(self.client.get_container, '153565748415')
-		self.test(self.client.img_run, 'fimm/r-light:op', 'echo "test"')
-		self.test(self.client.img_run, 'fimm/r-light:op', '/run.sh')
-		self.test(self.client.img_run, 'fimm/r-light:candidate', 'echo "test"')
-		self.test(self.client.img_run, 'fimm/r-light:candidate', '/run.sh')
-		self.test(self.client.images_list[0].pretty_print)
-
-	def test(self, func, *args): # FIXME Obsolete
-		self.log.debug('>>%s%s' % (func.im_func.func_name, args))
-		return func(*args)
+# removed DockerIfTest from azure_test commit 422cc8e on 24/05/2016
