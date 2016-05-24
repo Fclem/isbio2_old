@@ -1539,7 +1539,7 @@ class DockerClient:
 				self._event_log(event, ' <UE>')
 			cont.new_event(event)
 		else: # if no dispatch target exists, then we log it here
-			print cont, 'of type', type(cont)
+			# print cont, 'of type', type(cont)
 			self._log('<%s> (no related containers, i.e. external event)' % event)
 
 	# clem 16/03/2016
