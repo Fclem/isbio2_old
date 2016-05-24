@@ -4,6 +4,7 @@ from django.conf import settings
 from utils import safe_rm
 from blob_storage_module import StorageModule
 from breeze.models import RunServer
+import os
 a_lock = Lock()
 
 __version__ = '0.4'
@@ -402,6 +403,7 @@ class DockerInterface(ComputeInterface):
 
 		def remote_ignore(_, names):
 			"""
+			:type _: ?
 			:type names: str
 			:rtype: list
 
@@ -441,8 +443,7 @@ class DockerInterface(ComputeInterface):
 
 		return res
 
-	# TODO find a better way of doing that
-	# clem 23/05/2016
+	# clem 23/05/2016 # TODO find a better integration design for that
 	def _assemble_source_tree(self):
 		""" Trigger the 'compilation' of the source tree from the run-server
 
@@ -539,7 +540,6 @@ class DockerInterface(ComputeInterface):
 		return False
 
 	def send_job(self):
-
 		self._set_global_status(self.js.PREPARE_RUN) # TODO change
 		if self._upload_assembly():
 			# os.remove(self.assembly_archive_path)
@@ -613,7 +613,7 @@ class DockerInterface(ComputeInterface):
 	def status(self):
 		return self._status
 
-	# clem 06/05/2016
+	# clem 06/05/2016 # TODO finish (status assessment)
 	def job_is_done(self):
 		cont = self.container
 		log = str(cont.logs)
@@ -640,7 +640,7 @@ class DockerInterface(ComputeInterface):
 			if self.auto_remove:
 				cont.remove_container()
 			if self.get_results():
-				# TODO access success of the RUN
+				# TODO asses success of the RUN
 				self._set_status(self.js.SUCCEED)
 				self._runnable.manage_run_success(0)
 				return True
