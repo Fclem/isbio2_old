@@ -77,7 +77,7 @@ class ComputeInterface:
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	@abc.abstractmethod
-	def get_results(self, output_filename=None):
+	def get_results(self):
 		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
 
 	# clem 06/05/2016
@@ -114,10 +114,14 @@ class ComputeInterface:
 		:return: if success
 		:rtype: bool
 		"""
-		import tarfile
-		with tarfile.open(output_filename, "w:bz2") as tar:
-			tar.add(source_dir, arcname=os.path.basename(source_dir))
-		return True
+		try:
+			import tarfile
+			with tarfile.open(output_filename, 'w:bz2') as tar:
+				tar.add(source_dir, arcname=os.path.basename(source_dir))
+			return True
+		except Exception as e:
+			self.log.exception('Error creating %s : %s' % (output_filename, str(e)))
+		return False
 
 	# clem 23/05/2016 # TODO
 	def extract_tarfile(self, input_filename, destination_dir):
@@ -130,10 +134,14 @@ class ComputeInterface:
 		:return: if success
 		:rtype: bool
 		"""
-		import tarfile
-		# with tarfile.open(output_filename, "w:bz2") as tar:
-		# 	tar.add(source_dir, arcname=os.path.basename(source_dir))
-		return True
+		try:
+			import tarfile
+			with tarfile.open(input_filename, 'r:*') as tar:
+				tar.extractall(destination_dir)
+			return True
+		except Exception as e:
+			self.log.exception('Error creating %s : %s' % (input_filename, str(e)))
+		return False
 
 	# clem 16/05/2016
 	def __repr__(self):

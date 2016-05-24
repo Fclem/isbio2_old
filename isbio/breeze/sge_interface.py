@@ -111,7 +111,7 @@ class SGEInterface(ComputeInterface):
 		return False
 
 	# clem 21/04/2016
-	def get_results(self, output_filename=None):
+	def get_results(self):
 		pass
 
 	# clem 17/05/2016
