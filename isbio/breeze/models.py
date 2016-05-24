@@ -2292,7 +2292,6 @@ class RunServer:
 			(self.storage_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
 		# parser
 		the_file_p = FileParser(the_path, new_path)
-		print "main FileParser(%s, %s)" % (the_path, new_path)
 		# add some source that may help with specific env / Renv / cluster / etc
 		if type(self._add_source) is list and self._add_source != list():
 			added = ''
@@ -2331,7 +2330,6 @@ class RunServer:
 			line = SrcObj(el[0])
 			new_path = '%s%s' % (self.storage_path, line.path)
 			sub_file_p = FileParser(line.path, new_path)
-			print 'sub FileParser(%s, %s)' % (line.path, new_path)
 
 			self.count['load'] += 1
 			# local sourcing
