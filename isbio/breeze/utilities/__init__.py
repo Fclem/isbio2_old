@@ -15,7 +15,7 @@ from threading import Thread, Lock
 
 
 logger = logging.getLogger(__name__)
-GENERAL_CACHE_TIME_OUT = 5 * 60 # 5 minutes
+GENERAL_CACHE_TIME_OUT = 60 * 60 # 60 minutes
 
 
 # clem 16/05/2016
@@ -901,9 +901,13 @@ class ObjectCache(object):
 	@classmethod
 	@new_thread
 	def expire(cls, key, text, exception_txt):
-		with cls.data_mutex:
-			del cls._cache[key]
-		get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception_txt))
+		try:
+			with cls.data_mutex:
+				del cls._cache[key]
+			get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception_txt))
+			return True
+		except KeyError:
+			return False
 
 	@classmethod
 	def add(cls, some_object, key, invalidate_after=GENERAL_CACHE_TIME_OUT, idle_expiry=0):
