@@ -2039,11 +2039,11 @@ class SrcObj:
 		return self.str.replace('"', '').replace("'", "")
 
 	@property
-	def new(self):
-		proj = settings.PROJECT_FOLDER
-		proj_bis = settings.PROJECT_FOLDER.replace('/fs', '')
+	def new(self): # TODO fix
+		proj = settings.PROJECT_FOLDER.replace('/fs', '')
+		proj_bis = settings.PROJECT_FOLDER
 		return SrcObj(self.str.replace('"%s' % proj, '"~%s' % proj).replace("'%s" % proj, "'~%s" % proj).replace(
-			'"%s' % proj_bis, '"~%s' % proj_bis).replace("'%s" % proj_bis, "'~%s" % proj_bis))
+			'"%s' % proj_bis, '"~%s' % proj).replace("'%s" % proj_bis, "'~%s" % proj))
 
 	# clem 21/10/15
 	@property
@@ -2071,6 +2071,8 @@ class SrcObj:
 
 # clem 20/10/2015 distributed POC +01/02/2016 # FIXME (unicode)
 class FileParser(SrcObj):
+	# _verbose = True
+
 	def __init__(self, file_n, dest, verbose=False):
 		self.file_n = file_n
 		self.__dest = ''
@@ -2095,13 +2097,14 @@ class FileParser(SrcObj):
 	# clem 02/02/2016
 	def _write(self, a, b):
 		try:
-			self.new_content = '%s\n%s' % (a, b)
-		except UnicodeDecodeError as e: # FIXME
+			self.new_content = u'%s\n%s' % (a, b)
+		except UnicodeDecodeError: # FIXME
 			if type(a) != unicode:
 				a = a.decode('utf-8')
 			if type(b) != unicode:
 				b = b.decode('utf-8')
-			self.new_content = u'%s\n%s' % (a, b)
+			self._write(a, b)
+			# self.new_content = u'%s\n%s' % (a, b)
 			# get_logger().exception('while parsing %s : %s' % (self.file_n, str(e)))
 
 	def add_on_top(self, content):
@@ -2125,8 +2128,11 @@ class FileParser(SrcObj):
 
 		import re
 		if self._verbose:
-			print "parsing", self.base_name, 'with', pattern.name.upper(), '...',
+			print "parsing", self.base_name, 'with', pattern.name.upper(), '...'
 		match = re.findall(str(pattern), self.new_content, re.DOTALL)
+		if self._verbose:
+			for each in match:
+				print 'M', each
 		# save this pattern in a list, so we don't parse this file with the same pattern again
 		self.parsed.append(pattern)
 		callback(self, match, pattern)
@@ -2182,8 +2188,6 @@ class FileParser(SrcObj):
 		if not self._new_content:
 			if not self.load():
 				return False
-		# if type(self._new_content) == unicode:
-		# 	self._new_content = str(self._new_content.encode())
 		return self._new_content
 
 	@new_content.setter
@@ -2238,7 +2242,11 @@ class RunServer:
 		r'(?<!#)source\((?: |\t)*(("|\')(~?%s(?:(?!\2).)*)\2)(?: |\t)*\)' % project_fold) # 01/02/2016
 	LIBS_PATTERN = Pattern('libs ',
 		r'(?<!#)((?:(?:library)|(?:require))(?:\((?: |\t)*(?:("|\')?((?:\w|\.)+)\2?)(?: |\t)*\)))') # 02/02/2016
-	ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(\/%s\/(?:(?!\2).)*)\2)' % project_fold_name) # 01/02/2016
+	# ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(\/%s\/(?:(?!\2).)*)\2)' % project_fold_name) # 01/02/2016
+	# ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(?:(?!\2).*)(\/' + project_fold_name + r'\/(?:(?!\2).*))\2)') #
+	# ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(?:.*(?!\2))(\/' + project_fold_name + r'\/(?:.*(?!\2)*))\2)') #
+	ABS_PATH_PATTERN = Pattern('path ', r'(("|\')[^\'"]*(\/' + project_fold_name + r'\/[^\'"]*)\2)') #
+	# 25/05/2016
 	FILE_NAME_PATTERN = Pattern('file', r'(?:<-)(?:(?: |\t)*("|\')([\w\-\. ]+)\1)') # 03/02/2016
 
 	added = [
@@ -2422,6 +2430,7 @@ class RunServer:
 			line = SrcObj(el[0])
 			# change the path to a relative one for the target server
 			file_obj.replace(line, line.new)
+			print 'replacing #%s# with #%s#' % (line, line.new)
 			# remote location on a local mount
 			new_path = '%s%s' % (self.storage_path, line.path)
 			new_file = FileParser(line.path, new_path)

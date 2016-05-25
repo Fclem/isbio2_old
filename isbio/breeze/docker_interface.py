@@ -30,6 +30,7 @@ class DockerInterface(ComputeInterface):
 	my_volume = DockerVolume('/home/breeze/data/', '/breeze')
 	my_run = None
 	_container = None
+	_container_logs = ''
 	cat = DockerEventCategories
 
 	SSH_CMD_BASE = ['ssh', '-CfNnL']
@@ -208,6 +209,7 @@ class DockerInterface(ComputeInterface):
 	# clem 07/04/2016
 	def _connect(self):
 		self.client = get_docker_client(self.config_daemon_url_base, self.docker_repo, False)
+		# self.client.DEBUG = False # suppress debug messages from DockerClient
 		return self.client
 
 	# TODO externalize
@@ -334,9 +336,10 @@ class DockerInterface(ComputeInterface):
 		return self.runnable_path + self.container_log_file_name
 
 	def _save_container_log(self):
-		cont = self.container
+		if self.container.logs: # not self._container_logs:
+			self._container_logs = str(self.container.logs)
 		with open(self.container_log_path, 'w') as fo:
-			fo.write(str(cont.logs))
+			fo.write(self._container_logs)
 		self.log.debug('Container log saved in report folder as %s' % self.container_log_file_name)
 		return True
 
@@ -653,6 +656,7 @@ class DockerInterface(ComputeInterface):
 		try:
 			if self._result_storage.download(self.run_id, self.results_archive_path):
 				self._result_storage.erase(self.run_id, no_fail=True)
+				self._clear_report_folder()
 				if self.extract_tarfile(self.results_archive_path, self.runnable_path):
 					if not KEEP_TEMP_FILE:
 						remove_file_safe(self.results_archive_path)
@@ -708,30 +712,30 @@ class DockerInterface(ComputeInterface):
 	def job_is_done(self):
 		cont = self.container
 		assert isinstance(cont, DockerContainer)
-		self._clear_report_folder()
-		self._save_container_log()
 		self._set_global_status(self.js.GETTING_RESULTS)
-		self.log.info('Died code %s. Total execution time : %s' % (cont.status_obj.ExitCode,
-		cont.delta_display))
+		self.log.info('Died code %s. Total execution time : %s' % (cont.status_obj.ExitCode, cont.delta_display))
 		get_res = self.get_results()
+		ex_code = cont.status_obj.ExitCode
+		self._save_container_log()
 
-		if cont.status_obj.ExitCode > 0:
+		if self.auto_remove:
+			cont.remove_container()
+
+		if ex_code > 0:
+			if not self.job_has_failed:
+				self.log.warning('Failure ! (container failed)')
+			else:
+				self.log.warning('Failure ! (script failed)')
 			self._set_status(self.js.FAILED)
-			self._runnable.manage_run_failed(1, cont.status_obj.ExitCode)
-			self.log.warning('Failure ! (container will not be deleted)')
+			self._runnable.manage_run_failed(1, ex_code)
 			return False
-		else:
-			self.log.info('Run completed !')
+		elif get_res:
+			self.log.info('Success, job completed !')
 			self._check_container_logs()
-			if get_res:
-				if not self.job_has_failed:
-					if self.auto_remove:
-						cont.remove_container()
-					# TODO assess or improve the quality of this assessment system
-					self._set_status(self.js.SUCCEED)
-					self._runnable.manage_run_success(0)
-					return True
-		self.log.warning('Failure ! (container will not be deleted)')
+			self._set_status(self.js.SUCCEED)
+			self._runnable.manage_run_success(0)
+			return True
+		self.log.warning('Failure ! (script failed)')
 		self._set_status(self.js.FAILED)
 		self._runnable.manage_run_failed(0, 999)
 		return False
