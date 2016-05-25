@@ -38,10 +38,7 @@ class JobState(drmaa.JobState):
 	TRANSFERRING = 'transferring'
 	ON_HOLD = 'pending'
 	ERROR_Q_WAIT = 'qw_error'
-
-	@classmethod
-	def R_FAILED(cls):
-		pass
+	SCRIPT_FAILED = 's_failed'
 
 
 # 30/06/2015 & 10/07/2015
@@ -68,8 +65,8 @@ class JobStat(object):
 	PREPARE_RUN = 'prep_run'
 	PREPARE_SUBMIT = 'prep_submit' # TODO
 	GETTING_RESULTS = 'get_results'
-	R_FAILED = JobState.R_FAILED
-
+	SCRIPT_FAILED = JobState.SCRIPT_FAILED
+	
 	__decode_status = {
 		JobState.UNDETERMINED		: 'process status cannot be determined',
 		JobState.QUEUED_ACTIVE		: 'job is queued and active',
@@ -82,8 +79,8 @@ class JobStat(object):
 		JobState.DONE				: 'job finished normally',
 		SUCCEED						: 'job finished normally',
 		JobState.FAILED				: 'job failed to start due to a system error',
-		JobState.R_FAILED			: 'job completed but the script failed',
-		R_FAILED					: 'job completed but the script failed',
+		JobState.SCRIPT_FAILED		: 'job completed but the script failed',
+		SCRIPT_FAILED				: 'job completed but the script failed',
 		ABORTED						: 'job has been aborted',
 		ABORT						: 'job is being aborted...',
 		INIT						: 'job instance is being generated...',
@@ -168,14 +165,15 @@ class JobStat(object):
 			self.status, self.breeze_stat = JobStat.ABORTED, JobStat.ABORT
 		elif status == JobStat.PREPARE_RUN:
 			self.status, self.breeze_stat = JobStat.INIT, JobStat.PREPARE_RUN
+		elif status == JobStat.PREPARE_SUBMIT:
+			self.status, self.breeze_stat = JobStat.INIT, JobStat.PREPARE_SUBMIT
 		elif status == JobStat.QUEUED_ACTIVE:
 			self.status, self.breeze_stat = JobStat.QUEUED_ACTIVE, JobStat.RUNNING
 		elif status == JobStat.INIT:
 			self.status, self.breeze_stat = JobStat.INIT, JobStat.INIT
-		elif status == JobStat.SUBMITTED:
-			# self.status remains unchanged
+		elif status == JobStat.SUBMITTED: # self.status remains unchanged
 			self.breeze_stat = JobStat.SUBMITTED
-		elif status == JobStat.FAILED:
+		elif status in [JobStat.FAILED, JobStat.SCRIPT_FAILED]:
 			self.status, self.breeze_stat = JobStat.FAILED, JobStat.DONE
 		elif status == JobStat.RUN_WAIT:
 			self.status, self.breeze_stat = JobStat.INIT, JobStat.RUN_WAIT
@@ -220,7 +218,7 @@ class JobStat(object):
 		"""
 		if stat == cls.FAILED:
 			if isinstance(obj, Runnable) and obj.is_r_failure:
-				stat = cls.R_FAILED
+				stat = cls.SCRIPT_FAILED
 		if stat in cls.__decode_status:
 			return cls.__decode_status[stat]
 		else:
@@ -228,6 +226,7 @@ class JobStat(object):
 
 	def __str__(self):
 		return self.stat_text
+
 
 JOB_PS = JobStat.job_ps # legacy
 
@@ -414,6 +413,7 @@ class FolderObj(object):
 				if fnmatch.fnmatch(file_n, each):
 					return True
 			return False
+
 		# walks loc to add files and folder to archive, while allying filters and exclusions
 		try:
 			for root, dirs, files in os.walk(loc):
@@ -548,20 +548,20 @@ class ShinyReport(models.Model):
 
 	custom_header = models.TextField(blank=True, default=shiny_header(),
 		help_text="Use R Shiny code here to customize the header of the dashboard<br />"
-		"Here is a basic example of what you can do.<br />\n"
-		"For more information, please refer to Shiny documentation.")
+				  "Here is a basic example of what you can do.<br />\n"
+				  "For more information, please refer to Shiny documentation.")
 
 	custom_loader = models.TextField(blank=True, default=shiny_loader(),
 		help_text="Use R Shiny code here to customize the global server part of the "
-		"dashboard<br />This is usefull to load files, or declare variables "
-		"that will be accessible to each attached tags:<br />NB : you may "
-		"reference, in the next field, every file you use here. Use a $ to "
-		"reference your file according to the 'tname' you associated with it.")
+				  "dashboard<br />This is usefull to load files, or declare variables "
+				  "that will be accessible to each attached tags:<br />NB : you may "
+				  "reference, in the next field, every file you use here. Use a $ to "
+				  "reference your file according to the 'tname' you associated with it.")
 
 	custom_files = models.TextField(blank=True, default=shiny_files(),
 		help_text="Use the following JSON format to reference your files<br />This "
-		"enables Breeze to dynamically check for the files you marked as "
-		"required.<br />")
+				  "enables Breeze to dynamically check for the files you marked as "
+				  "required.<br />")
 
 	enabled = models.BooleanField(default=True)
 
@@ -603,6 +603,7 @@ class ShinyReport(models.Model):
 	path_server_r_template = REPORT_TEMPLATE_PATH + FILE_SERVER_NAME
 	path_ui_r_template = REPORT_TEMPLATE_PATH + FILE_UI_NAME
 	path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
+
 	# path_heade_r_template = REPORT_TEMPLATE_PATH + FILE_HEADER_NAME
 	# path_global_r_template = REPORT_TEMPLATE_PATH + FILE_GLOBAL
 	# path_loader_r_template = str(REPORT_TEMPLATE_PATH + FILE_LOADER)
@@ -641,7 +642,8 @@ class ShinyReport(models.Model):
 		return '%s/lnk' % self.get_name
 
 	def _link_holder_path(self, remote=False): # full path to lnk holder directory
-		return '%s%s/' % (self.SHINY_REPORTS if not remote else settings.SHINY_REMOTE_REPORTS, self._link_holder_rel_path)
+		return '%s%s/' % (
+		self.SHINY_REPORTS if not remote else settings.SHINY_REMOTE_REPORTS, self._link_holder_rel_path)
 
 	def report_link_rel_path(self, data):
 		"""
@@ -655,7 +657,8 @@ class ShinyReport(models.Model):
 	def report_link(self, data, rel=False, remote=False):
 		if rel:
 			return self.report_link_rel_path(data)
-		return '%s%s' % (self.SHINY_REPORTS if not remote else settings.SHINY_REMOTE_REPORTS, self.report_link_rel_path(data))
+		return '%s%s' % (
+		self.SHINY_REPORTS if not remote else settings.SHINY_REMOTE_REPORTS, self.report_link_rel_path(data))
 
 	# Clem 22/09/2015
 	@staticmethod
@@ -759,10 +762,11 @@ class ShinyReport(models.Model):
 		"""
 		log_obj = get_logger()
 		log_obj.debug(
-			"updating shinyReport %s-%s slink for report %s %s" % (self.get_name, self.id, report.id, 'FORCING' if force else ''))
+			"updating shinyReport %s-%s slink for report %s %s" % (
+			self.get_name, self.id, report.id, 'FORCING' if force else ''))
 
 		from os.path import isdir, isfile, islink
-		from os import listdir, access, R_OK #, mkdir
+		from os import listdir, access, R_OK # , mkdir
 
 		assert isinstance(report, Report)
 		# handles individually each generated report of this type
@@ -792,7 +796,7 @@ class ShinyReport(models.Model):
 				try:
 					# copy the data content of the report
 					safe_copytree(report.home_folder_full_path, report.remote_shiny_path,
-									ignore=self._remote_ignore_wrapper(report))
+						ignore=self._remote_ignore_wrapper(report))
 				except Exception as e:
 					log_obj.warning("%s ShinyReport copy error %s" % (report.id, e))
 
@@ -869,10 +873,10 @@ class ShinyReport(models.Model):
 				# jfile = open(ShinyReport.path_file_lst_template)
 				# j = json.load(jfile)
 				j = json.loads(self.custom_files)
-				# jfile.close()
+			# jfile.close()
 			except ValueError as e:
 				log_obj.exception(e.message)
-				# raise ValueError(e)
+			# raise ValueError(e)
 			if formatted:
 				d = dict()
 				for each in j:
@@ -886,7 +890,7 @@ class ShinyReport(models.Model):
 
 		# file_loaders = open(ShinyReport.path_loader_r_template)
 		# src = Template(file_loaders.read())
-		if self.custom_loader is not None and self.custom_loader!='':
+		if self.custom_loader is not None and self.custom_loader != '':
 			src = Template(self.custom_loader)
 			# file_loaders.close()
 			# return src.safe_substitute(ShinyReport.related_files(formatted=True))
@@ -928,12 +932,13 @@ class ShinyReport(models.Model):
 						each.name, each.author.get_full_name(), each.author, each.created))
 		loaders = self.get_parsed_loader() # TODO redo
 		alist.append('') # avoid join errors if list is empty
-		d = { 'title': self.title,
-				'generated': generated,
-				'updated': updated,
-				'loaders': loaders,
-				'sources': SEP.join(alist)
-			}
+		d = {
+			'title'    : self.title,
+			'generated': generated,
+			'updated'  : updated,
+			'loaders'  : loaders,
+			'sources'  : SEP.join(alist)
+		}
 		assert (isinstance(src, Template))
 		result = src.safe_substitute(d)
 		f = open(self.server_path(remote), 'w')
@@ -983,14 +988,15 @@ class ShinyReport(models.Model):
 						each.name, each.author.get_full_name(), each.author, each.created))
 		alist.append('')
 		menu_list.append('')
-		d = { 'title': self.title,
-				'header': self.custom_header,
-				'generated': generated,
-				'updated': updated,
-				'menu_items': SEP2.join(menu_list),
-				'sources': SEP.join(alist),
-				'tag_vars': SEP2.join(tag_vars),
-			}
+		d = {
+			'title'     : self.title,
+			'header'    : self.custom_header,
+			'generated' : generated,
+			'updated'   : updated,
+			'menu_items': SEP2.join(menu_list),
+			'sources'   : SEP.join(alist),
+			'tag_vars'  : SEP2.join(tag_vars),
+		}
 		# do the substitution
 		result = src.substitute(d)
 		f = open(self.ui_path(remote), 'w')
@@ -1030,10 +1036,11 @@ class ShinyReport(models.Model):
 					each.name, each.author.get_full_name(), each.author, each.created, file_glob.read()))
 				file_glob.close()
 		alist.append('')
-		d = { 'generated': generated,
-				'updated': updated,
-				'tag_global': SEP.join(alist)
-			}
+		d = {
+			'generated' : generated,
+			'updated'   : updated,
+			'tag_global': SEP.join(alist)
+		}
 		# do the substitution
 		result = src.substitute(d)
 		f = open(self.global_path(remote), 'w')
@@ -1160,7 +1167,8 @@ class ConfigObject(FolderObj):
 					# instance level caching
 					self.__config = ConfigParser.SafeConfigParser()
 					self.__config.readfp(open(self.config_file.path))
-					self.log.debug('Config : parsed %s / %s ' % (os.path.basename(self.config_file.path), self.__class__.__name__))
+					self.log.debug(
+						'Config : parsed %s / %s ' % (os.path.basename(self.config_file.path), self.__class__.__name__))
 					if self.use_cache:
 						# module level caching
 						ObjectCache.add(self.__config, key)
@@ -1649,7 +1657,7 @@ class ReportType(FolderObj, models.Model):
 	description = models.CharField(max_length=5500, blank=True)
 	search = models.BooleanField(default=False, help_text="NB : LEAVE THIS UN-CHECKED")
 	access = models.ManyToManyField(User, null=True, blank=True, default=None,
-									related_name='pipeline_access')  # share list
+		related_name='pipeline_access')  # share list
 	targets = models.ManyToManyField(ComputeTarget, null=True, blank=True, default=None,
 		related_name='compute_targets')  # available compute targets
 	# tags = models.ManyToManyField(Rscripts, blank=True)
@@ -1728,7 +1736,8 @@ class ReportType(FolderObj, models.Model):
 		try:
 			if not isfile(self.config_path):
 				with open(self.config_path, 'w') as f:
-					f.write('#	Configuration module (Generated by Breeze)\n#	You can place here any pipeline-wide R config')
+					f.write(
+						'#	Configuration module (Generated by Breeze)\n#	You can place here any pipeline-wide R config')
 		except IOError:
 			pass
 
@@ -1784,6 +1793,7 @@ class ReportType(FolderObj, models.Model):
 class ScriptCategories(models.Model):
 	category = models.CharField(max_length=55, unique=True)
 	description = models.CharField(max_length=350, blank=True)
+
 	# if the script is a drat then the category should be inactive
 	# active = models.BooleanField(default=False)
 	
@@ -1824,7 +1834,7 @@ class Rscripts(FolderObj, models.Model):
 	must = models.BooleanField(default=False)  # defines wheather the tag is enabled by default
 	order = models.DecimalField(max_digits=3, decimal_places=1, blank=True, default=0)
 	report_type = models.ManyToManyField(ReportType, null=True, blank=True,
-										 default=None)  # assosiation with report type
+		default=None)  # assosiation with report type
 	# report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
 	access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name="users")
 	# install date info
@@ -1900,11 +1910,12 @@ class Rscripts(FolderObj, models.Model):
 		# final step - fire header
 		headers = open(self._header_path).read()
 
-		d = { 'tag_name': self.name,
-				'body': body,
-				'gen_params': gen_params,
-				'headers': headers,
-			}
+		d = {
+			'tag_name'  : self.name,
+			'body'      : body,
+			'gen_params': gen_params,
+			'headers'   : headers,
+		}
 		# do the substitution
 		return src.substitute(d)
 
@@ -2067,8 +2078,9 @@ class FileParser(SrcObj):
 		self.str = file_n
 		self.parsed = list()
 		self._verbose = verbose
-		# super(self.__class__, self).__init__(self.file_n)
-		# super(FileParser, self).__init__()
+
+	# super(self.__class__, self).__init__(self.file_n)
+	# super(FileParser, self).__init__()
 
 	def load(self):
 		if not self._new_content and isfile(self.path):
@@ -2200,9 +2212,11 @@ class RunServer:
 	project_prefix = settings.PROJECT_FOLDER_PREFIX
 	# lookup only sourced files inside PROJECT_FOLDER
 	project_fold_name = settings.PROJECT_FOLDER_NAME
-	project_fold = utils.norm_proj_p(settings.PROJECT_FOLDER, '(?:%s)?' % project_prefix).replace('/', '\/')  # DEPLOY specific
+	project_fold = utils.norm_proj_p(settings.PROJECT_FOLDER, '(?:%s)?' % project_prefix).replace('/',
+		'\/')  # DEPLOY specific
 	# regexp for matching. NB : MATCH GROUP 0 MUST ALWAYS BE THE FULL REPLACEMENT-TARGETED STRING
-	LOAD_PATTERN = Pattern('load ', r'(?<!#)source\((?: |\t)*(("|\')(~?%s(?:(?!\2).)*)\2)(?: |\t)*\)' % project_fold) # 01/02/2016
+	LOAD_PATTERN = Pattern('load ',
+		r'(?<!#)source\((?: |\t)*(("|\')(~?%s(?:(?!\2).)*)\2)(?: |\t)*\)' % project_fold) # 01/02/2016
 	LIBS_PATTERN = Pattern('libs ',
 		r'(?<!#)((?:(?:library)|(?:require))(?:\((?: |\t)*(?:("|\')?((?:\w|\.)+)\2?)(?: |\t)*\)))') # 02/02/2016
 	ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(\/%s\/(?:(?!\2).)*)\2)' % project_fold_name) # 01/02/2016
@@ -2281,7 +2295,8 @@ class RunServer:
 	def stats(self):
 		self._run_inst.log.debug('assembling completed : lib/load/abs : %s / %s / %s' % (
 			self.count['lib'], self.count['load'], self.count['abs']))
-		# print "done ! lib/load/abs : ", self.count['lib'], self.count['load'], self.count['abs']
+
+	# print "done ! lib/load/abs : ", self.count['lib'], self.count['load'], self.count['abs']
 
 	def parse_all(self):
 		import os
@@ -2290,7 +2305,7 @@ class RunServer:
 		the_path = str(self._run_inst.source_file_path)
 		# destination
 		new_path = '%s%s%s%s' % \
-			(self.storage_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
+				   (self.storage_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
 		# parser
 		the_file_p = FileParser(the_path, new_path)
 		# add some source that may help with specific env / Renv / cluster / etc
@@ -2299,10 +2314,11 @@ class RunServer:
 			for each in self._add_source:
 				added += 'source("%s") # %s\n' % each
 			the_file_p.add_on_top('##### following sources ADDED BY BREEZE :\n%s' % added +
-								'##### END OF BREEZE ADDITIONS ###')
+								  '##### END OF BREEZE ADDITIONS ###')
 		the_file_p.add_on_top('## Transferred to %s started by BREEZE on %s' % (self.target_name, d))
 		# parse the file to change path, library loading, and link files related to source()
-		the_file_p.parse(self.LOAD_PATTERN, self._parser_main_recur_call_back) # saving here is not necessary nor sufficient
+		the_file_p.parse(self.LOAD_PATTERN,
+			self._parser_main_recur_call_back) # saving here is not necessary nor sufficient
 		# done
 		self.stats()
 		return True
@@ -2340,8 +2356,8 @@ class RunServer:
 			if not self.already_parsed(sub_file_p):
 				sub_file_p.parse(pattern, self._parser_main_recur_call_back)
 
-			imp_text += '## Imported and parsed sourced file %s to %s (local path on %s) \n' %\
-				(line.base_name, line.new.dir_name, self.target_name)
+			imp_text += '## Imported and parsed sourced file %s to %s (local path on %s) \n' % \
+						(line.base_name, line.new.dir_name, self.target_name)
 
 		# FOR every file_obj, even those with no match of self.LOAD_PATTERN
 		# DO NOT MOVE THIS SECTION in parse_all (recursive lower-lever call-backs) !
@@ -2354,8 +2370,8 @@ class RunServer:
 		d = utils.date_t()
 		dep = ''
 		if len(match) > 0:
-			dep = '## %s sourced dependencies found, parsed and imported (plus %s library, %s total load) :\n%s' %\
-				(len(match), self.count['lib'], self.count['load'], imp_text)
+			dep = '## %s sourced dependencies found, parsed and imported (plus %s library, %s total load) :\n%s' % \
+				  (len(match), self.count['lib'], self.count['load'], imp_text)
 		file_obj.add_on_top(
 			'##### BREEZE SUMMARY of file parsing to run on %s :\n' % self.target_name +
 			'## Parsed on %s (org. modified on %s) for %s (%s) \n' %
@@ -2411,20 +2427,20 @@ class Runnable(FolderObj, models.Model):
 	# CONSTANTS
 	##
 	ALLOW_DOWNLOAD = True
-	BASE_FOLDER_NAME = '' 							# folder name
-	BASE_FOLDER_PATH = '' 							# absolute path to the container folder
-	FAILED_FN = settings.FAILED_FN 					# '.failed'
-	SUCCESS_FN = settings.SUCCESS_FN				# '.done'
-	SUB_DONE_FN = settings.R_DONE_FN				# '.sub_done'
-	SH_NAME = settings.GENERAL_SH_NAME				# 'run_job.sh'
-	FILE_MAKER_FN = settings.REPORTS_FM_FN			# 'transfer_to_fm.txt'
-	INC_RUN_FN = settings.INCOMPLETE_RUN_FN			# '.INCOMPLETE_RUN'
+	BASE_FOLDER_NAME = ''                            # folder name
+	BASE_FOLDER_PATH = ''                            # absolute path to the container folder
+	FAILED_FN = settings.FAILED_FN                    # '.failed'
+	SUCCESS_FN = settings.SUCCESS_FN                # '.done'
+	SUB_DONE_FN = settings.R_DONE_FN                # '.sub_done'
+	SH_NAME = settings.GENERAL_SH_NAME                # 'run_job.sh'
+	FILE_MAKER_FN = settings.REPORTS_FM_FN            # 'transfer_to_fm.txt'
+	INC_RUN_FN = settings.INCOMPLETE_RUN_FN            # '.INCOMPLETE_RUN'
 	# output file name (without extension) for nozzle report. MIGHT not be enforced everywhere
-	REPORT_FILE_NAME = settings.NOZZLE_REPORT_FN	# 'report'
+	REPORT_FILE_NAME = settings.NOZZLE_REPORT_FN    # 'report'
 	RQ_SPECIFICS = ['request_data', 'sections']
 	FAILED_TEXT = 'Execution halted'
 
-	HIDDEN_FILES = [ SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
+	HIDDEN_FILES = [SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
 
 	objects = managers.WorkersManager() # Custom manage
@@ -2447,6 +2463,7 @@ class Runnable(FolderObj, models.Model):
 	##
 
 	__target = None
+	__error_msg = ''
 
 	# GENERICS
 	def __getattr__(self, item):
@@ -2657,7 +2674,7 @@ class Runnable(FolderObj, models.Model):
 		if cat == "-code":
 			name = '_Rcode'
 			filer_list = ['*.r*', '*.Rout']
-			# exclude_list = self.system_files + ['*~']
+		# exclude_list = self.system_files + ['*~']
 		elif cat == "-result":
 			name = '_result'
 			exclude_list = self.hidden_files # + ['*.xml', '*.r*', '*.sh*']
@@ -2747,24 +2764,24 @@ class Runnable(FolderObj, models.Model):
 		from os import chmod
 
 		conf_dict = {
-			'failed_fn'		: self.FAILED_FN,
-			'inc_run_fn'	: self.INC_RUN_FN,
-			'success_fn'	: self.SUCCESS_FN,
-			'done_fn'		: self.SUB_DONE_FN,
-			'in_file_name'	: self.target_obj.exec_obj.exec_file_in,
-			'out_file_name'	: self.target_obj.exec_obj.exec_file_out,
-			'full_path'		: self.target_obj.exec_obj.exec_bin_path,
-			'args'			: self.target_obj.exec_obj.exec_args,
-			'cmd'			: self.target_obj.exec_obj.exec_run,
-			'failed_txt'	: self.FAILED_TEXT,
-			'user'			: self._author,
-			'date'			: datetime.now(),
-			'tz'			: time.tzname[time.daylight],
-			'poke_url'		: self.poke_url,
-			'url'			: 'http://%s' % settings.FULL_HOST_NAME,
-			'target'		: str(self.target_obj),
-			'arch_cmd'		: self.target_obj.exec_obj.exec_arch_cmd,
-			'version_cmd'	: self.target_obj.exec_obj.exec_version_cmd,
+			'failed_fn'    : self.FAILED_FN,
+			'inc_run_fn'   : self.INC_RUN_FN,
+			'success_fn'   : self.SUCCESS_FN,
+			'done_fn'      : self.SUB_DONE_FN,
+			'in_file_name' : self.target_obj.exec_obj.exec_file_in,
+			'out_file_name': self.target_obj.exec_obj.exec_file_out,
+			'full_path'    : self.target_obj.exec_obj.exec_bin_path,
+			'args'         : self.target_obj.exec_obj.exec_args,
+			'cmd'          : self.target_obj.exec_obj.exec_run,
+			'failed_txt'   : self.FAILED_TEXT,
+			'user'         : self._author,
+			'date'         : datetime.now(),
+			'tz'           : time.tzname[time.daylight],
+			'poke_url'     : self.poke_url,
+			'url'          : 'http://%s' % settings.FULL_HOST_NAME,
+			'target'       : str(self.target_obj),
+			'arch_cmd'     : self.target_obj.exec_obj.exec_arch_cmd,
+			'version_cmd'  : self.target_obj.exec_obj.exec_version_cmd,
 		}
 
 		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self._sh_file_path)
@@ -2887,7 +2904,7 @@ class Runnable(FolderObj, models.Model):
 					jt.delete()
 
 		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
-				Exception) as e:
+		Exception) as e:
 			self.log.error('drmaa submit failed : %s' % e)
 			self.manage_run_failed(-1, '')
 			# if s is not None:
@@ -2917,7 +2934,7 @@ class Runnable(FolderObj, models.Model):
 		log = get_logger()
 		if self.is_sgeid_empty or self.is_done:
 			return
-		sge_id = copy.deepcopy(self.sgeid) # uselees
+		sge_id = copy.deepcopy(self.sgeid) # useless
 		try:
 			ret_val = None
 			if drmaa_waiting:
@@ -2968,7 +2985,7 @@ class Runnable(FolderObj, models.Model):
 			self.save()
 			return exit_code
 		except Exception as e:
-			self.log.error(' while waiting : %s' % e)
+			self.log.error(' while waiting : %s' % str(e))
 			raise e
 
 	@staticmethod  # FIXME obsolete design
@@ -3031,17 +3048,15 @@ class Runnable(FolderObj, models.Model):
 		:type type: str
 		"""
 		self.__auto_json_dump(ret_val, self.failed_file_path)
-		log = get_logger()
 
 		if drmaa_waiting is not None:
 			if drmaa_waiting:
-				self.log.info('Also R process failed ! (%s)' % type)
-				# TODO is R failure on 1st level wait
+				self.log.info('Script has failed while drmaa_waiting ! (%s)' % type)
+				self.breeze_stat = JobStat.FAILED
 			else:
-				self.log.info('Also R process failed OR user abort ! (%s)' % type)
-				return self.manage_run_aborted(ret_val, exit_code)
-				# TODO or 2nd level wait either R failure or user abort (for ex when job was aborted before it started)
-		self.breeze_stat = JobStat.FAILED
+				self.log.info('Script has failed ! (%s)' % type)
+				self.breeze_stat = JobStat.SCRIPT_FAILED
+			# return self.manage_run_aborted(ret_val, exit_code)
 
 		self.trigger_run_failed(ret_val, exit_code)
 
@@ -3117,6 +3132,8 @@ class Runnable(FolderObj, models.Model):
 		:rtype: str
 		"""
 		# return JobStat.textual(self._status, self)
+		if self.breeze_stat == JobState.SCRIPT_FAILED or (self.breeze_stat == JobState.FAILED and self.is_r_failure):
+			return JobState.SCRIPT_FAILED
 		if self.breeze_stat == JobState.DONE or self.breeze_stat == JobState.RUNNING:
 			return JobStat.textual(self._status, self)
 		return JobStat.textual(self.breeze_stat, self)
@@ -3172,7 +3189,7 @@ class Runnable(FolderObj, models.Model):
 			utils.remove_file_safe(self._sh_file_path)
 			self.save()
 			self.write_sh_file()
-			# self.submit_to_cluster()
+		# self.submit_to_cluster()
 
 	###
 	# DJANGO RELATED FUNCTIONS
@@ -3452,7 +3469,7 @@ class Jobs(Runnable):
 
 class Report(Runnable):
 	def __init__(self, *args, **kwargs):
-		super(Report, self).__init__( *args, **kwargs)
+		super(Report, self).__init__(*args, **kwargs)
 		allowed_keys = Trans.translation.keys() + ['shared', 'title', 'project', 'rora_id']
 		self.__dict__.update((k, v) for k, v in kwargs.iteritems() if k in allowed_keys)
 
@@ -3472,6 +3489,7 @@ class Report(Runnable):
 	_type = models.ForeignKey(ReportType, db_column='type_id')
 	_created = models.DateTimeField(auto_now_add=True, db_column='created')
 	_institute = ForeignKey(Institute, default=1, db_column='institute_id')
+
 	# TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
 
 	def file_name(self, filename):
@@ -3593,7 +3611,7 @@ class Report(Runnable):
 		"""
 		assert isinstance(this_user, (User, OrderedUser))
 		return this_user and (this_user in self.shared.all() or self._author == this_user) \
-			and self.is_shiny_enabled
+			   and self.is_shiny_enabled
 
 	# clem 23/09/2015
 	@property
@@ -3671,14 +3689,15 @@ class Report(Runnable):
 				tag_list.append(tag.get_R_code(gen_params) + Template(report_specific).substitute(
 					{ 'loc': self.home_folder_full_path[:-1] }))
 
-		d = { 'loc': self.home_folder_full_path[:-1],
-			'report_name': self.title,
+		d = {
+			'loc'               : self.home_folder_full_path[:-1],
+			'report_name'       : self.title,
 			'project_parameters': self.dump_project_parameters,
-			'pipeline_config': self.dump_pipeline_config,
-			'tags': '\n'.join(tag_list),
-			'dochtml': str(self._dochtml),
-			'sub_done': self.SUB_DONE_FN,
-			}
+			'pipeline_config'   : self.dump_pipeline_config,
+			'tags'              : '\n'.join(tag_list),
+			'dochtml'           : str(self._dochtml),
+			'sub_done'          : self.SUB_DONE_FN,
+		}
 		# do the substitution
 		result = src.substitute(d)
 		# save r-file
@@ -3778,11 +3797,11 @@ class ShinyTag(models.Model):
 	FILE_TEMPLATE = settings.SHINY_TAG_CANVAS_PATH
 	FILE_TEMPLATE_URL = settings.MOULD_URL + settings.SHINY_TAG_CANVAS_FN
 	DEFAULT_MENU_ITEM = 'menuItem("Quality Control", icon = icon("filter", lib = "glyphicon"), tabName = "REPLACE BY THE NAME OF YOUR TAG IN UPPER CASE HERE",' \
-		'badgeLabel = "QC", badgeColor = "green")'
+						'badgeLabel = "QC", badgeColor = "green")'
 
 	name = models.CharField(max_length=55, unique=True, blank=False,
 		help_text="Must be unique, no special characters, no withe spaces."
-					"<br />NB : Use the same (in upper case) in the tabName field of the menu entry")
+				  "<br />NB : Use the same (in upper case) in the tabName field of the menu entry")
 	# label = models.CharField(max_length=32, blank=False, help_text="The text to be display on the dashboard")
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
 	author = ForeignKey(OrderedUser)
@@ -3791,9 +3810,7 @@ class ShinyTag(models.Model):
 	order = models.PositiveIntegerField(default=0, help_text="sorting index number (0 is the topmost)")
 	menu_entry = models.TextField(default=DEFAULT_MENU_ITEM,
 		help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
-				"of your tag.<br /><u>NB : tabName MUST be identical to the uppercase name of your tag.</u>")
-
-
+				  "of your tag.<br /><u>NB : tabName MUST be identical to the uppercase name of your tag.</u>")
 
 	@property
 	def get_name(self):
@@ -3852,10 +3869,10 @@ class ShinyTag(models.Model):
 
 	zip_file = models.FileField(upload_to=file_name_zip, blank=True, null=False,
 		help_text="Upload a zip file containing all the files required for your tag, and "
-		" following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
-		"Check the <a href='%s'>available libraries</a>. If the one you need is not"
-		" present, please contact an admin." %
-		(FILE_TEMPLATE_URL, settings.SHINY_LIBS_TARGET_URL))
+				  " following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
+				  "Check the <a href='%s'>available libraries</a>. If the one you need is not"
+				  " present, please contact an admin." %
+				  (FILE_TEMPLATE_URL, settings.SHINY_LIBS_TARGET_URL))
 	enabled = models.BooleanField()
 	attached_report = models.ManyToManyField(ShinyReport)
 
@@ -3929,8 +3946,8 @@ class ShinyTag(models.Model):
 
 		if self.enabled and ShinyReport.remote_shiny_ready():
 			self.copy_to_remote()
-		logger.debug(str(( 'before list', self.__prev_reports)))
-		logger.debug(str(( 'after list', self.attached_report.all())))
+		logger.debug(str(('before list', self.__prev_reports)))
+		logger.debug(str(('after list', self.attached_report.all())))
 		for each in (CustomList(self.attached_report.all()).union(self.__prev_reports)).unique():
 			each.regen_report()
 
@@ -4003,7 +4020,7 @@ class OffsiteUser(models.Model):
 	first_name = models.CharField(max_length=32, blank=False, help_text="First name of the off-site user to add")
 	last_name = models.CharField(max_length=32, blank=False, help_text="Last name of the off-site user to add")
 	email = models.CharField(max_length=64, blank=False, unique=True,
-							help_text="Valid email address of the off-site user")
+		help_text="Valid email address of the off-site user")
 	institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
 	role = models.CharField(max_length=32, blank=True, help_text="Position/role of this off-site user")
 	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True, help_text="!! DO NOT EDIT !!")
@@ -4080,4 +4097,3 @@ class OffsiteUser(models.Model):
 
 	def __unicode__(self):
 		return unicode(self.full_name)
-
