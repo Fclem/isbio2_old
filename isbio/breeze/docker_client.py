@@ -473,7 +473,7 @@ class DockerContainer:
 
 	# clem 08/04/2016
 	@property
-	def status(self):
+	def status_obj(self):
 		return self.get_status()
 
 	# clem 25/05/2016
@@ -482,25 +482,30 @@ class DockerContainer:
 		from datetime import datetime
 		return datetime.strptime(self.Created[:26], '%Y-%m-%dT%H:%M:%S.%f') # "2016-05-25T11:53:46.860873042Z"
 
+	# clem 25/05/2016
+	@property
+	def status_text(self):
+		return str(self.status_obj.Status)
+
 	# clem 08/04/2016
 	@property
 	def is_running(self):
-		return self.status.Running
+		return self.status_obj.Running
 
 	# clem 08/04/2016
 	@property
 	def is_dead(self):
-		return self.status.Dead
+		return self.status_obj.Dead
 
 	# clem 08/04/2016
 	@property
 	def is_paused(self):
-		return self.status.Paused
+		return self.status_obj.Paused
 
 	# clem 08/04/2016
 	@property
 	def is_restarting(self):
-		return self.status.Restarting
+		return self.status_obj.Restarting
 
 	# clem 18/03/2016
 	def __nonzero__(self):
