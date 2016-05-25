@@ -1,3 +1,5 @@
+from __builtin__ import property
+
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User # as DjangoUser
@@ -2093,13 +2095,14 @@ class FileParser(SrcObj):
 	# clem 02/02/2016
 	def _write(self, a, b):
 		try:
-			if type(a) == unicode:
-				a = unicode.decode(a, errors='ignore')
-			if type(b) == unicode:
-				b = unicode.decode(a, errors='ignore')
 			self.new_content = '%s\n%s' % (a, b)
 		except UnicodeDecodeError as e: # FIXME
-			get_logger().exception('while parsing %s : %s' % (self.file_n, str(e)))
+			if type(a) != unicode:
+				a = a.decode('utf-8')
+			if type(b) != unicode:
+				b = b.decode('utf-8')
+			self.new_content = u'%s\n%s' % (a, b)
+			# get_logger().exception('while parsing %s : %s' % (self.file_n, str(e)))
 
 	def add_on_top(self, content):
 		self._write(content, self.new_content)
@@ -2130,6 +2133,20 @@ class FileParser(SrcObj):
 
 		return True
 
+	# clem 25/05/2016
+	@property
+	def file_object(self):
+		""" Open the destination file for writing operation, either as ascii or utf8
+
+		:return: the file object
+		:rtype: file
+		"""
+		if type(self.new_content) == unicode:
+			import codecs
+			return codecs.open(self.destination, 'w', 'utf8')
+		else:
+			return open(self.destination, 'w')
+
 	def save_file(self):
 		if not self.new_content:
 			return False
@@ -2140,7 +2157,7 @@ class FileParser(SrcObj):
 		except OSError as e:
 			pass
 
-		with open(self.destination, 'w') as new_script:
+		with self.file_object as new_script:
 			while new_script.write(self.new_content):
 				pass
 		if self._verbose:
@@ -2165,6 +2182,8 @@ class FileParser(SrcObj):
 		if not self._new_content:
 			if not self.load():
 				return False
+		# if type(self._new_content) == unicode:
+		# 	self._new_content = str(self._new_content.encode())
 		return self._new_content
 
 	@new_content.setter
