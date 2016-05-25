@@ -31,8 +31,8 @@ echo -e ${BLUE}'Running '${NEXT_SH}' ...'${END_C}
 chmod ug+rx ${NEXT_SH}
 ${NEXT_SH} > ${NEXT_SH}.log 2>&1
 EX=$?
-if [ ${EX} -eq 0 ];
-then
+# if [ $EX -eq 0 ];
+# then
 	# chown -R 1001:1001 *
 	# preventive delete (suppressing errors)
 	rm ${OUT_FILE_PATH} > /dev/null 2>&1
@@ -40,5 +40,7 @@ then
 	tar jcf ${OUT_FILE_PATH} .
 	${AZURE_PY} save
 	echo 'done'
-fi
-exit ${EX}
+# else
+#	echo 'INTERUPTED, exit code was '${EX}
+#fi
+exit $EX
