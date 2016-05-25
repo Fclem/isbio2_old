@@ -180,16 +180,14 @@ class DockerInterface(ComputeInterface):
 				Popen(self.SSH_KILL_ALL, shell=True, stdout=PIPE)
 		return int(get_free_port())
 
-	# TODO externalize
 	# clem 08/09/2016
 	def _test_connection(self, target):
+		time_out = 2
 		import socket
-		s = socket.socket()
 		try:
-			s.settimeout(2)
-			self.log.debug('testing connection to %s Tout: %s sec' % (str(target), s.gettimeout()))
-			s.connect(target)
-			self.log.debug('success')
+			self.log.debug('testing connection to %s Tout: %s sec' % (str(target), time_out))
+			if test_tcp_connect(target[0], target[1], time_out):
+				self.log.debug('success')
 			return True
 		except socket.timeout:
 			self.log.exception('connect %s: Time-out' % str(target))
@@ -197,9 +195,6 @@ class DockerInterface(ComputeInterface):
 			self.log.exception('connect %s: %s' % (str(target), e[1]))
 		except Exception as e:
 			self.log.error('connect %s' % str((type(e), e)))
-		finally:
-			s.close()
-
 		return False
 
 	# clem 07/04/2016
@@ -288,6 +283,7 @@ class DockerInterface(ComputeInterface):
 		cont = self.container
 		with open(self.container_log_path, 'w') as fo:
 			fo.write(str(cont.logs))
+		self.log.debug('Container log saved in report folder as %s' % self.container_log_file_name)
 		return True
 
 	#######################
@@ -549,7 +545,7 @@ class DockerInterface(ComputeInterface):
 			if the_end[k].startswith(v):
 				del the_end[k]
 		if the_end != self.NORMAL_ENDING:
-			self.log.warning('The container log contains unexpected output, check it at : %s' % self.container_log_path)
+			self.log.warning('Container log contains unexpected output !')
 		return True
 
 	#####################
@@ -649,7 +645,7 @@ class DockerInterface(ComputeInterface):
 			time.sleep(1)
 		return True
 
-	# clem 06/05/2016 # TODO imporve
+	# clem 06/05/2016 # TODO improve
 	def status(self):
 		return self._status
 
@@ -667,7 +663,7 @@ class DockerInterface(ComputeInterface):
 			self._set_status(self.js.FAILED)
 			self._runnable.manage_run_failed(1, cont.status.ExitCode)
 			self._set_global_status(self.js.FAILED)
-			self.log.warning('Failure ! (container will not be deleted) Run log :\n%s' % log)
+			self.log.warning('Failure ! (container will not be deleted)')
 		else:
 			self.log.info('Run completed !')
 			self._check_container_logs()

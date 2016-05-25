@@ -103,6 +103,33 @@ def is_host_online(host, deadline=5):
 	return res == 0
 
 
+# clem 08/09/2016 moved here on 25/05/2016
+def test_tcp_connect(host, port, timeout=2):
+	""" Test if TCP can connect to target host on specified port
+
+	:param host: ip address or FQDN of the target host
+	:type host: str
+	:param port: TCP port number to attempt connection to
+	:type port: str
+	:param timeout: connection timeout time in seconds
+	:type timeout: int
+	:return: if TCP connect is successful
+	:rtype: bool
+	:raises: socket.error or Exception
+	"""
+	try:
+		import socket
+		s = socket.socket()
+		try:
+			s.settimeout(timeout)
+			s.connect((host, port))
+			return True
+		finally:
+			s.close()
+	except Exception:
+		raise
+
+
 # clem on 21/08/2015
 def get_md5(content):
 	""" Return md5 checksum of content argument
