@@ -862,6 +862,7 @@ class CachedObject:
 # clem 16/05/2016
 class ObjectCache(object):
 	_cache = dict()
+	_DEBUG = False
 	data_mutex = Lock()
 
 	@classmethod
@@ -904,7 +905,8 @@ class ObjectCache(object):
 		try:
 			with cls.data_mutex:
 				del cls._cache[key]
-			get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception_txt))
+			if cls._DEBUG:
+				get_logger().debug('Cache : removed %s:%s : %s' % (key, text, exception_txt))
 			return True
 		except KeyError:
 			return False
@@ -914,7 +916,8 @@ class ObjectCache(object):
 		if not cls.get_cached(key):
 			with cls.data_mutex:
 				cls._cache[key] = CachedObject(some_object, invalidate_after, idle_expiry)
-			get_logger().debug('Cache : added %s:%s' % (key, repr(cls.get_cached(key))))
+			if cls._DEBUG:
+				get_logger().debug('Cache : added %s:%s' % (key, repr(cls.get_cached(key))))
 		cls.garbage_collection()
 
 	@classmethod
@@ -923,7 +926,8 @@ class ObjectCache(object):
 		with cls.data_mutex:
 			num = len(cls._cache)
 			cls._cache = dict()
-		get_logger().debug('Cache : cleared (%s objects removed)' % num)
+		if cls._DEBUG:
+			get_logger().debug('Cache : cleared (%s objects removed)' % num)
 
 	@classmethod
 	@new_thread
