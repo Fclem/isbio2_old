@@ -652,7 +652,6 @@ class DockerInterface(ComputeInterface):
 	# clem 06/05/2016 # TODO improve (status assessment)
 	def job_is_done(self):
 		cont = self.container
-		log = str(cont.logs)
 		assert isinstance(cont, DockerContainer)
 		self._clear_report_folder()
 		self._save_container_log()

@@ -511,11 +511,11 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	if request.method == 'POST':
 		my_post = dict()
 		for k, v in request.POST.iteritems():
-			if type(v) is unicode:
-				print 'v is unicode'
+			if type(v) is unicode: # TODO debug
+				# print 'v is unicode'
 				v = v.encode('utf-8')
-			if type(k) is unicode:
-				print 'k is unicode'
+			if type(k) is unicode: # TODO debug
+				# print 'k is unicode'
 				k = k.encode('utf-8')
 			# data = data + k + u"=" + urllib.quote_plus(v) + u"&"
 			my_post[k] = v
