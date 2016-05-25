@@ -39,8 +39,8 @@ class JobState(drmaa.JobState):
 	ON_HOLD = 'pending'
 	ERROR_Q_WAIT = 'qw_error'
 
-	@staticmethod
-	def R_FAILDED():
+	@classmethod
+	def R_FAILED(cls):
 		pass
 
 
@@ -68,52 +68,53 @@ class JobStat(object):
 	PREPARE_RUN = 'prep_run'
 	PREPARE_SUBMIT = 'prep_submit' # TODO
 	GETTING_RESULTS = 'get_results'
-	R_FAILED = JobState.R_FAILDED
+	R_FAILED = JobState.R_FAILED
 
 	__decode_status = {
-		JobState.UNDETERMINED: 'process status cannot be determined',
-		JobState.QUEUED_ACTIVE: 'job is queued and active',
-		JobState.SYSTEM_ON_HOLD: 'job is queued and in system hold',
-		JobState.USER_ON_HOLD: 'job is queued and in user hold',
+		JobState.UNDETERMINED		: 'process status cannot be determined',
+		JobState.QUEUED_ACTIVE		: 'job is queued and active',
+		JobState.SYSTEM_ON_HOLD		: 'job is queued and in system hold',
+		JobState.USER_ON_HOLD		: 'job is queued and in user hold',
 		JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
-		JobState.RUNNING: 'job is running',
-		JobState.SYSTEM_SUSPENDED: 'job is system suspended',
-		JobState.USER_SUSPENDED: 'job is user suspended',
-		JobState.DONE: 'job finished normally',
-		SUCCEED: 'job finished normally',
-		JobState.FAILED: 'job failed to start due to a system error',
-		JobState.R_FAILDED: 'job failed due to R script issue',
-		ABORTED: 'job has been aborted',
-		ABORT: 'job is being aborted...',
-		INIT: 'job instance is being generated...',
-		SCHEDULED: 'job is saved for later submission',
-		PREPARE_RUN: 'job is being prepared for submission',
-		PREPARE_SUBMIT: 'job is being prepared for submission', # TODO finish
-		SUBMITTED: 'job has been submitted, and should be running soon',
-		GETTING_RESULTS: 'job has completed, getting results',
-		RUN_WAIT: 'job is about to be submitted',
-		'': 'unknown/other'
+		JobState.RUNNING			: 'job is running',
+		JobState.SYSTEM_SUSPENDED	: 'job is system suspended',
+		JobState.USER_SUSPENDED		: 'job is user suspended',
+		JobState.DONE				: 'job finished normally',
+		SUCCEED						: 'job finished normally',
+		JobState.FAILED				: 'job failed to start due to a system error',
+		JobState.R_FAILED			: 'job completed but the script failed',
+		R_FAILED					: 'job completed but the script failed',
+		ABORTED						: 'job has been aborted',
+		ABORT						: 'job is being aborted...',
+		INIT						: 'job instance is being generated...',
+		SCHEDULED					: 'job is saved for later submission',
+		PREPARE_RUN					: 'job is being prepared for submission',
+		PREPARE_SUBMIT				: 'job is being prepared for submission', # TODO finish
+		SUBMITTED					: 'job has been submitted, and should be running soon',
+		GETTING_RESULTS				: 'job has completed, getting results',
+		RUN_WAIT					: 'job is about to be submitted',
+		''							: 'unknown/other'
 	}
 	job_ps = {
-		''   : JobState.UNDETERMINED,
-		'r'  : JobState.RUNNING,
-		't'  : JobState.TRANSFERRING,
-		'p'  : JobState.PENDING,
-		'qw' : JobState.QUEUED_ACTIVE,
-		'Eqw': JobState.ERROR_Q_WAIT,
+		''		: JobState.UNDETERMINED,
+		'r'		: JobState.RUNNING,
+		't'		: JobState.TRANSFERRING,
+		'p'		: JobState.PENDING,
+		'qw'	: JobState.QUEUED_ACTIVE,
+		'Eqw'	: JobState.ERROR_Q_WAIT,
 
-		'h'  : JobState.ON_HOLD,
-		'ho' : JobState.SYSTEM_ON_HOLD,
-		'hs' : JobState.SYSTEM_ON_HOLD,
-		'hd' : JobState.SYSTEM_ON_HOLD,
-		'hu' : JobState.USER_ON_HOLD,
-		'hus': JobState.USER_SYSTEM_ON_HOLD,
+		'h'		: JobState.ON_HOLD,
+		'ho'	: JobState.SYSTEM_ON_HOLD,
+		'hs'	: JobState.SYSTEM_ON_HOLD,
+		'hd'	: JobState.SYSTEM_ON_HOLD,
+		'hu'	: JobState.USER_ON_HOLD,
+		'hus'	: JobState.USER_SYSTEM_ON_HOLD,
 
-		's'  : JobState.SUSPENDED,
-		'ss' : JobState.SYSTEM_SUSPENDED,
-		'su' : JobState.USER_SUSPENDED,
-		'us' : JobState.USER_SUSPENDED,
-		'sus': JobState.USER_SYSTEM_SUSPENDED,
+		's'		: JobState.SUSPENDED,
+		'ss'	: JobState.SYSTEM_SUSPENDED,
+		'su'	: JobState.USER_SUSPENDED,
+		'us'	: JobState.USER_SUSPENDED,
+		'sus'	: JobState.USER_SYSTEM_SUSPENDED,
 	}
 
 	@classmethod
@@ -223,7 +224,7 @@ class JobStat(object):
 		if stat in cls.__decode_status:
 			return cls.__decode_status[stat]
 		else:
-			return 'unknown status'
+			return 'unknown status %s' % stat
 
 	def __str__(self):
 		return self.stat_text
