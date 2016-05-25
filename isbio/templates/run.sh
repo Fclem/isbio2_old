@@ -23,6 +23,10 @@ export OUT_FILE_PATH=${HOME}'/'${OUT_FILE}
 END_C='\033[39m'
 BLUE='\033[34m'
 RED='\033[31m'
+# Gros hack tout vilain # TODO finish
+ln -s $HOME /fs
+ln -s $HOME/projects /fs/projects
+ln -s $HOME/projects /projects
 # move to the job sub folder
 echo -e ${BLUE}'cd '${JOB_FOLDER}''${END_C}
 cd ${JOB_FOLDER}
