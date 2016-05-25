@@ -6,10 +6,12 @@ from blob_storage_module import StorageModule
 from breeze.models import RunServer
 import os
 a_lock = Lock()
+container_lock = Lock()
 
-__version__ = '0.4'
+__version__ = '0.4.1'
 __author__ = 'clem'
 __date__ = '15/03/2016'
+KEEP_TEMP_FILE = False # i.e. debug
 
 
 # clem 15/03/2016
@@ -23,7 +25,7 @@ class DockerInterface(ComputeInterface):
 	run_id = '' # stores the md5 of the sent archive ie. the job id
 	proc = None
 	client = None
-	_lock = None
+	_container_lock = None
 	_label = ''
 	my_volume = DockerVolume('/home/breeze/data/', '/breeze')
 	my_run = None
@@ -50,6 +52,9 @@ class DockerInterface(ComputeInterface):
 	CONFIG_DAEMON_URL = 'daemon_url'
 	CONFIG_CONTAINER = 'container'
 	CONFIG_CMD = 'cmd'
+
+	START_TIMEOUT = 30 # Start timeout in seconds #FIXME HACK
+
 	job_file_archive_name = 'temp.tar.bz2'
 	container_log_file_name = 'container.log'
 
@@ -61,6 +66,9 @@ class DockerInterface(ComputeInterface):
 		super(DockerInterface, self).__init__(compute_target, storage_backend)
 		# TODO fully integrate !optional! tunneling
 		self._status = self.js.INIT
+		if self._runnable.breeze_stat != self.js.INIT: # TODO improve
+			self._status = self._runnable.breeze_stat
+		self._container_lock = Lock()
 		self.config_local_port = self._get_a_port()
 		self.config_local_bind_address = (self.config_daemon_ip, self.config_local_port)
 		self._label = self.config_tunnel_host[0:2]
@@ -235,32 +243,76 @@ class DockerInterface(ComputeInterface):
 	def _attach_event_manager(self):
 		if self.my_run and isinstance(self.my_run, DockerRun):
 			self.my_run.event_listener = self._event_manager_wrapper()
-			self.log.debug('Attached event listener')
+			self.log.debug('Attached event listener to run')
 		return True
+
+	# clem 25/05/2016
+	@property
+	def is_start_timeout(self):
+		return not (self._container.is_running or self._container.is_dead) and \
+			self._container.time_since_creation.total_seconds() > self.START_TIMEOUT
+
+	# clem 25/05/2016
+	def _check_start_timeout(self): # FIXME HACK
+		if self._container and not self._container.is_dead and not self._container.is_running:
+			# self.log.debug('Time since creation : %s' % self._container.time_since_creation)
+			if self.is_start_timeout: # FIXME HACK
+				if self._container.status_text == 'created':
+					self.log.info('Start TO : HACK START of %s' % self._container.status_text)
+					self._start_container()
+				else:
+					self.log.info('Start TO, starting not possible since status is %s ' %
+						self._container.status_text)
+					self._set_status(self.js.FAILED)
+					self._runnable.manage_run_failed(0, 888)
+
+	# clem 25/05/2016
+	def _container_thread_safe(self):
+		with self._container_lock: # Thread safety
+			if not self._container and self.client and self._runnable.sgeid:
+				# This is only useful on "resume" situation.
+				# on a standard run, the _container is filled by self._run() method
+				self._container = self.client.get_container(self._runnable.sgeid)
+				if self._container.name:
+					self.log.info('Acquired container %s :: %s' % (self._container.name, self.status()))
+					try:
+						if self._container.is_running:
+							self._set_global_status(self.js.RUNNING)
+						else:
+							if self._container.is_dead:
+								self.log.warning('container is dead !')
+					except AttributeError:
+						self.log.exception('AttributeError: %s' % str(self._container.status_obj))
+				else:
+					self.log.error('Container not found !')
+		return self._container
 
 	# clem 12/05/2016
 	@property
 	def container(self):
 		if not self._container and self.client and self._runnable.sgeid:
-			self._container = self.client.get_container(self._runnable.sgeid)
-			if self._container.name:
-				self.log.debug('Found container %s' % self._container.name)
-				try:
-					if self._container.is_running:
-						self._set_global_status(self.js.RUNNING)
-					else:
-						self._set_global_status(self.js.SUBMITTED)
-				except AttributeError:
-					print self._container.status
-					pass
-			else:
-				self.log.warning('Container not found !')
+			self._container_thread_safe()
 		return self._container
 
+	# clem 25/05/2016
+	def _wait_until_container(self):
+		while not self._container:
+			time.sleep(.5)
+		return self._container
+
+	# clem 25/05/2016
+	def _start_container(self):
+		self._wait_until_container().start()
+		return True
+
 	def _run(self):
-		self._container = self.client.run(self.my_run)
-		self.log.debug('Got %s' % repr(self.container))
-		return self.container
+		container = self.client.run(self.my_run)
+		with self._container_lock:
+			self._container = container
+		self.log.debug('Got %s' % repr(self._container))
+		self._runnable.sgeid = self._container.short_id
+		self._set_global_status(self.js.SUBMITTED)
+		return True
 
 	def _event_manager_wrapper(self):
 		def my_event_manager(event):
@@ -268,6 +320,8 @@ class DockerInterface(ComputeInterface):
 			# self.write_log(event)
 			if event.description in (DockerEventCategories.DIE, DockerEventCategories.KILL):
 				self.job_is_done()
+			elif event.description == DockerEventCategories.CREATE:
+				self._start_container()
 			elif event.description == DockerEventCategories.START:
 				self.log.debug('%s started' % event.container.name)
 				self._set_global_status(self.js.RUNNING)
@@ -495,7 +549,8 @@ class DockerInterface(ComputeInterface):
 		self._docker_storage.upload_self() # update the cloud version of azure_storage.py
 		self.run_id = get_file_md5(self.assembly_archive_path) # use the archive hash as an id for storage
 		if self._job_storage.upload(self.run_id, self.assembly_archive_path):
-			remove_file_safe(self.assembly_archive_path)
+			if not KEEP_TEMP_FILE:
+				remove_file_safe(self.assembly_archive_path)
 			return True
 		return False
 
@@ -568,7 +623,8 @@ class DockerInterface(ComputeInterface):
 		# create the virtual source tree and create the kick-start sh file
 		if self._copy_source_folder() and self._assemble_source_tree() and self._gen_kick_start_file():
 			if self.make_tarfile(self.assembly_archive_path, self.assembly_folder_path):
-				safe_rm(self.assembly_folder_path) # delete the temp folder used to create the archive
+				if not KEEP_TEMP_FILE:
+					safe_rm(self.assembly_folder_path) # delete the temp folder used to create the archive
 				return True
 
 		self.log.exception('Job super-assembly failed')
@@ -579,12 +635,9 @@ class DockerInterface(ComputeInterface):
 	def send_job(self):
 		self._set_global_status(self.js.PREPARE_RUN) # TODO change
 		if self._upload_assembly():
-			# os.remove(self.assembly_archive_path)
 			self.my_run = DockerRun(self.config_container, self.config_cmd % self.run_id, self.my_volume)
 			self._attach_event_manager()
 			if self._run():
-				self._runnable.sgeid = self.container.short_id
-				self._set_global_status(self.js.SUBMITTED)
 				return True
 			else:
 				error = [87, 'container kickoff failed']
@@ -601,8 +654,9 @@ class DockerInterface(ComputeInterface):
 			if self._result_storage.download(self.run_id, self.results_archive_path):
 				self._result_storage.erase(self.run_id, no_fail=True)
 				if self.extract_tarfile(self.results_archive_path, self.runnable_path):
-					remove_file_safe(self.results_archive_path)
-				return True
+					if not KEEP_TEMP_FILE:
+						remove_file_safe(self.results_archive_path)
+					return True
 		except self._missing_exception:
 			self.log.error('No result found for job %s' % self.run_id)
 			self._set_status(self.js.FAILED)
@@ -647,6 +701,7 @@ class DockerInterface(ComputeInterface):
 
 	# clem 06/05/2016 # TODO improve
 	def status(self):
+		self._check_start_timeout()
 		return self._status
 
 	# clem 06/05/2016 # TODO improve (status assessment)
@@ -656,24 +711,27 @@ class DockerInterface(ComputeInterface):
 		self._clear_report_folder()
 		self._save_container_log()
 		self._set_global_status(self.js.GETTING_RESULTS)
-		self.log.info('Died code %s. Total execution time : %s' % (cont.status.ExitCode,
+		self.log.info('Died code %s. Total execution time : %s' % (cont.status_obj.ExitCode,
 		cont.delta_display))
-		if cont.status.ExitCode > 0:
+		get_res = self.get_results()
+
+		if cont.status_obj.ExitCode > 0:
 			self._set_status(self.js.FAILED)
-			self._runnable.manage_run_failed(1, cont.status.ExitCode)
-			self._set_global_status(self.js.FAILED)
+			self._runnable.manage_run_failed(1, cont.status_obj.ExitCode)
 			self.log.warning('Failure ! (container will not be deleted)')
+			return False
 		else:
 			self.log.info('Run completed !')
 			self._check_container_logs()
-			if self.auto_remove:
-				cont.remove_container()
-			if self.get_results():
+			if get_res:
 				if not self.job_has_failed:
+					if self.auto_remove:
+						cont.remove_container()
 					# TODO assess or improve the quality of this assessment system
 					self._set_status(self.js.SUCCEED)
 					self._runnable.manage_run_success(0)
 					return True
+		self.log.warning('Failure ! (container will not be deleted)')
 		self._set_status(self.js.FAILED)
 		self._runnable.manage_run_failed(0, 999)
 		return False
