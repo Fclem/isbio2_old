@@ -1,6 +1,7 @@
 from docker import Client as DockerApiClient
 from docker.errors import NotFound, APIError, NullResource
 from threading import Thread, Lock
+from datetime import datetime
 from utilities import get_md5, advanced_pretty_print, TermColoring, new_thread, get_named_tuple, ObjectCache,\
 	this_function_caller_name
 import curses
@@ -8,7 +9,7 @@ import json
 import requests
 import time
 
-__version__ = '0.1.1'
+__version__ = '0.1.4'
 __author__ = 'clem'
 DOCKER_HUB_URL = 'https://index.docker.io'
 
@@ -254,6 +255,7 @@ class DockerImage:
 
 # clem 09/03/2016
 class DockerContainer:
+
 	RestartCount = 0
 	Labels = dict()
 	Image = ''
@@ -383,25 +385,38 @@ class DockerContainer:
 			if self.__run and self.__run.auto_rm:
 				self.remove_container()
 		if event.description == DockerEventCategories.CREATE:
-			self.start()
+			# self.start()
+			pass
 		elif event.description == DockerEventCategories.START:
 			self._start_time = event.dt
 
 	# clem 11/04/2016
 	@property
-	def delta(self):
-		# from datetime import datetime
-		if self._end_time and self._start_time:
-			return self._end_time - self._start_time
-		return 0
-		# return '+%.03fs' % delta.total_seconds()
+	def total_run_time(self):
+		""" Return the current / total running time of the container
+
+		:return: time delta since container started
+		"""
+		if self._start_time:
+			end_time = self._end_time if self._end_time else datetime.utcnow() # FIXME not time-zone aware
+			return end_time - self._start_time
+		return 0 # FIXME should be a dt object
+
+	# clem 25/05/2016
+	@property
+	def time_since_creation(self):
+		""" Return the current time since creation of the container
+
+		:return: time delta since container was created
+		"""
+		return datetime.utcnow() - self.dt_created # FIXME not time-zone aware
 
 	# clem 11/04/2016
 	@property
 	def delta_display(self):
-		d = self.delta
+		d = self.total_run_time
 		if d:
-			return '+%.03fs' % self.delta.total_seconds()
+			return '+%.03fs' % self.total_run_time.total_seconds()
 		return ''
 
 	# clem 18/03/2016
@@ -460,6 +475,12 @@ class DockerContainer:
 	@property
 	def status(self):
 		return self.get_status()
+
+	# clem 25/05/2016
+	@property
+	def dt_created(self):
+		from datetime import datetime
+		return datetime.strptime(self.Created[:26], '%Y-%m-%dT%H:%M:%S.%f') # "2016-05-25T11:53:46.860873042Z"
 
 	# clem 08/04/2016
 	@property
