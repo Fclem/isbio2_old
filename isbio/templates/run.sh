@@ -2,7 +2,7 @@
 # This script is called after container has extracted the archive.
 # Place here any configuration required and call to the next script which should trigger the job.
 #
-# available_variables	default_value			descritpion
+# available_variables	default_value			description
 # IN_FILE		'in.tar.xz'			file name to use for the input/job set archive
 # OUT_FILE		'out.tar.xz'			file name to use fot the output/result archive
 # NEXT_SH		$HOME'/run.sh'			the path of this file once extracted into the container
