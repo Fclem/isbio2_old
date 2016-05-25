@@ -673,15 +673,17 @@ def git_get_status():
 
 
 # clem 18/04/2016
-def git_get_commit_line(full=False, hash_only=False):
+def git_get_commit_line(full=False, hash_only=False): # FIXME : too much of an HACK
 	ret = ''
-	s = get_term_cmd_stdout(["git", "show"])
-	if s:
-		commit = s[0].strip()[:14] if not full else s[0].strip()
-		if hash_only:
-			return commit
-		ret = '%s on %s' % (commit, s[2].replace('Date:   ', '').strip())
-	return ret
+	try:
+		s = get_term_cmd_stdout(["git", "show"])
+		if s:
+			commit = s[0].strip()[:14] if not full else s[0].strip()
+			if hash_only:
+				return commit
+			ret = '%s on %s' % (commit, s[2].replace('Date:   ', '').strip())
+	finally:
+		return ret
 
 
 # clem 18/04/2016
