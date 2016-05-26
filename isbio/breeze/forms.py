@@ -323,13 +323,8 @@ class ReportPropsFormRE(ReportPropsFormMixinWrapperTwo):
 	def __init__(self, *args, **kwargs):
 		super(ReportPropsFormRE, self).__init__(*args, **kwargs)
 
-		# if 'Share' in self.fields:
-		#	self.fields["shared"] = self.fields["Share"]
-		#	del self.fields["Share"]
-
 	class Meta:
 		model = breeze.models.Report
-		# fields = ('shared',)
 		fields = ()
 
 

@@ -16,6 +16,9 @@ class Q(django.db.models.query_utils.Q):
 
 
 class QuerySet(__original_QS):
+	def __init__(self, *args, **kwargs):
+		super(QuerySet, self).__init__(*args, **kwargs)
+	
 	def _filter_or_exclude(self, negate, *args, **kwargs):
 		args, kwargs = translate(args, kwargs)
 		return super(QuerySet, self)._filter_or_exclude(negate, *args, **kwargs)
@@ -205,6 +208,7 @@ class WorkersManager(django.db.models.Manager):
 		Ensure that job/report designated by obj_id exists or fail with 404
 		Ensure that current user is OWNER of said object (or admin) or fail with 403
 		implements admin bypass if settings. is True
+
 		:param request: Django Http request object
 		:type request: django.http.HttpRequest
 		:param obj_id: table pk of the requested object
@@ -228,6 +232,7 @@ class WorkersManager(django.db.models.Manager):
 		"""
 		Ensure that job/report designated by obj_id exists or fail with 404
 		Ensure that current user has read access to said object or fail with 403
+
 		:param request: Django Http request object
 		:type request: django.http.HttpRequest
 		:param obj_id: table pk of the requested object
@@ -273,15 +278,18 @@ def has_full_access(obj, user):
 
 # clem 19/02/2016
 def has_read_access(obj, user):
-	return has_full_access or ('shared' in obj.__dict__ and user in obj.shared.all())
+	return has_full_access(obj, user) or ('shared' in obj.__dict__ and user in obj.shared.all())
 
 
 # TODO extend to all objects
 class ObjectsWithAuth(django.db.models.Manager):
-	def secure_get(self, *args, **kwargs):
+	def __init__(self):
+		super(ObjectsWithAuth, self).__init__()
+	
+	def secure_get(self, *_, **kwargs):
 		if 'id' not in kwargs.keys() or 'user' not in kwargs.keys():
 			raise InvalidArguments
-		obj = None
+		# obj = None
 		try:
 			obj = self.get(id=kwargs.pop('id'))
 			# obj = super(WorkersManager, self).get(*args, **kwargs)
@@ -298,12 +306,14 @@ class ObjectsWithAuth(django.db.models.Manager):
 
 # clem 19/04/2016
 class ProjectManager(django.db.models.Manager):
+	def __init__(self):
+		super(ProjectManager, self).__init__()
+
 	def available(self, user):
-		"""
-		Rerturn a list of projects available to the specified user
+		""" a list of projects available to the specified user
+
 		:type user:
 		:rtype: list
 		"""
 		return super(ProjectManager, self).exclude(
 			~org_Q(author__exact=user) & org_Q(collaborative=False)).order_by("name")
-
