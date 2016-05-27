@@ -55,3 +55,9 @@ def recur(nb, function, args):
 def not_imp(self): # writing shortcut for abstract classes
 	raise NotImplementedError("%s was not implemented in concrete class %s." % (
 		this_function_caller_name(), self.__class__.__name__))
+
+
+# clem 27/05/2016
+class ClassProperty(property):
+	def __get__(self, cls, owner):
+		return classmethod(self.fget).__get__(None, owner)()
