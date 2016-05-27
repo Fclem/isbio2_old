@@ -2,8 +2,8 @@ import django.db
 from breeze.models import Report, Jobs, JobStat, drmaa_lock
 import drmaa
 from utils import *
-from b_exceptions import *
-from django.conf import settings
+# from b_exceptions import *
+# from django.conf import settings
 
 if settings.ENABLE_DATADOG:
 	from datadog import statsd

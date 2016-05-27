@@ -37,7 +37,7 @@ class ComputeInterface:
 	# clem 11/05/2016
 	@property
 	def log(self):
-		log_obj = logging.LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
+		log_obj = LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
 		bridge = log_obj.process
 		log_obj.process = lambda msg, kwargs: bridge('<%s> %s' % (self._compute_target, str(msg)), kwargs)
 		return log_obj

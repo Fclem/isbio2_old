@@ -18,4 +18,3 @@ class ProjectStorage(StorageModule):
 
 def back_end_initiator(_):
 	return ProjectStorage()
-
