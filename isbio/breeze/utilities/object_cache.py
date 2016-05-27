@@ -1,8 +1,6 @@
-from time import time
-from threading import Lock
-from . import new_thread, get_logger
+from . import new_thread, get_logger, time, Lock
 
-__version__ = '0.1'
+__version__ = '0.1.1'
 __author__ = 'clem'
 __date__ = '27/05/2016'
 

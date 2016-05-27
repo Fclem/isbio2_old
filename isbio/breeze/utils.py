@@ -1,7 +1,7 @@
 from django.conf import settings
 from datetime import datetime
 from breeze.b_exceptions import * # DO NOT DELETE : used in sub-modules
-from utilities import * # import all the non Breeze / Django related utilities
+from utilities import * # import all the non Breeze / non Django related utilities
 
 # 01/04/2016 : Moved all non-Django related code to utilities package
 # THIS MODULE SHOULD ONLY BE USED FOR DJANGO / BREEZE RELATED CODE, THAT EITHER USE THE DB, OR IMPORTS
@@ -138,9 +138,3 @@ def get_r_package(name=''):
 		if cran.find() and cran.download():
 			return cran.extract_to()
 	return False
-
-
-# moved here on 19/05/2016
-def not_imp(self): # writing shortcut for abstract classes
-	raise NotImplementedError("%s was not implemented in concrete class %s." % (
-		this_function_caller_name(), self.__class__.__name__))
