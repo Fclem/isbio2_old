@@ -399,7 +399,7 @@ def build_report(report_data, request_data, report_property, sections):
 
 	# target profile :
 	target = ComputeTarget.objects.get(pk=request_data.POST.get('target'))
-	assert target.id in rt.target_id_list # TODO make a validator in the form section
+	assert target.id in rt.ready_id_list # TODO make a validator in the form section
 
 	# create initial instance so that we can use its db id
 	dbitem = Report(

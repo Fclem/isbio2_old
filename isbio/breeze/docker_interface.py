@@ -96,7 +96,7 @@ class DockerInterface(ComputeInterface):
 	# clem 11/05/2016
 	@property
 	def log(self):
-		log_obj = logging.LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
+		log_obj = LoggerAdapter(self._compute_target.runnable.log_custom(1), dict())
 		bridge = log_obj.process
 		log_obj.process = lambda msg, kwargs: bridge(self.label + ' ' + str(msg), kwargs)
 		return log_obj
@@ -173,7 +173,7 @@ class DockerInterface(ComputeInterface):
 		"""
 		lookup = ' '.join(self.__ssh_cmd_list('.*'))
 		full_string = self.SSH_LOOKUP_BASE % lookup
-		tmp = Popen(full_string, shell=True, stdout=PIPE).stdout
+		tmp = sp.Popen(full_string, shell=True, stdout=sp.PIPE).stdout
 		lines = []
 		for line in tmp.readlines():
 			try:
@@ -186,7 +186,7 @@ class DockerInterface(ComputeInterface):
 				return int(lines[0])
 			else:
 				self.log.warning('Found %s active ssh tunnels, killing them all...' % len(lines))
-				Popen(self.SSH_KILL_ALL, shell=True, stdout=PIPE)
+				sp.Popen(self.SSH_KILL_ALL, shell=True, stdout=sp.PIPE)
 		return int(get_free_port())
 
 	# clem 08/09/2016
@@ -217,7 +217,7 @@ class DockerInterface(ComputeInterface):
 	def _get_ssh(self):
 		if self.config_tunnel_host:
 			print 'Establishing ssh tunnel, running', self._ssh_cmd_list, '...',
-			self.ssh_tunnel = Popen(self._ssh_cmd_list, stdout=PIPE, stderr=PIPE, preexec_fn=os.setsid)
+			self.ssh_tunnel = sp.Popen(self._ssh_cmd_list, stdout=sp.PIPE, stderr=sp.PIPE, preexec_fn=os.setsid)
 			print 'done,',
 			stat = self.ssh_tunnel.poll()
 			while stat is None:

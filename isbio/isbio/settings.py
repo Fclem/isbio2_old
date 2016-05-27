@@ -5,7 +5,7 @@ import os
 import socket
 import time
 from datetime import datetime
-from breeze.utilities import git_get_status, git_get_branch, TermColoring, recur, recur_rec, get_key, import_env
+from breeze.utilities import git, TermColoring, recur, recur_rec, get_key, import_env
 
 ENABLE_DATADOG = True
 try:
@@ -681,9 +681,9 @@ else:
 	print 'project home : ' + DevSettings.PROJECT_PATH
 	logging.debug('project home : ' + DevSettings.PROJECT_PATH)
 	print 'Logging on %s\nSettings loaded. Running branch %s, mode %s on %s' % \
-		(TermColoring.bold(LOG_PATH), TermColoring.ok_blue(git_get_branch()), TermColoring.ok_blue(
+		(TermColoring.bold(LOG_PATH), TermColoring.ok_blue( git.get_branch()), TermColoring.ok_blue(
 			TermColoring.bold(DevSettings.RUN_MODE)), TermColoring.ok_blue(DevSettings.FULL_HOST_NAME))
-	git_stat = git_get_status()
+	git_stat = git.get_status()
 	print git_stat
 	if DevSettings.PHARMA_MODE:
 		print TermColoring.bold('RUNNING WITH PHARMA')
