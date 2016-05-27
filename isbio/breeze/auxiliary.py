@@ -1,24 +1,23 @@
 import breeze.models
 import re
 import copy
-import os
 import urllib
 import urllib2
 import glob
 import mimetypes
-import logging
 from django import http
 from django.template.defaultfilters import slugify
-from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
 from django.http import Http404, HttpResponse
 from django.template import loader
 from django.template.context import RequestContext
-from django.conf import settings
-from breeze.models import Report, Jobs, DataSet, RunServer
-import sys
-import utils
+from utils import *
 
+# import logging
+# import sys
+# from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
+# from breeze.models import Report, Jobs, DataSet, RunServer
 # import time
+# import os
 # from subprocess import Popen, PIPE #, call
 # from django.utils import timezone
 # from django.contrib import messages
@@ -26,15 +25,10 @@ import utils
 # from logging import Handler
 # from breeze.managers import Q
 
-logger = logging.getLogger(__name__)
+DASHED_LINE = '-' * 111
+
 
 # system integrity checks moved to system_check.py on 31/08/2015
-
-
-# FIXME : deprecated
-def restart():
-	python = sys.executable
-	os.execl(python, python, *sys.argv)
 
 
 def update_server_routine():
@@ -438,23 +432,6 @@ def u_print_sub(request, url, code=None, size=None, date_f=None):
 	return console_print_sub("\"PROX %s   %s %s\" %s %s" % (request.method, url, proto, code, size), date_f=date_f)
 
 
-# 25/06/2015 Clem
-def console_print(text, date_f=None):
-	utils.console_print(text, date_f)
-
-
-def console_print_sub(text, date_f=None):
-	return utils.console_print_sub(text, date_f)
-
-
-# 10/03/2015 Clem / ShinyProxy
-def date_t(date_f=None):
-	# if dateF is None:
-	# 	dateF = settings.USUAL_DATE_FORMAT
-	# return str(datetime.now().strftime(dateF))
-	return utils.date_t(date_f)
-
-
 # DELETED get_report_path(f_item, fname=None) 19/02/2016 moved to comp.py
 # DELETED get_report_path_test(f_item, fname=None, no_fail=False): 19/02/2016 moved to comp.py
 
@@ -487,15 +464,10 @@ def fail_with404(request, error_msg=None):
 	})))
 
 
-DASHED_LINE = \
-	'---------------------------------------------------------------------------------------------------------------'
-
-
+# FIXME old and nasty code (STILL IN USE, for Shiny and to check CAS connection)
 def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	import fileinput
 	console_date_f = settings.CONSOLE_DATE_F
-	log_obj = logger.getChild(sys._getframe().f_code.co_name)
-	assert isinstance(log_obj, logging.getLoggerClass())  # for code assistance only
 
 	qs = ''
 	url = '%s%s' % (target_url, path)
@@ -533,7 +505,7 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	rep = HttpResponse(status=200, mimetype=HttpResponse)
 	try:
 		if not silent:
-			log_obj.debug(u_print_sub(request, path + str(qs)))
+			get_logger().debug(u_print_sub(request, path + str(qs)))
 		if settings.VERBOSE:
 			u_print(request, path + str(qs), date_f=console_date_f)
 		if timeout:
@@ -584,7 +556,7 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 		logger.getChild('shiny_server').warning('%s : %s %s%s\n%s' % (e, request.method, path, str(qs), more))
 		rep = HttpResponse(content, status=code, mimetype=mime)
 	except urllib2.URLError as e:
-		log_obj.error(e)
+		get_logger().error(e)
 		pass
 	else:
 		status_code = proxied_request.code
@@ -593,7 +565,7 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 		if proxied_request.code != 200:
 			print 'PROX::', proxied_request.code
 		if not silent:
-			log_obj.debug(u_print_sub(request, path + str(qs), proxied_request.code, str(len(content))))
+			get_logger().debug(u_print_sub(request, path + str(qs), proxied_request.code, str(len(content))))
 		if settings.DEBUG and not silent:
 			u_print(request, path + str(qs), proxied_request.code, str(len(content)), date_f=console_date_f)
 		rep = HttpResponse(content, status=status_code, mimetype=mime_type)
