@@ -1,5 +1,4 @@
 from __builtin__ import property
-
 from django.template.defaultfilters import slugify
 from django.db.models.fields.related import ForeignKey
 from django.contrib.auth.models import User # as DjangoUser
@@ -9,13 +8,10 @@ from django.http import HttpRequest
 from breeze import managers, utils, system_check, comp
 from comp import Trans
 from utils import *
-from os.path import isfile # , isdir, islink, exists, getsize
-from django.conf import settings
 from django.db import models
 import importlib
-import time
 import copy
-import os
+from not_db_objects import *
 
 if settings.HOST_NAME.startswith('breeze'):
 	import drmaa
@@ -34,419 +30,7 @@ drmaa_lock = Lock()
 sge_lock = Lock()
 
 
-class JobState(drmaa.JobState):
-	SUSPENDED = 'suspended'
-	PENDING = 'pending'
-	TRANSFERRING = 'transferring'
-	ON_HOLD = 'pending'
-	ERROR_Q_WAIT = 'qw_error'
-	SCRIPT_FAILED = 's_failed'
-
-
-# 30/06/2015 & 10/07/2015
-class JobStat(object):
-	"""
-	Has all the job status logic for updates (except concerning aborting).
-	Some of the logic regarding requests, lies in WorkersManager
-	DB use 2 different fields :
-	_ status : store the sge actual status
-	_ breeze_stat : store the current state of the job to be reported
-	This is kind of messy, but work well
-	"""
-	RUN_WAIT = 'run_wait'
-	ABORT = 'abort'
-	ABORTED = 'aborted'
-	RUNNING = JobState.RUNNING
-	DONE = JobState.DONE
-	SCHEDULED = 'scheduled'
-	FAILED = JobState.FAILED
-	QUEUED_ACTIVE = JobState.QUEUED_ACTIVE
-	INIT = 'init'
-	SUCCEED = 'succeed'
-	SUBMITTED = 'submitted'
-	PREPARE_RUN = 'prep_run'
-	PREPARE_SUBMIT = 'prep_submit' # TODO
-	GETTING_RESULTS = 'get_results'
-	SCRIPT_FAILED = JobState.SCRIPT_FAILED
-	
-	__decode_status = {
-		JobState.UNDETERMINED		: 'process status cannot be determined',
-		JobState.QUEUED_ACTIVE		: 'job is queued and active',
-		JobState.SYSTEM_ON_HOLD		: 'job is queued and in system hold',
-		JobState.USER_ON_HOLD		: 'job is queued and in user hold',
-		JobState.USER_SYSTEM_ON_HOLD: 'job is queued and in user and system hold',
-		JobState.RUNNING			: 'job is running',
-		JobState.SYSTEM_SUSPENDED	: 'job is system suspended',
-		JobState.USER_SUSPENDED		: 'job is user suspended',
-		JobState.DONE				: 'job finished normally',
-		SUCCEED						: 'job finished normally',
-		JobState.FAILED				: 'job failed to start due to a system error',
-		JobState.SCRIPT_FAILED		: 'job completed but the script failed',
-		SCRIPT_FAILED				: 'job completed but the script failed',
-		ABORTED						: 'job has been aborted',
-		ABORT						: 'job is being aborted...',
-		INIT						: 'job instance is being generated...',
-		SCHEDULED					: 'job is saved for later submission',
-		PREPARE_RUN					: 'job is being prepared for submission',
-		PREPARE_SUBMIT				: 'job is being prepared for submission', # TODO finish
-		SUBMITTED					: 'job has been submitted, and should be running soon',
-		GETTING_RESULTS				: 'job has completed, getting results',
-		RUN_WAIT					: 'job is about to be submitted',
-		''							: 'unknown/other'
-	}
-	job_ps = {
-		''		: JobState.UNDETERMINED,
-		'r'		: JobState.RUNNING,
-		't'		: JobState.TRANSFERRING,
-		'p'		: JobState.PENDING,
-		'qw'	: JobState.QUEUED_ACTIVE,
-		'Eqw'	: JobState.ERROR_Q_WAIT,
-
-		'h'		: JobState.ON_HOLD,
-		'ho'	: JobState.SYSTEM_ON_HOLD,
-		'hs'	: JobState.SYSTEM_ON_HOLD,
-		'hd'	: JobState.SYSTEM_ON_HOLD,
-		'hu'	: JobState.USER_ON_HOLD,
-		'hus'	: JobState.USER_SYSTEM_ON_HOLD,
-
-		's'		: JobState.SUSPENDED,
-		'ss'	: JobState.SYSTEM_SUSPENDED,
-		'su'	: JobState.USER_SUSPENDED,
-		'us'	: JobState.USER_SUSPENDED,
-		'sus'	: JobState.USER_SYSTEM_SUSPENDED,
-	}
-
-	@classmethod
-	def _progress_level(cls, stat):
-		""" Return the progression value associated with a specific status
-
-		:param stat:
-		:type stat: str or Exception
-		:return: progress value
-		:rtype: int
-		"""
-
-		if stat is Exception:
-			return 66
-		elif stat == cls.SCHEDULED:
-			return 2
-		elif stat == cls.INIT:
-			return 4
-		elif stat == cls.RUN_WAIT:
-			return 8
-		elif stat in cls.PREPARE_RUN:
-			return 15
-		elif stat == cls.QUEUED_ACTIVE:
-			return 30
-		elif stat == cls.SUBMITTED:
-			return 20
-		elif stat == cls.RUNNING:
-			return 55
-		elif stat == cls.GETTING_RESULTS:
-			return 85
-		elif stat in (cls.FAILED, cls.SUCCEED, cls.DONE):
-			return 100
-		else:
-			return None
-
-	def status_logic(self):
-		return self.status_logic_arg(self._init_stat)
-
-	def status_logic_arg(self, status):
-		""" Return relevant the relevant status, breeze_stat, progress and text display of current status code
-
-		:param status: a JobStat constant
-		:type status: str
-		:return: status, breeze_stat, progress, textual(status)
-		:rtype: str, str, int, str
-		"""
-		progress = JobStat._progress_level(status) # progression %
-		if status == JobStat.ABORTED:
-			self.status, self.breeze_stat = JobStat.ABORTED, JobStat.DONE
-		elif status == JobStat.ABORT:
-			self.status, self.breeze_stat = JobStat.ABORTED, JobStat.ABORT
-		elif status == JobStat.PREPARE_RUN:
-			self.status, self.breeze_stat = JobStat.INIT, JobStat.PREPARE_RUN
-		elif status == JobStat.PREPARE_SUBMIT:
-			self.status, self.breeze_stat = JobStat.INIT, JobStat.PREPARE_SUBMIT
-		elif status == JobStat.QUEUED_ACTIVE:
-			self.status, self.breeze_stat = JobStat.QUEUED_ACTIVE, JobStat.RUNNING
-		elif status == JobStat.INIT:
-			self.status, self.breeze_stat = JobStat.INIT, JobStat.INIT
-		elif status == JobStat.SUBMITTED: # self.status remains unchanged
-			self.breeze_stat = JobStat.SUBMITTED
-		elif status in [JobStat.FAILED, JobStat.SCRIPT_FAILED]:
-			self.status, self.breeze_stat = JobStat.FAILED, JobStat.DONE
-		elif status == JobStat.RUN_WAIT:
-			self.status, self.breeze_stat = JobStat.INIT, JobStat.RUN_WAIT
-		elif status == JobStat.RUNNING:
-			self.status, self.breeze_stat = JobStat.RUNNING, JobStat.RUNNING
-		elif status == JobStat.DONE:
-			# self.status remains unchanged (because it could be failed, succeed or aborted)
-			self.breeze_stat = JobStat.DONE
-		elif status == JobStat.SUCCEED:
-			self.status, self.breeze_stat = JobStat.SUCCEED, JobStat.DONE
-		elif status == JobStat.SCHEDULED:
-			self.status, self.breeze_stat = JobStat.SCHEDULED, JobStat.SCHEDULED
-		elif status == JobStat.GETTING_RESULTS:
-			self.breeze_stat = JobStat.GETTING_RESULTS
-		else:
-			self.status = status
-		self.stat_text = JobStat.textual(status) # clear text status description
-
-		return self.status, self.breeze_stat, progress, self.stat_text
-
-	def __init__(self, status):
-		self._init_stat = None
-		self.status = None
-		self.breeze_stat = None
-		self.stat_text = ''
-		if status in self.__decode_status.keys():
-			self._init_stat = status
-			self.status_logic()
-		else:
-			raise InvalidArgument
-
-	@classmethod
-	def textual(cls, stat, obj=None):
-		""" Return string representation of current status
-
-		:param stat: current status
-		:type stat: str
-		:param obj: runnable
-		:type obj: Runnable
-		:return: string representation of current status
-		:rtype: str
-		"""
-		if stat == cls.FAILED:
-			if isinstance(obj, Runnable) and obj.is_r_failure:
-				stat = cls.SCRIPT_FAILED
-		if stat in cls.__decode_status:
-			return cls.__decode_status[stat]
-		else:
-			return 'unknown status %s' % stat
-
-	def __str__(self):
-		return self.stat_text
-
-
 JOB_PS = JobStat.job_ps # legacy
-
-
-class FolderObj(object):
-	BASE_FOLDER_NAME = None # To define
-	SYSTEM_FILES = [] # list of system files, that are required by the object
-	HIDDEN_FILES = [] # list of file to hide from user upon download
-	ALLOW_DOWNLOAD = False # if users can download content of object
-
-	@property # interface (To define)
-	def folder_name(self):
-		""" Should implement a property generating the name of the folder to store the instance
-
-		:return: the generated name of the folder to be used to store content of instance
-		:rtype: str
-		"""
-		raise not_imp(self)
-
-	@property
-	def home_folder_rel(self):
-		""" Returns the relative path to this object folder
-
-		:return: the relative path to this object folder
-		:rtype: str
-		"""
-		if self.BASE_FOLDER_NAME is None:
-			raise NotDefined("BASE_FOLDER_NAME was not implemented in concrete class %s." % self.__class__.__name__)
-		# if self.folder_name is None or self.folder_name == '':
-		#	raise NotDefined("folder_name is empty for %s." % self)
-		return '%s%s/' % (self.BASE_FOLDER_NAME, slugify(self.folder_name))
-
-	@property
-	def home_folder_full_path(self):
-		""" Returns the absolute path to this object folder
-
-		:return: the absolute path to this object folder
-		:rtype: str
-		"""
-		out = '%s%s' % (settings.MEDIA_ROOT, self.home_folder_rel)
-		if not isdir(out):
-			os.makedirs(out)
-		return out
-
-	@property
-	def base_folder(self):
-		return '%s%s' % (settings.MEDIA_ROOT, self.BASE_FOLDER_NAME)
-
-	def move(self, target):
-		# if os.path.is_dir(target) or os.makedirs(target):
-		try:
-			return utils.safe_copytree(self.home_folder_full_path, target)
-		except Exception:
-			return False
-
-	@staticmethod
-	def file_n_slug(file_name):
-		""" Slugify file names, saving the . if exists, and leading path
-
-		:type file_name: str
-		:rtype: str
-		"""
-		import os
-		dir_n = os.path.dirname(file_name)
-		base = os.path.basename(file_name)
-		if '.' in base:
-			base = os.path.splitext(base)
-			f_name = '%s.%s' % (slugify(base[0]), slugify(base[1]))
-		else:
-			f_name = slugify(base)
-
-		return '%s%s' % (Path(dir_n), f_name)
-
-	def file_name(self, filename):
-		""" Special property
-
-		:return: the generated name of the folder to be used to store content of instance
-		:rtype: str
-		"""
-		return self.home_folder_full_path + self.file_n_slug(filename)
-
-	def grant_write_access(self):
-		""" Make the home folder writable for group
-		"""
-		# import os
-		# import stat
-		# open home's folder for others
-		# st = os.stat(self.home_folder_full_path)
-		# os.chmod(self.home_folder_full_path, st.st_mode | stat.S_IRWXG)
-		return
-
-	def add_file(self, f):
-		""" write a file object at a specific location and return the slugified name
-
-		:type f: file
-		:rtype: str
-		"""
-		import os
-		a_dir = self.home_folder_full_path
-		if not os.path.exists(a_dir):
-			os.makedirs(a_dir)
-
-		f.name = self.file_n_slug(f.name)
-		with open(os.path.join(a_dir, f.name), 'wb+') as destination:
-			for chunk in f.chunks():
-				destination.write(chunk)
-		return f.name
-
-	@property # PSEUDO-INTERFACE
-	def system_files(self):
-		return self.SYSTEM_FILES
-
-	@property # PSEUDO-INTERFACE
-	def hidden_files(self):
-		return self.HIDDEN_FILES
-
-	# clem 02/10/2015
-	def _download_ignore(self, cat=None):
-		"""
-		Should return two list of filters, and a name related to cat :
-			_ files to include only,
-			_ files to exclude,
-			_ name to add to the downloadable zip file name
-
-		:return: exclude_list, filer_list, name
-		:rtype: (list, list, str)
-		"""
-		raise not_imp(self)
-
-	# clem 02/10/2015
-	# TODO : download with no subdirs
-	def download_zip(self, cat=None, auto_cache=True):
-		""" Compress the folder object for download
-		<i>cat</i> argument enables to implement different kind of selective downloads into <i>download_ignore(cat)</i>
-		auto_cache determine if generated zip should be saved for caching purposes
-
-		Returns
-			_ a zip file using <i>download_ignore(cat)</i> as  a filtering function, in a Django FileWrapper
-			_ the name of the generated file
-			_ the size of the generated file
-
-		Return : Tuple(wrapper, file_name, file_size)
-
-
-		:type cat : str
-		:type auto_cache : bool
-		:return: wrapper of zip object, file name, file size
-		:rtype: FileWrapper, str, int
-		"""
-		if not self.ALLOW_DOWNLOAD:
-			raise PermissionDenied
-		import tempfile
-		import zipfile
-		import os
-		from django.core.servers.basehttp import FileWrapper
-		loc = self.home_folder_full_path # writing shortcut
-		arch_name = str(self.folder_name)
-
-		ignore_list, filter_list, sup = self._download_ignore(cat)
-		arch_name += sup
-		# check if cache folder exists
-		if not os.path.isdir(os.path.join(self.base_folder, '_cache')):
-			os.mkdir(os.path.join(self.base_folder, '_cache'))
-		# full path to cached zip_file
-		cached_file_full_path = os.path.join(self.base_folder, '_cache', arch_name + '.zip')
-		# if cached zip file exists, send it instead
-		if os.path.isfile(cached_file_full_path):
-			return open(cached_file_full_path, "rb"), arch_name, os.path.getsize(cached_file_full_path)
-		# otherwise, creates a new zip
-		temp = tempfile.TemporaryFile()
-		archive = zipfile.ZipFile(temp, 'w', zipfile.ZIP_DEFLATED)
-
-		def filters(file_n, a_pattern_list):
-			return not a_pattern_list or file_inter_pattern_list(file_n, a_pattern_list)
-
-		def no_exclude(file_n, a_pattern_list):
-			return not a_pattern_list or not file_inter_pattern_list(file_n, a_pattern_list)
-
-		def file_inter_pattern_list(file_n, a_pattern_list):
-			""" Returns if <i>file_n</i> is match at least one pattern in <i>a_pattern_list</i>
-			"""
-			import fnmatch
-			for each in a_pattern_list:
-				if fnmatch.fnmatch(file_n, each):
-					return True
-			return False
-
-		# walks loc to add files and folder to archive, while allying filters and exclusions
-		try:
-			for root, dirs, files in os.walk(loc):
-				for name in files:
-					if filters(name, filter_list) and no_exclude(name, ignore_list):
-						new_p = os.path.join(root, name)
-						name = new_p.replace(loc, '')
-						archive.write(new_p, str(name))
-		except OSError as e:
-			logger.exception(e)
-			raise OSError(e)
-
-		archive.close()
-		wrapper = FileWrapper(temp)
-		size = temp.tell()
-		# save this zipfile for caching (disalbe to save space vs CPU)
-		temp.seek(0)
-		if auto_cache:
-			with open(cached_file_full_path, "wb") as f: # use `wb` mode
-				f.write(temp.read())
-			temp.seek(0)
-
-		return wrapper, arch_name, size
-
-	def delete(self, using=None):
-		safe_rm(self.home_folder_full_path)
-		super(FolderObj, self).delete(using=using)
-		return True
-
-	class Meta:
-		abstract = True
 
 
 # 04/06/2015
@@ -1107,133 +691,6 @@ class ShinyReport(models.Model):
 
 
 # clem 13/05/2016
-# META_CLASS
-class ConfigObject(FolderObj):
-	# __metaclass__ = abc.ABCMeta
-	_not = "Class %s doesn't implement %s()"
-	BASE_FOLDER_NAME = settings.CONFIG_FN
-	ALLOW_DOWNLOAD = False
-
-	def file_name(self, filename):
-		return super(ConfigObject, self).file_name(filename)
-
-	__config = None
-	use_cache = True
-	# config_file = abc.abstractproperty(None, None)
-	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
-		help_text="The config file for this exec resource")
-
-	CONFIG_GENERAL_SECTION = 'DEFAULT'
-	CONFIG_LOCAL_ENV_SECTION = 'local_env'
-	CONFIG_REMOTE_ENV_SECTION = 'remote_env'
-
-	def __unicode__(self): # Python 3: def __str__(self):
-		return '%s (%s)' % (self.label, self.name)
-
-	def __int__(self):
-		return self.id
-
-	# @abc.abstractproperty
-	def folder_name(self):
-		"""
-
-		:return: the generated name of the folder to be used to store content of instance
-		:rtype: str
-		"""
-		raise NotImplementedError(self._not % (self.__class__.__name__, this_function_name()))
-
-	# clem 17/05/2016
-	@property
-	def log(self):
-		if hasattr(self, 'runnable'):
-			return self.runnable.log
-		elif hasattr(self, '_runnable'):
-			return self._runnable.log
-		else:
-			return get_logger()
-
-	@property
-	def config(self):
-		""" The whole configuration object for this ConfigObject
-
-		:rtype: ConfigParser.SafeConfigParser
-		"""
-		if not self.__config: # instance level caching
-			import ConfigParser
-			if isfile(self.config_file.path):
-				key = 'ConfigObject:%s' % str(self)
-				# module level caching
-				if self.use_cache:
-					cached = ObjectCache.get(key)
-				if not self.use_cache or not cached:
-					# instance level caching
-					self.__config = ConfigParser.SafeConfigParser()
-					self.__config.readfp(open(self.config_file.path))
-					self.log.debug(
-						'Config : parsed %s / %s ' % (os.path.basename(self.config_file.path), self.__class__.__name__))
-					if self.use_cache:
-						# module level caching
-						ObjectCache.add(self.__config, key)
-				else:
-					self.__config = cached
-			else:
-				msg = 'Config file %s not found' % self.config_file.path
-				self.log.error(msg)
-				raise ConfigFileNotFound(msg)
-		return self.__config
-
-	def set_local_env(self, sup_items=list()):
-		""" Apply local system environement config, also replaces value in Django settings
-
-		:param sup_items: optional supplementary items (like in config.items, i.e. a section)
-		:type sup_items: list|None
-		:return: if success
-		:rtype: bool
-		"""
-		if not sup_items:
-			sup_items = list()
-		sup_items += self.local_env_config
-		for (k, v) in sup_items:
-			settings.__setattr__(k.upper(), v)
-			os.environ[k.upper()] = v
-		return True
-
-	@property
-	def local_env_config(self):
-		""" The whole local env section
-
-		:return: [(key, value), ]
-		:rtype: list[(str, str)]
-		"""
-		if self.config.has_section(self.CONFIG_LOCAL_ENV_SECTION):
-			return self.config.items(self.CONFIG_LOCAL_ENV_SECTION)
-		return list()
-
-	@property
-	def remote_env_config(self):
-		""" The whole remote env section
-
-		:return: [(key, value), ]
-		:rtype: list[(str, str)]
-		"""
-		if self.config.has_section(self.CONFIG_REMOTE_ENV_SECTION):
-			return self.config.items(self.CONFIG_REMOTE_ENV_SECTION)
-		return list()
-
-	def get(self, property_name, section=None):
-		if not section:
-			section = self.CONFIG_GENERAL_SECTION
-		return self.config.get(section, property_name)
-
-	# clem 11/05/2016
-	def _download_ignore(self, *args):
-		pass
-
-	class Meta(FolderObj.Meta):
-		abstract = True
-
-
-# clem 13/05/2016
 class ExecConfig(ConfigObject, models.Model):
 	"""
 	Defines and describes every shared attributes/methods of exec resource abstract classes.
@@ -1282,7 +739,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_SYSTEM)
+		return self.get(self.CONFIG_EXEC_SYSTEM)
 
 	@property
 	def exec_version(self):
@@ -1290,7 +747,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_VERSION)
+		return self.get(self.CONFIG_EXEC_VERSION)
 
 	@property
 	def exec_bin_path(self):
@@ -1302,7 +759,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_BIN)
+		return self.get(self.CONFIG_EXEC_BIN)
 
 	@property
 	def exec_file_in(self):
@@ -1312,7 +769,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_FILE_IN)
+		return self.get(self.CONFIG_EXEC_FILE_IN)
 
 	@property
 	def exec_file_out(self):
@@ -1322,7 +779,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_FILE_OUT)
+		return self.get(self.CONFIG_EXEC_FILE_OUT)
 
 	@property
 	def exec_args(self):
@@ -1332,7 +789,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_ARGS)
+		return self.get(self.CONFIG_EXEC_ARGS)
 
 	@property
 	def exec_run(self):
@@ -1340,7 +797,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_RUN)
+		return self.get(self.CONFIG_EXEC_RUN)
 
 	# clem 14/05/2016
 	@property
@@ -1349,7 +806,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_ARCH_CMD)
+		return self.get(self.CONFIG_EXEC_ARCH_CMD)
 
 	# clem 14/05/2016
 	@property
@@ -1358,7 +815,7 @@ class ExecConfig(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC_VERSION_CMD)
+		return self.get(self.CONFIG_EXEC_VERSION_CMD)
 
 	class Meta(ConfigObject.Meta):
 		abstract = False
@@ -1437,6 +894,26 @@ class ComputeTarget(ConfigObject, models.Model):
 		"""
 		return settings.TARGET_CONFIG_FN
 
+	# clem 26/05/2016
+	@property
+	def is_operational(self):
+		""" Is this object is ready to be used, i.e. all its dependencies are available, enabled and ready
+
+		:return: If this ComputeTarget is enabled, and all its dependencies are enabled (i.e. exec_obj and engine_obj)
+		:rtype: bool
+		"""
+		return self.enabled and self.exec_obj.enabled and self.engine_obj.enabled
+
+	# clem 26/05/2016
+	@property
+	def as_tuple(self):
+		""" The tuple object that can be used in a list to construct a Form <select> list.
+
+		:return:
+		:rtype: tuple[int, str]
+		"""
+		return tuple((self.id, self.label))
+
 	def __init__(self, *args, **kwargs):
 		super(ComputeTarget, self).__init__(*args, **kwargs)
 
@@ -1446,7 +923,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 		:rtype: list
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TYPE)
+		return self.get(self.CONFIG_TYPE)
 
 	#
 	# TUNNEL CONFIG
@@ -1459,7 +936,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_TUNNEL)
+		return self.get(self.CONFIG_TUNNEL)
 
 	@property
 	def target_use_tunnel(self):
@@ -1487,7 +964,7 @@ class ComputeTarget(ConfigObject, models.Model):
 		:rtype: str
 		"""
 		if self.target_use_tunnel:
-			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_HOST)
+			return self.get(self.CONFIG_TUNNEL_HOST, self.target_tunnel)
 		return ''
 
 	# clem 04/05/2016
@@ -1498,7 +975,7 @@ class ComputeTarget(ConfigObject, models.Model):
 		:rtype: str
 		"""
 		if self.target_use_tunnel:
-			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_USER)
+			return self.get(self.CONFIG_TUNNEL_USER, self.target_tunnel)
 		return ''
 
 	# clem 04/05/2016
@@ -1509,7 +986,7 @@ class ComputeTarget(ConfigObject, models.Model):
 		:rtype: str
 		"""
 		if self.target_use_tunnel:
-			return self.config.get(self.target_tunnel, self.CONFIG_TUNNEL_PORT)
+			return self.get(self.CONFIG_TUNNEL_PORT, self.target_tunnel)
 		return ''
 
 	#
@@ -1523,12 +1000,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		from ConfigParser import NoSectionError, NoOptionError
-		try:
-			return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_ENGINE)
-		except (NoSectionError, AttributeError, NoOptionError, Exception) as e:
-			self._runnable.log.error('%s in %s' % (str(e), self.config_file.path))
-			raise e
+		return self.get(self.CONFIG_ENGINE)
 
 	# clem 16/05/2016
 	@property
@@ -1557,7 +1029,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_EXEC)
+		return self.get(self.CONFIG_EXEC)
 
 	# clem 13/05/2016
 	@property
@@ -1585,7 +1057,7 @@ class ComputeTarget(ConfigObject, models.Model):
 
 		:rtype: str
 		"""
-		return self.config.get(self.CONFIG_GENERAL_SECTION, self.CONFIG_STORAGE)
+		return self.get(self.CONFIG_STORAGE)
 
 	# clem 04/05/2016
 	@property
@@ -1681,7 +1153,8 @@ class ReportType(FolderObj, models.Model):
 	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to",
 		default=0, blank=True, null=True)
 
-	_target_list = None # clem 19/04/2016
+	_all_target_list = None # clem 19/04/2016
+	_ready_target_list = None # clem 25/05/2016
 
 	# clem 21/12/2015
 	def __init__(self, *args, **kwargs):
@@ -1755,33 +1228,114 @@ class ReportType(FolderObj, models.Model):
 			shiny_r.regen_report()
 		return True
 
-	# clem 19/04/2016
+	# clem 26/05/2016
+	def _target_objects(cls, only_enabled=False, only_ready=False):
+		""" Get possibly available targets for this ReportType
+
+		:param only_enabled: Filter out targets that are not marked as enabled in the DB
+		:type only_enabled: bool
+		:param only_ready:
+			Filter out targets that have disabled dependencies (exec or engine) (this implies only_enabled)
+		:type only_ready: bool
+		:return:
+		:rtype: list[ComputeTarget]
+		"""
+		targets = cls.targets.filter(enabled=True) if only_enabled or only_ready else cls.targets.all()
+		tmp_list = list()
+		for each in targets:
+			if not only_ready or each.is_operational:
+				tmp_list.append(each)
+		return tmp_list
+
+	# clem 26/05/2016
 	@property
-	def target_form_list(self):
+	def enabled_only(self):
+		""" A list of enabled ComputeTarget objects that are available to use with this ReportType
+
+		:return:
+		:rtype: list[ComputeTarget]
 		"""
-		Return a list of tuple, of (enabled) compute target for this report type, that is suitable to use in a Form
-		tuple : (id, label)
-		:rtype: list
+		return self._target_objects(only_enabled=True)
+
+	# clem 26/05/2016
+	@property
+	def all(self):
+		""" A list of all ComputeTarget objects that are available to use with this ReportType
+
+		:return:
+		:rtype: list[ComputeTarget]
 		"""
-		if not self._target_list:
-			self._target_list = list()
-			targets = self.targets.filter(enabled=True)
-			if targets:
-				for each in targets:
-					self._target_list.append(tuple((each.id, each.label)))
-		return self._target_list
+		return self._target_objects()
+
+	# clem 26/05/2016
+	@property
+	def ready_only(self):
+		""" A list of ready to use ComputeTarget objects that are available to use with this ReportType
+
+		This means that they are explicitly marked as enabled in the DB,
+		And, each resources they depend on (exec and engine) are also enabled
+
+		:return:
+		:rtype: list[ComputeTarget]
+		"""
+		return self._target_objects(only_ready=True)
+
+	# clem 26/05/2016
+	def _gen_targets_form_list(cls, only_ready=False):
+		""" Generate a list of tuple from a list of ComputeTarget, This list can be used directly in <select> Form
+		obj
+
+		:param only_ready: filter-out non ready targets
+		:type only_ready: bool
+		:return: (id, label)
+		:rtype: list[tuple[int, str]]
+		"""
+		result_list = list()
+		a_list = cls.all if not only_ready else cls.ready_only
+		for each in a_list:
+			result_list.append(each.as_tuple)
+		return result_list
 
 	# clem 19/04/2016
 	@property
-	def target_id_list(self):
+	def all_as_form_list(self):
+		""" A list of tuple, of compute target for this report type, that is suitable to use in a Form
+
+		tuple : (id, label)
+
+		:rtype: list[tuple[int, str]]
 		"""
-		Return a list of (enabled) compute target ids for this report type
-		:rtype: list
+		if not self._all_target_list:
+			self._all_target_list = self._gen_targets_form_list()
+		return self._all_target_list
+
+	# clem 26/05/2016
+	@property
+	def ready_as_form_list(self):
+		""" A list of tuple, of ready only compute target for this report type, that is suitable to use in a Form
+
+		tuple : (id, label)
+
+		:rtype: list[tuple[int, str]]
+		"""
+		if not self._ready_target_list:
+			self._ready_target_list = self._gen_targets_form_list(only_ready=True)
+		return self._ready_target_list
+
+	# clem 19/04/2016
+	@property
+	def ready_id_list(self):
+		""" A list of (enabled & ready) compute target ids for this report type
+
+		:rtype: list[int]
 		"""
 		result = list()
-		for each in self.target_form_list:
-			result.append(each[0])
+		for each in self.ready_only:
+			result.append(each.id)
 		return result
+
+	# TargetManager.targets = targets
+	# ez_targets = TargetManager
 
 	class Meta:
 		ordering = ('type',)
@@ -2000,456 +1554,6 @@ class UserProfile(models.Model):
 		return self.user.get_full_name()  # return self.user.username
 
 
-#
-# NEW distributed POC
-#
-
-# clem 23/05/2016
-class SwapObject(FolderObj):
-	_not = "Class %s doesn't implement %s()"
-	BASE_FOLDER_NAME = settings.SWAP_FN
-	ALLOW_DOWNLOAD = False
-
-	runnable = None
-
-	def __init__(self, runnable):
-		assert isinstance(runnable, Runnable)
-		self.runnable = runnable
-
-	def file_name(self, filename):
-		return super(SwapObject, self).file_name(filename)
-
-	@property
-	def folder_name(self):
-		return self.runnable.short_id
-
-	def _download_ignore(self, _=None):
-		return list(), list(), str()
-
-	class Meta(FolderObj.Meta):
-		abstract = False
-
-
-class SrcObj:
-	def __init__(self, base_string):
-		self.str = base_string
-
-	@property
-	def path(self):
-		return self.str.replace('"', '').replace("'", "")
-
-	@property
-	def new(self): # TODO fix
-		proj = settings.PROJECT_FOLDER.replace('/fs', '')
-		proj_bis = settings.PROJECT_FOLDER
-		return SrcObj(self.str.replace('"%s' % proj, '"~%s' % proj).replace("'%s" % proj, "'~%s" % proj).replace(
-			'"%s' % proj_bis, '"~%s' % proj).replace("'%s" % proj_bis, "'~%s" % proj))
-
-	# clem 21/10/15
-	@property
-	def base_name(self):
-		import os
-		return os.path.basename(self.path)
-
-	# clem 21/10/15
-	@staticmethod
-	def _dir_name(path):
-		import os
-		return os.path.dirname(path)
-
-	# clem 21/10/15
-	@property
-	def dir_name(self):
-		return self._dir_name(self.path)
-
-	def __repr__(self):
-		return self.str
-
-	def __str__(self):
-		return self.str
-
-
-# clem 20/10/2015 distributed POC +01/02/2016 # FIXME (unicode)
-class FileParser(SrcObj):
-	# _verbose = True
-
-	def __init__(self, file_n, dest, verbose=False):
-		self.file_n = file_n
-		self.__dest = ''
-		self.destination = dest
-		self.content = None
-		self._new_content = None
-		self.str = file_n
-		self.parsed = list()
-		self._verbose = verbose
-
-	# super(self.__class__, self).__init__(self.file_n)
-	# super(FileParser, self).__init__()
-
-	def load(self):
-		if not self._new_content and isfile(self.path):
-			with open(self.path) as script:
-				self.content = script.read()
-				self._new_content = self.content
-			return True
-		return False
-
-	# clem 02/02/2016
-	def _write(self, a, b):
-		try:
-			self.new_content = u'%s\n%s' % (a, b)
-		except UnicodeDecodeError: # FIXME
-			if type(a) != unicode:
-				a = a.decode('utf-8')
-			if type(b) != unicode:
-				b = b.decode('utf-8')
-			self._write(a, b)
-			# self.new_content = u'%s\n%s' % (a, b)
-			# get_logger().exception('while parsing %s : %s' % (self.file_n, str(e)))
-
-	def add_on_top(self, content):
-		self._write(content, self.new_content)
-
-	def append(self, content):
-		self._write(self.new_content, content)
-
-	def replace(self, old, new):
-		self.new_content = self.new_content.replace(str(old), str(new))
-
-	def parse_and_save(self, pattern, callback):
-		if self.parse(pattern, callback):
-			return self.save_file()
-		return False
-
-	def parse(self, pattern, callback):
-		# callback not a function or file content is empty (i.e. no file loadable) or already parsed with this pattern
-		if not callable(callback) or not self.new_content or pattern in self.parsed:
-			return False
-
-		import re
-		if self._verbose:
-			print "parsing", self.base_name, 'with', pattern.name.upper(), '...'
-		match = re.findall(str(pattern), self.new_content, re.DOTALL)
-		if self._verbose:
-			for each in match:
-				print 'M', each
-		# save this pattern in a list, so we don't parse this file with the same pattern again
-		self.parsed.append(pattern)
-		callback(self, match, pattern)
-
-		return True
-
-	# clem 25/05/2016
-	@property
-	def file_object(self):
-		""" Open the destination file for writing operation, either as ascii or utf8
-
-		:return: the file object
-		:rtype: file
-		"""
-		if type(self.new_content) == unicode:
-			import codecs
-			return codecs.open(self.destination, 'w', 'utf8')
-		else:
-			return open(self.destination, 'w')
-
-	def save_file(self):
-		if not self.new_content:
-			return False
-		import os
-		dest = os.path.dirname(self.destination)
-		try:
-			os.makedirs(dest, 0o0770)
-		except OSError as e:
-			pass
-
-		with self.file_object as new_script:
-			while new_script.write(self.new_content):
-				pass
-		if self._verbose:
-			print 'saved!'
-		return True
-
-	@property # TODO code dt mod
-	def mod_dt(self):
-		return utils.date_t(time_stamp=utils.file_mod_time(self.path))
-
-	# clem 02/02/2016
-	@property
-	def ext(self):
-		"""
-		:rtype: str
-		"""
-		_, _, extension = self.base_name.rpartition('.')
-		return extension
-
-	@property
-	def new_content(self):
-		if not self._new_content:
-			if not self.load():
-				return False
-		return self._new_content
-
-	@new_content.setter
-	def new_content(self, value):
-		if self._new_content:
-			self._new_content = value
-
-	@property
-	def destination(self):
-		return self.__dest
-
-	@destination.setter
-	def destination(self, value):
-		self.__dest = value.replace('//', '/').replace('../', '').replace('..\\', '')
-
-	# clem 21/10/15
-	@property
-	def destination_dir_name(self):
-		return self._dir_name(self.destination)
-
-
-# clem 02/02/2016
-class Pattern:
-	def __init__(self, name, pattern):
-		self._pattern = pattern if type(pattern) == str else ''
-		self._name = name if type(name) == str else ''
-
-	@property
-	def name(self):
-		return self._name
-
-	def __repr__(self):
-		return self._pattern
-
-	def __str__(self):
-		return self._pattern
-
-
-# clem 20/10/2015 distributed POC +01/02/2016
-class RunServer:
-	storage_path = str()
-	_reports_path = str()
-	_swap_object = None
-
-	project_prefix = settings.PROJECT_FOLDER_PREFIX
-	# lookup only sourced files inside PROJECT_FOLDER
-	project_fold_name = settings.PROJECT_FOLDER_NAME
-	project_fold = utils.norm_proj_p(settings.PROJECT_FOLDER, '(?:%s)?' % project_prefix).replace('/',
-		'\/')  # DEPLOY specific
-	# regexp for matching. NB : MATCH GROUP 0 MUST ALWAYS BE THE FULL REPLACEMENT-TARGETED STRING
-	LOAD_PATTERN = Pattern('load ',
-		r'(?<!#)source\((?: |\t)*(("|\')(~?%s(?:(?!\2).)*)\2)(?: |\t)*\)' % project_fold) # 01/02/2016
-	LIBS_PATTERN = Pattern('libs ',
-		r'(?<!#)((?:(?:library)|(?:require))(?:\((?: |\t)*(?:("|\')?((?:\w|\.)+)\2?)(?: |\t)*\)))') # 02/02/2016
-	# ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(\/%s\/(?:(?!\2).)*)\2)' % project_fold_name) # 01/02/2016
-	# ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(?:(?!\2).*)(\/' + project_fold_name + r'\/(?:(?!\2).*))\2)') #
-	# ABS_PATH_PATTERN = Pattern('path ', r'(("|\')(?:.*(?!\2))(\/' + project_fold_name + r'\/(?:.*(?!\2)*))\2)') #
-	ABS_PATH_PATTERN = Pattern('path ', r'(("|\')[^\'"]*(\/' + project_fold_name + r'\/[^\'"]*)\2)') #
-	# 25/05/2016
-	FILE_NAME_PATTERN = Pattern('file', r'(?:<-)(?:(?: |\t)*("|\')([\w\-\. ]+)\1)') # 03/02/2016
-
-	added = [
-		('%scfiere/csc_taito_dyn_lib_load_and_install.R' % utils.norm_proj_p(settings.SPECIAL_CODE_FOLDER),
-		'dynamic library loading and installer by clem 19-20/10/2015'),
-	]
-
-	def __init__(self, run_instance):
-		assert isinstance(run_instance, Runnable)
-		self._run_inst = run_instance # instance or Runnable using this RunServer instance
-		self._swap_object = SwapObject(self._run_inst)
-		self.storage_path = self._swap_object.home_folder_full_path # local destination
-		self._local = False # local or remote server
-		self._remote_chroot = '/root/' # remote abs path of relative storage mounted in fs_path # FIXME
-		# self._reports_path = reports_path # path of report folder storage in remote relative local path
-		self._reports_path = utils.norm_proj_p(settings.MEDIA_ROOT) # path of report folder storage in remote relative
-		# local path
-		self._add_source = self.added # list of files to add as source in script.R (special environment
-		# specs, etc)
-		self.target_name = self._run_inst.target_obj.name # name of this server
-		self._user = self._run_inst.author # User object of user requesting
-		self.count = dict()
-		self.count['lib'] = 0
-		self.count['load'] = 0
-		self.count['abs'] = 0
-		self._parsed = dict()
-		self._rev = dict()
-
-	# 23/05/2016
-	def generate_source_tree(self):
-		return self._generate_source_tree(self._run_inst.source_file_path)
-
-	# DEPRECATED but useful for testing
-	def _generate_source_tree(self, file_n, pf='', verbose=False):
-		""" list the dependencies of a R file ("source()" calls)
-		returns <b>tree</b>, <b>flat</b>, _
-
-		<b>tree</b> is a dict of dict of (...)
-		while <b>result</b> is a dict of list, nesting containing dedoubled list of all required files :
-			keys being a list of all nodes in the original tree ( use result.keys() )
-			values being lists of first child in the original tree
-			this way you don't need to crawl the tree, and neither end up with doubles.
-
-		:type file_n: str
-		:type pf: str
-		:type verbose: bool
-		:rtype: dict, dict, list
-		"""
-		import re
-
-		a_source_object = SrcObj(file_n) # or self._rexec.path
-		with open(a_source_object.path) as script:
-			tree = dict()
-			flat = list()
-			result = dict()
-
-			pattern = r'source\(\s*("([^"]+)"|\'([^\']+)\')\s*\)'
-			match = re.findall(str(pattern), script.read(), re.DOTALL)
-			if verbose:
-				print pf + str(a_source_object.path), ' X ', len(match)
-			for el in match:
-				line = SrcObj(el[0])
-				sub_tree, total, sub_list = self._generate_source_tree(line.path, pf=pf + '\t', verbose=verbose)
-				tree[line.path] = sub_tree
-				flat.append(line.path)
-				if total:
-					result.update(total)
-			result[a_source_object.path] = flat
-
-		return { a_source_object.path: tree }, result, flat
-
-	# clem 01/02/2016
-	def stats(self):
-		self._run_inst.log.debug('assembling completed : lib/load/abs : %s / %s / %s' % (
-			self.count['lib'], self.count['load'], self.count['abs']))
-
-	# print "done ! lib/load/abs : ", self.count['lib'], self.count['load'], self.count['abs']
-
-	def parse_all(self):
-		import os
-		d = utils.date_t()
-		# source
-		the_path = str(self._run_inst.source_file_path)
-		# destination
-		new_path = '%s%s%s%s' % \
-				   (self.storage_path, self._reports_path, self._run_inst.home_folder_rel, os.path.basename(the_path))
-		# parser
-		the_file_p = FileParser(the_path, new_path)
-		# add some source that may help with specific env / Renv / cluster / etc
-		if type(self._add_source) is list and self._add_source != list():
-			added = ''
-			for each in self._add_source:
-				added += 'source("%s") # %s\n' % each
-			the_file_p.add_on_top('##### following sources ADDED BY BREEZE :\n%s' % added +
-								  '##### END OF BREEZE ADDITIONS ###')
-		the_file_p.add_on_top('## Transferred to %s started by BREEZE on %s' % (self.target_name, d))
-		# parse the file to change path, library loading, and link files related to source()
-		the_file_p.parse(self.LOAD_PATTERN,
-			self._parser_main_recur_call_back) # saving here is not necessary nor sufficient
-		# done
-		self.stats()
-		return True
-
-	# clem 02/02/2016
-	def already_parsed(self, file_parser_obj):
-		"""
-		Check if the file is has already been parsed.
-		This avoids sending the same file several time to the parser in case of
-			_ several reference to the same file,
-			_ sourced file referencing a previously source file
-			_ sourced loop/nesting
-
-		:type file_parser_obj: FileParser
-		:rtype: bool
-		"""
-		assert isinstance(file_parser_obj, FileParser)
-		return str(file_parser_obj) in self._parsed
-
-	def _parser_main_recur_call_back(self, file_obj, match, pattern):
-		assert isinstance(file_obj, FileParser)
-		imp_text = ''
-		# FOR every match of self.LOAD_PATTERN in file_obj
-		for el in match:
-			# deals with the found sub-file (it's a load so it should be a R file)
-			line = SrcObj(el[0])
-			new_path = '%s%s' % (self.storage_path, line.path)
-			sub_file_p = FileParser(line.path, new_path)
-
-			self.count['load'] += 1
-			# local sourcing
-			file_obj.replace(line, line.new)
-
-			# Lower level recursion (will parse this sourced file for loads, library, and paths)
-			if not self.already_parsed(sub_file_p):
-				sub_file_p.parse(pattern, self._parser_main_recur_call_back)
-
-			imp_text += '## Imported and parsed sourced file %s to %s (local path on %s) \n' % \
-						(line.base_name, line.new.dir_name, self.target_name)
-
-		# FOR every file_obj, even those with no match of self.LOAD_PATTERN
-		# DO NOT MOVE THIS SECTION in parse_all (recursive lower-lever call-backs) !
-
-		# other non-recursive parsings (library/require call and plain paths)
-		self._sub_parsers(file_obj)
-		self._parsed[str(file_obj)] = True
-
-		# file summary log
-		d = utils.date_t()
-		dep = ''
-		if len(match) > 0:
-			dep = '## %s sourced dependencies found, parsed and imported (plus %s library, %s total load) :\n%s' % \
-				  (len(match), self.count['lib'], self.count['load'], imp_text)
-		file_obj.add_on_top(
-			'##### BREEZE SUMMARY of file parsing to run on %s :\n' % self.target_name +
-			'## Parsed on %s (org. modified on %s) for %s (%s) \n' %
-			(d, file_obj.mod_dt, str(self._user.get_full_name()), self._user) + dep +
-			'##### END OF BREEZE SUMMARY #####'
-		)
-		# save !important to save here because of lower-lever call-backs
-		file_obj.save_file()
-
-	def _sub_parsers(self, file_obj):
-		assert isinstance(file_obj, FileParser)
-		if not self.already_parsed(file_obj):
-			file_obj.parse(self.LIBS_PATTERN, self._parser_libs_call_back) # library()/require()
-			file_obj.parse(self.ABS_PATH_PATTERN, self._parser_abs_call_back) # plain absolute paths
-
-	def _parser_libs_call_back(self, file_obj, match, pattern):
-		assert isinstance(file_obj, FileParser)
-		for el in match:
-			self.count['lib'] += 1
-			line = el[0]
-			lib_name = el[2]
-			replacement = "load_lib('%s') # Originally : %s" % (lib_name, line)
-			file_obj.replace(line, replacement)
-
-	def _parser_abs_call_back(self, file_obj, match, pattern):
-		assert isinstance(file_obj, FileParser)
-		for el in match:
-			self.count['abs'] += 1
-			line = SrcObj(el[0])
-			# change the path to a relative one for the target server
-			file_obj.replace(line, line.new)
-			print 'replacing #%s# with #%s#' % (line, line.new)
-			# remote location on a local mount
-			new_path = '%s%s' % (self.storage_path, line.path)
-			new_file = FileParser(line.path, new_path)
-			ext = new_file.ext.lower()
-			if new_file.load() and ext and ext != 'r': # existing file
-				new_file.save_file() # copy to remote location
-
-	def __enter__(self):
-		return self
-
-	def __exit__(self, exc_type, exc_val, exc_tb):
-		pass
-
-
-#
-# *END* NEW distributed POC
-#
-
-
 class Runnable(FolderObj, models.Model):
 	##
 	# CONSTANTS
@@ -2512,7 +1616,6 @@ class Runnable(FolderObj, models.Model):
 
 	# SPECIFICS
 	# clem 17/09/2015
-	# @staticmethod # TODO Change to @classmethod not to use class names
 	@classmethod
 	def find_sge_instance(cls, sgeid):
 		""" Return a runnable instance from an sge_id
@@ -2603,9 +1706,8 @@ class Runnable(FolderObj, models.Model):
 
 	@property
 	def failed_file_path(self):
-		"""
-		full path of the job failure verification file
-		used to store the retval value, that has timings and perf related datas
+		""" full path of the job failure verification file used to store the retval value, that has timings and perf related data
+
 		:rtype: str
 		"""
 		return '%s%s' % (self.home_folder_full_path, self.FAILED_FN)
@@ -3058,14 +2160,12 @@ class Runnable(FolderObj, models.Model):
 		:type ret_val: drmaa.JobInfo
 		:type exit_code: int
 		"""
-		log = get_logger()
-		# self.__auto_json_dump(ret_val, ## )
 		self.breeze_stat = JobStat.ABORTED
 		self.log.info('exit code %s, user aborted' % exit_code)
 		self.trigger_run_user_aborted(ret_val, exit_code)
 
 	# Clem 11/09/2015  # FIXME obsolete design
-	def manage_run_failed(self, ret_val, exit_code, drmaa_waiting=None, type=''):
+	def manage_run_failed(self, ret_val, exit_code, drmaa_waiting=None, failure_type=''):
 		""" !!! DO NOT OVERRIDE !!!
 		instead do override 'trigger_run_failed'
 		Actions on Job Failure
@@ -3073,18 +2173,17 @@ class Runnable(FolderObj, models.Model):
 		:type ret_val: int
 		:type exit_code: int | str
 		:type drmaa_waiting: bool | None
-		:type type: str
+		:type failure_type: str
 		"""
 		self.__auto_json_dump(ret_val, self.failed_file_path)
 
 		if drmaa_waiting is not None:
 			if drmaa_waiting:
-				self.log.info('Script has failed while drmaa_waiting ! (%s)' % type)
+				self.log.info('Script has failed while drmaa_waiting ! (%s)' % failure_type)
 				self.breeze_stat = JobStat.FAILED
 			else:
-				self.log.info('Script has failed ! (%s)' % type)
+				self.log.info('Script has failed ! (%s)' % failure_type)
 				self.breeze_stat = JobStat.SCRIPT_FAILED
-			# return self.manage_run_aborted(ret_val, exit_code)
 
 		self.trigger_run_failed(ret_val, exit_code)
 
@@ -3126,7 +2225,6 @@ class Runnable(FolderObj, models.Model):
 		:type status: str
 
 		"""
-		# if self._status == JobStat.SUCCEED and status != JobStat.ABORTED or status is None:
 		if self._breeze_stat == JobStat.SUCCEED or self._breeze_stat == JobStat.ABORTED or status is None:
 			return # Once the job is marked as done, its stat cannot be changed anymore
 
@@ -3155,11 +2253,10 @@ class Runnable(FolderObj, models.Model):
 
 	# FIXME obsolete
 	def get_status(self):
-		""" Textual representation of current status
-		NO refresh on _status
+		""" Textual representation of current status / NO refresh on _status
+
 		:rtype: str
 		"""
-		# return JobStat.textual(self._status, self)
 		if self.breeze_stat == JobState.SCRIPT_FAILED or (self.breeze_stat == JobState.FAILED and self.is_r_failure):
 			return JobState.SCRIPT_FAILED
 		if self.breeze_stat == JobState.DONE or self.breeze_stat == JobState.RUNNING:
@@ -3169,6 +2266,7 @@ class Runnable(FolderObj, models.Model):
 	@property  # FIXME obsolete
 	def is_sgeid_empty(self):
 		""" Tells if the job has no sgeid yet
+
 		:rtype: bool
 		"""
 		return (self.sgeid is None) or self.sgeid == ''
@@ -3335,7 +2433,7 @@ class Runnable(FolderObj, models.Model):
 
 	# clem 11/05/2016
 	def log_custom(self, level=0):
-		log_obj = logging.LoggerAdapter(get_logger(level=level + 1), dict())
+		log_obj = LoggerAdapter(get_logger(level=level + 1), dict())
 		log_obj.process = lambda msg, kwargs: ('%s : %s' % (self.short_id, msg), kwargs)
 		return log_obj
 
@@ -3799,20 +2897,6 @@ class Report(Runnable):
 	class Meta(Runnable.Meta): # TODO check if inheritance is required here
 		abstract = False
 		db_table = 'breeze_report'
-
-
-class CustomList(list):
-	def unique(self):
-		""" return the list with duplicate elements removed """
-		return CustomList(set(self))
-
-	def intersect(self, b):
-		""" return the intersection of two lists """
-		return CustomList(set(self) & set(b))
-
-	def union(self, b):
-		""" return the union of two lists """
-		return CustomList(set(self) | set(b))
 
 
 class ShinyTag(models.Model):

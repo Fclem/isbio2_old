@@ -265,7 +265,7 @@ class ReportPropsFormMixin:
 	# clem 19/04/2016
 	@property
 	def target_list(self): # code moved to ReportType.target_list
-		return breeze.models.ReportType.objects.get(type=self.request.rtype).target_form_list
+		return breeze.models.ReportType.objects.get(type=self.request.rtype).all_as_form_list
 
 	def _sup_init_(self, *_, **kwargs):
 		if not self.request and 'request' in kwargs:
