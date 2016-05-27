@@ -1,3 +1,58 @@
+"""
+This module contains a set of utilities functions related to Breeze and Django
+	and also some general utilities functions
+
+
+This modules imports :
+	from django :
+		_  settings
+
+	from python :
+		datetime.datetime
+
+		hashlib
+
+		json
+
+		logging (from): getLogger(), getLoggerClass(), LoggerAdapter
+
+		multipledispatch (from): dispatch (enables method overloading)
+
+		os
+
+		os.path (from): isfile, isdir, islink, exists, getsize, join, basename
+
+		os (from): symlink, readlink, listdir, makedirs, access, R_OK, chmod
+
+		socket
+
+		subprocess as sp
+
+		sys (from): stdout
+
+		time
+
+		time (from): time() sleep()
+
+		threading (from): Thread, Lock
+
+	as well as all Breeze specific and customs Exceptions :
+		b_exceptions.*
+
+It provides some custom objects :
+	_ ObjectCache (an object caching management class)
+
+	_ git (a module that has some git features)
+
+	_ Path (an experimental, unfinished, class to deal with file path)
+
+and also notable custom functions as :
+	_ get_logger() (a global log interface for Breeze)
+
+	_ advanced_pretty_print() (a.k.a pp() )
+
+	_ gen_file_from_template() (generates or return a content from a template file and a dict)
+"""
 from django.conf import settings
 from datetime import datetime
 from breeze.b_exceptions import * # DO NOT DELETE : used in sub-modules
