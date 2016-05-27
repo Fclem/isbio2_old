@@ -1,8 +1,8 @@
-# imports from sub-modules
+# imports from sub-modules (the order is CRITICAL)
 from system import *
 from pythonic import *
-from file_system import *
 from my_logging import *
+from file_system import *
 from networking import *
 from system import *
 import git
