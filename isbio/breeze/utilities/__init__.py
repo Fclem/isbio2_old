@@ -4,7 +4,6 @@ from pythonic import *
 from my_logging import *
 from file_system import *
 from networking import *
-from system import *
 import git
 from object_cache import ObjectCache
 import time
