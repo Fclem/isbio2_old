@@ -93,7 +93,7 @@ class HelloWorld(cmd.Cmd):
 
 
 def base():
-	global csc, azure, targets
+	global csc, azure, targets, b, r
 	from models import ComputeTarget
 	targets = ComputeTarget.objects.all()
 	azure = targets[2]
