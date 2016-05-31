@@ -11,7 +11,7 @@ from utils import *
 from django.db import models
 import importlib
 import copy
-from not_db_objects import *
+from non_db_objects import *
 
 if settings.HOST_NAME.startswith('breeze'):
 	import drmaa
