@@ -16,9 +16,10 @@ else:
 	from django_cas.views import logout as django_cas_logout
 
 	urlpatterns = patterns('',
-		url(r'^user_list$', views.user_list),
-		url(r'^test1', views.job_list),
-		url(r'^mail_list$', views.user_list_advanced),
+		url(r'^user_list/?$', views.user_list),
+		url(r'^test1/?', views.job_list),
+		url(r'^mail_list/?$', views.user_list_advanced),
+		url(r'^custom_list/?$', views.custom_list),
 		url(r'^$', django_cas_login),  # views.breeze),
 		url(r'^breeze/?$', views.breeze),
 		url(r'^logout/?$', django_cas_logout),  # views.logout),

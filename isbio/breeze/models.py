@@ -1196,6 +1196,19 @@ class ReportType(FolderObj, models.Model):
 			shiny_r.regen_report()
 		return True
 
+	# clem 01/06/2016
+	def get_all_users_ever(self):
+		report_list = Report.objects.filter(_type=self.id).values_list('_author', flat=True).distinct()
+		return User.objects.filter(pk__in=report_list)
+
+	# clem 01/06/2016
+	def get_all_users_ever_with_count(self):
+		report_list = Report.objects.filter(_type=self.id)
+		a_dict = dict()
+		for each in report_list:
+			a_dict[each._author] = 1 + a_dict.get(each._author, 0)
+		return a_dict
+
 	class Meta:
 		ordering = ('type',)
 		abstract = False
