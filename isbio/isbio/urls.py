@@ -88,7 +88,7 @@ else:
 		# url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
 		# url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-		url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
+		url(r'^shiny/apps/((?P<path>[^/]+)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
 		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
 		url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		url(r'^runnable/delete/?', views.runnable_del),
