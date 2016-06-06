@@ -1497,6 +1497,19 @@ class Runnable(FolderObj, models.Model):
 
 		super(Runnable, self).__setattr__(attr_name, value)
 
+	# clem 06/05/2016
+	@property
+	def poke_url(self):
+		""" Return the url to poke Breeze about this report
+
+		:return: the full url to Breeze
+		:rtype: str
+		"""
+		from django.core.urlresolvers import reverse
+		from breeze.views import job_url_hook
+		md5 = get_file_md5(self._rexec.path)
+		return 'http://%s%s' % (settings.FULL_HOST_NAME, reverse(job_url_hook, args=(self.id, md5)))
+
 	# SPECIFICS
 	# clem 17/09/2015
 	def find_sge_instance(self, sgeid):
@@ -2536,18 +2549,7 @@ class Report(Runnable):
 
 		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
 
-	# clem 06/05/2016
-	@property
-	def poke_url(self):
-		""" Return the url to poke Breeze about this report
 
-		:return: the full url to Breeze
-		:rtype: str
-		"""
-		from django.core.urlresolvers import reverse
-		from breeze.views import job_url_hook
-		md5 = get_file_md5(self._rexec.path)
-		return 'http://%s%s' % (settings.FULL_HOST_NAME, reverse(job_url_hook, args=(self.id, md5)))
 
 	# 04/06/2015
 	@property # TODO check
