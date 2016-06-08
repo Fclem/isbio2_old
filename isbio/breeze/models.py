@@ -1587,6 +1587,7 @@ class Runnable(FolderObj, models.Model):
 
 	HIDDEN_FILES = [SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
+	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID)
 
 	objects = managers.WorkersManager() # Custom manage
 
@@ -1594,6 +1595,7 @@ class Runnable(FolderObj, models.Model):
 		super(Runnable, self).__init__(*args, **kwargs)
 		self.__can_save = False
 		self._run_server = None
+		self.R_FILE_NAME = self.r_file_name # backward compatibility only
 
 	##
 	# DB FIELDS
@@ -1602,6 +1604,7 @@ class Runnable(FolderObj, models.Model):
 	_status = models.CharField(max_length=15, blank=True, default=JobStat.INIT, db_column='status')
 	progress = models.PositiveSmallIntegerField(default=0)
 	sgeid = models.CharField(max_length=15, help_text="job id, as returned by SGE", blank=True)
+	# target = ComputeTarget.objects.get(pk=DEFAULT_TARGET.id)
 
 	##
 	# WRAPPERS
@@ -1641,6 +1644,12 @@ class Runnable(FolderObj, models.Model):
 		return 'http://%s%s' % (settings.FULL_HOST_NAME, reverse(job_url_hook, args=(self.id, md5)))
 
 	# SPECIFICS
+
+	# clem 08/06/2016
+	@property
+	def r_file_name(self):
+		return self.target_obj.exec_obj.exec_file_in
+
 	# clem 17/09/2015
 	@classmethod
 	def find_sge_instance(cls, sgeid):
@@ -2332,7 +2341,7 @@ class Runnable(FolderObj, models.Model):
 			content = "setwd('%s')\n" % self.home_folder_full_path[:-1] + ''.join(r_code[1:])
 			os.rename(old_path, self.home_folder_full_path)
 			self.log.debug('renamed to %s' % self.home_folder_full_path)
-			self._rexec.save(self.file_name(self.R_FILE_NAME), base.ContentFile(content))
+			self._rexec.save(self.file_name(self.r_file_name), base.ContentFile(content))
 			self._doc_ml.name = self.home_folder_full_path + os.path.basename(str(self._doc_ml.name))
 
 			utils.remove_file_safe(self._test_file)
@@ -2385,7 +2394,7 @@ class Runnable(FolderObj, models.Model):
 					assert isinstance(self.target, ComputeTarget)
 					self.__target = self.target
 				else:
-					self.__target = ComputeTarget.objects.get(pk=2)
+					self.__target = self.DEFAULT_TARGET
 				# module level caching
 				ObjectCache.add(self.__target, key)
 			else:
@@ -2493,7 +2502,7 @@ class Jobs(Runnable):
 	_author = ForeignKey(User, db_column='juser_id')
 	_type = ForeignKey(Rscripts, db_column='script_id')
 	_created = models.DateTimeField(auto_now_add=True, db_column='staged')
-	target = ComputeTarget.objects.get(pk=2)
+	target = None # ComputeTarget.objects.get(pk=2)
 
 	def _institute(self):
 		return self.institute
@@ -2551,7 +2560,7 @@ class Jobs(Runnable):
 		code += 'system("touch %s")' % self.SUB_DONE_FN
 
 		# save r-file
-		self._rexec.save(self.R_FILE_NAME, base.ContentFile(code))
+		self._rexec.save(self.r_file_name, base.ContentFile(code))
 
 	# def gen_params_string_job_temp(tree, data, runnable_inst, files, custom_form):
 	# TODO merge with the report
@@ -2659,7 +2668,7 @@ class Report(Runnable):
 	conf_params = models.TextField(null=True, editable=False)
 	conf_files = models.TextField(null=True, editable=False)
 	fm_flag = models.BooleanField(default=False)
-	target = models.ForeignKey(ComputeTarget, default=2)
+	target = models.ForeignKey(ComputeTarget, default=Runnable.DEFAULT_TARGET.id)
 	# Shiny specific
 	shiny_key = models.CharField(max_length=64, null=True, editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
