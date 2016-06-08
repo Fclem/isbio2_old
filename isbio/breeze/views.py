@@ -3095,7 +3095,7 @@ def job_list(request):
 
 
 # clem 06/05/2016
-def job_url_hook(request, rid, md5, status='', code=0):
+def job_url_hook(request, i_type, rid, md5, status='', code=0):
 	""" Endpoint of job feedback url.
 	Instead of polling local jobs for completion, they will reach out to this url, upon termination
 
@@ -3112,10 +3112,11 @@ def job_url_hook(request, rid, md5, status='', code=0):
 	:rtype: HttpResponse
 	"""
 	try:
-		a_report = Report.objects.f.get(pk=rid)
-		if get_file_md5(a_report.rexec.path) == md5:
+		obj = Report if i_type == 'r' else Jobs
+		a_runnable = obj.objects.f.get(pk=rid)
+		if get_file_md5(a_runnable.rexec.path) == md5:
 			# print 'OKAY GOOD' # TODO do stuff
-			a_report.log.info('hook : %s (%s)' % (status, code))
+			a_runnable.log.info('hook : %s (%s)' % (status, code))
 	except ObjectDoesNotExist:
 		pass
 	return HttpResponse('ok', mimetype='text/plain')

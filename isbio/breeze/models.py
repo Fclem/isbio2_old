@@ -1595,7 +1595,7 @@ class Runnable(FolderObj, models.Model):
 		super(Runnable, self).__init__(*args, **kwargs)
 		self.__can_save = False
 		self._run_server = None
-		self.R_FILE_NAME = self.r_file_name # backward compatibility only
+		# self.R_FILE_NAME = self.r_file_name # backward compatibility only
 
 	##
 	# DB FIELDS
@@ -1641,14 +1641,16 @@ class Runnable(FolderObj, models.Model):
 		from django.core.urlresolvers import reverse
 		from breeze.views import job_url_hook
 		md5 = get_file_md5(self._rexec.path)
-		return 'http://%s%s' % (settings.FULL_HOST_NAME, reverse(job_url_hook, args=(self.id, md5)))
+		return 'http://%s%s' % (settings.FULL_HOST_NAME, reverse(job_url_hook, args=(self.instance_type[0], self.id, md5)))
 
 	# SPECIFICS
 
 	# clem 08/06/2016
 	@property
 	def r_file_name(self):
-		return self.target_obj.exec_obj.exec_file_in
+		if self.is_concrete_class: # Only for subclasses :
+			return self.target_obj.exec_obj.exec_file_in
+		return ''
 
 	# clem 17/09/2015
 	@classmethod
@@ -2384,7 +2386,8 @@ class Runnable(FolderObj, models.Model):
 		:return:
 		:rtype: ComputeTarget
 		"""
-		if not self.__target: # instance level caching
+		if not self.__target and self.is_concrete_class: # only concrete classes
+			# instance level caching
 			key = '%s:%s' % (self.instance_type, self.short_id)
 			# module level caching
 			cached = ObjectCache.get(key)
@@ -2419,6 +2422,17 @@ class Runnable(FolderObj, models.Model):
 	@property
 	def is_job(self):
 		return isinstance(self, Jobs)
+
+	# clem 08/06/2016
+	@property
+	def is_concrete_class(self):
+		""" Tells if this instance is an implementation of Runnable or not (i.e. a subclass)
+
+		:rtype: bool
+		"""
+		# While Runnable is not a subclass of its subclasses, it's a subclass of itself,
+		# thus the negation over the inverted order
+		return not issubclass(Runnable, self.__class__)
 
 	@property
 	def instance_type(self):
@@ -2480,6 +2494,8 @@ class Runnable(FolderObj, models.Model):
 
 
 class Jobs(Runnable):
+	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.BREEZE_TARGET_ID)
+
 	def __init__(self, *args, **kwargs):
 
 		super(Jobs, self).__init__(*args, **kwargs)
