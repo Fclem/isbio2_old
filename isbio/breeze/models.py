@@ -2394,7 +2394,8 @@ class Jobs(Runnable):
 
 		# params = rshell.gen_params_string_job_temp(sections, request_data.POST, self, request_data.FILES) # TODO funct
 		params = self.gen_params_string_job_temp(*args, **kwargs)
-		code = "setwd('%s')\n%s" % (self.home_folder_full_path[:-1], self._type.get_R_code(params))
+		code = "setwd('%s')\n%s\n" % (self.home_folder_full_path[:-1], self._type.get_R_code(params))
+		code += 'system("touch %s")' % self.SUB_DONE_FN
 
 		# save r-file
 		self._rexec.save(self.R_FILE_NAME, base.ContentFile(code))
