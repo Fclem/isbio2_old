@@ -21,9 +21,10 @@ else:
 		r'\n-]|\w+)\.)+\w{2,63}\b'
 
 	urlpatterns = patterns('',
-		url(r'^user_list$', views.user_list),
-		url(r'^test1', views.job_list),
-		url(r'^mail_list$', views.user_list_advanced),
+		url(r'^user_list/?$', views.user_list),
+		url(r'^test1/?', views.job_list),
+		url(r'^mail_list/?$', views.user_list_advanced),
+		url(r'^custom_list/?$', views.custom_list),
 		url(r'^$', django_cas_login),  # views.breeze),
 		url(r'^breeze/?$', views.breeze),
 		url(r'^logout/?$', django_cas_logout),  # views.logout),
@@ -186,6 +187,12 @@ else:
 			url(r'^closed$', 'serve', { 'document_root': settings.DJANGO_ROOT + '/index.html', }),
 			url(r'^static/(?P<path>.*)$', 'serve'),
 			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to, {'target_url': 'http://127.0.0.1:3838/sample-apps/', }) # testing
+		)
+		urlpatterns += patterns(
+			url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
+			url(r'^shiny/apps/((?P<path>[^/]+)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
+			url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
+			url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		)
 
 	urlpatterns += staticfiles_urlpatterns()

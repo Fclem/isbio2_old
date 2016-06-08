@@ -1337,6 +1337,19 @@ class ReportType(FolderObj, models.Model):
 	# TargetManager.targets = targets
 	# ez_targets = TargetManager
 
+	# clem 01/06/2016
+	def get_all_users_ever(self):
+		report_list = Report.objects.filter(_type=self.id).values_list('_author', flat=True).distinct()
+		return User.objects.filter(pk__in=report_list)
+
+	# clem 01/06/2016
+	def get_all_users_ever_with_count(self):
+		report_list = Report.objects.filter(_type=self.id)
+		a_dict = dict()
+		for each in report_list:
+			a_dict[each._author] = 1 + a_dict.get(each._author, 0)
+		return a_dict
+
 	class Meta:
 		ordering = ('type',)
 		abstract = False
@@ -1613,6 +1626,19 @@ class Runnable(FolderObj, models.Model):
 			attr_name = Trans.swap(attr_name) # backward compatibility
 
 		super(Runnable, self).__setattr__(attr_name, value)
+
+	# clem 06/05/2016
+	@property
+	def poke_url(self):
+		""" Return the url to poke Breeze about this report
+
+		:return: the full url to Breeze
+		:rtype: str
+		"""
+		from django.core.urlresolvers import reverse
+		from breeze.views import job_url_hook
+		md5 = get_file_md5(self._rexec.path)
+		return 'http://%s%s' % (settings.FULL_HOST_NAME, reverse(job_url_hook, args=(self.id, md5)))
 
 	# SPECIFICS
 	# clem 17/09/2015
@@ -2521,7 +2547,8 @@ class Jobs(Runnable):
 
 		# params = rshell.gen_params_string_job_temp(sections, request_data.POST, self, request_data.FILES) # TODO funct
 		params = self.gen_params_string_job_temp(*args, **kwargs)
-		code = "setwd('%s')\n%s" % (self.home_folder_full_path[:-1], self._type.get_R_code(params))
+		code = "setwd('%s')\n%s\n" % (self.home_folder_full_path[:-1], self._type.get_R_code(params))
+		code += 'system("touch %s")' % self.SUB_DONE_FN
 
 		# save r-file
 		self._rexec.save(self.R_FILE_NAME, base.ContentFile(code))
@@ -2678,18 +2705,7 @@ class Report(Runnable):
 
 		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
 
-	# clem 06/05/2016
-	@property
-	def poke_url(self):
-		""" Return the url to poke Breeze about this report
 
-		:return: the full url to Breeze
-		:rtype: str
-		"""
-		from django.core.urlresolvers import reverse
-		from breeze.views import job_url_hook
-		md5 = get_file_md5(self._rexec.path)
-		return 'http://%s%s' % (settings.FULL_HOST_NAME, reverse(job_url_hook, args=(self.id, md5)))
 
 	# 04/06/2015
 	@property # TODO check

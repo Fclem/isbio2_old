@@ -244,6 +244,8 @@
 									<li class="{{ statistics_tab }}"><a href="#statistics_tab"
 									                                    data-toggle="tab">Breeze stats</a></li>
 									<li class="{{ user_stat_tab }}"><a href="#user_stat_tab" data-toggle="tab">User Statistics</a></li>
+									<li class="{{ user_stat_tab }}"><a href="#rtype_stat_tab" data-toggle="tab">User
+										analysis statistics</a></li>
 
 								</ul>
 								<!-- Tabs' Content -->
@@ -327,6 +329,17 @@
 											</div>
 										</div>
 									</div>
+
+									<!-- users analysis statistics -->
+									<div id="rtype_stat_tab" class="tab-pane {{ rtype_stat_tab }}">
+										<div class="row-fluid">
+											<div class="span12">
+												<!-- user statistics data -->
+												{% include "user-analitics-stats-paginator.html" %}
+											</div>
+										</div>
+									</div>
+
 									<!-- END of Tabs' Content -->
 								</div>
 							</div>

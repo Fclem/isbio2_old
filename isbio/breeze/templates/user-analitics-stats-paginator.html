@@ -1,0 +1,29 @@
+{% for each_rtype in r_type_stats %}
+	Usage of Pipeline <strong>{{ each_rtype.name }}</strong> :<br />
+
+		<table class="table table-striped table-hover" id="main_table">
+			<thead>
+			<tr>
+				<th>User</th>
+				<th>Email</th>
+				<th>Count</th>
+			</tr>
+			</thead>
+			<tbody id="padination-projects">
+			{% for each_user in each_rtype.user_lst %}
+				<tr>
+					<td>{{ each_user.name }}</td>
+					<td>{{ each_user.email }}</td>
+					<td>{{ each_user.count }}</td>
+				</tr>
+			{% empty %}
+				<tr>
+					<td colspan="3">No usage for pipeline {{ each_rtype.name }} so far...</td>
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+
+{% empty %}
+	No usage statistics yet...
+{% endfor %}

@@ -161,3 +161,36 @@ def get_key(path=''):
 	except Exception:
 		pass
 	return None
+
+
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.exceptions import PermissionDenied
+
+
+# clem 01/06/2016 # FIXME not working
+@login_required(login_url='/')
+def admin_only(function):
+	""" Wrapper to check that user has admin rights
+
+	:type function:
+	:rtype:
+	"""
+
+	actual_decorator = user_passes_test(
+		lambda u: u.is_superuser or u.is_staff,
+		login_url='/'
+	)
+	return actual_decorator if not function else actual_decorator(function)
+
+
+# clem 01/06/2016
+def is_admin(request):
+	""" check that user has admin rights
+
+	:type request:
+	:rtype:
+	"""
+
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
+	return True

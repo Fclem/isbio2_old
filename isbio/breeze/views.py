@@ -187,8 +187,10 @@ def home(request, state="feed"):
 
 	contacts = OffsiteUser.objects.filter(belongs_to=request.user).order_by('-created')
 
-	stats = list()
+	analitics_stats = list()
+
 	for each in Rscripts.objects.all().order_by('name'): # .order_by('author', 'name'):
+		# REports stats
 		assert isinstance(each, Rscripts)
 		# script author istag times
 		if each.istag:
@@ -197,7 +199,18 @@ def home(request, state="feed"):
 				count += Report.objects.filter(type=element).count()
 		else:
 			count = Jobs.objects.filter(script=each).count()
-		stats.append({'script': each, 'author': each.author, 'istag': each.istag, 'times': count})
+		analitics_stats.append({'script': each, 'author': each.author, 'istag': each.istag, 'times': count})
+
+	r_type_stats = list()
+	for each in ReportType.objects.all():
+		# Users stats
+		a_user_list = each.get_all_users_ever_with_count()
+		tmp_lst = list()
+		for each_user, count in a_user_list.iteritems():
+			tmp_lst.append({ 'name': each_user.get_full_name() or each_user.username , 'email': each_user.email or
+																								'N/A',
+				'count': count })
+		r_type_stats.append({ 'name': each.type, 'user_lst': tmp_lst})
 
 	# Get Screens
 	screens = dict()  # rora.get_screens_info()
@@ -240,7 +253,8 @@ def home(request, state="feed"):
 		'posts': posts,
 		'screens': screens,
 		'patients': patients,
-		'stats': stats,
+		'stats': analitics_stats,
+		'r_type_stats': r_type_stats,
 		'user_info': user_info_complete,
 		'server_info': server_info,
 		'server_status': server,
@@ -2974,7 +2988,8 @@ def view_log(request, show_all=False, num=0):
 		out = out[0:num]
 		showing = 'last <strong>%s</strong> log entries' % num
 	return render_to_response('log.html', RequestContext(request, {
-		'log': out,
+		'resources_status': 'active',
+		'log': out
 		'showing': showing
 	}))
 
@@ -3045,6 +3060,8 @@ def user_list_advanced(request):
 
 @login_required(login_url='/')
 def job_list(request):
+	if not (request.user.is_superuser or request.user.is_staff):
+		raise PermissionDenied
 	all_rt = ReportType.objects.all()
 	resources = dict()
 	for rt in all_rt:
@@ -3111,3 +3128,31 @@ def invalidate_cache(request):
 		raise PermissionDenied
 	ObjectCache.clear()
 	return HttpResponse('ok', mimetype='text/plain')
+
+
+@login_required(login_url='/')
+def custom_list(request):
+	assert is_admin(request)
+	out = ''
+	r_types = ReportType.objects.all() # all the types of reports
+
+	for r_type in r_types:
+		out += '\n\nAll users whom run at least one %s :\n' % r_type.type
+		# users = r_type.get_all_users_ever()
+		users = r_type.get_all_users_ever_with_count()
+		# for user in users:
+
+		names = list()
+		emails = list()
+		counts = list()
+
+		for user, count in users.iteritems():
+			counts.append('%s: %s' % (user.username, count))
+			names.append(user.username)
+			emails.append(user.email if user.email else 'N/A for %s' % user.username)
+
+		out += 'Usernames : %s\n' % ', '.join(names)
+		out += 'Emails : %s\n' % ', '.join(emails)
+		out += 'Count : %s\n' % ', '.join(counts)
+
+	return HttpResponse(out, mimetype='text/plain')
