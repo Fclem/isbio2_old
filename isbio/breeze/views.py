@@ -2989,7 +2989,7 @@ def view_log(request, show_all=False, num=0):
 		showing = 'last <strong>%s</strong> log entries' % num
 	return render_to_response('log.html', RequestContext(request, {
 		'resources_status': 'active',
-		'log': out
+		'log': out,
 		'showing': showing
 	}))
 

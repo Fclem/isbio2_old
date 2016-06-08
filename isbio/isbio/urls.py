@@ -94,11 +94,6 @@ else:
 		# url(r'^shiny/apps/((?P<path>[^/]+)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
 		# url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
 		# url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
-		url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-		url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
-		url(r'^shiny/pubs?/?$', views.standalone_pub_shiny_fw),
-		url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
-		url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		url(r'^runnable/delete/?', views.runnable_del),
 		url(r'^jobs/(?P<page>\d+)?(/)?(?P<state>[a-z]+)?(/)?$', views.jobs),
 		url(r'^jobs/delete/(?P<jid>\d+)(?P<state>[a-z]+)?$', views.delete_job), # FIXME DEPRECATED
@@ -190,7 +185,8 @@ else:
 		)
 		urlpatterns += patterns(
 			url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-			url(r'^shiny/apps/((?P<path>[^/]+)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
+			url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
+			url(r'^shiny/pubs?/?$', views.standalone_pub_shiny_fw),
 			url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
 			url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		)
