@@ -479,22 +479,16 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 		url += qs
 	opener = urllib2.build_opener()
 	data = u""
-	# FIXME : encoding issue with file uploads
 	if request.method == 'POST':
-		my_post = dict()
-		for k, v in request.POST.iteritems():
-			if type(v) is unicode: # TODO debug
-				# print 'v is unicode'
-				v = v.encode('utf-8')
-			if type(k) is unicode: # TODO debug
-				# print 'k is unicode'
-				k = k.encode('utf-8')
-			# data = data + k + u"=" + urllib.quote_plus(v) + u"&"
-			my_post[k] = v
+		from urllib import quote_plus
 
-		# 	data = data + each + "=" + urllib.quote_plus(request.POST[each]) + "&"
-		# data = data[:-1]
-		data = urllib.urlencode(my_post)
+		def urlencode_utf8(params):
+			if hasattr(params, 'items'):
+				params = params.items()
+			return '&'.join(
+				(quote_plus(k.encode('utf8'), safe='/') + '=' + quote_plus(v.encode('utf8'), safe='/')
+					for k, v in params))
+		data = urlencode_utf8(dict(request.POST.iteritems())) # data should be bytes
 
 	log = '/var/log/shiny-server.log'
 	log_size = os.stat(log).st_size
@@ -502,7 +496,7 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	msg = ''
 	reason = ''
 	more = ''
-	rep = HttpResponse(status=500, mimetype=HttpResponse)
+	rep = HttpResponse(status=599, mimetype=HttpResponse)
 	try:
 		if not silent:
 			get_logger().debug(u_print_sub(request, path + str(qs)))
