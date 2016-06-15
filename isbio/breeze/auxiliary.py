@@ -502,7 +502,7 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	msg = ''
 	reason = ''
 	more = ''
-	rep = HttpResponse(status=200, mimetype=HttpResponse)
+	rep = HttpResponse(status=500, mimetype=HttpResponse)
 	try:
 		if not silent:
 			get_logger().debug(u_print_sub(request, path + str(qs)))
