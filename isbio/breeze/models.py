@@ -33,26 +33,56 @@ sge_lock = Lock()
 JOB_PS = JobStat.job_ps # legacy
 
 
-# 04/06/2015
-class OrderedUser(User):
+# clem 20/06/2016
+class CustomModelAbstract(models.Model):
+	""" Provides and enforce read-only property ( read_only ). This property is set by the CustomManager """
+
+	__prop_read_only = False
+
+	@property
+	def read_only(self):
+		""" Tells if the object read only (in a DataBase sense).
+
+		If RO, any changes can be made to the object (except changing the RO property),
+		but keep in mind that there will be no effect on the DataBse.
+
+		:return: if model object is read-only or not
+		:rtype: bool
+		"""
+		return self.__prop_read_only
+
+	@read_only.setter
+	def read_only(self, val):
+		""" Switch the object to read-only mode (in a DataBase sense).
+
+		Once set to True, this cannot be changed back, and any change to the object WONT be saved to DB.
+
+		:param val: only accepts True
+		:type val: bool
+		:raise:  ReadOnlyAttribute
+		"""
+		if not self.__prop_read_only and val:
+			self.__prop_read_only = True
+		else:
+			raise ReadOnlyAttribute
+
+	def save(self, force_insert=False, force_update=False, using=None):
+		if not self.read_only:
+			return super(CustomModelAbstract, self).save(force_insert, force_update, using)
+		return False
+
+	def delete(self, using=None):
+		if not self.read_only:
+			return super(CustomModelAbstract, self).delete(using)
+		return False
+
 	class Meta:
-		ordering = ["username"]
-		proxy = True
+		abstract = True
 
 
-class Post(models.Model):
-	author = ForeignKey(User)
-	title = models.CharField(max_length=150)
-	body = models.TextField(max_length=3500)
-	time = models.DateTimeField(auto_now_add=True)
-	
-	def __unicode__(self):
-		return self.title
-
-
-class Institute(models.Model):
+class Institute(CustomModelAbstract):
 	institute = models.CharField(max_length=75, default='FIMM')
-	
+
 	def __unicode__(self):
 		return self.institute
 
@@ -62,14 +92,48 @@ class Institute(models.Model):
 		return self.objects.get_or_create({ 'id': 1, 'institute': 'FIMM' })
 
 
-class Project(models.Model):
+# clem 20/06/2016
+class CustomModel(CustomModelAbstract):
+	"""
+	Provides several specific features :
+		_ custom object Manager
+
+		_ institute field, that is mandatory for all db objects
+	"""
+	objects = managers.CustomManager()
+
+	institute = ForeignKey(Institute, default=Institute.default)
+	""" Store the institute which own this object, to efficiently segregate data """
+
+	class Meta:
+		abstract = True
+
+
+# 04/06/2015
+class OrderedUser(User):
+	class Meta:
+		ordering = ["username"]
+		proxy = True
+
+
+# TODO add an Institute db field
+# TODO change to CustomModel
+class Post(CustomModelAbstract):
+	author = ForeignKey(User)
+	title = models.CharField(max_length=150)
+	body = models.TextField(max_length=3500)
+	time = models.DateTimeField(auto_now_add=True)
+	
+	def __unicode__(self):
+		return self.title
+
+
+class Project(CustomModel):
 	name = models.CharField(max_length=50, unique=True)
 	manager = models.CharField(max_length=50)
 	pi = models.CharField(max_length=50)
 	author = ForeignKey(User)
-	# store the institute info of the user who creates this report
-	institute = ForeignKey(Institute, default=Institute.default)
-	
+
 	collaborative = models.BooleanField(default=False)
 	
 	wbs = models.CharField(max_length=50, blank=True)
@@ -82,13 +146,16 @@ class Project(models.Model):
 		return self.name
 
 
-class Group(models.Model):
+# TODO add an Institute db field
+# TODO change to CustomModel
+class Group(CustomModelAbstract):
 	name = models.CharField(max_length=50, unique=True)
 	author = ForeignKey(User)
 	team = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='group_content')
 
 	def delete(self, _=None):
-		self.team.clear()
+		if not self.read_only:
+			self.team.clear()
 
 	def __unicode__(self):
 		return self.name
@@ -112,7 +179,9 @@ def shiny_files():
 
 
 # 08/06/2015
-class ShinyReport(models.Model):
+# TODO change from CustomModel to CustomModelAbstract
+# TODO change the institute field to a ManyToManyField
+class ShinyReport(CustomModel):
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
 	FILE_SERVER_NAME = settings.SHINY_SERVER_FILE_NAME
 	# FILE_DASH_UI = settings.SHINY_DASH_UI_FN
@@ -135,7 +204,9 @@ class ShinyReport(models.Model):
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
 	author = ForeignKey(User)
 	created = models.DateTimeField(auto_now_add=True)
-	institute = ForeignKey(Institute, default=Institute.default)
+
+	objects = managers.ObjectsWithAuth()
+	# institute = ForeignKey(Institute, default=Institute.default)
 
 	custom_header = models.TextField(blank=True, default=shiny_header(),
 		help_text="Use R Shiny code here to customize the header of the dashboard<br />"
@@ -696,13 +767,15 @@ class ShinyReport(models.Model):
 
 
 # clem 13/05/2016
-class ExecConfig(ConfigObject, models.Model):
+# TODO change from CustomModel to CustomModelAbstract
+# TODO change the institute field to a ManyToManyField
+class ExecConfig(ConfigObject, CustomModel):
 	"""
 	Defines and describes every shared attributes/methods of exec resource abstract classes.
 	"""
 	name = models.CharField(max_length=32, blank=False, help_text="Name of this exec resource")
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
-	institute = ForeignKey(Institute, default=Institute.default)
+	# institute = ForeignKey(Institute, default=Institute.default)
 
 	def file_name(self, filename):
 		return super(ExecConfig, self).file_name(filename)
@@ -828,11 +901,13 @@ class ExecConfig(ConfigObject, models.Model):
 
 
 # clem 13/05/2016
-class EngineConfig(ConfigObject, models.Model):
+# TODO change from CustomModel to CustomModelAbstract
+# TODO change the institute field to a ManyToManyField
+class EngineConfig(ConfigObject, CustomModel):
 	""" Defines and describes every shared attributes/methods of exec resource abstract classes. """
 	name = models.CharField(max_length=32, blank=False, help_text="Name of this engine resource")
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
-	institute = ForeignKey(Institute, default=Institute.default)
+	# institute = ForeignKey(Institute, default=Institute.default)
 
 	def file_name(self, filename):
 		return super(EngineConfig, self).file_name(filename)
@@ -860,12 +935,14 @@ class EngineConfig(ConfigObject, models.Model):
 
 
 # 19/04/2016
-class ComputeTarget(ConfigObject, models.Model):
+# TODO change from CustomModel to CustomModelAbstract
+# TODO change the institute field to a ManyToManyField
+class ComputeTarget(ConfigObject, CustomModel):
 	""" Defines and describes every shared attributes/methods of computing resource abstract classes.
 	"""
 	name = models.CharField(max_length=32, blank=False, help_text="Name of this Compute resource target")
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
-	institute = ForeignKey(Institute, default=Institute.default)
+	# institute = ForeignKey(Institute, default=Institute.default)
 
 	def file_name(self, filename):
 		return super(ComputeTarget, self).file_name(filename)
@@ -1122,12 +1199,20 @@ class ComputeTarget(ConfigObject, models.Model):
 		"""
 		return self._runnable
 
+	# clem 20/06/2016
+	@ClassProperty
+	def default(cls):
+		# cls.objects.get
+		cls.objects.safe_get(pk=settings.DEFAULT_TARGET_ID)
+
 	class Meta(ConfigObject.Meta): # TODO check if inheritance is required here
 		abstract = False
 		db_table = 'breeze_computetarget'
 
 
-class ReportType(FolderObj, models.Model):
+# TODO change from CustomModel to CustomModelAbstract
+# TODO change the institute field to a ManyToManyField
+class ReportType(FolderObj, CustomModel):
 	BASE_FOLDER_NAME = settings.REPORT_TYPE_FN
 
 	# objects = managers.ReportTypeManager()
@@ -1144,7 +1229,7 @@ class ReportType(FolderObj, models.Model):
 	# who creates this report
 	author = ForeignKey(User)
 	# store the institute info of the user who creates this report
-	institute = ForeignKey(Institute, default=Institute.default)
+	# institute = ForeignKey(Institute, default=Institute.default)
 	
 	def file_name(self, filename):
 		# FIXME check for FolderObj property fitness
@@ -1205,21 +1290,22 @@ class ReportType(FolderObj, models.Model):
 		return self.__prev_shiny_report != self.shiny_report_id
 
 	def save(self, *args, **kwargs):
+
 		obj = super(ReportType, self).save(*args, **kwargs) # Call the "real" save() method.
+		if not self.read_only:
+			if self.__shiny_changed:
+				if self.__prev_shiny_report:
+					ShinyReport.objects.get(pk=self.__prev_shiny_report).regen_report()
+				if self.shiny_report:
+					self.shiny_report.regen_report()
 
-		if self.__shiny_changed:
-			if self.__prev_shiny_report:
-				ShinyReport.objects.get(pk=self.__prev_shiny_report).regen_report()
-			if self.shiny_report:
-				self.shiny_report.regen_report()
-
-		try:
-			if not isfile(self.config_path):
-				with open(self.config_path, 'w') as f:
-					f.write(
-						'#	Configuration module (Generated by Breeze)\n#	You can place here any pipeline-wide R config')
-		except IOError:
-			pass
+			try:
+				if not isfile(self.config_path):
+					with open(self.config_path, 'w') as f:
+						f.write(
+							'#	Configuration module (Generated by Breeze)\n#	You can place here any pipeline-wide R config')
+			except IOError:
+				pass
 
 		return obj
 
@@ -1227,11 +1313,13 @@ class ReportType(FolderObj, models.Model):
 		return self.type
 
 	def delete(self, using=None):
-		shiny_r = self.shiny_report
-		super(ReportType, self).delete(using=using)
-		if shiny_r is not None:
-			shiny_r.regen_report()
-		return True
+		if not self.read_only:
+			shiny_r = self.shiny_report
+			super(ReportType, self).delete(using=using)
+			if shiny_r is not None:
+				shiny_r.regen_report()
+			return True
+		return False
 
 	# clem 26/05/2016
 	def _target_objects(cls, only_enabled=False, only_ready=False):
@@ -1364,7 +1452,8 @@ class ReportType(FolderObj, models.Model):
 # from django.db.models.signals import pre_save
 # from django.dispatch import receiver
 
-class ScriptCategories(models.Model):
+# TODO add a ManyToManyField Institute field
+class ScriptCategories(CustomModelAbstract):
 	category = models.CharField(max_length=55, unique=True)
 	description = models.CharField(max_length=350, blank=True)
 
@@ -1389,7 +1478,8 @@ class UserDate(models.Model):
 		db_table = 'breeze_user_date'
 
 
-class Rscripts(FolderObj, models.Model):
+# TODO add a ManyToManyField Institute field
+class Rscripts(FolderObj, CustomModelAbstract):
 	objects = managers.ObjectsWithAuth() # The default manager.
 
 	BASE_FOLDER_NAME = settings.RSCRIPTS_FN
@@ -1504,7 +1594,7 @@ class Rscripts(FolderObj, models.Model):
 
 
 # define the table to store the products in user's cart
-class CartInfo(models.Model):
+class CartInfo(CustomModelAbstract):
 	script_buyer = ForeignKey(User)
 	product = ForeignKey(Rscripts)
 	# if free or not
@@ -1553,7 +1643,8 @@ class InputTemplate(models.Model):
 		return self.name
 
 
-class UserProfile(models.Model):
+# TODO fix naming of institute
+class UserProfile(CustomModelAbstract):
 	user = models.ForeignKey(OrderedUser, unique=True)
 	
 	def file_name(self, filename):
@@ -1572,7 +1663,7 @@ class UserProfile(models.Model):
 		return self.user.get_full_name()  # return self.user.username
 
 
-class Runnable(FolderObj, models.Model):
+class Runnable(FolderObj, CustomModelAbstract):
 	##
 	# CONSTANTS
 	##
@@ -1592,7 +1683,7 @@ class Runnable(FolderObj, models.Model):
 
 	HIDDEN_FILES = [SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
-	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID)
+	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID) # TODO DEL
 
 	objects = managers.WorkersManager() # Custom manage
 
@@ -2366,18 +2457,22 @@ class Runnable(FolderObj, models.Model):
 
 	# TODO check if new item or not
 	def save(self, *args, **kwargs):
-		# self.all_required_are_filled()
-		if self.id is None and not self.__can_save:
-			raise AssertionError('The instance has to complete self.assemble() before any save can happen')
-		super(Runnable, self).save(*args, **kwargs) # Call the "real" save() method.
+		if not self.read_only:
+			# self.all_required_are_filled()
+			if self.id is None and not self.__can_save:
+				raise AssertionError('The instance has to complete self.assemble() before any save can happen')
+			super(Runnable, self).save(*args, **kwargs) # Call the "real" save() method.
+		return False
 
 	def delete(self, using=None):
-		if self._breeze_stat != JobStat.DONE:
-			self.abort()
-		txt = str(self)
-		super(Runnable, self).delete(using=using) # Call the "real" delete() method.
-		get_logger().info("%s has been deleted" % txt)
-		return True
+		if not self.read_only:
+			if self._breeze_stat != JobStat.DONE:
+				self.abort()
+			txt = str(self)
+			super(Runnable, self).delete(using=using) # Call the "real" delete() method.
+			get_logger().info("%s has been deleted" % txt)
+			return True
+		return False
 
 	###
 	# SPECIAL PROPERTIES FOR INTERFACE INSTANCE
@@ -2945,7 +3040,7 @@ class Report(Runnable):
 		db_table = 'breeze_report'
 
 
-class ShinyTag(models.Model):
+class ShinyTag(CustomModel):
 	# ACL_RW_RW_R = 0664
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
 	FILE_SERVER_NAME = settings.SHINY_SERVER_FILE_NAME
@@ -2964,7 +3059,7 @@ class ShinyTag(models.Model):
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
 	author = ForeignKey(OrderedUser)
 	created = models.DateTimeField(auto_now_add=True)
-	institute = ForeignKey(Institute, default=Institute.default)
+	# institute = ForeignKey(Institute, default=Institute.default)
 	order = models.PositiveIntegerField(default=0, help_text="sorting index number (0 is the topmost)")
 	menu_entry = models.TextField(default=DEFAULT_MENU_ITEM,
 		help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
@@ -3174,12 +3269,12 @@ class ShinyTag(models.Model):
 		return self.name
 
 
-class OffsiteUser(models.Model):
+class OffsiteUser(CustomModel):
 	first_name = models.CharField(max_length=32, blank=False, help_text="First name of the off-site user to add")
 	last_name = models.CharField(max_length=32, blank=False, help_text="Last name of the off-site user to add")
 	email = models.CharField(max_length=64, blank=False, unique=True,
 		help_text="Valid email address of the off-site user")
-	institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
+	# institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
 	role = models.CharField(max_length=32, blank=True, help_text="Position/role of this off-site user")
 	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True, help_text="!! DO NOT EDIT !!")
 	added_by = ForeignKey(User, related_name='owner', help_text="!! DO NOT EDIT !!")
