@@ -2235,9 +2235,9 @@ def standalone_shiny_in_wrapper(request, path=None, sub=None):
 
 
 @csrf_exempt
-def standalone_pub_shiny_fw(request):
+def standalone_pub_shiny_fw(request, path=''):
 	from django.shortcuts import redirect
-	return redirect(settings.SHINY_PUB_REDIRECT)
+	return redirect(settings.SHINY_PUB_REDIRECT + path)
 
 
 # Wrapper for ShinyApp accessed from inside (login + user access to said report)
