@@ -478,23 +478,52 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 		qs = '?' + request.META['QUERY_STRING']
 		url += qs
 	opener = urllib2.build_opener()
-	data = u""
-	# FIXME : encoding issue with file uploads
+	data = ''
 	if request.method == 'POST':
-		my_post = dict()
-		for k, v in request.POST.iteritems():
-			if type(v) is unicode: # TODO debug
-				# print 'v is unicode'
-				v = v.encode('utf-8')
-			if type(k) is unicode: # TODO debug
-				# print 'k is unicode'
-				k = k.encode('utf-8')
-			# data = data + k + u"=" + urllib.quote_plus(v) + u"&"
-			my_post[k] = v
 
-		# 	data = data + each + "=" + urllib.quote_plus(request.POST[each]) + "&"
-		# data = data[:-1]
-		data = urllib.urlencode(my_post)
+		from urllib import quote_plus
+
+		print 'POST:', str(request.POST)
+
+		def encode_obj(in_obj):
+
+			def encode_list(in_list):
+				out_list = []
+				for el in in_list:
+					out_list.append(encode_obj(el))
+				return out_list
+
+			def encode_dict(in_dict):
+				out_dict = { }
+				for k, v in in_dict.iteritems():
+					out_dict[k.encode('utf-8')] = encode_obj(v)
+				return out_dict
+
+			if isinstance(in_obj, unicode):
+				return in_obj.encode('utf-8')
+			elif isinstance(in_obj, list):
+				return encode_list(in_obj)
+			elif isinstance(in_obj, tuple):
+				return tuple(encode_list(in_obj))
+			elif isinstance(in_obj, dict):
+				return encode_dict(in_obj)
+
+			return in_obj
+		#import requests
+		#payload_str = "&".join("%s=%s" % (k, v) for k, v in dict(request.POST.iteritems()))
+		## req = requests.post(url, params=payload_str)
+		#req = requests.get(url, params=payload_str)
+		#return HttpResponse(req.content, status=req.status_code, mimetype=req.apparent_encoding)
+
+		tmp = encode_obj(dict(request.POST.iteritems()))
+		#from cStringIO import StringIO
+		#buf = StringIO()
+		#for k, v in tmp.iteritems():
+		#	buf.write(k + '=' + v + '&')
+
+		# data = buf.getvalue()[:-1]
+		data = '&'.join(k + '=' + v for k, v in tmp.iteritems())  # data should be bytes
+		#print '#' * 56 + ' DATA : ' + '#' * 56 + '\n' + data[:1024] + '\n' + '#' * 120
 
 	log = '/var/log/shiny-server.log'
 	log_size = os.stat(log).st_size
@@ -502,7 +531,7 @@ def proxy_to(request, path, target_url, query_s='', silent=False, timeout=None):
 	msg = ''
 	reason = ''
 	more = ''
-	rep = HttpResponse(status=200, mimetype=HttpResponse)
+	rep = HttpResponse(status=599, mimetype=HttpResponse)
 	try:
 		if not silent:
 			get_logger().debug(u_print_sub(request, path + str(qs)))

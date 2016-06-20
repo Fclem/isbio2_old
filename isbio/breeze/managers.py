@@ -1,4 +1,7 @@
+from __builtin__ import property
+
 from django.db.models.query import QuerySet as __original_QS
+from django.db.models import Manager
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 import django.db.models.query_utils
 from django.conf import settings
@@ -7,6 +10,98 @@ from breeze.b_exceptions import InvalidArguments
 from comp import translate
 
 org_Q = django.db.models.query_utils.Q
+
+
+# clem 20/06/2016
+class CustomManager(Manager):
+	context_user = None
+	context_obj = None
+
+	def __init__(self):
+		super(CustomManager, self).__init__()
+
+	# clem 20/06/2016
+	def safe_get(self, *_, **kwargs):
+		has_id = 'id' in kwargs.keys()
+		has_pk = 'pk' in kwargs.keys()
+		if not (has_id or has_pk):
+			raise InvalidArguments
+		try:
+			the_key = kwargs.pop('id' if has_id else 'pk')
+			# self.context_obj = self.get(id=the_key) if has_id else self.get(pk=the_key)
+			self.context_obj = super(CustomManager, self).get(id=the_key) if has_id else \
+				super(CustomManager, self).get(pk=the_key)
+			return self.context_obj
+		except ObjectDoesNotExist:
+			raise ObjectDoesNotExist
+
+	# clem 20/06/2016
+	def user_get(self, *args, **kwargs):
+		if 'user' not in kwargs.keys():
+			raise InvalidArguments
+		self.context_user = kwargs.pop('user')
+		return self.safe_get(*args, **kwargs)
+
+	# clem 20/06/2016
+	@staticmethod
+	def admin_override_param(user):
+		return settings.SU_ACCESS_OVERRIDE and user.is_superuser
+
+	# clem 20/06/2016
+	@staticmethod
+	def get_author_param(obj):
+		auth = None
+		if hasattr(obj, 'author'):
+			auth = obj.author
+		elif hasattr(obj, 'juser'): # Jobs
+			auth = obj.juser
+		elif hasattr(obj, '_author'):
+			auth = obj._author
+		return auth
+
+	# clem 20/06/2016
+	@classmethod
+	def has_full_access_param(cls, obj, user):
+		author = cls.get_author_param(obj) # author/owner of the object
+		return author == user or cls.admin_override_param(user)
+
+	# clem 20/06/2016
+	@classmethod
+	def has_read_access_param(cls, obj, user):
+		return cls.has_full_access_param(obj, user) or \
+			(hasattr(obj, 'shared') and user in obj.shared.all())
+
+	@property
+	def has_context(self):
+		return self.context_obj and self.context_user
+
+	###
+	#  Old methods, now property, wrapper of the real methods
+	###
+
+	# clem 19/02/2016
+	@property
+	def admin_override(self):
+		assert self.has_context
+		return self.__class__.admin_override_param(self.context_user)
+
+	# clem 19/02/2016
+	@property
+	def get_author(self):
+		assert self.has_context
+		return self.__class__.get_author_param(self.context_obj)
+
+	# clem 19/02/2016
+	@property
+	def has_full_access(self):
+		assert self.has_context
+		return self.has_full_access_param(self.context_obj, self.context_user)
+
+	# clem 19/02/2016
+	@property
+	def has_read_access(self):
+		assert self.has_context
+		return self.has_read_access_param(self.context_obj, self.context_user)
 
 
 class Q(django.db.models.query_utils.Q):
@@ -151,7 +246,7 @@ class QuerySet(__original_QS):
 		return self.get_history().filter(Q(_status=JobStat.ABORTED) or Q(_status=JobStat.ABORT))
 
 
-class WorkersManager(django.db.models.Manager):
+class WorkersManager(CustomManager):
 	"""
 	Overrides change the name of the fields parameters in a QuerySet
 	this allow legacy backward compatibility with the new Runnable class
@@ -253,59 +348,26 @@ class WorkersManager(django.db.models.Manager):
 			raise fail_ex()
 
 
-# clem 19/02/2016
-def admin_override(user):
-	return settings.SU_ACCESS_OVERRIDE and user.is_superuser
-
-
-# clem 19/02/2016
-def get_author(obj):
-	auth = None
-	if hasattr(obj, 'author'):
-		auth = obj.author
-	elif hasattr(obj, 'juser'): # Jobs
-		auth = obj.juser
-	elif hasattr(obj, '_author'):
-		auth = obj._author
-	return auth
-
-
-# clem 19/02/2016
-def has_full_access(obj, user):
-	auth = get_author(obj) # author/owner of the object
-	return auth == user or admin_override(user)
-
-
-# clem 19/02/2016
-def has_read_access(obj, user):
-	return has_full_access(obj, user) or ('shared' in obj.__dict__ and user in obj.shared.all())
-
-
 # TODO extend to all objects
-class ObjectsWithAuth(django.db.models.Manager):
+class ObjectsWithAuth(CustomManager):
 	def __init__(self):
 		super(ObjectsWithAuth, self).__init__()
 	
 	def secure_get(self, *_, **kwargs):
-		if 'id' not in kwargs.keys() or 'user' not in kwargs.keys():
-			raise InvalidArguments
-		# obj = None
-		try:
-			obj = self.get(id=kwargs.pop('id'))
-			# obj = super(WorkersManager, self).get(*args, **kwargs)
-		except ObjectDoesNotExist:
-			# return aux.fail_with404(request, 'There is no record with id ' + sid + ' in DB')
-			raise ObjectDoesNotExist
+		# get the object if it exists
+		self.user_get(**kwargs)
 
 		# Enforce user access restrictions
-		if not has_full_access(obj, kwargs.pop('user')):
+		if not self.has_full_access:
+			if self.has_read_access:
+				self.context_obj.prop_read_only = True
+				return self.context_obj
 			raise PermissionDenied
-
-		return obj
+		return self.context_obj
 
 
 # clem 19/04/2016
-class ProjectManager(django.db.models.Manager):
+class ProjectManager(CustomManager):
 	def __init__(self):
 		super(ProjectManager, self).__init__()
 

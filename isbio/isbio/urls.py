@@ -186,7 +186,7 @@ else:
 		urlpatterns += patterns(
 			url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
 			url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
-			url(r'^shiny/pubs?/?$', views.standalone_pub_shiny_fw),
+			url(r'^shiny/pubs?(/(?P<path>.+))?/?$', views.standalone_pub_shiny_fw),
 			url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
 			url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		)
