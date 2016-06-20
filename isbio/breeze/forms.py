@@ -235,7 +235,7 @@ class AddOffsiteUser(forms.ModelForm):
 
 
 # clem 18/04/2016
-class ReportPropsFormMixin:
+class ReportPropsFormMixin(object):
 	request = None
 	_share_options = None
 	_target_list = None
@@ -813,7 +813,7 @@ class CustomForm(forms.Form):
 		return self.__dict__.get(k, d)
 
 
-### Forms for script submissions ###
+# ## Forms for script submissions ###
 class ScriptBasics(forms.Form):
 	def __init__(self, edit, *args, **kwargs):
 		self._edit = edit
@@ -872,7 +872,7 @@ class ScriptLogo(forms.Form):
 	logo = forms.FileField(label=(u''))
 
 
-### old implementation ###
+# ## old implementation ###
 class ScriptMainForm(forms.ModelForm):
 	class Meta:
 		model = breeze.models.Rscripts
