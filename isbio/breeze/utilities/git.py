@@ -1,4 +1,4 @@
-from . import get_term_cmd_stdout
+from . import get_term_cmd_stdout, exists
 
 __version__ = '0.1'
 __author__ = 'clem'
@@ -52,3 +52,20 @@ def get_head(folder=''):
 		return open('%s.git/FETCH_HEAD' % folder).readline().replace('\n', '')
 	except IOError:
 		return ''
+
+
+# clem 20/06/2016
+def get_branch_from_fs(git_folder='./'):
+	target = git_folder + '.git/HEAD'
+	ret = ''
+	try:
+		if exists(target):
+			with open(target) as file_read:
+				ret = file_read.readline()
+				if ret:
+					ret = ret.replace('\n', '').split('/')
+					if ret:
+						ret = ret[-1]
+	except IOError:
+		pass
+	return ret
