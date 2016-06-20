@@ -2,15 +2,26 @@ from django.template.defaultfilters import slugify
 from django.db import models
 from utils import *
 
-if settings.HOST_NAME.startswith('breeze'):
-	import drmaa
 
 __version__ = '0.1'
 __author__ = 'clem'
 __date__ = '27/05/2016'
 
 
-class JobState(drmaa.JobState):
+class DrmaaJobState(object):
+	UNDETERMINED = 'undetermined'
+	QUEUED_ACTIVE = 'queued_active'
+	SYSTEM_ON_HOLD = 'system_on_hold'
+	USER_ON_HOLD = 'user_on_hold'
+	USER_SYSTEM_ON_HOLD = 'user_system_on_hold'
+	RUNNING = 'running'
+	SYSTEM_SUSPENDED = 'system_suspended'
+	USER_SUSPENDED = 'user_suspended'
+	USER_SYSTEM_SUSPENDED = 'user_system_suspended'
+	DONE = 'done'
+	FAILED = 'failed'
+
+class JobState(DrmaaJobState):
 	SUSPENDED = 'suspended'
 	PENDING = 'pending'
 	TRANSFERRING = 'transferring'

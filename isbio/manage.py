@@ -5,14 +5,13 @@ import socket
 import breeze
 
 if __name__ == "__main__":
-	if socket.gethostname().startswith('breeze'):
-		os.environ.setdefault("DJANGO_SETTINGS_MODULE", "isbio.settings")
-		os.environ.setdefault('DJANGO_CONFIGURATION', 'DevSettings')
-	else:
-		os.environ.setdefault("DJANGO_SETTINGS_MODULE", "isbio.settings")
-		os.environ.setdefault('DJANGO_CONFIGURATION', 'BreezeSettings')
+	sys.path.append(os.path.dirname(__file__))
 
-	from configurations.management import execute_from_command_line
+	# if socket.gethostname().startswith('breeze'):
+	os.environ.setdefault("DJANGO_SETTINGS_MODULE", "isbio.settings")
+
+	# from configurations.management import execute_from_command_line
+	from django.core.management import execute_from_command_line
 
 	if sys.argv[1] == 'cron':
 		# may have a independent jobKeeper here

@@ -76,16 +76,26 @@ def this_function_caller_name(delta=0):
 	return get_frame(2 + delta).f_code.co_name
 
 
+# clem 20/06/2016
+def is_command_available(cmd_str):
+	return get_term_cmd_stdout(['which', cmd_str], False) not in ['', [''], []]
+
+
 # clem 18/04/2016
-def get_term_cmd_stdout(cmd_list_with_args):
+def get_term_cmd_stdout(cmd_list_with_args, check_if_command_is_available=True):
 	assert isinstance(cmd_list_with_args, list)
 	ret = ''
-	a = sp.Popen(cmd_list_with_args, stdout=sp.PIPE)
-	b = a.communicate()
-	if b:
-		s = b[0].split('\n')
-		return s
-	return ret
+	try:
+		if not check_if_command_is_available or is_command_available(cmd_list_with_args[0]):
+			a = sp.Popen(cmd_list_with_args, stdout=sp.PIPE)
+			b = a.communicate()
+			if b:
+				s = b[0].split('\n')
+				return s
+		return ret
+	except OSError as e:
+		print 'EXCEPTION (UNLOGGED) while running cmd %s : %s' % (str(cmd_list_with_args), str(e))
+		return ''
 
 
 # moved from settings on 19/05/2016 # FIXME Django specific ?

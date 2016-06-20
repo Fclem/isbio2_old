@@ -193,3 +193,8 @@ def get_r_package(name=''):
 		if cran.find() and cran.download():
 			return cran.extract_to()
 	return False
+
+
+# clem 20/06/2016
+def git_branch():
+	return git.get_branch_from_fs(settings.SOURCE_ROOT)
