@@ -56,6 +56,11 @@ class Institute(models.Model):
 	def __unicode__(self):
 		return self.institute
 
+	# clem 20/06/2016
+	@property
+	def default(self):
+		return self.objects.get_or_create({ 'id': 1, 'institute': 'FIMM' })
+
 
 class Project(models.Model):
 	name = models.CharField(max_length=50, unique=True)
@@ -63,7 +68,7 @@ class Project(models.Model):
 	pi = models.CharField(max_length=50)
 	author = ForeignKey(User)
 	# store the institute info of the user who creates this report
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute = ForeignKey(Institute, default=Institute.default)
 	
 	collaborative = models.BooleanField(default=False)
 	
@@ -130,7 +135,7 @@ class ShinyReport(models.Model):
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
 	author = ForeignKey(User)
 	created = models.DateTimeField(auto_now_add=True)
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute = ForeignKey(Institute, default=Institute.default)
 
 	custom_header = models.TextField(blank=True, default=shiny_header(),
 		help_text="Use R Shiny code here to customize the header of the dashboard<br />"
@@ -697,7 +702,7 @@ class ExecConfig(ConfigObject, models.Model):
 	"""
 	name = models.CharField(max_length=32, blank=False, help_text="Name of this exec resource")
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute = ForeignKey(Institute, default=Institute.default)
 
 	def file_name(self, filename):
 		return super(ExecConfig, self).file_name(filename)
@@ -827,7 +832,7 @@ class EngineConfig(ConfigObject, models.Model):
 	""" Defines and describes every shared attributes/methods of exec resource abstract classes. """
 	name = models.CharField(max_length=32, blank=False, help_text="Name of this engine resource")
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute = ForeignKey(Institute, default=Institute.default)
 
 	def file_name(self, filename):
 		return super(EngineConfig, self).file_name(filename)
@@ -860,7 +865,7 @@ class ComputeTarget(ConfigObject, models.Model):
 	"""
 	name = models.CharField(max_length=32, blank=False, help_text="Name of this Compute resource target")
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute = ForeignKey(Institute, default=Institute.default)
 
 	def file_name(self, filename):
 		return super(ComputeTarget, self).file_name(filename)
@@ -1139,7 +1144,7 @@ class ReportType(FolderObj, models.Model):
 	# who creates this report
 	author = ForeignKey(User)
 	# store the institute info of the user who creates this report
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute = ForeignKey(Institute, default=Institute.default)
 	
 	def file_name(self, filename):
 		# FIXME check for FolderObj property fitness
@@ -1558,7 +1563,7 @@ class UserProfile(models.Model):
 	
 	fimm_group = models.CharField(max_length=75, blank=True)
 	logo = models.FileField(upload_to=file_name, blank=True)
-	institute_info = models.ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute_info = models.ForeignKey(Institute, default=Institute.default)
 	# if user accepts the agreement or not
 	db_agreement = models.BooleanField(default=False)
 	last_active = models.DateTimeField(default=timezone.now)
@@ -2666,7 +2671,7 @@ class Report(Runnable):
 	_author = ForeignKey(User, db_column='author_id')
 	_type = models.ForeignKey(ReportType, db_column='type_id')
 	_created = models.DateTimeField(auto_now_add=True, db_column='created')
-	_institute = ForeignKey(Institute, default=1, db_column='institute_id')
+	_institute = ForeignKey(Institute, default=Institute.default, db_column='institute_id')
 
 	# TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
 
@@ -2959,7 +2964,7 @@ class ShinyTag(models.Model):
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
 	author = ForeignKey(OrderedUser)
 	created = models.DateTimeField(auto_now_add=True)
-	institute = ForeignKey(Institute, default=Institute.objects.get(id=1))
+	institute = ForeignKey(Institute, default=Institute.default)
 	order = models.PositiveIntegerField(default=0, help_text="sorting index number (0 is the topmost)")
 	menu_entry = models.TextField(default=DEFAULT_MENU_ITEM,
 		help_text="Use menuItem or other Shiny  Dashboard items to customize the menu entry "
