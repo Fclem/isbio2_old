@@ -2,37 +2,16 @@ import django.db
 from breeze.models import Report, Jobs, JobStat
 from utils import *
 
+# FIXME obsolete module / design / feature
+# TODO : redesign, re-implement
+
 if settings.ENABLE_DATADOG:
 	from datadog import statsd
 
 DB_REFRESH = settings.WATCHER_DB_REFRESH
 PROC_REFRESH = settings.WATCHER_PROC_REFRESH
 
-if settings.HOST_NAME.startswith('breeze'):
-	s = None
-	proc_lst = dict()
-
-
-# FIXME TODO del
-def with_drmaa(func):
-	""" wrapper to use only one drmaa instance
-
-
-	:param func:
-	:type func:
-	:return:
-	:rtype:
-	"""
-	def inner(*args, **kwargs):
-		global s
-		if drmaa:
-			with drmaa_mutex:
-				with drmaa.Session() as s:
-					func(*args, **kwargs)
-		else:
-			func(*args, **kwargs)
-
-	return inner
+proc_lst = dict()
 
 
 class ProcItem(object): # TODO rename to ThreadItem
@@ -118,9 +97,8 @@ def refresh_proc():
 
 
 def refresh_qstat(proc_item):
-	"""
-	Update the status of one Report
-	Can trigger job abortion if instructed to
+	""" Update the status of one Report; Can trigger job abortion if instructed to
+
 	:param proc_item: a ProcItem object
 	:type proc_item: ProcItem
 	"""
@@ -146,7 +124,6 @@ def refresh_qstat(proc_item):
 		dbitem.re_submit()
 
 
-# @with_drmaa
 def _reattach_the_job(dbitem):
 	"""
 
@@ -195,9 +172,8 @@ def _spawn_the_job(dbitem):
 
 
 def runner():
-	"""
-	Worker that post the jobs, and update their status
-	Run until killed or crashed
+	""" Worker that post the jobs, and update their status, Runs until killed or crashed
+
 	TO BE RUN ONLY_ONCE IN A SEPARATE THREAD
 	"""
 	get_logger().debug('JobKeeper started')

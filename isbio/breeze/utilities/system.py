@@ -2,6 +2,8 @@ from threading import Thread, Lock
 from sys import _getframe as get_frame
 import json
 import os
+import copy
+import abc
 import subprocess as sp
 
 __version__ = '0.1'

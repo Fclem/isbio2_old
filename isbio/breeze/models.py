@@ -10,7 +10,6 @@ from comp import Trans
 from utils import *
 from django.db import models
 import importlib
-import copy
 from non_db_objects import *
 
 system_check.db_conn.inline_check()
@@ -2010,13 +2009,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 	##
 	# SHARED CONCRETE METHODS (SGE_JOB MANAGEMENT RELATED)
 	##
-	# FIXME : LEGACY ONLY
-	def abort(self):
-		""" Abort the job using
-
-		:rtype: bool
-		"""
-		return self.compute_if.abort()
+	# deleted abort on 21/06/2016
 
 	def write_sh_file(self):
 		""" Generate the SH file that will be executed on the compute target to configure and run the job """
@@ -2050,8 +2043,8 @@ class Runnable(FolderObj, CustomModelAbstract):
 		chmod(self.source_file_path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
-	# TODO @abc.abstractmethod ?
 	# FIXME obsolete
+	@abc.abstractmethod
 	def generate_r_file(self, *args, **kwargs):
 		""" Place Holder for instance specific R files generation
 		THIS METHOD MUST BE overridden in subclasses
@@ -2059,7 +2052,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 		raise not_imp(self)
 
 	# INTERFACE for extending assembling process
-	# TODO @abc.abstractmethod ?
+	@abc.abstractmethod
 	def deferred_instance_specific(self, *args, **kwargs):
 		"""
 		Specific operations to generate job or report instance dependencies.
@@ -2326,8 +2319,8 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 	def delete(self, using=None):
 		if not self.read_only:
-			if self._breeze_stat != JobStat.DONE:
-				self.abort()
+			# if self._breeze_stat != JobStat.DONE:
+			self.compute_if.abort()
 			txt = str(self)
 			super(Runnable, self).delete(using=using) # Call the "real" delete() method.
 			get_logger().info("%s has been deleted" % txt)
@@ -2664,7 +2657,7 @@ class Report(Runnable):
 
 	# @property
 	# def _rtype_config_path(self):
-	#	return settings.MEDIA_ROOT + str(self._type.config)
+	# 	return settings.MEDIA_ROOT + str(self._type.config)
 
 	@property
 	def title(self):
