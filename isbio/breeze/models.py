@@ -59,12 +59,9 @@ class CustomModelAbstract(models.Model):
 
 		:param val: only accepts True
 		:type val: bool
-		:raise:  ReadOnlyAttribute
 		"""
 		if not self.__prop_read_only and val:
 			self.__prop_read_only = True
-		else:
-			raise ReadOnlyAttribute
 
 	def save(self, force_insert=False, force_update=False, using=None):
 		if not self.read_only:

@@ -107,3 +107,6 @@ class FileNotFound(ObjectNotFound):
 
 class ConfigFileNotFound(FileNotFound):
 	pass
+
+class ObjectHasNoReadOnlySupport(RuntimeError):
+	pass
