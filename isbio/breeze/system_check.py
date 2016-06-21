@@ -424,14 +424,14 @@ def save_file_index():
 	:return: True
 	:rtype: bool
 	"""
-	from django.utils import simplejson
+	import json
 
 	fs_sig, save_obj = file_system_check()
 
 	with open(settings.FS_SIG_FILE, 'w') as f:
 		f.write(fs_sig)
 	with open(settings.FS_LIST_FILE, 'w') as f:
-		simplejson.dump(save_obj, f)
+		json.dump(save_obj, f)
 
 	return True
 
@@ -445,17 +445,17 @@ def file_system_check(verbose=False):
 	:return: file system signature, file system index dict
 	:rtype: str, dict
 	"""
-	from django.utils import simplejson
+	import json
 	total = ''
 	# save_obj = dict()
 	save_obj = OrderedDict()
 	last_id = 0
 	for each in settings.FOLDERS_TO_CHECK:
 		md5s, last_id = generate_file_index(each, ['__MACOSX', ], last_id)
-		json = simplejson.dumps(md5s)
-		# save_obj[each] = (utils.get_md5(json), md5s)
+		result = json.dumps(md5s)
+		# save_obj[each] = (utils.get_md5(result), md5s)
 		save_obj[each] = md5s
-		total += json
+		total += result
 	# print '(' + str(len(md5s)), 'files)', fs_state[each]
 	if verbose:
 		for el in save_obj:

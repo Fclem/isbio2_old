@@ -152,9 +152,9 @@ def safe_copytree(source, destination, symlinks=True, ignore=None):
 def saved_fs_state():
 	""" Read the saved file system FS_LIST_FILE descriptor and chksums list and return the contained JSON object
 	"""
-	from django.utils import simplejson
+	import json
 	with open(settings.FS_LIST_FILE) as f:
-		return simplejson.load(f)
+		return json.load(f)
 
 
 # clem 09/10/2015

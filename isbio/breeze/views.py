@@ -33,7 +33,8 @@ from django.template.context import RequestContext
 from django.template import loader
 from django.template.loader import render_to_string
 from django.utils import timezone
-from django.utils import simplejson
+# from django.utils import simplejson
+import json as simplejson
 from django.views.decorators.csrf import csrf_exempt
 import logging
 from mimetypes import MimeTypes
