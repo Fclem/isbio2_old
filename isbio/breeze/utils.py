@@ -4,6 +4,9 @@ This module contains a set of utilities functions related to Breeze and Django
 
 
 This modules imports :
+	drmaa (if available, set to None otherwise), job_stat_class as an alias to drmaa.JobState or
+		a replacement class if drmaa is not available
+
 	from django :
 		_  settings
 
@@ -57,6 +60,7 @@ from django.conf import settings
 from datetime import datetime
 from breeze.b_exceptions import * # DO NOT DELETE : used in sub-modules
 from utilities import * # import all the non Breeze / non Django related utilities
+from import_drmaa import drmaa, job_stat_class
 
 # 01/04/2016 : Moved all non-Django related code to utilities package
 # THIS MODULE SHOULD ONLY BE USED FOR DJANGO / BREEZE RELATED CODE, THAT EITHER USE THE DB, OR IMPORTS
