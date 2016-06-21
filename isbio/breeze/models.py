@@ -3126,12 +3126,12 @@ class ShinyTag(CustomModel):
 		return self.name
 
 
-class OffsiteUser(CustomModel):
+class OffsiteUser(CustomModelAbstract):
 	first_name = models.CharField(max_length=32, blank=False, help_text="First name of the off-site user to add")
 	last_name = models.CharField(max_length=32, blank=False, help_text="Last name of the off-site user to add")
 	email = models.CharField(max_length=64, blank=False, unique=True,
 		help_text="Valid email address of the off-site user")
-	# institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
+	institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
 	role = models.CharField(max_length=32, blank=True, help_text="Position/role of this off-site user")
 	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True, help_text="!! DO NOT EDIT !!")
 	added_by = ForeignKey(User, related_name='owner', help_text="!! DO NOT EDIT !!")
