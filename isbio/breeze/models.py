@@ -143,7 +143,7 @@ class Project(CustomModel):
 class Group(CustomModelAbstract):
 	name = models.CharField(max_length=50, unique=True)
 	author = ForeignKey(User)
-	team = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='group_content')
+	team = models.ManyToManyField(User, blank=True, default=None, related_name='group_content')
 
 	def delete(self, _=None):
 		if not self.read_only:
@@ -1222,9 +1222,9 @@ class ReportType(FolderObj, CustomModel):
 	type = models.CharField(max_length=17, unique=True)
 	description = models.CharField(max_length=5500, blank=True)
 	search = models.BooleanField(default=False, help_text="NB : LEAVE THIS UN-CHECKED")
-	access = models.ManyToManyField(User, null=True, blank=True, default=None,
+	access = models.ManyToManyField(User, blank=True, default=None,
 		related_name='pipeline_access')  # share list
-	targets = models.ManyToManyField(ComputeTarget, null=True, blank=True, default=None,
+	targets = models.ManyToManyField(ComputeTarget, blank=True, default=None,
 		related_name='compute_targets')  # available compute targets
 	# tags = models.ManyToManyField(Rscripts, blank=True)
 	
@@ -1499,12 +1499,12 @@ class Rscripts(FolderObj, CustomModelAbstract):
 	istag = models.BooleanField(default=False)
 	must = models.BooleanField(default=False)  # defines wheather the tag is enabled by default
 	order = models.DecimalField(max_digits=3, decimal_places=1, blank=True, default=0)
-	report_type = models.ManyToManyField(ReportType, null=True, blank=True,
+	report_type = models.ManyToManyField(ReportType, blank=True,
 		default=None)  # assosiation with report type
 	# report_type = models.ForeignKey(ReportType, null=True, blank=True, default=None)  # assosiation with report type
-	access = models.ManyToManyField(User, null=True, blank=True, default=None, related_name="users")
+	access = models.ManyToManyField(User, blank=True, default=None, related_name="users")
 	# install date info
-	install_date = models.ManyToManyField(UserDate, blank=True, null=True, default=None, related_name="installdate")
+	install_date = models.ManyToManyField(UserDate, blank=True, default=None, related_name="installdate")
 	
 	def file_name(self, filename): # TODO check this
 		# TODO check for FolderObj fitness
@@ -1649,8 +1649,9 @@ class InputTemplate(CustomModelAbstract):
 
 # TODO fix naming of institute
 class UserProfile(CustomModelAbstract):
-	user = models.ForeignKey(OrderedUser, unique=True)
-	
+	# user = models.ForeignKey(OrderedUser, unique=True)
+	user = models.OneToOneField(OrderedUser)
+
 	def file_name(self, filename):
 		fname, dot, extension = filename.rpartition('.')
 		slug = slugify(self.user.username)
@@ -1659,7 +1660,7 @@ class UserProfile(CustomModelAbstract):
 	fimm_group = models.CharField(max_length=75, blank=True)
 	logo = models.FileField(upload_to=file_name, blank=True)
 	institute_info = models.ForeignKey(Institute, default=Institute.default)
-	institute = institute_info
+	# institute = institute_info
 	# if user accepts the agreement or not
 	db_agreement = models.BooleanField(default=False)
 	last_active = models.DateTimeField(default=timezone.now)
@@ -2644,7 +2645,7 @@ class Report(Runnable):
 
 	# Report specific
 	project = models.ForeignKey(Project, null=True, blank=True, default=None)
-	shared = models.ManyToManyField(User, null=True, blank=True, default=None, related_name='report_shares')
+	shared = models.ManyToManyField(User, blank=True, default=None, related_name='report_shares')
 	conf_params = models.TextField(null=True, editable=False)
 	conf_files = models.TextField(null=True, editable=False)
 	fm_flag = models.BooleanField(default=False)

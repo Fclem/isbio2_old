@@ -149,7 +149,7 @@ class RunType(enumerate):
 # clem 08/09/2015
 class SysCheckUnit(Process):
 	""" Describe a self executable unit of system test, includes all the process management part """
-	RAISE_EXCEPTION = True
+	RAISE_EXCEPTION = False
 
 	def __init__(self, function, url, legend, msg, a_type, t_out=0, arg=None, run_after=None, ex=SystemCheckFailed,
 				mandatory=False, long_poll=False, ui_text=('Online', 'Offline')):
@@ -881,14 +881,12 @@ CHECK_LIST = [
 	# # SysCheckUnit(long_poll_waiter, 'breeze-dev', 'Breeze-dev HTTP', '', RunType.runtime, long_poll=True),
 	SysCheckUnit(save_file_index, 'fs_ok', '', 'saving file index...\t', RunType.boot_time, 25000,
 				run_after=saved_fs_sig, ex=FileSystemNotMounted, mandatory=True), fs_mount, db_conn,
-	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable,
-				mandatory=True),
+	SysCheckUnit(check_cas, 'cas', 'CAS server', 'CAS SERVER\t\t', RunType.both, arg=HttpRequest(), ex=CASUnreachable ),
 	SysCheckUnit(check_rora, 'rora', 'RORA db', 'RORA DB\t\t\t', RunType.both, ex=RORAUnreachable),
 	SysCheckUnit(check_rora_response, 'rora_ok', 'RORA data', 'RORA DATA\t\t', RunType.both, ex=RORAFailure,
 				ui_text=good_bad),
 	SysCheckUnit(check_sge_c, 'sge_c', '', 'SGE CONFIG\t\t', RunType.disabled, ex=SGEImproperlyConfigured), # boot_time
-	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable,
-				mandatory=True),
+	SysCheckUnit(check_sge, 'sge', 'SGE DRMAA', 'SGE MASTER\t\t', RunType.both, ex=SGEUnreachable ),
 	SysCheckUnit(check_dotm, 'dotm', 'DotMatics server', 'DOTM DB\t\t\t', RunType.both, ex=DOTMUnreachable),
 	SysCheckUnit(check_shiny, 'shiny', 'Local Shiny HTTP server', 'LOC. SHINY HTTP\t\t', RunType.runtime,
 				arg=HttpRequest(), ex=ShinyUnreachable),

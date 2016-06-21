@@ -1,12 +1,12 @@
 from django.conf import settings
-from django.conf.urls import patterns, include, url
-
+from django.conf.urls import include, url
+from django.contrib.staticfiles.views import serve
 from breeze.middlewares import is_on
 
 if not is_on():
 	from down import views
 
-	urlpatterns = patterns('', url(r'^.*$', views.down))
+	urlpatterns = [url(r'^.*$', views.down)]
 else:
 	from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 	from breeze import views
@@ -20,7 +20,7 @@ else:
 	email_pattern = r'\b[\w.\'-]+@(?:(?:[^_+,!@#$%^&*();\/\\|<>"\'\n -][-\w]+[^_+,!@#$%^&*();\/\\|<>"\' ' \
 		r'\n-]|\w+)\.)+\w{2,63}\b'
 
-	urlpatterns = patterns('',
+	urlpatterns = [
 		url(r'^user_list/?$', views.user_list),
 		url(r'^test1/?', views.job_list),
 		url(r'^mail_list/?$', views.user_list_advanced),
@@ -157,11 +157,11 @@ else:
 		url(r'^resources/integration/?$', views.manage_scripts),
 		url(r'^pagination/home/?$', views.home_paginate),
 
-		url(r'^media/scripts/(?P<path>[^.]*(\.(jpg|jpeg|gif|png)))?$', 'django.views.static.serve',
+		url(r'^media/scripts/(?P<path>[^.]*(\.(jpg|jpeg|gif|png)))?$', serve,
 			{'document_root': settings.MEDIA_ROOT + 'scripts/'}),
-		url(r'^media/pipelines/(?P<path>[^.]*(\.(pdf)))$', 'django.views.static.serve',
+		url(r'^media/pipelines/(?P<path>[^.]*(\.(pdf)))$', serve,
 			{'document_root': settings.MEDIA_ROOT + 'pipelines/'}),
-		url(r'^media/mould/(?P<path>.*)$', 'django.views.static.serve',
+		url(r'^media/mould/(?P<path>.*)$', serve,
 			{'document_root': settings.MEDIA_ROOT + 'mould/'}),
 
 		# url(r'^media/(?P<path>.*)$', 'django.views.static.serve',
@@ -175,20 +175,22 @@ else:
 
 		# Uncomment/comment the next line to enable/disable the admin:
 		url(r'^admin/?', include(admin.site.urls)),
-	)
+	]
 
 	if settings.DEBUG and settings.DEV_MODE:
-		urlpatterns += patterns('django.contrib.staticfiles.views',
-			url(r'^closed$', 'serve', { 'document_root': settings.DJANGO_ROOT + '/index.html', }),
-			url(r'^static/(?P<path>.*)$', 'serve'),
-			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to, {'target_url': 'http://127.0.0.1:3838/sample-apps/', }) # testing
-		)
-		urlpatterns += patterns(
+
+		urlpatterns += [
+			url(r'^closed$', serve, { 'document_root': settings.DJANGO_ROOT + '/index.html', }),
+			url(r'^static/(?P<path>.*)$', serve),
+			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to,
+				kwargs={'target_url': 'http://127.0.0.1:3838/sample-apps/', }) # testing
+		]
+		urlpatterns += [
 			url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
 			url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
 			url(r'^shiny/pubs?(/(?P<path>.+))?/?$', views.standalone_pub_shiny_fw),
 			url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
 			url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
-		)
+		]
 
 	urlpatterns += staticfiles_urlpatterns()

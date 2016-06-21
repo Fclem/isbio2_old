@@ -15,7 +15,7 @@ def is_host_online(host, deadline=5):
 	:type deadline: str | int
 	:rtype: bool
 	"""
-	res = sp.call(['ping', '-c', '3', '-i', '0.2', '-W', '0.1', '-w', str(deadline), host], stdout=sp.PIPE)
+	res = sp.call(['ping', '-c', '3', '-i', '0.2', '-w', str(deadline), host], stdout=sp.PIPE)
 	return res == 0
 
 

@@ -1,4 +1,3 @@
-import django.db
 from breeze.models import Report, Jobs, JobStat
 from utils import *
 
@@ -31,7 +30,7 @@ def refresh_db():
 	"""
 	Scan the db for new reports to be run or updated
 	"""
-	django.db.close_connection()
+	# django.db.close_connection()
 	lst_r = Report.objects.f.get_run_wait()
 	lst_j = Jobs.objects.f.get_run_wait()
 	for item in lst_r:

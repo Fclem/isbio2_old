@@ -2716,7 +2716,7 @@ def ajax_user_stat(request):
 		response_data[idx] = [each_group, count]
 	# response_data['message'] = ["Aug", "Sep", "Oct", "Nov"]
 
-	return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+	return HttpResponse(simplejson.dumps(response_data))
 
 
 @login_required(login_url='/')

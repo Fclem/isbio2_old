@@ -132,7 +132,7 @@ MIDDLEWARE_CLASSES = (
 	'django.middleware.csrf.CsrfViewMiddleware',
 	'django.contrib.auth.middleware.AuthenticationMiddleware',
 	'django.contrib.messages.middleware.MessageMiddleware',
-	'django.middleware.doc.XViewMiddleware',
+	# 'django.middleware.doc.XViewMiddleware',
 	'breeze.middlewares.JobKeeper',
 	'breeze.middlewares.CheckUserProfile',
 	'django_requestlogging.middleware.LogSetupMiddleware',
@@ -271,7 +271,7 @@ CONSOLE_DATE_F = "%d/%b/%Y %H:%M:%S"
 FULL_HOST_NAME = socket.gethostname()
 HOST_NAME = str.split(FULL_HOST_NAME, '.')[0]
 # automatically setting RUN_MODE depending on the host name
-RUN_MODE = 'dev' if HOST_NAME.endswith('dev') else 'prod'
+RUN_MODE = 'dev' # if HOST_NAME.endswith('dev') else 'prod'
 DEV_MODE = RUN_MODE == 'dev'
 MODE_PROD = RUN_MODE == 'prod'
 PHARMA_MODE = False
