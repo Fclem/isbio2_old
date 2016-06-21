@@ -1194,8 +1194,18 @@ class ComputeTarget(ConfigObject, CustomModel):
 	# clem 20/06/2016
 	@ClassProperty
 	def default(cls):
-		# cls.objects.get
-		cls.objects.safe_get(pk=settings.DEFAULT_TARGET_ID)
+		try:
+			return cls.objects.safe_get(pk=settings.DEFAULT_TARGET_ID)
+		except ObjectDoesNotExist:
+			return ComputeTarget()
+
+	# clem 20/06/2016
+	@ClassProperty
+	def breeze_default(cls):
+		try:
+			return cls.objects.safe_get(pk=settings.BREEZE_TARGET_ID)
+		except ObjectDoesNotExist:
+			return ComputeTarget()
 
 	class Meta(ConfigObject.Meta): # TODO check if inheritance is required here
 		abstract = False
@@ -1678,7 +1688,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 	HIDDEN_FILES = [SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
-	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID) # TODO DEL
+	# DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID)
 
 	objects = managers.WorkersManager() # Custom manage
 
@@ -2350,7 +2360,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 					assert isinstance(self.target, ComputeTarget)
 					self.__target = self.target
 				else:
-					self.__target = self.DEFAULT_TARGET
+					self.__target = ComputeTarget.default  # self.DEFAULT_TARGET
 				# module level caching
 				ObjectCache.add(self.__target, key)
 			else:
@@ -2447,7 +2457,8 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 
 class Jobs(Runnable):
-	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.BREEZE_TARGET_ID)
+	# DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.BREEZE_TARGET_ID)
+	DEFAULT_TARGET = ComputeTarget.breeze_default
 
 	def __init__(self, *args, **kwargs):
 
@@ -2637,7 +2648,7 @@ class Report(Runnable):
 	conf_params = models.TextField(null=True, editable=False)
 	conf_files = models.TextField(null=True, editable=False)
 	fm_flag = models.BooleanField(default=False)
-	target = models.ForeignKey(ComputeTarget, default=Runnable.DEFAULT_TARGET.id)
+	target = models.ForeignKey(ComputeTarget, default=ComputeTarget.default)
 	# Shiny specific
 	shiny_key = models.CharField(max_length=64, null=True, editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
