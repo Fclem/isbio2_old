@@ -2360,7 +2360,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 					assert isinstance(self.target, ComputeTarget)
 					self.__target = self.target
 				else:
-					self.__target = ComputeTarget.default  # self.DEFAULT_TARGET
+					self.__target = ComputeTarget.default
 				# module level caching
 				ObjectCache.add(self.__target, key)
 			else:
