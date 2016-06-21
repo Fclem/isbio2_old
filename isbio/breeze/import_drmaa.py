@@ -6,7 +6,7 @@ If not drmaa will be set to None
 provide job_stat_class as alias to drmaa.JobState and as an replacement class if drmaa does not exists
 
 """
-
+from threading import Lock
 __version__ = '0.1'
 __author__ = 'clem'
 __date__ = '21/06/2016'
@@ -18,7 +18,7 @@ try:
 except ImportError:
 	drmaa = None
 
-	class DrmaaJobState(object):
+	class __DrmaaJobState(object):
 		UNDETERMINED = 'undetermined'
 		QUEUED_ACTIVE = 'queued_active'
 		SYSTEM_ON_HOLD = 'system_on_hold'
@@ -32,5 +32,7 @@ except ImportError:
 		FAILED = 'failed'
 
 
-	job_stat_class = DrmaaJobState
+	job_stat_class = __DrmaaJobState
 
+
+drmaa_mutex = Lock()

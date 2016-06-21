@@ -1,6 +1,8 @@
 from compute_interface_module import * # has os, abc, JobStat, Runnable, ComputeTarget and utilities.*
 from breeze.b_exceptions import NoSuchJob, SGEError # , InvalidArgument
+from import_drmaa import drmaa, drmaa_mutex
 import StringIO
+import copy
 
 
 __version__ = '0.1'
@@ -84,16 +86,149 @@ class SGEInterface(ComputeInterface):
 	def assemble_job(self):
 		pass
 
-	def send_job(self): # TODO move it all here
+	# moved here on 21/06/2016
+	# FIXME port of legacy code
+	# TODO check
+	# @new_thread
+	def __old_job_run(self):
+		"""
+			Submits reports as an R-job to cluster with SGE;
+			This submission implements REPORTS concept in BREEZE
+			(For SCRIPTS submission see Jobs.run)
+		"""
+		a_run = self._runnable
+		config = a_run.sh_file_path
+		try:
+			if a_run.is_report and a_run.fm_flag: # Report specific
+				a_run.start_jdc()
+
+			# *MAY* prevent db from being dropped
+			# django.db.close_connection()
+			a_run.breeze_stat = JobStat.PREPARE_RUN
+		except Exception as e:
+			self.log.exception('pre-run error %s (process continues)' % e)
+		try:
+			with drmaa_mutex:
+				with drmaa.Session() as session:
+					jt = session.createJobTemplate()
+					jt.workingDirectory = a_run.home_folder_full_path
+					jt.jobName = a_run.sge_job_name
+					jt.email = [str(a_run._author.email)]
+					if a_run.mailing != '':
+						jt.nativeSpecification = "-m " + a_run.mailing
+					if a_run.email is not None and a_run.email != '':
+						jt.email.append(str(a_run.email))
+					jt.blockEmail = False
+
+					jt.remoteCommand = config
+					jt.joinFiles = True
+
+					a_run.progress = 25
+					a_run.save()
+					if not a_run.aborting:
+						a_run.sgeid = copy.deepcopy(session.runJob(jt))
+						self.log.debug('returned sge_id "%s"' % a_run.sgeid)
+						a_run.breeze_stat = JobStat.SUBMITTED
+					# a_run.waiter(s, True)
+					# a_run.compute_if.busy_waiting(s, True)
+					# a_run.compute_if.busy_waiting(True)
+					# waiting for the job to end
+					self.busy_waiting(True)
+					jt.delete()
+		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
+		Exception) as e:
+			self.log.error('drmaa submit failed : %s' % e)
+			a_run.manage_run_failed(-1, '')
+			raise e
+
+		self.log.debug('drmaa submit ended successfully !')
+		return True
+
+	def send_job(self):
 		# TODO fully switch to qsub, to get finally totally rid of DRMAA F*****G SHIT
-		if self.apply_config():
-			self._runnable.old_sge_run()
+		if drmaa and self.apply_config():
+			# self._runnable.old_sge_run()
+			self.__old_job_run()
 			return True
 		return False
 
-	# clem 06/05/2016 # FIXME
-	def busy_waiting(self, *args): # TODO move it all here
-		return self._runnable.old_sge_waiter(*args)
+	# moved here on 21/06/2016
+	# FIXME port of legacy code
+	# TODO check
+	# @new_thread
+	def __old_drmaa_waiting(self, drmaa_waiting):
+		"""
+
+		:param drmaa_waiting: use drmaa module waiting, or self busy waiting
+		:type drmaa_waiting: bool
+		:rtype: drmaa.JobInfo
+		"""
+		exit_code = 42
+		aborted = False
+		log = get_logger()
+		a_run = self._runnable
+		if a_run.is_sgeid_empty or a_run.is_done:
+			return
+		sge_id = copy.deepcopy(a_run.sgeid) # useless
+		try:
+			ret_val = None
+			if drmaa and drmaa_waiting:
+				with drmaa_mutex:
+					with drmaa.Session() as session:
+						ret_val = session.wait(sge_id, drmaa.Session.TIMEOUT_WAIT_FOREVER)
+			else:
+				try:
+					while True:
+						time.sleep(1)
+						a_run.compute_if.status()
+						if a_run.aborting:
+							break
+				except NoSuchJob:
+					exit_code = 0
+
+			# ?? FIXME
+			a_run.breeze_stat = JobStat.DONE
+			a_run.save()
+
+			# FIXME this is SHITTY
+			if a_run.aborting:
+				aborted = True
+				exit_code = 1
+				a_run.breeze_stat = JobStat.ABORTED
+
+			if drmaa and isinstance(ret_val, drmaa.JobInfo):
+				if ret_val.hasExited:
+					exit_code = ret_val.exitStatus
+				# dic = ret_val.resourceUsage # TODO FUTURE use for mail reporting
+				aborted = ret_val.wasAborted
+
+			a_run.progress = 100
+			if exit_code == 0:  # normal termination
+				a_run.breeze_stat = JobStat.DONE
+				a_run.log.info('sge job finished !')
+				if not a_run.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
+					a_run.log.info('exit code %s, SGE success !' % exit_code)
+					a_run.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
+				else: # FULL SUCCESS
+					a_run.manage_run_success(ret_val)
+			else: # abnormal termination
+				if not aborted: # SGE FAILED
+					a_run.log.info('exit code %s, SGE FAILED !' % exit_code)
+					a_run.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
+				else: # USER ABORTED
+					a_run.manage_run_aborted(ret_val, exit_code)
+			a_run.save()
+			return exit_code
+		except Exception as e:
+			a_run.log.error(' while waiting : %s' % str(e))
+			raise e
+		# return self._runnable.old_sge_waiter(*args)
+
+	# clem 06/05/2016
+	def busy_waiting(self, *args):
+		assert len(args) >= 1
+		do_drmaa_waiting = args[0]
+		return self.__old_drmaa_waiting(do_drmaa_waiting)
 
 	# clem 09/05/2016
 	def job_is_done(self):

@@ -13,9 +13,6 @@ import importlib
 import copy
 from non_db_objects import *
 
-if settings.HOST_NAME.startswith('breeze'):
-	import drmaa
-
 system_check.db_conn.inline_check()
 
 CATEGORY_OPT = (
@@ -26,7 +23,6 @@ CATEGORY_OPT = (
 )
 
 # TODO : move all breeze the logic into objects here and into managers
-drmaa_lock = Lock()
 sge_lock = Lock()
 
 
@@ -1878,7 +1874,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 		return res
 
 	@property
-	def _sh_file_path(self):
+	def sh_file_path(self):
 		"""
 		the full path of the sh file used to run the job on the cluster.
 		This is the file that SGE has to instruct the cluster to run.
@@ -2047,10 +2043,10 @@ class Runnable(FolderObj, CustomModelAbstract):
 			'version_cmd'  : self.target_obj.exec_obj.exec_version_cmd,
 		}
 
-		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self._sh_file_path)
+		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self.sh_file_path)
 
 		# config should be readable and executable but not writable, same for script.R
-		chmod(self._sh_file_path, ACL.RX_RX_)
+		chmod(self.sh_file_path, ACL.RX_RX_)
 		chmod(self.source_file_path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
@@ -2110,146 +2106,10 @@ class Runnable(FolderObj, CustomModelAbstract):
 			self.created = timezone.now() # important to be able to timeout sgeid
 			self.breeze_stat = JobStat.RUN_WAIT
 
-	# FIXME LEGACY INTERFACE ONLY
-	# clem 06/05/2016
-	def run(self):
-		return self.compute_if.send_job()
-
-	# FIXME LEGACY ONLY
-	@new_thread
-	def old_sge_run(self):
-		"""
-			Submits reports as an R-job to cluster with SGE;
-			This submission implements REPORTS concept in BREEZE
-			(For SCRIPTS submission see Jobs.run)
-		"""
-		from os import chdir, system
-
-		s = None
-		config = self._sh_file_path
-
-		try:
-			chdir(self.home_folder_full_path)
-			if self.is_report and self.fm_flag: # Report specific
-				system(settings.JDBC_BRIDGE_PATH) # TODO change that
-
-			# *MAY* prevent db from being dropped
-			# django.db.close_connection()
-			self.breeze_stat = JobStat.PREPARE_RUN
-		except Exception as e:
-			self.log.exception('pre-run error %s (process continues)' % e)
-
-		try:
-			with drmaa_lock:
-				with drmaa.Session() as s:
-					jt = s.createJobTemplate()
-					jt.workingDirectory = self.home_folder_full_path
-					jt.jobName = self.sge_job_name
-					jt.email = [str(self._author.email)]
-					if self.mailing != '':
-						jt.nativeSpecification = "-m " + self.mailing
-					if self.email is not None and self.email != '':
-						jt.email.append(str(self.email))
-					jt.blockEmail = False
-
-					jt.remoteCommand = config
-					jt.joinFiles = True
-
-					self.progress = 25
-					self.save()
-					if not self.aborting:
-						self.sgeid = copy.deepcopy(s.runJob(jt))
-						self.log.debug('returned sge_id "%s"' % self.sgeid)
-						self.breeze_stat = JobStat.SUBMITTED
-					# waiting for the job to end
-					self.waiter(s, True)
-
-					jt.delete()
-
-		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
-		Exception) as e:
-			self.log.error('drmaa submit failed : %s' % e)
-			self.manage_run_failed(-1, '')
-			# if s is not None:
-			#	s.exit()
-			raise e
-
-		self.log.debug('drmaa submit ended successfully !')
-		return 0
-
-	# FIXME LEGACY INTERFACE ONLY
-	def waiter(self, s, drmaa_waiting=False):
-		return self.compute_if.busy_waiting(s, drmaa_waiting)
-
-	# FIXME LEGACY ONLY
-	@new_thread
-	def old_sge_waiter(self, s, drmaa_waiting=False):
-		"""
-
-		:param s:
-		:type s: drmaa.Session
-		:param drmaa_waiting:
-		:type drmaa_waiting: bool
-		:rtype: drmaa.JobInfo
-		"""
-		exit_code = 42
-		aborted = False
-		log = get_logger()
-		if self.is_sgeid_empty or self.is_done:
-			return
-		sge_id = copy.deepcopy(self.sgeid) # useless
-		try:
-			ret_val = None
-			if drmaa_waiting:
-				with drmaa_lock:
-					with drmaa.Session() as s:
-						ret_val = s.wait(sge_id, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-			else:
-				try:
-					while True:
-						time.sleep(1)
-						self.compute_if.status()
-						if self.aborting:
-							break
-				except NoSuchJob:
-					exit_code = 0
-
-			# ?? FIXME
-			self.breeze_stat = JobStat.DONE
-			self.save()
-
-			# FIXME this is SHITTY
-			if self.aborting:
-				aborted = True
-				exit_code = 1
-				self.breeze_stat = JobStat.ABORTED
-
-			if isinstance(ret_val, drmaa.JobInfo):
-				if ret_val.hasExited:
-					exit_code = ret_val.exitStatus
-				# dic = ret_val.resourceUsage # TODO FUTURE use for mail reporting
-				aborted = ret_val.wasAborted
-
-			self.progress = 100
-			if exit_code == 0:  # normal termination
-				self.breeze_stat = JobStat.DONE
-				self.log.info('sge job finished !')
-				if not self.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
-					self.log.info('exit code %s, SGE success !' % exit_code)
-					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
-				else: # FULL SUCCESS
-					self.manage_run_success(ret_val)
-			else: # abnormal termination
-				if not aborted: # SGE FAILED
-					self.log.info('exit code %s, SGE FAILED !' % exit_code)
-					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
-				else: # USER ABORTED
-					self.manage_run_aborted(ret_val, exit_code)
-			self.save()
-			return exit_code
-		except Exception as e:
-			self.log.error(' while waiting : %s' % str(e))
-			raise e
+	# run deleted on 21/06/2016
+	# old_sge_run moved to sge_interface.__old_job_run on 21/06/2016
+	# waiter deleted on 21/06/2016
+	# old_sge_waiter moved to sge_interface.__old_drmaa_waiting  on 21/06/2016
 
 	@staticmethod  # FIXME obsolete design
 	def __auto_json_dump(ret_val, file_n):
@@ -2261,13 +2121,13 @@ class Runnable(FolderObj, CustomModelAbstract):
 		import json
 		import os
 
-		if isinstance(ret_val, drmaa.JobInfo):
-			try:
-				os.chmod(file_n, ACL.RW_RW_)
-				json.dump(ret_val, open(file_n, 'w+'))
-				os.chmod(file_n, ACL.R_R_)
-			except Exception as e:
-				pass
+		# if isinstance(ret_val, drmaa.JobInfo):
+		try:
+			os.chmod(file_n, ACL.RW_RW_)
+			json.dump(ret_val, open(file_n, 'w+'))
+			os.chmod(file_n, ACL.R_R_)
+		except Exception:
+			pass
 
 	# Clem 11/09/2015  # FIXME obsolete design
 	def manage_run_success(self, ret_val):
@@ -2445,7 +2305,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 			utils.remove_file_safe(self._test_file)
 			utils.remove_file_safe(self.failed_file_path)
 			utils.remove_file_safe(self.incomplete_file_path)
-			utils.remove_file_safe(self._sh_file_path)
+			utils.remove_file_safe(self.sh_file_path)
 			self.save()
 			self.write_sh_file()
 		# self.submit_to_cluster()
@@ -2830,7 +2690,11 @@ class Report(Runnable):
 
 		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
 
-
+	# clem 21/06/2016
+	def start_jdc(self):
+		from os import system, chdir
+		chdir(self.home_folder_full_path)
+		system(settings.JDBC_BRIDGE_PATH)
 
 	# 04/06/2015
 	@property # TODO check

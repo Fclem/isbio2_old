@@ -1,21 +1,10 @@
 import django.db
-from breeze.models import Report, Jobs, JobStat, drmaa_lock
-import drmaa
+from breeze.models import Report, Jobs, JobStat
 from utils import *
-# from b_exceptions import *
-# from django.conf import settings
 
 if settings.ENABLE_DATADOG:
 	from datadog import statsd
 
-# from django.db.models import ObjectDoesNotExist
-# import time
-# from utils import console_print as cp
-# from exceptions import Exception
-# import logging
-# import os
-# from threading import Thread
-# logger = logging.getLogger(__name__)
 DB_REFRESH = settings.WATCHER_DB_REFRESH
 PROC_REFRESH = settings.WATCHER_PROC_REFRESH
 
@@ -24,9 +13,11 @@ if settings.HOST_NAME.startswith('breeze'):
 	proc_lst = dict()
 
 
+# FIXME TODO del
 def with_drmaa(func):
-	"""
-	wrapper to use only one drmaa instance
+	""" wrapper to use only one drmaa instance
+
+
 	:param func:
 	:type func:
 	:return:
@@ -34,9 +25,12 @@ def with_drmaa(func):
 	"""
 	def inner(*args, **kwargs):
 		global s
-		with drmaa_lock:
-			with drmaa.Session() as s:
-				func(*args, **kwargs)
+		if drmaa:
+			with drmaa_mutex:
+				with drmaa.Session() as s:
+					func(*args, **kwargs)
+		else:
+			func(*args, **kwargs)
 
 	return inner
 
@@ -152,7 +146,7 @@ def refresh_qstat(proc_item):
 		dbitem.re_submit()
 
 
-@with_drmaa
+# @with_drmaa
 def _reattach_the_job(dbitem):
 	"""
 
@@ -162,7 +156,8 @@ def _reattach_the_job(dbitem):
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 	try:
 		if not dbitem.is_done:
-			p = Thread(target=dbitem.waiter, args=(s, ))
+			# p = Thread(target=dbitem.waiter, args=(s, ))
+			p = Thread(target=dbitem.compute_if.busy_waiting, args=(False, ))
 			p.start()
 			# dbitem.waiter(s)
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
@@ -184,7 +179,7 @@ def _spawn_the_job(dbitem):
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 	if not dbitem.aborting:
 		try:
-			p = Thread(target=dbitem.run)
+			p = Thread(target=dbitem.compute_if.send_job)
 			p.start()
 			# dbitem.run()
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
