@@ -10,11 +10,7 @@ from comp import Trans
 from utils import *
 from django.db import models
 import importlib
-import copy
 from non_db_objects import *
-
-if settings.HOST_NAME.startswith('breeze'):
-	import drmaa
 
 system_check.db_conn.inline_check()
 
@@ -25,8 +21,7 @@ CATEGORY_OPT = (
 	(u'sequencing', u'Sequencing'),
 )
 
-# TODO : move all the logic into objects here
-drmaa_lock = Lock()
+# TODO : move all breeze the logic into objects here and into managers
 sge_lock = Lock()
 
 
@@ -38,6 +33,7 @@ class CustomModelAbstract(models.Model):
 	""" Provides and enforce read-only property ( read_only ). This property is set by the CustomManager """
 
 	__prop_read_only = False
+	objects = managers.ObjectsWithAuth()
 
 	@property
 	def read_only(self):
@@ -59,12 +55,9 @@ class CustomModelAbstract(models.Model):
 
 		:param val: only accepts True
 		:type val: bool
-		:raise:  ReadOnlyAttribute
 		"""
 		if not self.__prop_read_only and val:
 			self.__prop_read_only = True
-		else:
-			raise ReadOnlyAttribute
 
 	def save(self, force_insert=False, force_update=False, using=None):
 		if not self.read_only:
@@ -100,7 +93,6 @@ class CustomModel(CustomModelAbstract):
 
 		_ institute field, that is mandatory for all db objects
 	"""
-	objects = managers.CustomManager()
 
 	institute = ForeignKey(Institute, default=Institute.default)
 	""" Store the institute which own this object, to efficiently segregate data """
@@ -205,7 +197,7 @@ class ShinyReport(CustomModel):
 	author = ForeignKey(User)
 	created = models.DateTimeField(auto_now_add=True)
 
-	objects = managers.ObjectsWithAuth()
+	# objects = managers.ObjectsWithAuth()
 	# institute = ForeignKey(Institute, default=Institute.default)
 
 	custom_header = models.TextField(blank=True, default=shiny_header(),
@@ -1202,18 +1194,8 @@ class ComputeTarget(ConfigObject, CustomModel):
 	# clem 20/06/2016
 	@ClassProperty
 	def default(cls):
-		try:
-			return cls.objects.safe_get(pk=settings.DEFAULT_TARGET_ID)
-		except ObjectDoesNotExist:
-			return ComputeTarget()
-
-	# clem 20/06/2016
-	@ClassProperty
-	def breeze_default(cls):
-		try:
-			return cls.objects.safe_get(pk=settings.BREEZE_TARGET_ID)
-		except ObjectDoesNotExist:
-			return ComputeTarget()
+		# cls.objects.get
+		cls.objects.safe_get(pk=settings.DEFAULT_TARGET_ID)
 
 	class Meta(ConfigObject.Meta): # TODO check if inheritance is required here
 		abstract = False
@@ -1477,7 +1459,7 @@ class ScriptCategories(CustomModelAbstract):
 		db_table = 'breeze_script_categories'
 
 
-class UserDate(models.Model):
+class UserDate(CustomModelAbstract):
 	user = ForeignKey(User)
 	install_date = models.DateField(auto_now_add=True)
 	
@@ -1490,7 +1472,7 @@ class UserDate(models.Model):
 
 # TODO add a ManyToManyField Institute field
 class Rscripts(FolderObj, CustomModelAbstract):
-	objects = managers.ObjectsWithAuth() # The default manager.
+	# objects = managers.ObjectsWithAuth() # The default manager.
 
 	BASE_FOLDER_NAME = settings.RSCRIPTS_FN
 
@@ -1621,7 +1603,8 @@ class CartInfo(CustomModelAbstract):
 		ordering = ["active"]
 
 
-class DataSet(models.Model):
+# TODO add a ManyToManyField Institute field
+class DataSet(CustomModelAbstract):
 	name = models.CharField(max_length=55, unique=True)
 	description = models.CharField(max_length=350, blank=True)
 	author = ForeignKey(User)
@@ -1637,7 +1620,8 @@ class DataSet(models.Model):
 		return self.name
 
 
-class InputTemplate(models.Model):
+# TODO add a ManyToManyField Institute field
+class InputTemplate(CustomModelAbstract):
 	name = models.CharField(max_length=55, unique=True)
 	description = models.CharField(max_length=350, blank=True)
 	author = ForeignKey(User)
@@ -1665,6 +1649,7 @@ class UserProfile(CustomModelAbstract):
 	fimm_group = models.CharField(max_length=75, blank=True)
 	logo = models.FileField(upload_to=file_name, blank=True)
 	institute_info = models.ForeignKey(Institute, default=Institute.default)
+	institute = institute_info
 	# if user accepts the agreement or not
 	db_agreement = models.BooleanField(default=False)
 	last_active = models.DateTimeField(default=timezone.now)
@@ -1693,7 +1678,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 	HIDDEN_FILES = [SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
-	# DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID) # TODO DEL
+	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID) # TODO DEL
 
 	objects = managers.WorkersManager() # Custom manage
 
@@ -1888,7 +1873,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 		return res
 
 	@property
-	def _sh_file_path(self):
+	def sh_file_path(self):
 		"""
 		the full path of the sh file used to run the job on the cluster.
 		This is the file that SGE has to instruct the cluster to run.
@@ -2024,13 +2009,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 	##
 	# SHARED CONCRETE METHODS (SGE_JOB MANAGEMENT RELATED)
 	##
-	# FIXME : LEGACY ONLY
-	def abort(self):
-		""" Abort the job using
-
-		:rtype: bool
-		"""
-		return self.compute_if.abort()
+	# deleted abort on 21/06/2016
 
 	def write_sh_file(self):
 		""" Generate the SH file that will be executed on the compute target to configure and run the job """
@@ -2057,15 +2036,15 @@ class Runnable(FolderObj, CustomModelAbstract):
 			'version_cmd'  : self.target_obj.exec_obj.exec_version_cmd,
 		}
 
-		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self._sh_file_path)
+		gen_file_from_template(settings.BOOTSTRAP_SH_TEMPLATE, conf_dict, self.sh_file_path)
 
 		# config should be readable and executable but not writable, same for script.R
-		chmod(self._sh_file_path, ACL.RX_RX_)
+		chmod(self.sh_file_path, ACL.RX_RX_)
 		chmod(self.source_file_path, ACL.R_R_)
 
 	# INTERFACE for extending assembling process
-	# TODO @abc.abstractmethod ?
 	# FIXME obsolete
+	@abc.abstractmethod
 	def generate_r_file(self, *args, **kwargs):
 		""" Place Holder for instance specific R files generation
 		THIS METHOD MUST BE overridden in subclasses
@@ -2073,7 +2052,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 		raise not_imp(self)
 
 	# INTERFACE for extending assembling process
-	# TODO @abc.abstractmethod ?
+	@abc.abstractmethod
 	def deferred_instance_specific(self, *args, **kwargs):
 		"""
 		Specific operations to generate job or report instance dependencies.
@@ -2120,143 +2099,10 @@ class Runnable(FolderObj, CustomModelAbstract):
 			self.created = timezone.now() # important to be able to timeout sgeid
 			self.breeze_stat = JobStat.RUN_WAIT
 
-	# run deleted 21/06/2016
-
-	# FIXME LEGACY ONLY
-	@new_thread
-	def old_sge_run(self):
-		"""
-			Submits reports as an R-job to cluster with SGE;
-			This submission implements REPORTS concept in BREEZE
-			(For SCRIPTS submission see Jobs.run)
-		"""
-		from os import chdir, system
-
-		s = None
-		config = self._sh_file_path
-
-		try:
-			chdir(self.home_folder_full_path)
-			if self.is_report and self.fm_flag: # Report specific
-				system(settings.JDBC_BRIDGE_PATH) # TODO change that
-
-			# *MAY* prevent db from being dropped
-			# django.db.close_connection()
-			self.breeze_stat = JobStat.PREPARE_RUN
-		except Exception as e:
-			self.log.exception('pre-run error %s (process continues)' % e)
-
-		try:
-			with drmaa_lock:
-				with drmaa.Session() as s:
-					jt = s.createJobTemplate()
-					jt.workingDirectory = self.home_folder_full_path
-					jt.jobName = self.sge_job_name
-					jt.email = [str(self._author.email)]
-					if self.mailing != '':
-						jt.nativeSpecification = "-m " + self.mailing
-					if self.email is not None and self.email != '':
-						jt.email.append(str(self.email))
-					jt.blockEmail = False
-
-					jt.remoteCommand = config
-					jt.joinFiles = True
-
-					self.progress = 25
-					self.save()
-					if not self.aborting:
-						self.sgeid = copy.deepcopy(s.runJob(jt))
-						self.log.debug('returned sge_id "%s"' % self.sgeid)
-						self.breeze_stat = JobStat.SUBMITTED
-					# waiting for the job to end
-					self.waiter(s, True)
-
-					jt.delete()
-
-		except (drmaa.AlreadyActiveSessionException, drmaa.InvalidArgumentException, drmaa.InvalidJobException,
-		Exception) as e:
-			self.log.error('drmaa submit failed : %s' % e)
-			self.manage_run_failed(-1, '')
-			# if s is not None:
-			#	s.exit()
-			raise e
-
-		self.log.debug('drmaa submit ended successfully !')
-		return 0
-
-	# FIXME LEGACY INTERFACE ONLY
-	def waiter(self, s, drmaa_waiting=False):
-		return self.compute_if.busy_waiting(s, drmaa_waiting)
-
-	# FIXME LEGACY ONLY
-	@new_thread
-	def old_sge_waiter(self, s, drmaa_waiting=False):
-		"""
-
-		:param s:
-		:type s: drmaa.Session
-		:param drmaa_waiting:
-		:type drmaa_waiting: bool
-		:rtype: drmaa.JobInfo
-		"""
-		exit_code = 42
-		aborted = False
-		log = get_logger()
-		if self.is_sgeid_empty or self.is_done:
-			return
-		sge_id = copy.deepcopy(self.sgeid) # useless
-		try:
-			ret_val = None
-			if drmaa_waiting:
-				with drmaa_lock:
-					with drmaa.Session() as s:
-						ret_val = s.wait(sge_id, drmaa.Session.TIMEOUT_WAIT_FOREVER)
-			else:
-				try:
-					while True:
-						time.sleep(1)
-						self.compute_if.status()
-						if self.aborting:
-							break
-				except NoSuchJob:
-					exit_code = 0
-
-			# ?? FIXME
-			self.breeze_stat = JobStat.DONE
-			self.save()
-
-			# FIXME this is SHITTY
-			if self.aborting:
-				aborted = True
-				exit_code = 1
-				self.breeze_stat = JobStat.ABORTED
-
-			if isinstance(ret_val, drmaa.JobInfo):
-				if ret_val.hasExited:
-					exit_code = ret_val.exitStatus
-				# dic = ret_val.resourceUsage # TODO FUTURE use for mail reporting
-				aborted = ret_val.wasAborted
-
-			self.progress = 100
-			if exit_code == 0:  # normal termination
-				self.breeze_stat = JobStat.DONE
-				self.log.info('sge job finished !')
-				if not self.is_r_successful: # R FAILURE or USER ABORT (to check if that is true)
-					self.log.info('exit code %s, SGE success !' % exit_code)
-					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'r')
-				else: # FULL SUCCESS
-					self.manage_run_success(ret_val)
-			else: # abnormal termination
-				if not aborted: # SGE FAILED
-					self.log.info('exit code %s, SGE FAILED !' % exit_code)
-					self.manage_run_failed(ret_val, exit_code, drmaa_waiting, 'sge')
-				else: # USER ABORTED
-					self.manage_run_aborted(ret_val, exit_code)
-			self.save()
-			return exit_code
-		except Exception as e:
-			self.log.error(' while waiting : %s' % str(e))
-			raise e
+	# run deleted on 21/06/2016
+	# old_sge_run moved to sge_interface.__old_job_run on 21/06/2016
+	# waiter deleted on 21/06/2016
+	# old_sge_waiter moved to sge_interface.__old_drmaa_waiting  on 21/06/2016
 
 	@staticmethod  # FIXME obsolete design
 	def __auto_json_dump(ret_val, file_n):
@@ -2268,13 +2114,13 @@ class Runnable(FolderObj, CustomModelAbstract):
 		import json
 		import os
 
-		if isinstance(ret_val, drmaa.JobInfo):
-			try:
-				os.chmod(file_n, ACL.RW_RW_)
-				json.dump(ret_val, open(file_n, 'w+'))
-				os.chmod(file_n, ACL.R_R_)
-			except Exception as e:
-				pass
+		# if isinstance(ret_val, drmaa.JobInfo):
+		try:
+			os.chmod(file_n, ACL.RW_RW_)
+			json.dump(ret_val, open(file_n, 'w+'))
+			os.chmod(file_n, ACL.R_R_)
+		except Exception:
+			pass
 
 	# Clem 11/09/2015  # FIXME obsolete design
 	def manage_run_success(self, ret_val):
@@ -2452,7 +2298,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 			utils.remove_file_safe(self._test_file)
 			utils.remove_file_safe(self.failed_file_path)
 			utils.remove_file_safe(self.incomplete_file_path)
-			utils.remove_file_safe(self._sh_file_path)
+			utils.remove_file_safe(self.sh_file_path)
 			self.save()
 			self.write_sh_file()
 		# self.submit_to_cluster()
@@ -2473,8 +2319,8 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 	def delete(self, using=None):
 		if not self.read_only:
-			if self._breeze_stat != JobStat.DONE:
-				self.abort()
+			# if self._breeze_stat != JobStat.DONE:
+			self.compute_if.abort()
 			txt = str(self)
 			super(Runnable, self).delete(using=using) # Call the "real" delete() method.
 			get_logger().info("%s has been deleted" % txt)
@@ -2504,7 +2350,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 					assert isinstance(self.target, ComputeTarget)
 					self.__target = self.target
 				else:
-					self.__target = ComputeTarget.default  # self.DEFAULT_TARGET
+					self.__target = self.DEFAULT_TARGET
 				# module level caching
 				ObjectCache.add(self.__target, key)
 			else:
@@ -2601,8 +2447,7 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 
 class Jobs(Runnable):
-	# DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.BREEZE_TARGET_ID)
-	DEFAULT_TARGET = ComputeTarget.breeze_default
+	DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.BREEZE_TARGET_ID)
 
 	def __init__(self, *args, **kwargs):
 
@@ -2792,7 +2637,7 @@ class Report(Runnable):
 	conf_params = models.TextField(null=True, editable=False)
 	conf_files = models.TextField(null=True, editable=False)
 	fm_flag = models.BooleanField(default=False)
-	target = models.ForeignKey(ComputeTarget, default=ComputeTarget.default)
+	target = models.ForeignKey(ComputeTarget, default=Runnable.DEFAULT_TARGET.id)
 	# Shiny specific
 	shiny_key = models.CharField(max_length=64, null=True, editable=False)
 	rora_id = models.PositiveIntegerField(default=0)
@@ -2812,7 +2657,7 @@ class Report(Runnable):
 
 	# @property
 	# def _rtype_config_path(self):
-	#	return settings.MEDIA_ROOT + str(self._type.config)
+	# 	return settings.MEDIA_ROOT + str(self._type.config)
 
 	@property
 	def title(self):
@@ -2838,7 +2683,11 @@ class Report(Runnable):
 
 		return reverse(views.report_file_view, kwargs={ 'rid': self.id })
 
-
+	# clem 21/06/2016
+	def start_jdc(self):
+		from os import system, chdir
+		chdir(self.home_folder_full_path)
+		system(settings.JDBC_BRIDGE_PATH)
 
 	# 04/06/2015
 	@property # TODO check
@@ -3277,12 +3126,12 @@ class ShinyTag(CustomModel):
 		return self.name
 
 
-class OffsiteUser(CustomModel):
+class OffsiteUser(CustomModelAbstract):
 	first_name = models.CharField(max_length=32, blank=False, help_text="First name of the off-site user to add")
 	last_name = models.CharField(max_length=32, blank=False, help_text="Last name of the off-site user to add")
 	email = models.CharField(max_length=64, blank=False, unique=True,
 		help_text="Valid email address of the off-site user")
-	# institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
+	institute = models.CharField(max_length=32, blank=True, help_text="Institute name of the off-site user")
 	role = models.CharField(max_length=32, blank=True, help_text="Position/role of this off-site user")
 	user_key = models.CharField(max_length=32, null=False, blank=False, unique=True, help_text="!! DO NOT EDIT !!")
 	added_by = ForeignKey(User, related_name='owner', help_text="!! DO NOT EDIT !!")

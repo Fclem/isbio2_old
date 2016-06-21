@@ -2,27 +2,12 @@ from django.template.defaultfilters import slugify
 from django.db import models
 from utils import *
 
-
 __version__ = '0.1'
 __author__ = 'clem'
 __date__ = '27/05/2016'
 
 
-class DrmaaJobState(object):
-	UNDETERMINED = 'undetermined'
-	QUEUED_ACTIVE = 'queued_active'
-	SYSTEM_ON_HOLD = 'system_on_hold'
-	USER_ON_HOLD = 'user_on_hold'
-	USER_SYSTEM_ON_HOLD = 'user_system_on_hold'
-	RUNNING = 'running'
-	SYSTEM_SUSPENDED = 'system_suspended'
-	USER_SUSPENDED = 'user_suspended'
-	USER_SYSTEM_SUSPENDED = 'user_system_suspended'
-	DONE = 'done'
-	FAILED = 'failed'
-
-
-class JobState(DrmaaJobState):
+class JobState(job_stat_class):
 	SUSPENDED = 'suspended'
 	PENDING = 'pending'
 	TRANSFERRING = 'transferring'
@@ -628,7 +613,7 @@ class SwapObject(FolderObj):
 		abstract = False
 
 
-class SrcObj:
+class SrcObj(object):
 	def __init__(self, base_string):
 		self.str = base_string
 
@@ -806,7 +791,7 @@ class FileParser(SrcObj):
 
 
 # clem 02/02/2016
-class Pattern:
+class Pattern(object):
 	def __init__(self, name, pattern):
 		self._pattern = pattern if type(pattern) == str else ''
 		self._name = name if type(name) == str else ''
@@ -823,7 +808,7 @@ class Pattern:
 
 
 # clem 20/10/2015 distributed POC +01/02/2016
-class RunServer:
+class RunServer(object):
 	storage_path = str()
 	_reports_path = str()
 	_swap_object = None
