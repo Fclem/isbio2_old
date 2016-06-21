@@ -25,7 +25,7 @@ CATEGORY_OPT = (
 	(u'sequencing', u'Sequencing'),
 )
 
-# TODO : move all the logic into objects here
+# TODO : move all breeze the logic into objects here and into managers
 drmaa_lock = Lock()
 sge_lock = Lock()
 
@@ -38,6 +38,7 @@ class CustomModelAbstract(models.Model):
 	""" Provides and enforce read-only property ( read_only ). This property is set by the CustomManager """
 
 	__prop_read_only = False
+	objects = managers.ObjectsWithAuth()
 
 	@property
 	def read_only(self):
@@ -97,7 +98,6 @@ class CustomModel(CustomModelAbstract):
 
 		_ institute field, that is mandatory for all db objects
 	"""
-	objects = managers.CustomManager()
 
 	institute = ForeignKey(Institute, default=Institute.default)
 	""" Store the institute which own this object, to efficiently segregate data """
@@ -202,7 +202,7 @@ class ShinyReport(CustomModel):
 	author = ForeignKey(User)
 	created = models.DateTimeField(auto_now_add=True)
 
-	objects = managers.ObjectsWithAuth()
+	# objects = managers.ObjectsWithAuth()
 	# institute = ForeignKey(Institute, default=Institute.default)
 
 	custom_header = models.TextField(blank=True, default=shiny_header(),
@@ -1464,7 +1464,7 @@ class ScriptCategories(CustomModelAbstract):
 		db_table = 'breeze_script_categories'
 
 
-class UserDate(models.Model):
+class UserDate(CustomModelAbstract):
 	user = ForeignKey(User)
 	install_date = models.DateField(auto_now_add=True)
 	
@@ -1477,7 +1477,7 @@ class UserDate(models.Model):
 
 # TODO add a ManyToManyField Institute field
 class Rscripts(FolderObj, CustomModelAbstract):
-	objects = managers.ObjectsWithAuth() # The default manager.
+	# objects = managers.ObjectsWithAuth() # The default manager.
 
 	BASE_FOLDER_NAME = settings.RSCRIPTS_FN
 
@@ -1608,7 +1608,8 @@ class CartInfo(CustomModelAbstract):
 		ordering = ["active"]
 
 
-class DataSet(models.Model):
+# TODO add a ManyToManyField Institute field
+class DataSet(CustomModelAbstract):
 	name = models.CharField(max_length=55, unique=True)
 	description = models.CharField(max_length=350, blank=True)
 	author = ForeignKey(User)
@@ -1624,7 +1625,8 @@ class DataSet(models.Model):
 		return self.name
 
 
-class InputTemplate(models.Model):
+# TODO add a ManyToManyField Institute field
+class InputTemplate(CustomModelAbstract):
 	name = models.CharField(max_length=55, unique=True)
 	description = models.CharField(max_length=350, blank=True)
 	author = ForeignKey(User)
@@ -1652,6 +1654,7 @@ class UserProfile(CustomModelAbstract):
 	fimm_group = models.CharField(max_length=75, blank=True)
 	logo = models.FileField(upload_to=file_name, blank=True)
 	institute_info = models.ForeignKey(Institute, default=Institute.default)
+	institute = institute_info
 	# if user accepts the agreement or not
 	db_agreement = models.BooleanField(default=False)
 	last_active = models.DateTimeField(default=timezone.now)

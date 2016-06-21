@@ -94,12 +94,18 @@ class CustomManager(Manager):
 		:rtype: models.User
 		"""
 		auth = None
-		if hasattr(obj, 'author'):
+		if hasattr(obj, 'author'): # most objects
 			auth = obj.author
+		elif hasattr(obj, '_author'): # Reports
+			auth = obj._author
 		elif hasattr(obj, 'juser'): # Jobs
 			auth = obj.juser
-		elif hasattr(obj, '_author'):
-			auth = obj._author
+		elif hasattr(obj, 'added_by'): # OffsiteUser
+			auth = obj.added_by
+		elif hasattr(obj, 'user'): # UserProfile
+			auth = obj.user
+		elif hasattr(obj, 'script_buyer'): # CartInfo
+			auth = obj.script_buyer
 		return auth
 
 	# clem 20/06/2016
@@ -521,7 +527,7 @@ class WorkersManager(ObjectsWithAuth):
 
 
 # clem 19/04/2016
-class ProjectManager(CustomManager):
+class ProjectManager(ObjectsWithAuth):
 	def __init__(self):
 		super(ProjectManager, self).__init__()
 
