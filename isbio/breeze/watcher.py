@@ -1,6 +1,6 @@
 import django.db
 from breeze.models import Report, Jobs, JobStat, drmaa_lock
-import drmaa
+# import drmaa
 from utils import *
 # from b_exceptions import *
 # from django.conf import settings
@@ -152,7 +152,7 @@ def refresh_qstat(proc_item):
 		dbitem.re_submit()
 
 
-@with_drmaa
+# @with_drmaa
 def _reattach_the_job(dbitem):
 	"""
 
@@ -162,7 +162,8 @@ def _reattach_the_job(dbitem):
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 	try:
 		if not dbitem.is_done:
-			p = Thread(target=dbitem.waiter, args=(s, ))
+			# p = Thread(target=dbitem.waiter)
+			p = Thread(target=dbitem.compute_if.busy_waiting, args=(None, ))
 			p.start()
 			# dbitem.waiter(s)
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })
@@ -184,7 +185,7 @@ def _spawn_the_job(dbitem):
 	assert isinstance(dbitem, Report) or isinstance(dbitem, Jobs)
 	if not dbitem.aborting:
 		try:
-			p = Thread(target=dbitem.run)
+			p = Thread(target=dbitem.compute_if.send_job)
 			p.start()
 			# dbitem.run()
 			proc_lst.update({ dbitem.id: ProcItem(p, dbitem) })

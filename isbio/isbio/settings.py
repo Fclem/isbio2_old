@@ -177,7 +177,7 @@ INSTALLED_APPS = (
 	'bootstrap_toolkit',
 	'breeze',
 	'down',
-	'south',
+	# 'south',
 	'gunicorn',
 	'mathfilters',
 	# Uncomment the next line to enable the admin:

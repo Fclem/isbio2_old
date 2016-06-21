@@ -21,6 +21,7 @@ class DrmaaJobState(object):
 	DONE = 'done'
 	FAILED = 'failed'
 
+
 class JobState(DrmaaJobState):
 	SUSPENDED = 'suspended'
 	PENDING = 'pending'

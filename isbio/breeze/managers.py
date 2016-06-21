@@ -21,6 +21,7 @@ class CustomManager(Manager):
 		super(CustomManager, self).__init__()
 
 	# clem 20/06/2016
+	# TODO improve
 	def safe_get(self, *_, **kwargs):
 		has_id = 'id' in kwargs.keys()
 		has_pk = 'pk' in kwargs.keys()
