@@ -14,20 +14,27 @@ else:
 	from django.contrib import admin
 	admin.autodiscover()
 
-	from django_cas.views import login as django_cas_login
-	from django_cas.views import logout as django_cas_logout
+	from django_cas_ng.views import login as cas_login, logout as cas_logout, callback as cas_callback
+	# from django_cas.views import login as django_cas_login
+	# from django_cas.views import logout as django_cas_logout
 
 	email_pattern = r'\b[\w.\'-]+@(?:(?:[^_+,!@#$%^&*();\/\\|<>"\'\n -][-\w]+[^_+,!@#$%^&*();\/\\|<>"\' ' \
 		r'\n-]|\w+)\.)+\w{2,63}\b'
 
 	urlpatterns = [
+		url(r'^accounts/login$', cas_login, name='cas_ng_login'),
+		url(r'^accounts/logout$', cas_logout, name='cas_ng_logout'),
+		url(r'^accounts/callback$', cas_callback, name='cas_ng_proxy_callback'),
+		url(r'^/?$', cas_login, name='cas_ng_login'),
+		url(r'^logout/?$', cas_logout, name='cas_ng_logout'),
+		url(r'^callback$/?', cas_callback, name='cas_ng_proxy_callback'),
 		url(r'^user_list/?$', views.user_list),
 		url(r'^test1/?', views.job_list),
 		url(r'^mail_list/?$', views.user_list_advanced),
 		url(r'^custom_list/?$', views.custom_list),
-		url(r'^$', django_cas_login),  # views.breeze),
+		# url(r'^$', django_cas_login),  # views.breeze),
 		url(r'^breeze/?$', views.breeze),
-		url(r'^logout/?$', django_cas_logout),  # views.logout),
+		# url(r'^logout/?$', django_cas_logout),  # views.logout),
 		url(r'^stat/?$', views.ajax_user_stat),
 		# Special system checks
 		url(r'^resources/restart/?$', views.restart_breeze),

@@ -13,13 +13,13 @@ datadog>=0.10.0
 decorator>=4.0.4
 django-bootstrap-toolkit>=2.6.22
 django-cas>=2.1.1
+django-cas-ng
 django-cerner-auth>=0.2
 django-configurations>=0.1
 django-gevent-websocket>=0.1.0
 django-mathfilters>=0.3.0
 django-requestlogging>=1.0.1
 django-social-auth>=0.7.10
-drmaa==0.5
 elementtree>=1.2.7-20070827-preview
 gevent>=1.0.1
 gevent-websocket>=0.9.3
@@ -61,3 +61,4 @@ sshtunnel>=0.0.8.1
 paramiko>=1.9.0
 docker-py>=1.7.2
 azure-storage>=0.31
+#drmaa==0.5

@@ -125,12 +125,32 @@ TEMPLATE_LOADERS = (
 	'django.template.loaders.app_directories.Loader',
 )
 
+INSTALLED_APPS = (
+	'django.contrib.admin',
+	'django.contrib.auth',
+	'django.contrib.contenttypes',
+	'django.contrib.sessions',
+	'django.contrib.sites',
+	'django.contrib.messages',
+	'django.contrib.staticfiles',
+	'django_cas_ng',
+	'bootstrap_toolkit',
+	'breeze',
+	'down',
+		# 'south',
+	'gunicorn',
+	'mathfilters',
+	'django_requestlogging',
+		# Uncomment the next line to enable admin documentation:
+	'django.contrib.admindocs',
+)
+
 MIDDLEWARE_CLASSES = (
 	'breeze.middlewares.BreezeAwake',
 	'django.middleware.common.CommonMiddleware',
 	'django.contrib.sessions.middleware.SessionMiddleware',
-	'django.middleware.csrf.CsrfViewMiddleware',
 	'django.contrib.auth.middleware.AuthenticationMiddleware',
+	'django.middleware.csrf.CsrfViewMiddleware',
 	'django.contrib.messages.middleware.MessageMiddleware',
 	# 'django.middleware.doc.XViewMiddleware',
 	'breeze.middlewares.JobKeeper',
@@ -143,7 +163,8 @@ MIDDLEWARE_CLASSES = (
 # from django_cas.backends import CASBackend
 AUTHENTICATION_BACKENDS = (
 	'django.contrib.auth.backends.ModelBackend',
-	'django_cas.backends.CASBackend',
+	# 'django_cas.backends.CASBackend',
+	'django_cas_ng.backends.CASBackend',
 )
 
 # CAS_SERVER_IP = '192.168.0.218'
@@ -166,26 +187,6 @@ TEMPLATE_DIRS = (
 
 # provide our profile model
 AUTH_PROFILE_MODULE = 'breeze.UserProfile'
-
-INSTALLED_APPS = (
-	'django.contrib.auth',
-	'django.contrib.contenttypes',
-	'django.contrib.sessions',
-	'django.contrib.sites',
-	'django.contrib.messages',
-	'django.contrib.staticfiles',
-	'bootstrap_toolkit',
-	'breeze',
-	'down',
-	# 'south',
-	'gunicorn',
-	'mathfilters',
-	# Uncomment the next line to enable the admin:
-	'django.contrib.admin',
-	'django_requestlogging',
-	# Uncomment the next line to enable admin documentation:
-	'django.contrib.admindocs',
-)
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
