@@ -20,5 +20,6 @@ admin.site.register(breeze_models.ShinyTag)
 admin.site.register(breeze_models.ComputeTarget) # 19/04/2016
 admin.site.register(breeze_models.EngineConfig) # 13/05/2016
 admin.site.register(breeze_models.ExecConfig) # 13/05/2016
+admin.site.register(breeze_models.Institute) # 23/06/2016
 
 
