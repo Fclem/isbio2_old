@@ -387,10 +387,7 @@ def scripts(request, layout="list"):
 def reports(request):
 	page_index, entries_nb = aux.report_common(request)
 	# Manage sorting
-	if request.REQUEST.get('sort'):
-		sorting = request.REQUEST.get('sort')
-	else:
-		sorting = '-created'
+	sorting = aux.get_argument(request, 'sort') or '-created'
 	# get the user's institute
 	insti = UserProfile.objects.get(user=request.user).institute_info
 	all_reports = Report.objects.filter(status="succeed", institute=insti).order_by(sorting)

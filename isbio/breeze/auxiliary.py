@@ -12,19 +12,6 @@ from django.template import loader
 from django.template.context import RequestContext
 from utils import *
 
-# import logging
-# import sys
-# from django.core.exceptions import PermissionDenied, ObjectDoesNotExist
-# from breeze.models import Report, Jobs, DataSet, RunServer
-# import time
-# import os
-# from subprocess import Popen, PIPE #, call
-# from django.utils import timezone
-# from django.contrib import messages
-# from datetime import datetime
-# from logging import Handler
-# from breeze.managers import Q
-
 DASHED_LINE = '-' * 111
 
 
@@ -395,7 +382,22 @@ def make_http_query(request):
 	return query_string
 
 
-# 10/03/2015 Clem
+# clem 23/06/2016
+def get_argument(req, arg_name):
+	g = req.GET.get(arg_name, None)
+	p = req.POST.get(arg_name, None)
+
+	if g and not p:
+		return g
+	elif p and not g:
+		return p
+	elif not p and not g:
+		return None
+	else:
+		raise AttributeError('argument %s is both in both GET and POST' % arg_name)
+
+
+# 10/03/2015 Clem updated 23/06/2016
 def report_common(request, v_max=15):
 	"""
 	:type request: django.core.handlers.wsgi.WSGIRequest
@@ -406,16 +408,7 @@ def report_common(request, v_max=15):
 		entries_nb: int
 			number of item to display in a page
 	"""
-	if request.REQUEST.get('page'):  # and type(request.REQUEST.get('page') == 'int'):
-		page_index = int(request.REQUEST['page'])
-	else:
-		page_index = 1
-
-	if request.REQUEST.get('entries'):
-		entries_nb = int(request.REQUEST['entries'])
-	else:
-		entries_nb = v_max
-	return page_index, entries_nb
+	return int(get_argument(request, 'page') or 1), int(get_argument(request, 'entries') or v_max)
 
 # DELETED get_job_safe(request, job_id) 19/02/2016 replaced by manager.owner_get
 # DELETED get_report_safe(request, job_id, owner=True) 19/02/2016 replaced by manager.owner_get

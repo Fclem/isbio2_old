@@ -160,6 +160,9 @@ INSTALLED_APPS = [
 	'django_cas_ng',
 	'bootstrap_toolkit',
 	'breeze',
+	'shiny',
+	'dbviewer',
+	'compute',
 	'down',
 	# 'south',
 	'gunicorn',
@@ -339,7 +342,7 @@ MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 RORA_LIB = PROJECT_PATH + 'RORALib/'
 UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
-STATIC_ROOT = SOURCE_ROOT + 'static/'
+STATIC_ROOT = SOURCE_ROOT + 'static_source/'
 TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
 MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
@@ -503,8 +506,8 @@ FOLDERS_TO_CHECK = [TEMPLATE_FOLDER, SHINY_TAGS, REPORT_TYPE_PATH, # SHINY_REPOR
 
 # STATIC URL MAPPINGS
 SHINY_URL = '/shiny/rep/' # FIXME
-STATIC_URL = '/static/'
-MEDIA_URL = '/media/'
+# STATIC_URL = '/static/'
+# MEDIA_URL = '/media/'
 MOULD_URL = MEDIA_URL + DATA_TEMPLATES_FN
 
 # number of seconds after witch a job that has not received a sgeid should be marked as aborted or re-run
