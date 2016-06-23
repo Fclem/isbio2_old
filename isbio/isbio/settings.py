@@ -52,7 +52,7 @@ DATABASES = {
 		'NAME'    : 'breezedb', # Or path to database file if using sqlite3.
 		'USER'    : 'root', # Not used with sqlite3.
 		'PASSWORD': '36BDC2970C1EE90FD783FDB13', # Not used with sqlite3.
-		'HOST'    : 'django-sql', # Set to empty string for localhost. Not used with sqlite3.
+		'HOST'    : 'breeze-sql', # Set to empty string for localhost. Not used with sqlite3.
 		'PORT'    : '3306', # Set to empty string for default. Not used with sqlite3.
 		'OPTIONS' : {
 			"init_command": "SET default_storage_engine=INNODB; SET SESSION TRANSACTION ISOLATION LEVEL READ "
@@ -61,6 +61,29 @@ DATABASES = {
 		# "init_command": "SET transaction isolation level READ COMMITTED", }
 	}
 }
+
+ROOT_URLCONF = 'isbio.urls'
+
+TEMPLATES = [
+	{
+		'BACKEND' : 'django.template.backends.django.DjangoTemplates',
+		'DIRS'    : [],
+		'APP_DIRS': True,
+		'OPTIONS' : {
+			'context_processors': [
+				'django.template.context_processors.debug',
+				'django.template.context_processors.request',
+				'django.contrib.auth.context_processors.auth',
+				'django.contrib.messages.context_processors.messages',
+				'django.core.context_processors.media',
+				'django.core.context_processors.static',
+				'breeze.context.user_context',
+				'breeze.context.date_context'
+			],
+		},
+	},
+]
+
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -106,6 +129,7 @@ STATICFILES_DIRS = (
 	# Put strings here, like "/home/html/static" or "C:/www/django/static".
 	# Always use forward slashes, even on Windows.
 	# Don't forget to use absolute paths, not relative paths.
+	"/root/code/static_source",
 )
 
 # List of finder classes that know how to find static files in
@@ -120,12 +144,12 @@ STATICFILES_FINDERS = (
 SECRET_KEY = str(get_key())
 
 # List of callable that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-	'django.template.loaders.filesystem.Loader',
-	'django.template.loaders.app_directories.Loader',
-)
+# TEMPLATE_LOADERS = (
+#	'django.template.loaders.filesystem.Loader',
+#	'django.template.loaders.app_directories.Loader',
+# )
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
 	'django.contrib.admin',
 	'django.contrib.auth',
 	'django.contrib.contenttypes',
@@ -137,21 +161,24 @@ INSTALLED_APPS = (
 	'bootstrap_toolkit',
 	'breeze',
 	'down',
-		# 'south',
+	# 'south',
 	'gunicorn',
 	'mathfilters',
 	'django_requestlogging',
-		# Uncomment the next line to enable admin documentation:
+	# Uncomment the next line to enable admin documentation:
 	'django.contrib.admindocs',
-)
+]
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE_CLASSES = [
 	'breeze.middlewares.BreezeAwake',
-	'django.middleware.common.CommonMiddleware',
+	'django.middleware.security.SecurityMiddleware',
 	'django.contrib.sessions.middleware.SessionMiddleware',
-	'django.contrib.auth.middleware.AuthenticationMiddleware',
+	'django.middleware.common.CommonMiddleware',
 	'django.middleware.csrf.CsrfViewMiddleware',
+	'django.contrib.auth.middleware.AuthenticationMiddleware',
+	'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
 	'django.contrib.messages.middleware.MessageMiddleware',
+	'django.middleware.clickjacking.XFrameOptionsMiddleware',
 	# 'django.middleware.doc.XViewMiddleware',
 	'breeze.middlewares.JobKeeper',
 	'breeze.middlewares.CheckUserProfile',
@@ -159,7 +186,7 @@ MIDDLEWARE_CLASSES = (
 	'breeze.middlewares.DataDog' if ENABLE_DATADOG else 'breeze.middlewares.Empty',
 	'breeze.middlewares.RemoteFW' if ENABLE_REMOTE_FW else 'breeze.middlewares.Empty',
 	'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
-)
+]
 # from django_cas.backends import CASBackend
 AUTHENTICATION_BACKENDS = (
 	'django.contrib.auth.backends.ModelBackend',
@@ -172,18 +199,11 @@ CAS_SERVER_IP = 'cas-prot.fimm.fi'
 CAS_SERVER_URL = 'https://%s:8443/cas/' % CAS_SERVER_IP
 CAS_REDIRECT_URL = '/home/'
 
-ROOT_URLCONF = 'isbio.urls'
+# ROOT_URLCONF = 'isbio.urls'
 APPEND_SLASH = True
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'isbio.wsgi.application'
-
-TEMPLATE_DIRS = (
-	'/home/comrade/Projects/fimm/isbio/breeze/templates',
-	# Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-	# Always use forward slashes, even on Windows.
-	# Don't forget to use absolute paths, not relative paths.
-)
 
 # provide our profile model
 AUTH_PROFILE_MODULE = 'breeze.UserProfile'
@@ -237,27 +257,19 @@ LOGGING = {
 	}
 }
 
-TEMPLATE_CONTEXT_PROCESSORS = (
-	'django.contrib.auth.context_processors.auth',
-	'django.core.context_processors.media',
-	'django.core.context_processors.static',
-	'breeze.context.user_context',
-	'breeze.context.date_context'
-)
-
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 DEBUG = True
 VERBOSE = False
 SQL_DUMP = False
-APPEND_SLASH = True
+# APPEND_SLASH = True
 
 ADMINS = (
 	('Clement FIERE', 'clement.fiere@helsinki.fi'),
 )
 
-MANAGERS = ADMINS
+# MANAGERS = ADMINS
 
 # import_env()
 

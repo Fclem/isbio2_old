@@ -1,5 +1,20 @@
+"""isbio URL Configuration
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+	https://docs.djangoproject.com/en/1.9/topics/http/urls/
+Examples:
+Function views
+	1. Add an import:  from my_app import views
+	2. Add a URL to urlpatterns:  url(r'^$', views.home, name='home')
+Class-based views
+	1. Add an import:  from other_app.views import Home
+	2. Add a URL to urlpatterns:  url(r'^$', Home.as_view(), name='home')
+Including another URLconf
+	1. Import the include() function: from django.conf.urls import url, include
+	2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
+"""
+from django.conf.urls import url, include
 from django.conf import settings
-from django.conf.urls import include, url
 from django.contrib.staticfiles.views import serve
 from breeze.middlewares import is_on
 
@@ -25,7 +40,7 @@ else:
 		url(r'^accounts/login$', cas_login, name='cas_ng_login'),
 		url(r'^accounts/logout$', cas_logout, name='cas_ng_logout'),
 		url(r'^accounts/callback$', cas_callback, name='cas_ng_proxy_callback'),
-		url(r'^/?$', cas_login, name='cas_ng_login'),
+		url(r'^$', cas_login, name='cas_ng_login'),
 		url(r'^logout/?$', cas_logout, name='cas_ng_logout'),
 		url(r'^callback$/?', cas_callback, name='cas_ng_proxy_callback'),
 		url(r'^user_list/?$', views.user_list),
@@ -187,8 +202,8 @@ else:
 	if settings.DEBUG and settings.DEV_MODE:
 
 		urlpatterns += [
-			url(r'^closed$', serve, { 'document_root': settings.DJANGO_ROOT + '/index.html', }),
-			url(r'^static/(?P<path>.*)$', serve),
+			url(r'^closed$', serve, { 'path': '', }),
+			# url(r'^static/(?P<path>.*)$', serve),
 			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to,
 				kwargs={'target_url': 'http://127.0.0.1:3838/sample-apps/', }) # testing
 		]
@@ -199,5 +214,5 @@ else:
 			url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
 			url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
 		]
-
+	# print staticfiles_urlpatterns()
 	urlpatterns += staticfiles_urlpatterns()

@@ -22,7 +22,7 @@ isbio/breeze/r_scripts
 isbio/breeze/jobs
 isbio/breeze/tmp
 isbio/breeze/datasets/
-isbio/breeze/static/logos/
+isbio/breeze/static/*
 isbio/breeze/mould/
 .gitignore~
 .ropeproject/
