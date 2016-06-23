@@ -106,6 +106,7 @@ class OrderedUser(User):
 	class Meta:
 		ordering = ["username"]
 		proxy = True
+		auto_created = True # FIXEME Hack
 
 
 # TODO add an Institute db field
@@ -758,6 +759,10 @@ class ShinyReport(CustomModel):
 		return self.get_name
 
 
+def generic_super_fn_spe(inst, filename):
+	return inst.file_name(filename)
+
+
 # clem 13/05/2016
 # TODO change from CustomModel to CustomModelAbstract
 # TODO change the institute field to a ManyToManyField
@@ -769,10 +774,7 @@ class ExecConfig(ConfigObject, CustomModel):
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
 	# institute = ForeignKey(Institute, default=Institute.default)
 
-	def file_name(self, filename):
-		return super(ExecConfig, self).file_name(filename)
-
-	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+	config_file = models.FileField(upload_to=generic_super_fn_spe, blank=False, db_column='config',
 		help_text="The config file for this exec resource")
 	enabled = models.BooleanField(default=True, help_text="Un-check to disable target")
 
@@ -901,10 +903,10 @@ class EngineConfig(ConfigObject, CustomModel):
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
 	# institute = ForeignKey(Institute, default=Institute.default)
 
-	def file_name(self, filename):
-		return super(EngineConfig, self).file_name(filename)
+	# def file_name(self, filename):
+	#	return super(EngineConfig, self).file_name(filename)
 
-	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+	config_file = models.FileField(upload_to=generic_super_fn_spe, blank=False, db_column='config',
 		help_text="The config file for this engine resource")
 	enabled = models.BooleanField(default=True, help_text="Un-check to disable target")
 
@@ -936,10 +938,10 @@ class ComputeTarget(ConfigObject, CustomModel):
 	label = models.CharField(max_length=64, blank=False, help_text="Label text to be used in the UI")
 	# institute = ForeignKey(Institute, default=Institute.default)
 
-	def file_name(self, filename):
-		return super(ComputeTarget, self).file_name(filename)
+	# def file_name(self, filename):
+	#	return super(ComputeTarget, self).file_name(filename)
 
-	config_file = models.FileField(upload_to=file_name, blank=False, db_column='config',
+	config_file = models.FileField(upload_to=generic_super_fn_spe, blank=False, db_column='config',
 		help_text="The config file for this target")
 	enabled = models.BooleanField(default=True, help_text="Un-check to disable target")
 
@@ -1212,6 +1214,11 @@ class ComputeTarget(ConfigObject, CustomModel):
 		db_table = 'breeze_computetarget'
 
 
+def report_type_fn_spe(self, filename):
+	fname, dot, extension = filename.rpartition('.')
+	return '%s%s/%s' % (self.BASE_FOLDER_NAME, self.folder_name, filename)
+
+
 # TODO change from CustomModel to CustomModelAbstract
 # TODO change the institute field to a ManyToManyField
 class ReportType(FolderObj, CustomModel):
@@ -1232,14 +1239,9 @@ class ReportType(FolderObj, CustomModel):
 	author = ForeignKey(User)
 	# store the institute info of the user who creates this report
 	# institute = ForeignKey(Institute, default=Institute.default)
-	
-	def file_name(self, filename):
-		# FIXME check for FolderObj property fitness
-		fname, dot, extension = filename.rpartition('.')
-		return '%s%s/%s' % (self.BASE_FOLDER_NAME, self.folder_name, filename)
-	
-	config = models.FileField(upload_to=file_name, blank=True, null=True)
-	manual = models.FileField(upload_to=file_name, blank=True, null=True)
+
+	config = models.FileField(upload_to=report_type_fn_spe, blank=True, null=True)
+	manual = models.FileField(upload_to=report_type_fn_spe, blank=True, null=True)
 	created = models.DateField(auto_now_add=True)
 
 	shiny_report = models.ForeignKey(ShinyReport, help_text="Choose an existing Shiny report to attach it to",
@@ -1480,6 +1482,13 @@ class UserDate(CustomModelAbstract):
 		db_table = 'breeze_user_date'
 
 
+def rscript_fn_spe(self, filename): # TODO check this
+	# TODO check for FolderObj fitness
+	fname, dot, extension = filename.rpartition('.')
+	slug = self.folder_name
+	return '%s%s/%s.%s' % (self.BASE_FOLDER_NAME, slug, slug, slugify(extension))
+
+
 # TODO add a ManyToManyField Institute field
 class Rscripts(FolderObj, CustomModelAbstract):
 	# objects = managers.ObjectsWithAuth() # The default manager.
@@ -1505,17 +1514,11 @@ class Rscripts(FolderObj, CustomModelAbstract):
 	access = models.ManyToManyField(User, blank=True, default=None, related_name="users")
 	# install date info
 	install_date = models.ManyToManyField(UserDate, blank=True, default=None, related_name="installdate")
-	
-	def file_name(self, filename): # TODO check this
-		# TODO check for FolderObj fitness
-		fname, dot, extension = filename.rpartition('.')
-		slug = self.folder_name
-		return '%s%s/%s.%s' % (self.BASE_FOLDER_NAME, slug, slug, slugify(extension))
-	
-	docxml = models.FileField(upload_to=file_name, blank=True)
-	code = models.FileField(upload_to=file_name, blank=True)
-	header = models.FileField(upload_to=file_name, blank=True)
-	logo = models.FileField(upload_to=file_name, blank=True)
+
+	docxml = models.FileField(upload_to=rscript_fn_spe, blank=True)
+	code = models.FileField(upload_to=rscript_fn_spe, blank=True)
+	header = models.FileField(upload_to=rscript_fn_spe, blank=True)
+	logo = models.FileField(upload_to=rscript_fn_spe, blank=True)
 	
 	def __unicode__(self):
 		return self.name
@@ -1613,21 +1616,28 @@ class CartInfo(CustomModelAbstract):
 		ordering = ["active"]
 
 
+def dataset_fn_spe(self, filename):
+	fname, dot, extension = filename.rpartition('.')
+	slug = slugify(self.name)
+	return 'datasets/%s.%s' % (slug, extension)
+
+
 # TODO add a ManyToManyField Institute field
 class DataSet(CustomModelAbstract):
 	name = models.CharField(max_length=55, unique=True)
 	description = models.CharField(max_length=350, blank=True)
 	author = ForeignKey(User)
-	
-	def file_name(self, filename):
-		fname, dot, extension = filename.rpartition('.')
-		slug = slugify(self.name)
-		return 'datasets/%s.%s' % (slug, extension)
-	
-	rdata = models.FileField(upload_to=file_name)
+
+	rdata = models.FileField(upload_to=dataset_fn_spe)
 	
 	def __unicode__(self):
 		return self.name
+
+
+def input_temp_fn_spe(self, filename):
+	fname, dot, extension = filename.rpartition('.')
+	slug = slugify(self.name)
+	return 'mould/%s.%s' % (slug, extension)
 
 
 # TODO add a ManyToManyField Institute field
@@ -1636,29 +1646,25 @@ class InputTemplate(CustomModelAbstract):
 	description = models.CharField(max_length=350, blank=True)
 	author = ForeignKey(User)
 	
-	def file_name(self, filename):
-		fname, dot, extension = filename.rpartition('.')
-		slug = slugify(self.name)
-		return 'mould/%s.%s' % (slug, extension)
-	
-	file = models.FileField(upload_to=file_name)
+	file = models.FileField(upload_to=input_temp_fn_spe)
 	
 	def __unicode__(self):
 		return self.name
 
 
+def user_prof_fn_spe(self, filename):
+	fname, dot, extension = filename.rpartition('.')
+	slug = slugify(self.user.username)
+	return 'profiles/%s/%s.%s' % (slug, slug, extension)
+
+
 # TODO fix naming of institute
 class UserProfile(CustomModelAbstract):
-	# user = models.ForeignKey(OrderedUser, unique=True)
-	user = models.OneToOneField(OrderedUser)
+	# user = models.ForeignKey(User, unique=True)
+	user = models.OneToOneField(User)
 
-	def file_name(self, filename):
-		fname, dot, extension = filename.rpartition('.')
-		slug = slugify(self.user.username)
-		return 'profiles/%s/%s.%s' % (slug, slug, extension)
-	
 	fimm_group = models.CharField(max_length=75, blank=True)
-	logo = models.FileField(upload_to=file_name, blank=True)
+	logo = models.FileField(upload_to=user_prof_fn_spe, blank=True)
 	institute_info = models.ForeignKey(Institute, default=Institute.default)
 	# institute = institute_info
 	# if user accepts the agreement or not
@@ -1689,7 +1695,6 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 	HIDDEN_FILES = [SH_NAME, SUCCESS_FN, FILE_MAKER_FN, SUB_DONE_FN] # TODO add FM file ? #
 	SYSTEM_FILES = HIDDEN_FILES + [INC_RUN_FN, FAILED_FN]
-	# DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.DEFAULT_TARGET_ID)
 
 	objects = managers.WorkersManager() # Custom manage
 
@@ -1706,7 +1711,6 @@ class Runnable(FolderObj, CustomModelAbstract):
 	_status = models.CharField(max_length=15, blank=True, default=JobStat.INIT, db_column='status')
 	progress = models.PositiveSmallIntegerField(default=0)
 	sgeid = models.CharField(max_length=15, help_text="job id, as returned by SGE", blank=True)
-	# target = ComputeTarget.objects.get(pk=DEFAULT_TARGET.id)
 
 	##
 	# WRAPPERS
@@ -2458,9 +2462,6 @@ class Runnable(FolderObj, CustomModelAbstract):
 
 
 class Jobs(Runnable):
-	# DEFAULT_TARGET = ComputeTarget.objects.get(pk=settings.BREEZE_TARGET_ID)
-	DEFAULT_TARGET = ComputeTarget.breeze_default
-
 	def __init__(self, *args, **kwargs):
 
 		super(Jobs, self).__init__(*args, **kwargs)
@@ -2483,16 +2484,18 @@ class Jobs(Runnable):
 	_author = ForeignKey(User, db_column='juser_id')
 	_type = ForeignKey(Rscripts, db_column='script_id')
 	_created = models.DateTimeField(auto_now_add=True, db_column='staged')
-	target = None # ComputeTarget.objects.get(pk=2)
+
+	# clem 22/06/2016
+	# target = Runnable.target_obj
+	@property
+	def target(self):
+		return self.target_obj
 
 	def _institute(self):
 		return self.institute
 
-	def file_name(self, filename):
-		return super(Jobs, self).file_name(filename)
-
-	_rexec = models.FileField(upload_to=file_name, db_column='rexecut')
-	_doc_ml = models.FileField(upload_to=file_name, db_column='docxml')
+	_rexec = models.FileField(upload_to=generic_super_fn_spe, db_column='rexecut')
+	_doc_ml = models.FileField(upload_to=generic_super_fn_spe, db_column='docxml')
 
 	# Jobs specific
 	mailing = models.CharField(max_length=3, blank=True, help_text= \
@@ -2635,11 +2638,8 @@ class Report(Runnable):
 
 	# TODO change to StatusModel cf https://django-model-utils.readthedocs.org/en/latest/models.html#statusmodel
 
-	def file_name(self, filename):
-		return super(Report, self).file_name(filename)
-
-	_rexec = models.FileField(upload_to=file_name, blank=True, db_column='rexec')
-	_doc_ml = models.FileField(upload_to=file_name, blank=True, db_column='dochtml')
+	_rexec = models.FileField(upload_to=generic_super_fn_spe, blank=True, db_column='rexec')
+	_doc_ml = models.FileField(upload_to=generic_super_fn_spe, blank=True, db_column='dochtml')
 	email = ''
 	mailing = ''
 
@@ -2909,6 +2909,13 @@ class Report(Runnable):
 		db_table = 'breeze_report'
 
 
+def shiny_tag_fn_zip(self, filename):
+	import os
+	base = os.path.splitext(os.path.basename(filename))
+	path = str('%s%s_%s.%s' % (settings.UPLOAD_FOLDER, self.get_name, slugify(base[0]), slugify(base[1])))
+	return str(path)
+
+
 class ShinyTag(CustomModel):
 	# ACL_RW_RW_R = 0664
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
@@ -2926,7 +2933,7 @@ class ShinyTag(CustomModel):
 				  "<br />NB : Use the same (in upper case) in the tabName field of the menu entry")
 	# label = models.CharField(max_length=32, blank=False, help_text="The text to be display on the dashboard")
 	description = models.CharField(max_length=350, blank=True, help_text="Optional description text")
-	author = ForeignKey(OrderedUser)
+	author = ForeignKey(User)
 	created = models.DateTimeField(auto_now_add=True)
 	# institute = ForeignKey(Institute, default=Institute.default)
 	order = models.PositiveIntegerField(default=0, help_text="sorting index number (0 is the topmost)")
@@ -2983,13 +2990,7 @@ class ShinyTag(CustomModel):
 	def path_res_folder(self):
 		return self.path_res_folder_gen()
 
-	def file_name_zip(self, filename):
-		import os
-		base = os.path.splitext(os.path.basename(filename))
-		path = str('%s%s_%s.%s' % (settings.UPLOAD_FOLDER, self.get_name, slugify(base[0]), slugify(base[1])))
-		return str(path)
-
-	zip_file = models.FileField(upload_to=file_name_zip, blank=True, null=False,
+	zip_file = models.FileField(upload_to=shiny_tag_fn_zip, blank=True, null=False,
 		help_text="Upload a zip file containing all the files required for your tag, and "
 				  " following the structure of the <a href='%s'>provided canvas</a>.<br />\n"
 				  "Check the <a href='%s'>available libraries</a>. If the one you need is not"

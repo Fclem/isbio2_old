@@ -53,8 +53,8 @@ class CustomManager(Manager):
 			self.context_obj = super(CustomManager, self).get(id=the_key) if has_id else \
 				super(CustomManager, self).get(pk=the_key)
 			return self.context_obj
-		except ObjectDoesNotExist:
-			raise ObjectDoesNotExist
+		except Exception as e:
+			raise ObjectDoesNotExist(str(e))
 
 	# clem 20/06/2016
 	def user_get(self, **kwargs):

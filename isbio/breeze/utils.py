@@ -202,3 +202,17 @@ def get_r_package(name=''):
 # clem 20/06/2016
 def git_branch():
 	return git.get_branch_from_fs(settings.SOURCE_ROOT)
+
+
+class ContentType(object):
+	HTML = 'text/html'
+	DEFAULT = HTML
+	# TEXT_PLAIN = 'text/plaintext'
+	TEXT_PLAIN = 'text/plain'
+	PLAIN = TEXT_PLAIN
+	JSON = 'application/json'
+	ZIP = 'application/zip'
+	FORCE_DL = 'application/force-download'
+	OCTET_STREAM = 'application/octet-stream'
+
+c_t = ContentType

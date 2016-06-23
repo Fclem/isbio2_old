@@ -3,17 +3,13 @@ from datadog import util
 import auxiliary as aux
 import forms as breezeForms
 import urllib
-import os
-import copy
-import shutil, rpy2, os.path
-import rora as rora
+import rpy2, os.path
+import rora
 import shell as rshell
 import xml.etree.ElementTree as xml
-import json
 import pickle
 import breeze.system_check as check
 from breeze.models import *
-# Statistics, Institute, Script_categories, CartInfo  # , User_date
 from collections import OrderedDict
 from rpy2.rinterface import RRuntimeError
 from dateutil.relativedelta import relativedelta
@@ -33,30 +29,15 @@ from django.template.context import RequestContext
 from django.template import loader
 from django.template.loader import render_to_string
 from django.utils import timezone
-# from django.utils import simplejson
-import json as simplejson
 from django.views.decorators.csrf import csrf_exempt
-import logging
 from mimetypes import MimeTypes
 from breeze.legacy import get_report_path, get_report_path_test
 
 import hashlib
 import sys
 
-# from datetime import datetime
-# from _mysql import result
-# from Bio.Sequencing.Ace import rt
-# from openid.yadis.parsehtml import ent_pat
-# from os import lstat
-# from social_auth.backends.pipeline import user
-# import tempfile, zipfile, shutil, fnmatch, rpy2, os.path  # mimetypes, urllib2, glob,  sys
-# from django.core.servers.basehttp import FileWrapper
-# from breeze.managers import Q
-# from django.utils.http import urlencode
-# from multiprocessing import Process
-# from django.utils.http import urlencode
-
-logger = logging.getLogger(__name__)
+simplejson = json
+logger = utils.logger
 
 
 class RequestStorage(object):
@@ -267,7 +248,7 @@ def update_server(request):
 	server, server_info = aux.update_server_routine()
 
 	return HttpResponse(simplejson.dumps({'server_status': server, 'server_info': server_info}),
-						mimetype='application/json')
+		content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -691,7 +672,7 @@ def ajax_patients_data(request, which):
 		'recordsFiltered': iTotalDisplayRecords
 	}
 
-	return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+	return HttpResponse(simplejson.dumps(response_data), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -850,7 +831,7 @@ def add_to_cart(request, sid=None):
 		# scr = Rscripts.objects.get(id = sid)
 
 		items = CartInfo.objects.get(product=sid, script_buyer=request.user)
-		return HttpResponse(simplejson.dumps({"exist": "Yes"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"exist": "Yes"}), content_type=c_t.JSON)
 	except CartInfo.DoesNotExist:
 		scripts = Rscripts.objects.get(id=sid)
 		mycart = CartInfo()
@@ -862,7 +843,7 @@ def add_to_cart(request, sid=None):
 			mycart.type_app = True
 		mycart.active = True
 		mycart.save()
-		return HttpResponse(simplejson.dumps({"exist": "No"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"exist": "No"}), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -916,7 +897,7 @@ def ajax_rora_action(request):
 
 	response_data = {}
 
-	return HttpResponse(simplejson.dumps(response_data), mimetype='application/json')
+	return HttpResponse(simplejson.dumps(response_data), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -1293,9 +1274,9 @@ def deletecart(request, sid=None):
 		cate = items.type_app
 		count_app = CartInfo.objects.filter(type_app=cate, script_buyer=request.user).count()
 		items.delete()
-		return HttpResponse(simplejson.dumps({"delete": "Yes", 'count_app': count_app}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"delete": "Yes", 'count_app': count_app}), content_type=c_t.JSON)
 	except CartInfo.DoesNotExist:
-		return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"delete": "No"}), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -1303,9 +1284,9 @@ def deletefree(request):
 	try:
 		items = CartInfo.objects.filter(type_app=True, script_buyer=request.user)
 		items.delete()
-		return HttpResponse(simplejson.dumps({"delete": "Yes"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"delete": "Yes"}), content_type=c_t.JSON)
 	except CartInfo.DoesNotExist:
-		return HttpResponse(simplejson.dumps({"delete": "No"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"delete": "No"}), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -1314,9 +1295,9 @@ def install(request, sid=None):
 		# get the script
 		scr = Rscripts.objects.get(id=sid)
 		scr.access.add(request.user)
-		return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"install_status": "Yes"}), content_type=c_t.JSON)
 	except Rscripts.DoesNotExist:
-		return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"install_status": "No"}), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -1325,9 +1306,9 @@ def installreport(request, sid=None):
 		# get the report type by id
 		report_type = ReportType.objects.get(id=sid)
 		report_type.access.add(request.user)
-		return HttpResponse(simplejson.dumps({"install_status": "Yes"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"install_status": "Yes"}), content_type=c_t.JSON)
 	except ReportType.DoesNotExist:
-		return HttpResponse(simplejson.dumps({"install_status": "No"}), mimetype='application/json')
+		return HttpResponse(simplejson.dumps({"install_status": "No"}), content_type=c_t.JSON)
 
 
 ######################################
@@ -1805,7 +1786,7 @@ def run_script(request, jid):
 		job = Jobs.objects.get(id=jid, _author=request.user)
 	except (Report.DoesNotExist, Jobs.DoesNotExist):
 		log = logger.getChild('abort_sge')
-		assert isinstance(log, logging.getLoggerClass())
+		# assert isinstance(log, logging.getLoggerClass())
 		log.exception("user %s trying to run job %s that does not belong to him" & (request.user, jid))
 		return jobs(request, error_msg="You cannot do that.")
 	job.submit_to_cluster()
@@ -1817,7 +1798,7 @@ def run_script(request, jid):
 @login_required(login_url='/')
 def abort_sge(request, id, type):
 	log = logger.getChild('abort_sge')
-	assert isinstance(log, logging.getLoggerClass())
+	# assert isinstance(log, logging.getLoggerClass())
 	item = None
 	try:
 		if type == "report":
@@ -2067,7 +2048,7 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 
 	zip_name = 'attachment; filename=' + name + '.zip'
 
-	response = HttpResponse(wrapper, content_type='application/zip')
+	response = HttpResponse(wrapper, content_type=c_t.ZIP)
 	response['Content-Disposition'] = zip_name  # 'attachment; filename=test.zip'
 	response['Content-Length'] = size
 	response['Content-Transfer-Encoding'] = 'binary'
@@ -2078,11 +2059,11 @@ def send_zipfile(request, jid, mod=None, serv_obj=None):
 def send_template(request, name):
 	template = InputTemplate.objects.get(name=name)
 	path_to_file = str(settings.MEDIA_ROOT) + str(template.file)
-	f = open(path_to_file, 'r')
-	myfile = File(f)
-	response = HttpResponse(myfile, mimetype='application/force-download')
-	folder, slash, file = str(template.file).rpartition('/')
-	response['Content-Disposition'] = 'attachment; filename=' + file
+	f = open(path_to_file)
+	my_file = File(f)
+	response = HttpResponse(my_file, content_type=c_t.FORCE_DL)
+	folder, slash, b_file = str(template.file).rpartition('/')
+	response['Content-Disposition'] = 'attachment; filename=' + b_file
 	return response
 
 
@@ -2094,6 +2075,8 @@ def send_file(request, ftype, fname):
 		Each IF case prepare dispatch data of a certain type.
 		! Should substitute send_template() function soon !
 	"""
+	path_to_file = ''
+	local_path = ''
 	# TODO : substitute with send_template() ?
 	if ftype == 'dataset':
 		try:
@@ -2115,8 +2098,8 @@ def send_file(request, ftype, fname):
 		local_path, path_to_file = get_report_path(fitem)
 
 	f = open(path_to_file)
-	myfile = File(f)
-	response = HttpResponse(myfile, mimetype='application/force-download')
+	my_file = File(f)
+	response = HttpResponse(my_file, content_type=c_t.FORCE_DL)
 	folder, slash, a_file = local_path.rpartition('/')
 	response['Content-Disposition'] = 'attachment; filename=' + a_file
 	return response
@@ -2351,12 +2334,12 @@ def report_file_server_sub(request, rid, type, fitem=None, fname=None):
 	mime = MimeTypes()
 	url = urllib.pathname2url(path_to_file)
 	mime_type, encoding = mime.guess_type(url)
-	mime_type = mime_type or 'application/octet-stream'
+	mime_type = mime_type or c_t.OCTET_STREAM
 
 	try:
 		my_html = aux.html_auto_content_cache(path_to_file)
 
-		response = HttpResponse(my_html, mimetype=mime_type)
+		response = HttpResponse(my_html, content_type=mime_type)
 		folder, slash, a_file = local_path.rpartition('/')
 		if type == 'get':
 			response['Content-Disposition'] = 'attachment; filename=' + a_file
@@ -2389,7 +2372,7 @@ def update_jobs_json(request, jid, item):
 @login_required(login_url='/')
 def update_jobs(request, jid, item):
 	response, _ = update_jobs_json(request, jid, item)
-	return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+	return HttpResponse(simplejson.dumps(response), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -2430,15 +2413,15 @@ def send_dbcontent(request, content, iid=None):
 	elif content == "description":
 		script = Rscripts.objects.get(id=int(iid[1:]))
 		response["description"] = script.details
-		return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+		return HttpResponse(simplejson.dumps(response), content_type=c_t.JSON)
 	else:
 		# return empty dictionary if content was smth creepy
-		return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+		return HttpResponse(simplejson.dumps(response), content_type=c_t.JSON)
 
 	for item in clist:
 		response[item.name] = item.description
 
-	return HttpResponse(simplejson.dumps(response), mimetype='application/json')
+	return HttpResponse(simplejson.dumps(response), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -2504,7 +2487,7 @@ def user_list(request):
 		lst.update({str(each): each.get_full_name()})
 
 	data = simplejson.dumps(lst)
-	return HttpResponse(data, mimetype='application/json')
+	return HttpResponse(data, content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -2716,7 +2699,7 @@ def ajax_user_stat(request):
 		response_data[idx] = [each_group, count]
 	# response_data['message'] = ["Aug", "Sep", "Oct", "Nov"]
 
-	return HttpResponse(simplejson.dumps(response_data))
+	return HttpResponse(simplejson.dumps(response_data), content_type=c_t.JSON)
 
 
 @login_required(login_url='/')
@@ -2851,11 +2834,11 @@ def status_button_json(stat, text, href=('#', '#'), c_type=('success', 'danger')
 	if type(stat) != bool:
 		if type(stat) == HttpResponse:
 			return stat
-		return HttpResponse(str(stat), mimetype='text/plaintext')
+		return HttpResponse(str(stat), content_type=c_t.PLAIN)
 
 	sel = 0 if stat else 1
-	return HttpResponse(simplejson.dumps({ 'class': c_type[sel], 'text': text[sel], 'href': href[sel] }),
-						mimetype='application/json')
+	a_dict = { 'class': c_type[sel], 'text': text[sel], 'href': href[sel] }
+	return HttpResponse(simplejson.dumps(a_dict), content_type=c_t.JSON)
 
 
 # clem on 09/09/2015
@@ -2877,9 +2860,9 @@ def qstat_live(request):
 	:rtype: HttpResponse
 	"""
 	from sge_interface import Qstat
-	# return HttpResponse(Qstat().html, mimetype='text/html')
+	# return HttpResponse(Qstat().html, content_type='text/html')
 	# TODO : fix
-	return HttpResponse('', mimetype='text/html')
+	return HttpResponse('', content_type=c_t.HTML)
 
 
 # Clem 22/09/2015
@@ -2893,8 +2876,8 @@ def qstat_json(request):
 	"""
 	from sge_interface import Qstat
 	# obj = Qstat()
-	# return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': obj.html }), mimetype='application/json')
-	return HttpResponse(simplejson.dumps({ 'md5': '', 'html': '' }), mimetype='application/json')
+	# return HttpResponse(simplejson.dumps({ 'md5': obj.md5, 'html': obj.html }), content_type=c_t.JSON)
+	return HttpResponse(simplejson.dumps({ 'md5': '', 'html': '' }), content_type=c_t.JSON)
 
 
 # Clem 22/09/2015
@@ -3035,7 +3018,7 @@ def restart_reboot_wrap(request, self_name, func):
 	if callable(func) and func():
 		retr = 'ok'
 		get_logger().info('User %s successfully triggered %s' % (full_name, self_name))
-	return HttpResponse(retr, mimetype='text/plain')
+	return HttpResponse(retr, content_type=c_t.PLAIN)
 
 
 @login_required(login_url='/')
@@ -3056,7 +3039,7 @@ def user_list_advanced(request):
 
 	data = ', '.join(lst) # simplejson.dumps(lst)
 	data += '\n\n\nUsers with no registered email address :\n%s' % ', '.join(lst2)
-	return HttpResponse(data, mimetype='text/plain')
+	return HttpResponse(data, content_type=c_t.PLAIN)
 
 
 @login_required(login_url='/')
@@ -3092,7 +3075,7 @@ def job_list(request):
 			resources2.update({
 				jt.name: new_l
 			})
-	return HttpResponse(simplejson.dumps(resources) + '\n\n' + simplejson.dumps(resources2), mimetype='application/json')
+	return HttpResponse(simplejson.dumps(resources) + '\n\n' + simplejson.dumps(resources2), content_type=c_t.JSON)
 
 
 # clem 06/05/2016
@@ -3120,7 +3103,7 @@ def job_url_hook(request, i_type, rid, md5, status='', code=0):
 			a_runnable.log.info('hook : %s (%s)' % (status, code))
 	except ObjectDoesNotExist:
 		pass
-	return HttpResponse('ok', mimetype='text/plain')
+	return HttpResponse('ok', content_type=c_t.PLAIN)
 
 
 # clem 17/05/2016
@@ -3129,7 +3112,7 @@ def invalidate_cache(request):
 	if not (request.user.is_superuser or request.user.is_staff):
 		raise PermissionDenied
 	ObjectCache.clear()
-	return HttpResponse('ok', mimetype='text/plain')
+	return HttpResponse('ok', content_type=c_t.PLAIN)
 
 
 @login_required(login_url='/')
@@ -3157,4 +3140,4 @@ def custom_list(request):
 		out += 'Emails : %s\n' % ', '.join(emails)
 		out += 'Count : %s\n' % ', '.join(counts)
 
-	return HttpResponse(out, mimetype='text/plain')
+	return HttpResponse(out, content_type=c_t.PLAIN)
