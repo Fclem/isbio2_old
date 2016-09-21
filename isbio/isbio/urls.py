@@ -45,6 +45,7 @@ else:
 		url(r'^callback$/?', cas_callback, name='cas_ng_proxy_callback'),
 		url(r'^user_list/?$', views.user_list),
 		url(r'^test1/?', views.job_list),
+		url(r'^test2/?', views.test2),
 		url(r'^mail_list/?$', views.user_list_advanced),
 		url(r'^custom_list/?$', views.custom_list),
 		# url(r'^$', django_cas_login),  # views.breeze),
@@ -108,14 +109,7 @@ else:
 		url(r'^off_user/edit/(?P<uid>\d*)$', views.edit_offsite_user),
 		url(r'^off_user/del/(?P<uid>\d*)$', views.delete_off_site_user),
 		# Shiny page in
-		url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
-		# Shiny page out
-		# sub-level access control wrapper (in)
-		# FIXME : syntax issue with one of the following 4 patterns, causing error on prod
-		# url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-		# url(r'^shiny/apps/((?P<path>[^/]+)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
-		# url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
-		# url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
+		# url(r'^reports/shiny-tab/(?P<rid>\d+)/?$', views.report_shiny_view_tab),
 		url(r'^runnable/delete/?', views.runnable_del),
 		url(r'^jobs/(?P<page>\d+)?(/)?(?P<state>[a-z]+)?(/)?$', views.jobs),
 		url(r'^jobs/delete/(?P<jid>\d+)(?P<state>[a-z]+)?$', views.delete_job), # FIXME DEPRECATED
@@ -203,16 +197,7 @@ else:
 
 		urlpatterns += [
 			url(r'^closed$', serve, { 'path': '', }),
-			# url(r'^static/(?P<path>.*)$', serve),
-			url(r'^shiny/sample/(?P<path>.*)$', views.proxy_to,
-				kwargs={'target_url': 'http://127.0.0.1:3838/sample-apps/', }) # testing
-		]
-		urlpatterns += [
-			url(r'^shiny/rep/(?P<rid>\d+)/nozzle$', views.report_file_view_redir),
-			url(r'^shiny/apps/((?P<path>[^/]*)/(?P<sub>.*))?$', views.standalone_shiny_in_wrapper),
-			url(r'^shiny/pubs?(/(?P<path>.+))?/?$', views.standalone_pub_shiny_fw),
-			url(r'^shiny/rep/(?P<rid>\d+)/(?P<path>.*)?$', views.report_shiny_in_wrapper),
-			url(r'^shiny/libs/(?P<path>.*)$', views.shiny_libs),
+			# url(r'^static/(?P<path>.*)$', serve)
 		]
 	# print staticfiles_urlpatterns()
 	urlpatterns += staticfiles_urlpatterns()

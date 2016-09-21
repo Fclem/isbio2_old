@@ -353,7 +353,8 @@ class FolderObj(object):
 		import tempfile
 		import zipfile
 		import os
-		from django.core.servers.basehttp import FileWrapper
+		from wsgiref.util import FileWrapper
+		# from django.core.servers.basehttp import FileWrapper
 		loc = self.home_folder_full_path # writing shortcut
 		arch_name = str(self.folder_name)
 

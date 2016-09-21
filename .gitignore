@@ -40,3 +40,6 @@ azure_pwd_*
 */azure_pwd_*
 docker_repo
 *.*~
+.*secret
+_*
+static_source/

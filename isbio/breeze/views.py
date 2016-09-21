@@ -218,6 +218,9 @@ def home(request, state="feed"):
 		user_profile.last_active = timezone.now()
 		user_profile.save()
 
+	from django.contrib import messages
+	messages.add_message(request, messages.INFO, 'Hello world.')
+
 	return render_to_response('home.html', RequestContext(request, {
 		'home_status': 'active',
 		str(menu): 'active',
@@ -3073,6 +3076,10 @@ def job_list(request):
 				jt.name: new_l
 			})
 	return HttpResponse(simplejson.dumps(resources) + '\n\n' + simplejson.dumps(resources2), content_type=c_t.JSON)
+
+
+def test2(request):
+	return render_to_response('jstest.html', RequestContext(request, {	}))
 
 
 # clem 06/05/2016

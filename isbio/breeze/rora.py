@@ -47,8 +47,8 @@ def test_rora_connect():
 
 # clem on 20/08/2015
 def test_dotm_connect():
-	"""
-	Test if Dotmatics server is online and connection can be made successfully
+	""" Test if Dotmatics server is online and connection can be made successfully
+
 	:return: True|False
 	:rtype: bool
 	"""

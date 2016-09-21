@@ -1,10 +1,11 @@
+from django.contrib.auth.models import User
+
+
 def user_context(request):
-    if request.user.is_authenticated():
-        is_admin = request.user.groups.filter(name='GEEKS')
-        is_auth = True
-    else:
-        is_admin = False
-        is_auth = False
+    is_auth = request.user.is_authenticated()
+    is_admin = False
+    # assert isinstance(request.user, User)
+    is_admin = is_auth and (request.user.is_staff or request.user.is_superuser)
 
     return {
         'is_local_admin': is_admin,

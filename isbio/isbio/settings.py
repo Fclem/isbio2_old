@@ -78,7 +78,8 @@ TEMPLATES = [
 				'django.core.context_processors.media',
 				'django.core.context_processors.static',
 				'breeze.context.user_context',
-				'breeze.context.date_context'
+				'breeze.context.date_context',
+				'django_auth0.context_processors.auth0'
 			],
 		},
 	},
@@ -167,6 +168,7 @@ INSTALLED_APPS = [
 	# 'south',
 	'gunicorn',
 	'mathfilters',
+	'django_auth0',
 	'django_requestlogging',
 	# Uncomment the next line to enable admin documentation:
 	'django.contrib.admindocs',
@@ -195,7 +197,14 @@ AUTHENTICATION_BACKENDS = (
 	'django.contrib.auth.backends.ModelBackend',
 	# 'django_cas.backends.CASBackend',
 	'django_cas_ng.backends.CASBackend',
+	'django_auth0.auth_backend.Auth0Backend',
 )
+
+AUTH0_DOMAIN = 'breeze.eu.auth0.com'
+AUTH0_CLIENT_ID = 'gIN83mLS4qcQqE99Bi5MqzRzU38KruR6'
+AUTH0_SECRET = str(get_key('auth0_'))
+AUTH0_CALLBACK_URL = 'http://127.0.0.1:8000'
+AUTH0_SUCCESS_URL = '/jobs/'
 
 # CAS_SERVER_IP = '192.168.0.218'
 CAS_SERVER_IP = 'cas-prot.fimm.fi'

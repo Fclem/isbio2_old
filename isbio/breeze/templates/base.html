@@ -256,6 +256,13 @@
 
 	<!-- global container under the nav-bar -->
 	<div id="content" class="container-fluid">
+		{% if messages %}
+			<ul class="messages">
+				{% for message in messages %}
+					<li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
 		<div class="row-fluid" style="display: none;">&nbsp;</div>
 		<div class="row-fluid">
 			<div class="span10 offset1 alert alert-danger" style="display: none; padding-bottom: 12px;padding-top: 12px;">
