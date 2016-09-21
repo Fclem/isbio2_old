@@ -142,7 +142,7 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = str(get_key())
+SECRET_KEY = get_key()
 
 # List of callable that know how to import templates from various sources.
 # TEMPLATE_LOADERS = (
@@ -200,9 +200,11 @@ AUTHENTICATION_BACKENDS = (
 
 AUTH0_DOMAIN = 'breeze.eu.auth0.com'
 AUTH0_CLIENT_ID = 'gIN83mLS4qcQqE99Bi5MqzRzU38KruR6'
-AUTH0_SECRET = str(get_key('auth0_'))
-AUTH0_CALLBACK_URL = 'http://127.0.0.1:8000'
+AUTH0_SECRET = get_key('.auth0_')
+AUTH0_CALLBACK_URL = 'http://127.0.0.1:8000/login/'
 AUTH0_SUCCESS_URL = '/jobs/'
+AUTH0_LOGOUT_URL = 'https://breeze.eu.auth0.com/v2/logout'
+AUTH0_LOGOUT_REDIRECT = 'https://www.fimm.fi'
 
 # ROOT_URLCONF = 'isbio.urls'
 APPEND_SLASH = True

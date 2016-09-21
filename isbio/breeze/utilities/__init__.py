@@ -154,10 +154,10 @@ def gen_file_from_template(template_path, sub_dict, output_path=None, safe=True)
 # moved from settings on 19/05/2016
 # TODO make a generator
 # FIXME Django Specific ?
-def get_key(path=''):
+def get_key(path='.'):
 	try:
 		with open(path + 'secret') as f:
-			return f.read()
+			return str(f.read())[:-1]
 	except Exception:
 		pass
 	return None
