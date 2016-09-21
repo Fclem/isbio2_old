@@ -9,8 +9,6 @@ biopython>=1.61
 datadog>=0.10.0
 decorator>=4.0.4
 django-bootstrap-toolkit>=2.6.22
-django-cas
-django-cas-ng
 django-configurations>=0.1
 django-gevent-websocket>=0.1.0
 django-mathfilters>=0.3.0
