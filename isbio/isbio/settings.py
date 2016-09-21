@@ -158,7 +158,6 @@ INSTALLED_APPS = [
 	'django.contrib.sites',
 	'django.contrib.messages',
 	'django.contrib.staticfiles',
-	'django_cas_ng',
 	'bootstrap_toolkit',
 	'breeze',
 	'shiny',
@@ -169,6 +168,7 @@ INSTALLED_APPS = [
 	'gunicorn',
 	'mathfilters',
 	'django_auth0',
+	'hello_auth',
 	'django_requestlogging',
 	# Uncomment the next line to enable admin documentation:
 	'django.contrib.admindocs',
@@ -195,8 +195,6 @@ MIDDLEWARE_CLASSES = [
 # from django_cas.backends import CASBackend
 AUTHENTICATION_BACKENDS = (
 	'django.contrib.auth.backends.ModelBackend',
-	# 'django_cas.backends.CASBackend',
-	'django_cas_ng.backends.CASBackend',
 	'django_auth0.auth_backend.Auth0Backend',
 )
 
@@ -205,11 +203,6 @@ AUTH0_CLIENT_ID = 'gIN83mLS4qcQqE99Bi5MqzRzU38KruR6'
 AUTH0_SECRET = str(get_key('auth0_'))
 AUTH0_CALLBACK_URL = 'http://127.0.0.1:8000'
 AUTH0_SUCCESS_URL = '/jobs/'
-
-# CAS_SERVER_IP = '192.168.0.218'
-CAS_SERVER_IP = 'cas-prot.fimm.fi'
-CAS_SERVER_URL = 'https://%s:8443/cas/' % CAS_SERVER_IP
-CAS_REDIRECT_URL = '/home/'
 
 # ROOT_URLCONF = 'isbio.urls'
 APPEND_SLASH = True

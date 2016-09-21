@@ -29,20 +29,12 @@ else:
 	from django.contrib import admin
 	admin.autodiscover()
 
-	from django_cas_ng.views import login as cas_login, logout as cas_logout, callback as cas_callback
-	# from django_cas.views import login as django_cas_login
-	# from django_cas.views import logout as django_cas_logout
-
 	email_pattern = r'\b[\w.\'-]+@(?:(?:[^_+,!@#$%^&*();\/\\|<>"\'\n -][-\w]+[^_+,!@#$%^&*();\/\\|<>"\' ' \
 		r'\n-]|\w+)\.)+\w{2,63}\b'
 
 	urlpatterns = [
-		url(r'^accounts/login$', cas_login, name='cas_ng_login'),
-		url(r'^accounts/logout$', cas_logout, name='cas_ng_logout'),
-		url(r'^accounts/callback$', cas_callback, name='cas_ng_proxy_callback'),
-		url(r'^$', cas_login, name='cas_ng_login'),
-		url(r'^logout/?$', cas_logout, name='cas_ng_logout'),
-		url(r'^callback$/?', cas_callback, name='cas_ng_proxy_callback'),
+		url(r'^', include('hello_auth.urls')),
+		url(r'^auth/', include('django_auth0.urls')),
 		url(r'^user_list/?$', views.user_list),
 		url(r'^test1/?', views.job_list),
 		url(r'^test2/?', views.test2),
