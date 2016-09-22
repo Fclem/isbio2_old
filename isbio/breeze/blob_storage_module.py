@@ -2,22 +2,28 @@ import os
 import sys
 import abc
 
-__version__ = '0.4'
+__version__ = '0.4.1'
 __author__ = 'clem'
 __date__ = '28/04/2016'
 
 
-# clem 06/04/2016
-def password_from_file(the_path):
-	from os.path import exists, expanduser
-	if not exists(the_path):
-		temp = expanduser(the_path)
-		if exists(temp):
-			the_path = temp
-		else:
-			return False
-	return open(the_path).read().replace('\n', '')
+# clem 22/09/2016 duplicated from utilities/pythonic
+def recur(nb, function, args):
+	while nb > 0:
+		args = function(args)
+		nb -= 1
+	return args
 
+
+# clem 22/09/2016 duplicated from utilities/__init__
+def get_key(name=''):
+	config_root = recur(3, os.path.dirname, os.path.realpath(__file__)) + '/configs/'
+	try:
+		with open('%s.%s_secret' % (config_root, name)) as f:
+			return str(f.read())[:-1]
+	except Exception:
+		pass
+	return None
 
 # TODO set this configs :
 SERVICE_BLOB_BASE_URL = '' # format 'proto://%s.domain/%s/' % (container_name, url)

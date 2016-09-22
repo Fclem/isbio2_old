@@ -99,13 +99,7 @@ def pp(data, unfold_objects=False, return_output=False):
 
 
 # clem 06/04/2016
-def password_from_file(path):
-	from os.path import exists, expanduser
-	if not exists(path):
-		temp = expanduser(path)
-		if exists(temp):
-			path = temp
-	return open(path).read().replace('\n', '')
+# deleted password_from_file 22/09/2016
 
 
 # clem 06/05/2016, moved here on 16/05/2016
@@ -154,9 +148,14 @@ def gen_file_from_template(template_path, sub_dict, output_path=None, safe=True)
 # moved from settings on 19/05/2016
 # TODO make a generator
 # FIXME Django Specific ?
-def get_key(path='.'):
+def get_key(name=''):
+	CONFIG_ROOT = recur(4, os.path.dirname, os.path.realpath(__file__)) + '/configs/'
+	full_path = '%s.%s_secret' % (CONFIG_ROOT, name)
+	# FIXME doesn't work
+	logger.info('Read key %s from %s' % (full_path, this_function_caller_name()))
+	# print 'get_key', full_path
 	try:
-		with open(path + 'secret') as f:
+		with open(full_path) as f:
 			return str(f.read())[:-1]
 	except Exception:
 		pass

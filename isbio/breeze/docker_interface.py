@@ -153,11 +153,11 @@ class DockerInterface(ComputeInterface):
 	# clem 17/05/2016
 	@property
 	def docker_hub_pwd(self):
-		return password_from_file(self.config_hub_password_file_path)
+		return get_key(self.config_hub_password_file_path)
 
 	# clem 17/05/2016
 	@property
-	def docker_repo(self):
+	def docker_repo(self): # TODO check
 		return DockerRepo(self.config_hub_login, self.docker_hub_pwd, email=self.config_hub_email)
 
 	#########################

@@ -3,7 +3,7 @@ from blob_storage_module import * # import interface, already has os, sys and ab
 from azure.common import AzureMissingResourceHttpError as MissingResException
 from azure.storage.blob import BlockBlobService
 
-__version__ = '0.4'
+__version__ = '0.4.1'
 __author__ = 'clem'
 
 
@@ -16,8 +16,7 @@ __file_name__ = os.path.basename(__file__)
 
 AZURE_ACCOUNT = 'breezedata'
 AZURE_PWD_FILE = 'azure_pwd_%s' % AZURE_ACCOUNT
-AZURE_KEY = password_from_file('~/code/%s' % AZURE_PWD_FILE) or \
-	password_from_file('%s/%s' % (__dir_path__, AZURE_PWD_FILE))
+AZURE_KEY = get_key(AZURE_PWD_FILE)
 
 
 # clem 14/04/2016

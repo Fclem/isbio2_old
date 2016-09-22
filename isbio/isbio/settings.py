@@ -142,7 +142,8 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = get_key()
+SECRET_KEY_FN = 'django'
+SECRET_KEY = get_key(SECRET_KEY_FN)
 
 # List of callable that know how to import templates from various sources.
 # TEMPLATE_LOADERS = (
@@ -192,7 +193,7 @@ MIDDLEWARE_CLASSES = [
 	'breeze.middlewares.RemoteFW' if ENABLE_REMOTE_FW else 'breeze.middlewares.Empty',
 	'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 ]
-# from django_cas.backends import CASBackend
+
 AUTHENTICATION_BACKENDS = (
 	'django.contrib.auth.backends.ModelBackend',
 	'django_auth0.auth_backend.Auth0Backend',
@@ -200,7 +201,8 @@ AUTHENTICATION_BACKENDS = (
 
 AUTH0_DOMAIN = 'breeze.eu.auth0.com'
 AUTH0_CLIENT_ID = 'gIN83mLS4qcQqE99Bi5MqzRzU38KruR6'
-AUTH0_SECRET = get_key('.auth0_')
+AUTH0_SECRET_FILE_N = 'auth0'
+AUTH0_SECRET = get_key(AUTH0_SECRET_FILE_N)
 AUTH0_CALLBACK_URL = 'http://127.0.0.1:8000/login/'
 AUTH0_SUCCESS_URL = '/jobs/'
 AUTH0_LOGOUT_URL = 'https://breeze.eu.auth0.com/v2/logout'
@@ -346,8 +348,9 @@ MEDIA_ROOT = PROJECT_PATH + 'db/'  # '/project/breeze[-dev]/db/'
 RORA_LIB = PROJECT_PATH + 'RORALib/'
 UPLOAD_FOLDER = MEDIA_ROOT + 'upload_temp/'
 DATASETS_FOLDER = MEDIA_ROOT + 'datasets/'
-STATIC_ROOT = SOURCE_ROOT + 'static_source/'
-TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/'
+STATIC_ROOT = SOURCE_ROOT + 'static_source/' # static files for the website
+DJANGO_CONFIG_FOLDER = SOURCE_ROOT + 'config/' # Where to store secrets and deployment conf
+TEMPLATE_FOLDER = DJANGO_ROOT + 'templates/' # source templates (not HTML ones)
 MOULD_FOLDER = MEDIA_ROOT + DATA_TEMPLATES_FN
 NO_TAG_XML = TEMPLATE_FOLDER + 'notag.xml'
 GENERAL_SH_NAME = 'run_job.sh'
@@ -358,8 +361,8 @@ FAILED_FN = '.failed'
 SUCCESS_FN = '.done'
 R_DONE_FN = '.sub_done'
 # SGE_QUEUE_NAME = 'breeze.q' # monitoring only
-DOCKER_HUB_PASS_FILE = SOURCE_ROOT + 'docker_repo'
-AZURE_PASS_FILE = SOURCE_ROOT + 'azure_pwd'
+DOCKER_HUB_PASS_FILE = 'docker_repo'
+AZURE_PASS_FILE = 'azure_pwd'
 
 #
 # ComputeTarget configs
@@ -660,10 +663,6 @@ else:
 	SHINY_TARGET_URL = SHINY_LOCAL_TARGET_URL
 	SHINY_LIBS_TARGET_URL = SHINY_LOCAL_LIBS_TARGET_URL
 	SHINY_LIBS_BREEZE_URL = SHINY_LOCAL_LIBS_BREEZE_URL
-
-if not SECRET_KEY:
-	SECRET_KEY = get_key(SOURCE_ROOT)
-	SECRET_KEY = SECRET_KEY
 
 
 def make_run_file():
