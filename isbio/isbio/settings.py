@@ -46,6 +46,8 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
+MYSQL_SECRET_FILE = '.mysql_root_secret' # TODO import from run.conf
+
 DATABASES = {
 	'default': {
 		'ENGINE'  : 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
