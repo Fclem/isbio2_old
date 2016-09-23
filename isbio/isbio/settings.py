@@ -81,7 +81,8 @@ TEMPLATES = [
 				'django.core.context_processors.static',
 				'breeze.context.user_context',
 				'breeze.context.date_context',
-				'django_auth0.context_processors.auth0'
+				'django_auth0.context_processors.auth0',
+				# "breeze.context.site",
 			],
 		},
 	},
@@ -205,7 +206,7 @@ AUTH0_DOMAIN = 'breeze.eu.auth0.com'
 AUTH0_CLIENT_ID = 'gIN83mLS4qcQqE99Bi5MqzRzU38KruR6'
 AUTH0_SECRET_FILE_N = 'auth0'
 AUTH0_SECRET = get_key(AUTH0_SECRET_FILE_N)
-AUTH0_CALLBACK_URL = 'http://127.0.0.1:8000/login/'
+AUTH0_CALLBACK_URL = 'https://breeze-www.cloudapp.net/login/'
 AUTH0_SUCCESS_URL = '/jobs/'
 AUTH0_LOGOUT_URL = 'https://breeze.eu.auth0.com/v2/logout'
 AUTH0_LOGOUT_REDIRECT = 'https://www.fimm.fi'
