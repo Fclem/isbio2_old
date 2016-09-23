@@ -46,14 +46,14 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-MYSQL_SECRET_FILE = '.mysql_root_secret' # TODO import from run.conf
+MYSQL_SECRET_FILE = 'mysql_root'
 
 DATABASES = {
 	'default': {
 		'ENGINE'  : 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
 		'NAME'    : 'breezedb', # Or path to database file if using sqlite3.
 		'USER'    : 'root', # Not used with sqlite3.
-		'PASSWORD': '36BDC2970C1EE90FD783FDB13', # Not used with sqlite3.
+		'PASSWORD': get_key(MYSQL_SECRET_FILE), # Not used with sqlite3.
 		'HOST'    : 'breeze-sql', # Set to empty string for localhost. Not used with sqlite3.
 		'PORT'    : '3306', # Set to empty string for default. Not used with sqlite3.
 		'OPTIONS' : {
