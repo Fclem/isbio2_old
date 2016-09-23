@@ -270,9 +270,9 @@ LOGGING = {
 }
 
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'breeze-www.cloudapp.net']
 
-DEBUG = True
+DEBUG = False
 VERBOSE = False
 SQL_DUMP = False
 # APPEND_SLASH = True
