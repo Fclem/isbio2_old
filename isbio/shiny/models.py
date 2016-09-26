@@ -5,6 +5,7 @@ from django.db import models
 from breeze.utils import *
 from breeze.non_db_objects import CustomList
 from breeze.models import CustomModel
+from django.utils.deconstruct import deconstructible
 
 
 def shiny_tag_fn_zip(self, filename):
@@ -34,6 +35,7 @@ def shiny_files():
 # 08/06/2015
 # TODO change from CustomModel to CustomModelAbstract
 # TODO change the institute field to a ManyToManyField
+@deconstructible
 class ShinyReport(CustomModel):
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
 	FILE_SERVER_NAME = settings.SHINY_SERVER_FILE_NAME
@@ -619,7 +621,15 @@ class ShinyReport(CustomModel):
 	def __unicode__(self):
 		return self.get_name
 
+	def __eq__(self, other):
+		return self.foo == other.foo
+	
+	def __init__(self, foo=1):
+		self.foo = foo
+		super(ShinyReport, self).__init__()
 
+
+@deconstructible
 class ShinyTag(CustomModel):
 	# ACL_RW_RW_R = 0664
 	FILE_UI_NAME = settings.SHINY_UI_FILE_NAME
@@ -705,6 +715,8 @@ class ShinyTag(CustomModel):
 
 	# clem 22/12/2015
 	def __init__(self, *args, **kwargs):
+		if not 'foo' not in kwargs.keys():
+			self.foo = 1
 		super(ShinyTag, self).__init__(*args, **kwargs)
 		self.__prev_reports = list()
 		if self.id:
@@ -841,3 +853,6 @@ class ShinyTag(CustomModel):
 
 	def __unicode__(self):
 		return self.name
+
+	def __eq__(self, other):
+		return self.foo == other.foo

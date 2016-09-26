@@ -37,7 +37,6 @@ else:
 		url(r'^auth/', include('django_auth0.urls')),
 		url(r'^user_list/?$', views.user_list),
 		url(r'^test1/?', views.job_list),
-		url(r'^test2/?', views.test2),
 		url(r'^mail_list/?$', views.user_list_advanced),
 		url(r'^custom_list/?$', views.custom_list),
 		# url(r'^$', django_cas_login),  # views.breeze),

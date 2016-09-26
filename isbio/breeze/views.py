@@ -3078,10 +3078,6 @@ def job_list(request):
 	return HttpResponse(simplejson.dumps(resources) + '\n\n' + simplejson.dumps(resources2), content_type=c_t.JSON)
 
 
-def test2(request):
-	return render_to_response('jstest.html', RequestContext(request, {	}))
-
-
 # clem 06/05/2016
 def job_url_hook(request, i_type, rid, md5, status='', code=0):
 	""" Endpoint of job feedback url.

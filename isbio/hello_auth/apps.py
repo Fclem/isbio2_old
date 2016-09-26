@@ -1,5 +1,5 @@
 from django.apps import AppConfig
 
 
-class HelloAuthConfig(AppConfig):
+class Config(AppConfig):
     name = 'hello_auth'

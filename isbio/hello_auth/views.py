@@ -16,7 +16,7 @@ def index(request, template='hello_auth/base.html'):
 		return redirect(settings.AUTH0_SUCCESS_URL)
 
 
-def process_login(request):
+def process_login(request): # TODO : use / extend auth0.auth_helpers instead
 	"""
 	Default handler to login user
 	:param request: HttpRequest
