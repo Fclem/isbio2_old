@@ -57,6 +57,10 @@ def process_login(request): # TODO : use / extend auth0.auth_helpers instead
 			if token_info['error'] == 'access_denied':
 				return HttpResponse(status=503)
 	
+	else:
+		print 'unsuported auth type :'
+		print request.GET.__dict__
+	
 	return index(request)
 	# if request.user.is_authenticated():
 	#	return redirect(settings.AUTH0_SUCCESS_URL)
