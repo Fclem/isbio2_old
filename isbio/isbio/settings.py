@@ -165,7 +165,7 @@ INSTALLED_APPS = [
 	'bootstrap_toolkit',
 	'breeze.apps.Config',
 	'shiny.apps.Config',
-	'dbviewer.apps.Config',
+	# 'dbviewer.apps.Config',
 	'compute.apps.Config',
 	'down.apps.Config',
 	# 'south',
