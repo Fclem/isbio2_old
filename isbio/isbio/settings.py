@@ -8,6 +8,7 @@ from datetime import datetime
 from breeze.utilities import git, TermColoring, recur, recur_rec, get_key, import_env
 
 ENABLE_DATADOG = True
+ENABLE_ROLLBAR = False
 try:
 	from datadog import statsd
 	if ENABLE_DATADOG:
@@ -150,8 +151,8 @@ SECRET_KEY = get_key(SECRET_KEY_FN)
 
 # List of callable that know how to import templates from various sources.
 # TEMPLATE_LOADERS = (
-#	'django.template.loaders.filesystem.Loader',
-#	'django.template.loaders.app_directories.Loader',
+# 	'django.template.loaders.filesystem.Loader',
+# 	'django.template.loaders.app_directories.Loader',
 # )
 
 INSTALLED_APPS = [
@@ -165,7 +166,7 @@ INSTALLED_APPS = [
 	'bootstrap_toolkit',
 	'breeze.apps.Config',
 	'shiny.apps.Config',
-	# 'dbviewer.apps.Config',
+	'dbviewer.apps.Config',
 	'compute.apps.Config',
 	'down.apps.Config',
 	# 'south',
@@ -194,7 +195,7 @@ MIDDLEWARE_CLASSES = [
 	'django_requestlogging.middleware.LogSetupMiddleware',
 	'breeze.middlewares.DataDog' if ENABLE_DATADOG else 'breeze.middlewares.Empty',
 	'breeze.middlewares.RemoteFW' if ENABLE_REMOTE_FW else 'breeze.middlewares.Empty',
-	'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
+	'rollbar.contrib.django.middleware.RollbarNotifierMiddleware' if ENABLE_ROLLBAR else 'breeze.middlewares.Empty',
 ]
 
 AUTHENTICATION_BACKENDS = (
@@ -269,8 +270,8 @@ LOGGING = {
 	}
 }
 
-
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '52.164.211.188', 'breeze-www.cloudapp.net']
+AUTH0_IP_LIST = ['52.169.124.164', '52.164.211.188', '52.28.56.226', '52.28.45.240', '52.16.224.164', '52.16.193.66']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'breeze-www.cloudapp.net'] + AUTH0_IP_LIST
 
 DEBUG = False
 VERBOSE = False
@@ -289,7 +290,7 @@ Q_BIN = ''
 QSTAT_BIN = ''
 QDEL_BIN = ''
 SGE_QUEUE = ''
-os.environ['MAIL'] = '/var/mail/dbychkov'
+os.environ['MAIL'] = '/var/mail/dbychkov' # FIXME obsolete
 
 CONSOLE_DATE_F = "%d/%b/%Y %H:%M:%S"
 # auto-sensing if running on dev or prod, for dynamic environment configuration
@@ -370,6 +371,7 @@ AZURE_PASS_FILE = 'azure_pwd'
 #
 # ComputeTarget configs
 #
+# TODO config
 # 13/05/2016
 CONFIG_FN = 'configs/'
 CONFIG_PATH = MEDIA_ROOT + CONFIG_FN
@@ -434,6 +436,7 @@ WATCHER_PROC_REFRESH = 2 # number of seconds to wait before refreshing processes
 #
 # SHINY RELATED CONFIG
 #
+# FIXME obsolete
 # SHINY_APPS = MEDIA_ROOT + 'shinyApps/'
 SHINY_FN_REPORTS = 'shinyReports'
 SHINY_FN_TAGS = 'shinyTags'
@@ -502,12 +505,12 @@ FOLDERS_LST = [TEMPLATE_FOLDER, SHINY_REPORT_TEMPLATE_PATH, SHINY_REPORTS, SHINY
 # this is used to avoid 504 Gateway time-out from ngnix with is currently set to 600 sec = 10 min
 # LONG_POLL_TIME_OUT_REFRESH = 540 # 9 minutes
 # set to 50 sec to avoid time-out on breeze.fimm.fi
-LONG_POLL_TIME_OUT_REFRESH = 50
-SGE_MASTER_FILE = '/var/lib/gridengine/default/common/act_qmaster'
-SGE_MASTER_IP = '192.168.67.2'
-DOTM_SERVER_IP = '128.214.64.5'
-RORA_SERVER_IP = '192.168.0.219'
-FILE_SERVER_IP = '192.168.0.107'
+LONG_POLL_TIME_OUT_REFRESH = 50 # FIXME obsolete
+SGE_MASTER_FILE = '/var/lib/gridengine/default/common/act_qmaster' # FIXME obsolete
+SGE_MASTER_IP = '192.168.67.2' # FIXME obsolete
+DOTM_SERVER_IP = '128.214.64.5' # FIXME obsolete
+RORA_SERVER_IP = '192.168.0.219' # FIXME obsolete
+FILE_SERVER_IP = '192.168.0.107' # FIXME obsolete
 SPECIAL_CODE_FOLDER = PROJECT_PATH + 'code/'
 FS_SIG_FILE = PROJECT_PATH + 'fs_sig.md5'
 FS_LIST_FILE = PROJECT_PATH + 'fs_checksums.json'
@@ -643,21 +646,23 @@ if DEBUG:
 
 else:
 	VERBOSE = False
-
-try:
-	import rollbar
-	BASE_DIR = SOURCE_ROOT
-	ROLLBAR = {
-		'access_token': '00f2bf2c84ce40aa96842622c6ffe97d',
-		'environment': 'development' if DEBUG else 'production',
-		'root': BASE_DIR,
-	}
-
-	rollbar.init(**ROLLBAR)
-except Exception:
-	logging.getLogger().error('Unable to init rollbar')
-	pass
-
+# FIXME obsolete
+if ENABLE_ROLLBAR:
+	try:
+		import rollbar
+		BASE_DIR = SOURCE_ROOT
+		ROLLBAR = {
+			'access_token': '00f2bf2c84ce40aa96842622c6ffe97d',
+			'environment': 'development' if DEBUG else 'production',
+			'root': BASE_DIR,
+		}
+	
+		rollbar.init(**ROLLBAR)
+	except Exception:
+		ENABLE_ROLLBAR = False
+		logging.getLogger().error('Unable to init rollbar')
+		pass
+# FIXME obsolete
 if SHINY_MODE == 'remote':
 	SHINY_TARGET_URL = SHINY_REMOTE_TARGET_URL
 	SHINY_LIBS_TARGET_URL = SHINY_REMOTE_LIBS_TARGET_URL
