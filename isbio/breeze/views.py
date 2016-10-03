@@ -641,13 +641,6 @@ def delete_off_site_user(request, uid):
 
 
 @login_required(login_url='/')
-def db_viewer(request):
-	return render_to_response('dbviewer.html', RequestContext(request, {
-		'dbviewer_status': 'active',
-	}))
-
-
-@login_required(login_url='/')
 def ajax_patients_data(request, which):
 	"""
 		Generic function to extract data from RORA tables;

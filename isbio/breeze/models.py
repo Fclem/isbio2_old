@@ -31,7 +31,7 @@ JOB_PS = JobStat.job_ps # legacy
 
 
 # clem 20/06/2016
-class CustomModelAbstract(models.Model):
+class CustomModelAbstract(models.Model): # TODO move to a common base app
 	""" Provides and enforce read-only property ( read_only ). This property is set by the CustomManager """
 
 	__prop_read_only = False
@@ -1059,7 +1059,7 @@ def user_prof_fn_spe(self, filename):
 
 
 # TODO fix naming of institute
-class UserProfile(CustomModelAbstract):
+class UserProfile(CustomModelAbstract): # TODO move to a common base app
 	# user = models.ForeignKey(User, unique=True)
 	user = models.OneToOneField(User)
 
